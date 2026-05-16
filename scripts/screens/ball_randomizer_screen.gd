@@ -3,10 +3,15 @@ extends Control
 signal preparation_completed(match_number: int)
 
 @onready var field_display: Control = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay
+@onready var layout: VBoxContainer = $Layout
+@onready var toolbar: HFlowContainer = $Layout/Toolbar
+@onready var randomize_button: Button = $Layout/Toolbar/RandomizeButton
+@onready var reset_button: Button = $Layout/Toolbar/ResetButton
 @onready var title_label: Label = $Layout/Title
 @onready var status_label: Label = $Layout/Toolbar/StatusLabel
 @onready var status_label_2: Label = $Layout/Toolbar/StatusLabel2
 @onready var ready_button: Button = $Layout/Toolbar/ReadyButton
+@onready var field_margin: MarginContainer = $Layout/FieldPanel/FieldMargin
 @onready var playfield: AspectRatioContainer = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield
 
 var workflow_match_number: int = 0
@@ -35,18 +40,36 @@ func _notification(what: int) -> void:
 func _update_dashboard_mode() -> void:
 	title_label.visible = not dashboard_mode
 	status_label_2.visible = not dashboard_mode
+	status_label.visible = not dashboard_mode
 	status_label.custom_minimum_size = Vector2(0, 34 if dashboard_mode else 52)
 	status_label.add_theme_font_size_override("font_size", 14 if dashboard_mode else 16)
+	layout.add_theme_constant_override("separation", 10 if dashboard_mode else 18)
+	toolbar.alignment = FlowContainer.ALIGNMENT_CENTER if dashboard_mode else FlowContainer.ALIGNMENT_BEGIN
+	toolbar.add_theme_constant_override("h_separation", 8 if dashboard_mode else 12)
+	toolbar.add_theme_constant_override("v_separation", 8 if dashboard_mode else 12)
+	var button_size: Vector2 = Vector2(132, 44) if dashboard_mode else Vector2(180, 52)
+	randomize_button.custom_minimum_size = button_size
+	reset_button.custom_minimum_size = button_size
+	ready_button.custom_minimum_size = button_size
+	var field_margin_size: int = 10 if dashboard_mode else 18
+	field_margin.add_theme_constant_override("margin_left", field_margin_size)
+	field_margin.add_theme_constant_override("margin_top", field_margin_size)
+	field_margin.add_theme_constant_override("margin_right", field_margin_size)
+	field_margin.add_theme_constant_override("margin_bottom", field_margin_size)
 
 func _update_playfield_size() -> void:
 	if playfield == null:
 		return
 	var available_width: float = size.x
 	if available_width <= 1.0:
+		available_width = get_parent_area_size().x
+	if available_width <= 1.0:
 		available_width = get_viewport_rect().size.x
-	if dashboard_mode:
-		available_width = maxf(available_width, get_viewport_rect().size.x - 48.0)
-	var target_width: float = clampf(available_width - (16.0 if dashboard_mode else 40.0), 360.0 if dashboard_mode else 360.0, 900.0 if dashboard_mode else 1281.0)
+
+	var horizontal_padding: float = 20.0 if dashboard_mode else 40.0
+	var max_width: float = minf(820.0, maxf(320.0, available_width - horizontal_padding)) if dashboard_mode else 1281.0
+	var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
+	var target_width: float = clampf(available_width - horizontal_padding, min_width, max_width)
 	playfield.custom_minimum_size = Vector2(target_width, target_width / 2.066)
 
 func begin_match_preparation(match_number: int) -> void:

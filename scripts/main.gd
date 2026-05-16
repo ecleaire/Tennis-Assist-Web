@@ -39,6 +39,7 @@ var flow_status_active: bool = false
 var dashboard_body: BoxContainer
 var dashboard_ball_panel: PanelContainer
 var dashboard_timer_panel: PanelContainer
+var dashboard_timer_screen: Control
 var dashboard_timer_fullscreen_active: bool = false
 
 func _ready() -> void:
@@ -130,6 +131,8 @@ func _create_dashboard_screen() -> void:
 
 	var timer_screen: Node = dashboard_timer_panel.get_node("DashboardMargin/DashboardStack/TimerScreen")
 	if timer_screen != null:
+		if timer_screen is Control:
+			dashboard_timer_screen = timer_screen
 		timer_screen.set_process_unhandled_input(false)
 		if timer_screen.has_signal("fullscreen_ui_toggled"):
 			timer_screen.connect("fullscreen_ui_toggled", Callable(self, "_on_dashboard_timer_fullscreen_toggled"))
@@ -296,6 +299,8 @@ func _show_screen(screen_name: String) -> void:
 			var screen: Control = screen_variant
 			var button: Button = button_variant
 			screen.visible = key == screen_name
+			if key == "timer":
+				screen.set_process_unhandled_input(key == screen_name)
 			_set_button_selected(button, key == screen_name)
 
 func _set_button_selected(button: Button, selected: bool) -> void:
@@ -329,6 +334,12 @@ func _notification(what: int) -> void:
 		_update_dashboard_layout()
 
 func _input(event: InputEvent) -> void:
+	if current_screen == "dashboard" and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+		if dashboard_timer_screen != null and dashboard_timer_screen.has_method("toggle_fullscreen_ui"):
+			dashboard_timer_screen.call("toggle_fullscreen_ui")
+			accept_event()
+		return
+
 	# Route mobile touch drags to the active screen ScrollContainer.
 	if event is InputEventScreenDrag:
 		if _scroll_current_screen_by(event.relative.y):
@@ -345,6 +356,14 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventPanGesture:
 		if _scroll_current_screen_by(event.delta.y):
+			accept_event()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if current_screen != "dashboard":
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+		if dashboard_timer_screen != null and dashboard_timer_screen.has_method("toggle_fullscreen_ui"):
+			dashboard_timer_screen.call("toggle_fullscreen_ui")
 			accept_event()
 
 func _scroll_current_screen_by(relative_y: float) -> bool:

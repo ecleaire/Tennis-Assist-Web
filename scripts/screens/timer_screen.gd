@@ -140,9 +140,14 @@ func _apply_dashboard_mode() -> void:
 	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 10)
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
-	var button_size: Vector2 = Vector2(118, 42) if dashboard_mode else Vector2(160, 45)
-	for button in [start_button, end_button, reset_button, fullscreen_button, random_option_count_button, ten_count_button, five_count_button]:
-		button.custom_minimum_size = button_size
+	var primary_button_size: Vector2 = Vector2(118, 42) if dashboard_mode else Vector2(150, 44)
+	for button in [start_button, end_button, fullscreen_button, ten_count_button, five_count_button]:
+		button.custom_minimum_size = primary_button_size
+
+	var random_button_size: Vector2 = Vector2(150, 58) if dashboard_mode else Vector2(190, 58)
+	for button in [reset_button, random_option_count_button]:
+		button.custom_minimum_size = random_button_size
+		button.add_theme_font_size_override("font_size", 18 if dashboard_mode else 20)
 
 func _setup_random_interval_menu() -> void:
 	random_interval_menu.clear()
@@ -381,6 +386,9 @@ func _update_sub_timer_visuals() -> void:
 
 func _toggle_fullscreen() -> void:
 	_set_fullscreen_enabled(not is_compact_fullscreen_ui)
+
+func toggle_fullscreen_ui() -> void:
+	_toggle_fullscreen()
 
 func _set_fullscreen_enabled(enabled: bool) -> void:
 	_apply_compact_ui(enabled)
