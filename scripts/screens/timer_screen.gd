@@ -492,7 +492,7 @@ func _sync_primary_button   () -> void:
 func _update_control_visibility() -> void:
 	var hide_random_controls: bool = is_running
 	fullscreen_button.text = "全画面解除" if is_compact_fullscreen_ui else "全画面"
-	_set_button_placeholder(fullscreen_button, dashboard_mode)
+	_set_button_placeholder(fullscreen_button, false)
 	_set_button_placeholder(reset_button, hide_random_controls)
 	_set_button_placeholder(random_option_count_button, hide_random_controls)
 	if not hide_random_controls:
@@ -525,14 +525,15 @@ func _update_responsive_sizes() -> void:
 	if available_width <= 1.0:
 		available_width = get_viewport_rect().size.x
 
-	var font_scale: float = 0.24 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20)
-	var min_size: int = 82 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84)
-	var max_size: int = 220 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300)
+	var dashboard_fullscreen: bool = dashboard_mode and is_compact_fullscreen_ui
+	var font_scale: float = 0.30 if dashboard_fullscreen else (0.24 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20))
+	var min_size: int = 128 if dashboard_fullscreen else (82 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84))
+	var max_size: int = 420 if dashboard_fullscreen else (220 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300))
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
 	timer_label.add_theme_font_size_override("font_size", font_size)
-	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.92 if dashboard_mode else 0.90)))
-	var min_height: float = 120.0 if dashboard_mode else 160.0
-	var max_height: float = 260.0 if dashboard_mode else 360.0
+	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90))))
+	var min_height: float = 180.0 if dashboard_fullscreen else (120.0 if dashboard_mode else 160.0)
+	var max_height: float = 360.0 if dashboard_fullscreen else (260.0 if dashboard_mode else 360.0)
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)
