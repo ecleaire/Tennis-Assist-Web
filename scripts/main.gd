@@ -212,6 +212,9 @@ func _on_ball_preparation_completed(match_number: int) -> void:
 		timer_screen_variant.call("prepare_match_timer", match_number)
 
 func _on_timer_match_finished(_finish_type: String) -> void:
+	if not flow_status_active:
+		return
+
 	_hide_flow_status()
 	_set_competition_chrome_hidden(false)
 	_show_screen("records")
@@ -262,6 +265,7 @@ func _set_flow_status(match_number: int, status_text: String) -> void:
 	flow_status_label.text = "第%dマッチ / %s" % [match_number, status_text]
 
 func _hide_flow_status() -> void:
+	flow_current_match_number = 0
 	flow_status_active = false
 	flow_status_panel.visible = false
 
