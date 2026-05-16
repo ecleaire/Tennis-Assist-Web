@@ -1,0 +1,145 @@
+[gd_scene load_steps=2 format=3 uid="uid://dua7jxh8df5iv"]
+
+[ext_resource type="Script" path="res://scripts/screens/home_screen.gd" id="1_home"]
+
+[node name="HomeScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_home")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="HeroPanel" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+
+[node name="HeroMargin" type="MarginContainer" parent="Layout/HeroPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="HeroContent" type="VBoxContainer" parent="Layout/HeroPanel/HeroMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeroTitle" type="Label" parent="Layout/HeroPanel/HeroMargin/HeroContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "競技運用に特化したRoboSportsダッシュボード"
+
+[node name="HeroBody" type="Label" parent="Layout/HeroPanel/HeroMargin/HeroContent"]
+layout_mode = 2
+autowrap_mode = 3
+text = "試合中は全画面タイマーを表示し、練習ではボール配置をランダム化し、結果はブラウザ内に保存できます。ルール確認やJSON配信のニュース表示にも対応します。"
+
+[node name="QuickActionsLabel" type="Label" parent="Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "クイック操作"
+
+[node name="ActionsFlow" type="HFlowContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="TimerAction" type="Button" parent="Layout/ActionsFlow"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+text = "タイマーを開く"
+
+[node name="BallAction" type="Button" parent="Layout/ActionsFlow"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+text = "配置をランダム化"
+
+[node name="RecordAction" type="Button" parent="Layout/ActionsFlow"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+text = "試合記録を追加"
+
+[node name="RuleAction" type="Button" parent="Layout/ActionsFlow"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+text = "ルールを見る"
+
+[node name="NewsAction" type="Button" parent="Layout/ActionsFlow"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+text = "ニュースを見る"
+
+[node name="FeatureGrid" type="GridContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+
+[node name="TimerCard" type="PanelContainer" parent="Layout/FeatureGrid"]
+layout_mode = 2
+
+[node name="TimerCardMargin" type="MarginContainer" parent="Layout/FeatureGrid/TimerCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="TimerCardText" type="Label" parent="Layout/FeatureGrid/TimerCard/TimerCardMargin"]
+layout_mode = 2
+autowrap_mode = 3
+text = "タイマーモジュール\n60〜120秒のランダムカウントダウン、進行バー、全画面表示、キーボード操作に対応。"
+
+[node name="RecordCard" type="PanelContainer" parent="Layout/FeatureGrid"]
+layout_mode = 2
+
+[node name="RecordCardMargin" type="MarginContainer" parent="Layout/FeatureGrid/RecordCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="RecordCardText" type="Label" parent="Layout/FeatureGrid/RecordCard/RecordCardMargin"]
+layout_mode = 2
+autowrap_mode = 3
+text = "記録モジュール\n練習・公式戦の記録をuser://へ保存し、フィルタと統計表示に対応。"
+
+[node name="RuleCard" type="PanelContainer" parent="Layout/FeatureGrid"]
+layout_mode = 2
+
+[node name="RuleCardMargin" type="MarginContainer" parent="Layout/FeatureGrid/RuleCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="RuleCardText" type="Label" parent="Layout/FeatureGrid/RuleCard/RuleCardMargin"]
+layout_mode = 2
+autowrap_mode = 3
+text = "ルールビューア\nカテゴリ検索とレスポンシブなナビゲーションでPC・タブレットに対応。"
+
+[node name="NewsCard" type="PanelContainer" parent="Layout/FeatureGrid"]
+layout_mode = 2
+
+[node name="NewsCardMargin" type="MarginContainer" parent="Layout/FeatureGrid/NewsCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="NewsCardText" type="Label" parent="Layout/FeatureGrid/NewsCard/NewsCardMargin"]
+layout_mode = 2
+autowrap_mode = 3
+text = "ニュースモジュール\n外部JSONからカード一覧と詳細ポップアップを読み込み、将来のAPI化にも対応しやすい構成です。"

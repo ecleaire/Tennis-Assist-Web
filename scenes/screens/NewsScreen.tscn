@@ -1,0 +1,121 @@
+[gd_scene format=3 uid="uid://c7n6axcxf0f54"]
+
+[ext_resource type="Script" uid="uid://b8b0agxquavy" path="res://scripts/screens/news_screen.gd" id="1_news"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_news_popup"]
+bg_color = Color(0.043137256, 0.07058824, 0.12941177, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.196078, 0.396078, 0.733333, 0.8)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[node name="NewsScreen" type="Control" unique_id=334592229]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_news")
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Layout" type="VBoxContainer" parent="Scroll" unique_id=1653723898]
+custom_minimum_size = Vector2(0, 980)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="TopSpacer" type="Control" parent="Scroll/Layout"]
+custom_minimum_size = Vector2(1, 22)
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="Scroll/Layout" unique_id=1025345388]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Scroll/Layout/Header" unique_id=1318066799]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "WROニュース"
+
+[node name="CategoryFilter" type="OptionButton" parent="Scroll/Layout/Header" unique_id=1467732431]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+
+[node name="ReloadButton" type="Button" parent="Scroll/Layout/Header" unique_id=684829855]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+text = "再読み込み"
+
+[node name="StatusLabel" type="Label" parent="Scroll/Layout" unique_id=346801315]
+layout_mode = 2
+text = "ローカルのサンプルJSONを読み込みました。"
+
+[node name="NewsScroll" type="ScrollContainer" parent="Scroll/Layout" unique_id=819765581]
+custom_minimum_size = Vector2(0, 720)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NewsList" type="VBoxContainer" parent="Scroll/Layout/NewsScroll" unique_id=664483186]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="BottomSpacer" type="Control" parent="Scroll/Layout"]
+custom_minimum_size = Vector2(1, 18)
+layout_mode = 2
+
+[node name="DetailPopup" type="PopupPanel" parent="." unique_id=1469741516]
+oversampling_override = 1.0
+initial_position = 1
+size = Vector2i(760, 858)
+theme_override_styles/panel = SubResource("StyleBoxFlat_news_popup")
+
+[node name="DetailMargin" type="MarginContainer" parent="DetailPopup" unique_id=1189217352]
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 755.0
+offset_bottom = 853.0
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 22
+
+[node name="DetailLayout" type="VBoxContainer" parent="DetailPopup/DetailMargin" unique_id=747550047]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DetailTitle" type="Label" parent="DetailPopup/DetailMargin/DetailLayout" unique_id=651427628]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "ニュースタイトル"
+autowrap_mode = 3
+
+[node name="DetailMeta" type="Label" parent="DetailPopup/DetailMargin/DetailLayout" unique_id=1520701785]
+layout_mode = 2
+text = "カテゴリ | 日付"
+
+[node name="DetailContent" type="RichTextLabel" parent="DetailPopup/DetailMargin/DetailLayout" unique_id=567254129]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+
+[node name="CloseButton" type="Button" parent="DetailPopup/DetailMargin/DetailLayout" unique_id=2024992461]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "閉じる"

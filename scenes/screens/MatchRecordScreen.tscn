@@ -1,0 +1,806 @@
+[gd_scene format=3 uid="uid://c3cu4aq2tbd3m"]
+
+[ext_resource type="Script" uid="uid://dxdlifbkf50rr" path="res://scripts/screens/match_record_screen.gd" id="1_records"]
+
+[node name="MatchRecordScreen" type="Control" unique_id=2040176980]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_records")
+
+[node name="Scroll" type="ScrollContainer" parent="." unique_id=523537743]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Layout" type="VBoxContainer" parent="Scroll" unique_id=777930601]
+custom_minimum_size = Vector2(0, 1980)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="TopSpacer" type="Control" parent="Scroll/Layout" unique_id=86646989]
+custom_minimum_size = Vector2(1, 16)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Scroll/Layout" unique_id=608341134]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "試合記録システム"
+
+[node name="StatsFlow" type="HFlowContainer" parent="Scroll/Layout" unique_id=322756596]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="WinRatePanel" type="PanelContainer" parent="Scroll/Layout/StatsFlow" unique_id=81643271]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WinRateMargin" type="MarginContainer" parent="Scroll/Layout/StatsFlow/WinRatePanel" unique_id=741071622]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WinRateLabel" type="Label" parent="Scroll/Layout/StatsFlow/WinRatePanel/WinRateMargin" unique_id=817876857]
+layout_mode = 2
+text = "勝率
+0.0%"
+vertical_alignment = 1
+
+[node name="TotalPanel" type="PanelContainer" parent="Scroll/Layout/StatsFlow" unique_id=1479103808]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="TotalMargin" type="MarginContainer" parent="Scroll/Layout/StatsFlow/TotalPanel" unique_id=1252137566]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="TotalMatchesLabel" type="Label" parent="Scroll/Layout/StatsFlow/TotalPanel/TotalMargin" unique_id=78965522]
+layout_mode = 2
+text = "試合数
+0"
+vertical_alignment = 1
+
+[node name="AveragePanel" type="PanelContainer" parent="Scroll/Layout/StatsFlow" unique_id=742064027]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AverageMargin" type="MarginContainer" parent="Scroll/Layout/StatsFlow/AveragePanel" unique_id=1214109143]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AverageScoreLabel" type="Label" parent="Scroll/Layout/StatsFlow/AveragePanel/AverageMargin" unique_id=1968251822]
+layout_mode = 2
+text = "平均得点
+0.0"
+vertical_alignment = 1
+
+[node name="TournamentPanel" type="PanelContainer" parent="Scroll/Layout" unique_id=127001]
+layout_mode = 2
+
+[node name="TournamentMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel" unique_id=127002]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="TournamentLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin" unique_id=127003]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TournamentTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=127004]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "大会進行"
+
+[node name="TeamSelectionPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=127005]
+layout_mode = 2
+
+[node name="TeamSelectionMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel" unique_id=127006]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="TeamSelectionLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin" unique_id=127007]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SelectionTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127008]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "対戦チーム選択"
+
+[node name="SelectionRow" type="HFlowContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127009]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="TeamASelect" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow" unique_id=127010]
+custom_minimum_size = Vector2(220, 48)
+layout_mode = 2
+
+[node name="VsLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow" unique_id=127011]
+layout_mode = 2
+text = "vs"
+vertical_alignment = 1
+
+[node name="TeamBSelect" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow" unique_id=127012]
+custom_minimum_size = Vector2(220, 48)
+layout_mode = 2
+
+[node name="StartSeriesButton" type="Button" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow" unique_id=127013]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+text = "対戦を開始"
+
+[node name="ResetSeriesButton" type="Button" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow" unique_id=127014]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+text = "対戦をリセット"
+
+[node name="CurrentSeriesLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127015]
+layout_mode = 2
+text = "対戦カード: 未選択"
+
+[node name="MatchProgressLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127016]
+layout_mode = 2
+text = "進行状況: 対戦を開始してください"
+
+[node name="TournamentStatusLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127017]
+layout_mode = 2
+text = "サンプルのチーム一覧を読み込んでいます。"
+autowrap_mode = 3
+
+[node name="TournamentStatsPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=268300838]
+visible = false
+layout_mode = 2
+
+[node name="TournamentStatsMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel" unique_id=1984060610]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="TournamentStatsLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin" unique_id=1775715219]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamStatsTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout" unique_id=1310966107]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "チーム別統計"
+
+[node name="TeamStatsHeader" type="HBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout" unique_id=608730250]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamStatsSelect" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsHeader" unique_id=1759325263]
+custom_minimum_size = Vector2(260, 48)
+layout_mode = 2
+
+[node name="TeamStatsHint" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsHeader" unique_id=1166504023]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "チーム一覧から選んだチームの全期間 / 今週の成績を表示します。"
+vertical_alignment = 1
+
+[node name="TeamStatsValues" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout" unique_id=1281382881]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AllTimeFlow" type="HFlowContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues" unique_id=420513450]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="AllTimeWinRatePanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=1395683954]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeWinRateMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeWinRatePanel" unique_id=1888325639]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeWinRateLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeWinRatePanel/AllTimeWinRateMargin" unique_id=440132192]
+layout_mode = 2
+text = "全期間 勝率
+-"
+vertical_alignment = 1
+
+[node name="AllTimeTotalPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=1643415320]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeTotalMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeTotalPanel" unique_id=1449539661]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeTotalMatchesLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeTotalPanel/AllTimeTotalMargin" unique_id=1704612009]
+layout_mode = 2
+text = "全期間 試合数
+-"
+vertical_alignment = 1
+
+[node name="AllTimeAveragePanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=1098765758]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeAverageMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeAveragePanel" unique_id=1636638002]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeAverageScoreLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeAveragePanel/AllTimeAverageMargin" unique_id=199669856]
+layout_mode = 2
+text = "全期間 平均得点
+-"
+vertical_alignment = 1
+
+[node name="WeeklyFlow" type="HFlowContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues" unique_id=897817203]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="WeeklyWinRatePanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=1368620724]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyWinRateMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyWinRatePanel" unique_id=934937883]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyWinRateLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyWinRatePanel/WeeklyWinRateMargin" unique_id=373792741]
+layout_mode = 2
+text = "今週 勝率
+-"
+vertical_alignment = 1
+
+[node name="WeeklyTotalPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=1672015040]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyTotalMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyTotalPanel" unique_id=279016075]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyTotalMatchesLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyTotalPanel/WeeklyTotalMargin" unique_id=834340644]
+layout_mode = 2
+text = "今週 試合数
+-"
+vertical_alignment = 1
+
+[node name="WeeklyAveragePanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=1666993476]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyAverageMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyAveragePanel" unique_id=140381445]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyAverageScoreLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TournamentStatsPanel/TournamentStatsMargin/TournamentStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyAveragePanel/WeeklyAverageMargin" unique_id=2075425540]
+layout_mode = 2
+text = "今週 平均得点
+-"
+vertical_alignment = 1
+
+[node name="ResultInputPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=127018]
+layout_mode = 2
+
+[node name="ResultInputMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel" unique_id=127019]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="ResultInputLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin" unique_id=127020]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="MatchTitleLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127021]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "第1マッチ リザルト入力"
+horizontal_alignment = 1
+
+[node name="MatchTeamsLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127022]
+layout_mode = 2
+text = "対戦カード未選択"
+horizontal_alignment = 1
+
+[node name="ReasonRow" type="GridContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127023]
+layout_mode = 2
+columns = 2
+
+[node name="ReasonCategoryLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127066]
+layout_mode = 2
+text = "① 終了カテゴリ"
+vertical_alignment = 1
+
+[node name="ReasonCategoryOption" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127067]
+custom_minimum_size = Vector2(320, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TargetTeamLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127024]
+layout_mode = 2
+text = "② 試合終了理由"
+vertical_alignment = 1
+
+[node name="EndReasonOption" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127027]
+custom_minimum_size = Vector2(320, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WinnerTeamLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127068]
+layout_mode = 2
+text = "③ 勝利チーム"
+vertical_alignment = 1
+
+[node name="TargetTeamOption" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ReasonRow" unique_id=127025]
+custom_minimum_size = Vector2(320, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WinnerPreviewLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127065]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "勝利チーム: 未選択"
+horizontal_alignment = 1
+
+[node name="ScoreRow" type="HBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127069]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="ScoreSectionTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow" unique_id=127028]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+text = "④ ボール個数"
+vertical_alignment = 1
+
+[node name="ScoreContent" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow" unique_id=127070]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ScorePanels" type="HFlowContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent" unique_id=127029]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 18
+
+[node name="TeamAPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels" unique_id=127030]
+custom_minimum_size = Vector2(420, 250)
+layout_mode = 2
+
+[node name="TeamAMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel" unique_id=127031]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="TeamALayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin" unique_id=127032]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamANameLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127033]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "チームA"
+horizontal_alignment = 1
+
+[node name="TeamAOrangeLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127034]
+layout_mode = 2
+text = "オレンジボール"
+horizontal_alignment = 1
+
+[node name="TeamAOrange" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127035]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="TeamAPurpleLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127036]
+layout_mode = 2
+text = "紫ボール"
+horizontal_alignment = 1
+
+[node name="TeamAPurple" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127037]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="TeamAScoreLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamAPanel/TeamAMargin/TeamALayout" unique_id=127038]
+layout_mode = 2
+text = "得点: 0"
+horizontal_alignment = 1
+
+[node name="TeamBPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels" unique_id=127039]
+custom_minimum_size = Vector2(420, 250)
+layout_mode = 2
+
+[node name="TeamBMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel" unique_id=127040]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="TeamBLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin" unique_id=127041]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamBNameLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127042]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "チームB"
+horizontal_alignment = 1
+
+[node name="TeamBOrangeLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127043]
+layout_mode = 2
+text = "オレンジボール"
+horizontal_alignment = 1
+
+[node name="TeamBOrange" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127044]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="TeamBPurpleLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127045]
+layout_mode = 2
+text = "紫ボール"
+horizontal_alignment = 1
+
+[node name="TeamBPurple" type="OptionButton" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127046]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+
+[node name="TeamBScoreLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout/ScoreRow/ScoreContent/ScorePanels/TeamBPanel/TeamBMargin/TeamBLayout" unique_id=127047]
+layout_mode = 2
+text = "得点: 0"
+horizontal_alignment = 1
+
+[node name="SaveMatchButton" type="Button" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127048]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+text = "この試合を保存"
+
+[node name="TournamentSaveStatusLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127049]
+layout_mode = 2
+text = "まずは対戦カードを開始してください。"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ResultBoards" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=127050]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="IntermediatePanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards" unique_id=127051]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IntermediateMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel" unique_id=127052]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="IntermediateLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel/IntermediateMargin" unique_id=127053]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="IntermediateTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel/IntermediateMargin/IntermediateLayout" unique_id=127054]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "中間結果表示"
+
+[node name="IntermediateSummaryLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel/IntermediateMargin/IntermediateLayout" unique_id=127055]
+layout_mode = 2
+text = "第1試合の入力待ちです。"
+autowrap_mode = 3
+
+[node name="IntermediateHeader" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel/IntermediateMargin/IntermediateLayout" unique_id=127056]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IntermediateList" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/IntermediatePanel/IntermediateMargin/IntermediateLayout" unique_id=127057]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="FinalPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards" unique_id=127058]
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FinalMargin" type="MarginContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel" unique_id=127059]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="FinalLayout" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin" unique_id=127060]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FinalTitle" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout" unique_id=127061]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "最終結果表"
+
+[node name="FinalSummaryLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout" unique_id=127062]
+layout_mode = 2
+text = "3試合分の結果を集計します。"
+autowrap_mode = 3
+
+[node name="FinalHeader" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout" unique_id=127063]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FinalList" type="VBoxContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout" unique_id=127064]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HistoryPanel" type="PanelContainer" parent="Scroll/Layout" unique_id=859947893]
+layout_mode = 2
+
+[node name="HistoryMargin" type="MarginContainer" parent="Scroll/Layout/HistoryPanel" unique_id=649180387]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="HistoryLayout" type="VBoxContainer" parent="Scroll/Layout/HistoryPanel/HistoryMargin" unique_id=932670433]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="HistoryHeader" type="HBoxContainer" parent="Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout" unique_id=1211742007]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HistoryTitle" type="Label" parent="Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryHeader" unique_id=1570903391]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "保存済み履歴"
+
+[node name="FilterOption" type="OptionButton" parent="Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryHeader" unique_id=531339999]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+
+[node name="HistoryScroll" type="ScrollContainer" parent="Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout" unique_id=121132757]
+custom_minimum_size = Vector2(0, 380)
+layout_mode = 2
+
+[node name="HistoryList" type="VBoxContainer" parent="Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryScroll" unique_id=682431182]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TeamStatsPanel" type="PanelContainer" parent="Scroll/Layout" unique_id=1177400699]
+layout_mode = 2
+
+[node name="TeamStatsMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel" unique_id=1180337928]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="TeamStatsLayout" type="VBoxContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin" unique_id=2017217730]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TeamStatsTitle" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout" unique_id=835262800]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "チーム別統計"
+
+[node name="TeamStatsHeader" type="HBoxContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout" unique_id=1046463029]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamStatsSelect" type="OptionButton" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader" unique_id=784127500]
+custom_minimum_size = Vector2(260, 48)
+layout_mode = 2
+
+[node name="TeamStatsHint" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader" unique_id=2039610265]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "チーム一覧から選んだチームの全期間と今週のデータを表示します。"
+vertical_alignment = 1
+
+[node name="TeamStatsValues" type="VBoxContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout" unique_id=163075486]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AllTimeFlow" type="HFlowContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues" unique_id=582081371]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="AllTimeMatchesPanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=985108228]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeMatchesMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeMatchesPanel" unique_id=54696040]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeMatchesLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeMatchesPanel/AllTimeMatchesMargin" unique_id=592480253]
+layout_mode = 2
+text = "全期間 試合数
+-"
+vertical_alignment = 1
+
+[node name="AllTimeRecordPanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=944920572]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeRecordMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeRecordPanel" unique_id=126636283]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeRecordLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeRecordPanel/AllTimeRecordMargin" unique_id=1673777474]
+layout_mode = 2
+text = "全期間 勝敗
+-"
+vertical_alignment = 1
+
+[node name="AllTimeWinRatePanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=363447623]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimeWinRateMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeWinRatePanel" unique_id=59510608]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimeWinRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeWinRatePanel/AllTimeWinRateMargin" unique_id=565716684]
+layout_mode = 2
+text = "全期間 勝率
+-"
+vertical_alignment = 1
+
+[node name="AllTimePurpleRatePanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow" unique_id=658398253]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="AllTimePurpleRateMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimePurpleRatePanel" unique_id=652477232]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="AllTimePurpleRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimePurpleRatePanel/AllTimePurpleRateMargin" unique_id=326925902]
+layout_mode = 2
+text = "全期間 紫取得率
+-"
+vertical_alignment = 1
+
+[node name="WeeklyFlow" type="HFlowContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues" unique_id=834195449]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="WeeklyMatchesPanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=520277022]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyMatchesMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyMatchesPanel" unique_id=1315447759]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyMatchesLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyMatchesPanel/WeeklyMatchesMargin" unique_id=1223717898]
+layout_mode = 2
+text = "今週 試合数
+-"
+vertical_alignment = 1
+
+[node name="WeeklyRecordPanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=1314127869]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyRecordMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyRecordPanel" unique_id=1497664471]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyRecordLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyRecordPanel/WeeklyRecordMargin" unique_id=10167432]
+layout_mode = 2
+text = "今週 勝敗
+-"
+vertical_alignment = 1
+
+[node name="WeeklyWinRatePanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=440678392]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyWinRateMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyWinRatePanel" unique_id=2111999448]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyWinRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyWinRatePanel/WeeklyWinRateMargin" unique_id=1153587145]
+layout_mode = 2
+text = "今週 勝率
+-"
+vertical_alignment = 1
+
+[node name="WeeklyPurpleRatePanel" type="PanelContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow" unique_id=1289880315]
+custom_minimum_size = Vector2(220, 110)
+layout_mode = 2
+
+[node name="WeeklyPurpleRateMargin" type="MarginContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyPurpleRatePanel" unique_id=2007040034]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="WeeklyPurpleRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyPurpleRatePanel/WeeklyPurpleRateMargin" unique_id=583895826]
+layout_mode = 2
+text = "今週 紫取得率
+-"
+vertical_alignment = 1
+
+[node name="BottomSpacer" type="Control" parent="Scroll/Layout" unique_id=928156432]
+custom_minimum_size = Vector2(1, 28)
+layout_mode = 2

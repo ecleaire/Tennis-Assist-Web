@@ -1,0 +1,164 @@
+[gd_scene format=3 uid="uid://bx7alhlpwru6n"]
+
+[ext_resource type="Script" uid="uid://bxqtxk5cpgqbu" path="res://scripts/screens/rule_viewer_screen.gd" id="1_rules"]
+
+[node name="RuleViewerScreen" type="Control" unique_id=703721516]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_rules")
+
+[node name="Scroll" type="ScrollContainer" parent="." unique_id=1273120759]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Layout" type="VBoxContainer" parent="Scroll" unique_id=1091802915]
+custom_minimum_size = Vector2(0, 980)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="TopSpacer" type="Control" parent="Scroll/Layout" unique_id=17945238]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+
+[node name="Header" type="VBoxContainer" parent="Scroll/Layout" unique_id=503163385]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="Scroll/Layout/Header" unique_id=709448185]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "競技ルール"
+
+[node name="SourceLabel" type="Label" parent="Scroll/Layout/Header" unique_id=1054522067]
+modulate = Color(0.68, 0.75, 0.86, 1)
+layout_mode = 2
+text = "WRO 2026 RoboSports Double Tennis General Rules"
+autowrap_mode = 3
+
+[node name="HokenLabel" type="Label" parent="Scroll/Layout/Header" unique_id=516324250]
+modulate = Color(0.68, 0.75, 0.86, 1)
+layout_mode = 2
+text = "※こちらのページはあくまで簡易的なものです。　詳細や最新の情報は、公式ルールを確認してください。"
+autowrap_mode = 3
+
+[node name="SearchPanel" type="PanelContainer" parent="Scroll/Layout" unique_id=958564784]
+layout_mode = 2
+
+[node name="SearchMargin" type="MarginContainer" parent="Scroll/Layout/SearchPanel" unique_id=959523208]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="SearchRow" type="VBoxContainer" parent="Scroll/Layout/SearchPanel/SearchMargin" unique_id=265583110]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SearchEdit" type="LineEdit" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow" unique_id=606741360]
+layout_mode = 2
+placeholder_text = "検索: タイマー、得点、紫球、違反、サイズ、Q&A..."
+clear_button_enabled = true
+
+[node name="SearchStatusLabel" type="Label" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow" unique_id=1121045753]
+modulate = Color(0.72, 0.8, 0.92, 1)
+layout_mode = 2
+text = "章を選ぶと詳細が表示されます"
+
+[node name="ActionsRow" type="HBoxContainer" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow" unique_id=1830686063]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 2
+
+[node name="OpenEnglishRulesButton" type="Button" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow/ActionsRow" unique_id=1777704584]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "ルール"
+
+[node name="OpenGoogleRulesButton" type="Button" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow/ActionsRow" unique_id=614595547]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "Google翻訳 ルール"
+
+[node name="OpenDeepLRulesButton" type="Button" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow/ActionsRow" unique_id=1100399377]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "DeepL翻訳 ルール"
+
+[node name="OpenQaButton" type="Button" parent="Scroll/Layout/SearchPanel/SearchMargin/SearchRow/ActionsRow" unique_id=730578732]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "Q&Aを開く"
+
+[node name="ResponsiveBody" type="BoxContainer" parent="Scroll/Layout" unique_id=972699887]
+custom_minimum_size = Vector2(0, 720)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="NavigationPanel" type="PanelContainer" parent="Scroll/Layout/ResponsiveBody" unique_id=70010969]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="NavigationMargin" type="MarginContainer" parent="Scroll/Layout/ResponsiveBody/NavigationPanel" unique_id=1635754851]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="NavigationLayout" type="VBoxContainer" parent="Scroll/Layout/ResponsiveBody/NavigationPanel/NavigationMargin" unique_id=1385586064]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="NavigationTitle" type="Label" parent="Scroll/Layout/ResponsiveBody/NavigationPanel/NavigationMargin/NavigationLayout" unique_id=441819731]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "章一覧"
+
+[node name="NavigationHint" type="Label" parent="Scroll/Layout/ResponsiveBody/NavigationPanel/NavigationMargin/NavigationLayout" unique_id=754681538]
+modulate = Color(0.65, 0.72, 0.82, 1)
+layout_mode = 2
+text = "検索して絞り込みもできます"
+autowrap_mode = 3
+
+[node name="NavigationScroll" type="ScrollContainer" parent="Scroll/Layout/ResponsiveBody/NavigationPanel/NavigationMargin/NavigationLayout" unique_id=172721616]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CategoryList" type="VBoxContainer" parent="Scroll/Layout/ResponsiveBody/NavigationPanel/NavigationMargin/NavigationLayout/NavigationScroll" unique_id=891875046]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ContentPanel" type="PanelContainer" parent="Scroll/Layout/ResponsiveBody" unique_id=1553646839]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ContentMargin" type="MarginContainer" parent="Scroll/Layout/ResponsiveBody/ContentPanel" unique_id=1151552300]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="RuleContent" type="RichTextLabel" parent="Scroll/Layout/ResponsiveBody/ContentPanel/ContentMargin" unique_id=1720862223]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_mode = 2
+bbcode_enabled = true
+scroll_following = true
+selection_enabled = true

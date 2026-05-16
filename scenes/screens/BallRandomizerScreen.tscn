@@ -1,0 +1,343 @@
+[gd_scene format=3 uid="uid://tfx7d3wijf4b"]
+
+[ext_resource type="Script" uid="uid://cstxmgnjbfb4y" path="res://scripts/screens/ball_randomizer_screen.gd" id="1_ball_screen"]
+[ext_resource type="Script" uid="uid://dmqdvnfutsq3a" path="res://scripts/components/field_display.gd" id="2_field"]
+[ext_resource type="Texture2D" uid="uid://0hb8nu75r76l" path="res://ROBOSPORTS/コース/WRO-2026_RoboSports_Double-Tennis_Playfield_page-0001.jpg" id="3_playfield"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fq6gq"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_oknm5"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x30ku"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yeujq"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ekdft"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7wukc"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lp0bn"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1oxgm"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7g0dv"]
+bg_color = Color(1, 0.21960784, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nkqyg"]
+bg_color = Color(1, 0.21960784, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bjxp2"]
+bg_color = Color(1, 0.62352943, 0.101960786, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="BallRandomizerScreen" type="Control" unique_id=158418665]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ball_screen")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=2019351943]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="TopSpacer" type="Control" parent="Layout" unique_id=212999001]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Layout" unique_id=1996270097]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "ボール配置ランダマイザー"
+
+[node name="Toolbar" type="HFlowContainer" parent="Layout" unique_id=181690215]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="RandomizeButton" type="Button" parent="Layout/Toolbar" unique_id=1946148960]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+text = "ランダム生成"
+
+[node name="ResetButton" type="Button" parent="Layout/Toolbar" unique_id=578314981]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+text = "配置を初期化"
+
+[node name="ReadyButton" type="Button" parent="Layout/Toolbar"]
+visible = false
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+text = "準備完了"
+
+[node name="StatusLabel" type="Label" parent="Layout/Toolbar" unique_id=947167042]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "RoboSportsの練習や試合準備用にボール配置を生成します。"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="StatusLabel2" type="Label" parent="Layout/Toolbar" unique_id=1923562476]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "F: 全画 / 全画面解除"
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="FieldPanel" type="PanelContainer" parent="Layout" unique_id=1152507634]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FieldMargin" type="MarginContainer" parent="Layout/FieldPanel" unique_id=621944873]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="FieldCenter" type="CenterContainer" parent="Layout/FieldPanel/FieldMargin" unique_id=212563771]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Playfield" type="AspectRatioContainer" parent="Layout/FieldPanel/FieldMargin/FieldCenter" unique_id=649188005]
+custom_minimum_size = Vector2(1281, 620)
+layout_mode = 2
+ratio = 2.0665185
+
+[node name="PlayfieldStack" type="Control" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield" unique_id=152635447]
+layout_mode = 2
+
+[node name="PlayfieldImage" type="TextureRect" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack" unique_id=973731365]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_playfield")
+expand_mode = 1
+
+[node name="FieldDisplay" type="Control" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack" unique_id=1232624480]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_field")
+
+[node name="LeftOrange0" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=1850818636]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 266.0
+offset_top = 103.94156
+offset_right = 298.0
+offset_bottom = 135.94156
+theme_override_styles/panel = SubResource("StyleBoxFlat_fq6gq")
+
+[node name="LeftOrange1" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=391573030]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 266.0
+offset_top = 232.94156
+offset_right = 298.0
+offset_bottom = 264.94156
+theme_override_styles/panel = SubResource("StyleBoxFlat_oknm5")
+
+[node name="LeftOrange2" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=1280388532]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 266.0
+offset_top = 408.94156
+offset_right = 298.0
+offset_bottom = 440.94156
+theme_override_styles/panel = SubResource("StyleBoxFlat_x30ku")
+
+[node name="LeftOrange3" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=105036732]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 266.0
+offset_top = 538.9415
+offset_right = 298.0
+offset_bottom = 570.9415
+theme_override_styles/panel = SubResource("StyleBoxFlat_yeujq")
+
+[node name="RightOrange0" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=1844130792]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 982.0
+offset_top = 47.0
+offset_right = 1014.0
+offset_bottom = 79.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_ekdft")
+
+[node name="RightOrange1" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=284509712]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 982.0
+offset_top = 178.9715
+offset_right = 1014.0
+offset_bottom = 210.9715
+theme_override_styles/panel = SubResource("StyleBoxFlat_7wukc")
+
+[node name="RightOrange2" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=345066078]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 982.0
+offset_top = 354.0
+offset_right = 1014.0
+offset_bottom = 386.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_lp0bn")
+
+[node name="RightOrange3" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=1087884304]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 982.0
+offset_top = 484.0
+offset_right = 1014.0
+offset_bottom = 516.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1oxgm")
+
+[node name="LeftPurple0" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=815109396]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 346.84
+offset_top = 103.942
+offset_right = 378.84
+offset_bottom = 135.942
+theme_override_styles/panel = SubResource("StyleBoxFlat_7g0dv")
+
+[node name="RightPurple0" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=1042470306]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 900.0
+offset_top = 484.0
+offset_right = 932.0
+offset_bottom = 516.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_nkqyg")
+
+[node name="CenterOrange0" type="Panel" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay" unique_id=255712045]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 0
+offset_left = 625.0
+offset_top = 293.94156
+offset_right = 657.0
+offset_bottom = 325.94156
+theme_override_styles/panel = SubResource("StyleBoxFlat_bjxp2")

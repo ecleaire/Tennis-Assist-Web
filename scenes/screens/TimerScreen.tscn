@@ -1,0 +1,275 @@
+[gd_scene format=3 uid="uid://cw2qldv4n5ml7"]
+
+[ext_resource type="Script" uid="uid://blx5cbwmtofjj" path="res://scripts/screens/timer_screen.gd" id="1_timer"]
+[ext_resource type="FontFile" uid="uid://ds5imw23ydbpc" path="res://assets/fonts/fonts-DSEG_v046/DSEG7-Modern/DSEG7Modern-Bold.ttf" id="2_dseg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_manual_time_popup"]
+bg_color = Color(0.043137256, 0.07058824, 0.12941177, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.196078, 0.396078, 0.733333, 0.8)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[node name="TimerScreen" type="Control" unique_id=871454183]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_timer")
+
+[node name="Background" type="ColorRect" parent="." unique_id=118293770]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.027451, 0.0431373, 0.0784314, 1)
+
+[node name="Overlay" type="MarginContainer" parent="." unique_id=812153966]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 44
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 28
+
+[node name="Layout" type="VBoxContainer" parent="Overlay" unique_id=1176982290]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HeaderRow" type="HBoxContainer" parent="Overlay/Layout" unique_id=1339471265]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="ModeLabel" type="Label" parent="Overlay/Layout/HeaderRow" unique_id=1438479196]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "試合準備完了"
+vertical_alignment = 1
+
+[node name="RangeLabel" type="Label" parent="Overlay/Layout/HeaderRow" unique_id=209548552]
+custom_minimum_size = Vector2(220, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "ランダム範囲 : 1:00〜2:00"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TimerCenter" type="CenterContainer" parent="Overlay/Layout" unique_id=2144146329]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TimerStack" type="VBoxContainer" parent="Overlay/Layout/TimerCenter" unique_id=251514033]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ColdNoticeLabel" type="Label" parent="Overlay/Layout/TimerCenter/TimerStack" unique_id=206111637]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0, 0.27450982, 1)
+theme_override_font_sizes/font_size = 34
+text = "ここからコールドが適応されます"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="Overlay/Layout/TimerCenter/TimerStack" unique_id=1794217131]
+custom_minimum_size = Vector2(980, 280)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_dseg")
+theme_override_font_sizes/font_size = 220
+text = "01 : 30"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CountSpacer" type="Control" parent="Overlay/Layout/TimerCenter/TimerStack" unique_id=502759780]
+custom_minimum_size = Vector2(75, 35)
+layout_mode = 2
+
+[node name="SubTimerRow" type="HFlowContainer" parent="Overlay/Layout/TimerCenter/TimerStack" unique_id=1780974028]
+custom_minimum_size = Vector2(0, 56.985)
+layout_mode = 2
+theme_override_constants/h_separation = 20
+alignment = 1
+
+[node name="SubTimerCaptionLabel" type="Label" parent="Overlay/Layout/TimerCenter/TimerStack/SubTimerRow" unique_id=1814074506]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0, 0.27450982, 1)
+theme_override_font_sizes/font_size = 28
+text = "コールド カウント"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SubTimerLabel" type="Label" parent="Overlay/Layout/TimerCenter/TimerStack/SubTimerRow" unique_id=1814074508]
+custom_minimum_size = Vector2(220, 52)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0, 0.27450982, 1)
+theme_override_fonts/font = ExtResource("2_dseg")
+theme_override_font_sizes/font_size = 52
+text = "00 : 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomPanel" type="PanelContainer" parent="Overlay/Layout" unique_id=1619005665]
+layout_mode = 2
+
+[node name="BottomMargin" type="MarginContainer" parent="Overlay/Layout/BottomPanel" unique_id=374104083]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="BottomStack" type="VBoxContainer" parent="Overlay/Layout/BottomPanel/BottomMargin" unique_id=2081065573]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ProgressBar" type="ProgressBar" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack" unique_id=761620256]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+value = 100.0
+show_percentage = false
+
+[node name="ControlsRow" type="HFlowContainer" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack" unique_id=1288226355]
+layout_mode = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 0
+alignment = 1
+
+[node name="StartButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=238673511]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "開始"
+
+[node name="CountSpacer" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=685167794]
+custom_minimum_size = Vector2(70, 45)
+layout_mode = 2
+
+[node name="StopButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=584573322]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "終了"
+
+[node name="CountSpacer2" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1884756531]
+custom_minimum_size = Vector2(20, 45)
+layout_mode = 2
+
+[node name="ResetButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1575110693]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "ランダム再生成"
+
+[node name="CountSpacer4" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1104600374]
+custom_minimum_size = Vector2(20, 45)
+layout_mode = 2
+
+[node name="FullscreenButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=603578740]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "全画面"
+
+[node name="CountSpacer5" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1604752109]
+custom_minimum_size = Vector2(20, 45)
+layout_mode = 2
+
+[node name="RandomOptionCountButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=536211811]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "ランダム設定"
+
+[node name="CountSpacer6" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=75932972]
+custom_minimum_size = Vector2(20, 45)
+layout_mode = 2
+
+[node name="TenCountButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=719936739]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "10カウント"
+
+[node name="CountSpacer7" type="Control" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=209340771]
+custom_minimum_size = Vector2(70, 45)
+layout_mode = 2
+
+[node name="FiveCountButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1279444011]
+custom_minimum_size = Vector2(160, 45)
+layout_mode = 2
+text = "5カウント"
+
+[node name="HintLabel" type="Label" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack" unique_id=1691080050]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "Space / Enter: 開始・一時停止    F: 全画面"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="RandomIntervalMenu" type="PopupMenu" parent="." unique_id=1146143064]
+oversampling_override = 1.0
+
+[node name="ManualTimePopup" type="PopupPanel" parent="." unique_id=137883675]
+initial_position = 1
+size = Vector2i(454, 271)
+theme_override_styles/panel = SubResource("StyleBoxFlat_manual_time_popup")
+
+[node name="ManualTimeMargin" type="MarginContainer" parent="ManualTimePopup" unique_id=518971313]
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 661.0
+offset_bottom = 266.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ManualTimeLayout" type="VBoxContainer" parent="ManualTimePopup/ManualTimeMargin" unique_id=446019557]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ManualTimeTitle" type="Label" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout" unique_id=640596666]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "手動で時間指定"
+
+[node name="ManualTimeHint" type="Label" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout" unique_id=393767945]
+layout_mode = 2
+text = "分と秒を指定してタイマーに反映できます。手動設定の場合、次回のランダム再生成はできません。"
+
+[node name="ManualSelectors" type="HBoxContainer" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout" unique_id=1698043835]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MinuteOption" type="OptionButton" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualSelectors" unique_id=24118515]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 2
+
+[node name="SecondOption" type="OptionButton" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualSelectors" unique_id=893118853]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 2
+
+[node name="ManualButtons" type="HBoxContainer" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout" unique_id=815967301]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="ManualCancelButton" type="Button" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualButtons" unique_id=925143254]
+custom_minimum_size = Vector2(120, 48)
+layout_mode = 2
+text = "閉じる"
+
+[node name="ManualApplyButton" type="Button" parent="ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualButtons" unique_id=1582268550]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 2
+text = "この時間にする"

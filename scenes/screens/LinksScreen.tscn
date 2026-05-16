@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/screens/links_screen.gd" id="1_links"]
+
+[node name="LinksScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_links")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="Header" type="VBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="Layout/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "リンク"
+
+[node name="SubtitleLabel" type="Label" parent="Layout/Header"]
+layout_mode = 2
+modulate = Color(0.68, 0.75, 0.86, 1)
+text = "公式ページ、資料、動画、旧リンク集をまとめています"
+autowrap_mode = 3
+
+[node name="LinksPanel" type="PanelContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LinksMargin" type="MarginContainer" parent="Layout/LinksPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="LinksLayout" type="VBoxContainer" parent="Layout/LinksPanel/LinksMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="DescriptionLabel" type="Label" parent="Layout/LinksPanel/LinksMargin/LinksLayout"]
+layout_mode = 2
+modulate = Color(0.85, 0.9, 0.98, 1)
+text = "各ボタンを押すと既定ブラウザでページを開きます。"
+autowrap_mode = 3
+
+[node name="LinksScroll" type="ScrollContainer" parent="Layout/LinksPanel/LinksMargin/LinksLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SectionsList" type="VBoxContainer" parent="Layout/LinksPanel/LinksMargin/LinksLayout/LinksScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="StatusLabel" type="Label" parent="Layout/LinksPanel/LinksMargin/LinksLayout"]
+layout_mode = 2
+modulate = Color(0.72, 0.8, 0.92, 1)
+text = "開きたいページを選んでください"
+autowrap_mode = 3
