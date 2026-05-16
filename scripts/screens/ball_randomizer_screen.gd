@@ -3,18 +3,48 @@ extends Control
 signal preparation_completed(match_number: int)
 
 @onready var field_display: Control = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay
+@onready var title_label: Label = $Layout/Title
 @onready var status_label: Label = $Layout/Toolbar/StatusLabel
+@onready var status_label_2: Label = $Layout/Toolbar/StatusLabel2
 @onready var ready_button: Button = $Layout/Toolbar/ReadyButton
+@onready var playfield: AspectRatioContainer = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield
 
 var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
+var dashboard_mode: bool = false
 
 func _ready() -> void:
 	$Layout/Toolbar/RandomizeButton.pressed.connect(_randomize)
 	$Layout/Toolbar/ResetButton.pressed.connect(_reset_layout)
 	ready_button.pressed.connect(_complete_preparation)
 	ready_button.visible = false
-	status_label.text = "4 lines are ready. Purple balls are mirrored by 180 degrees."
+	status_label.text = "4ライン分の配置を準備しました。紫ボールは180度反転で配置します。"
+
+func set_dashboard_mode(enabled: bool) -> void:
+	dashboard_mode = enabled
+	if not is_node_ready():
+		return
+	_update_dashboard_mode()
+	_update_playfield_size()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_update_playfield_size()
+
+func _update_dashboard_mode() -> void:
+	title_label.visible = not dashboard_mode
+	status_label_2.visible = not dashboard_mode
+	status_label.custom_minimum_size = Vector2(0, 34 if dashboard_mode else 52)
+	status_label.add_theme_font_size_override("font_size", 14 if dashboard_mode else 16)
+
+func _update_playfield_size() -> void:
+	if playfield == null:
+		return
+	var available_width: float = size.x
+	if available_width <= 1.0:
+		available_width = get_viewport_rect().size.x
+	var target_width: float = clampf(available_width - (24.0 if dashboard_mode else 40.0), 300.0 if dashboard_mode else 360.0, 780.0 if dashboard_mode else 1281.0)
+	playfield.custom_minimum_size = Vector2(target_width, target_width / 2.066)
 
 func begin_match_preparation(match_number: int) -> void:
 	# Only the guided match flow shows the ready button.
@@ -28,11 +58,11 @@ func begin_match_preparation(match_number: int) -> void:
 
 func _randomize() -> bool:
 	if field_display.has_method("is_layout_ready") and not field_display.call("is_layout_ready"):
-		status_label.text = "Waiting for initial ball positions. Please try again."
+		status_label.text = "初期位置の取得待ちです。もう一度お試しください。"
 		return false
 
 	field_display.animate_random_layout()
-	status_label.text = "Ball placement generated."
+	status_label.text = "ボール配置を生成しました。"
 	if workflow_preparation_active:
 		ready_button.visible = true
 		ready_button.disabled = false
@@ -40,11 +70,11 @@ func _randomize() -> bool:
 
 func _reset_layout() -> void:
 	if field_display.has_method("is_layout_ready") and not field_display.call("is_layout_ready"):
-		status_label.text = "Waiting for initial ball positions. Please try again."
+		status_label.text = "初期位置の取得待ちです。もう一度お試しください。"
 		return
 
 	field_display.set_default_layout()
-	status_label.text = "Ball placement reset to the adjusted initial positions."
+	status_label.text = "調整済みの初期位置に戻しました。"
 	if workflow_preparation_active:
 		ready_button.visible = false
 		ready_button.disabled = true

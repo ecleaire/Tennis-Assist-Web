@@ -3,46 +3,31 @@ extends Control
 const MOBILE_BREAKPOINT: float = 920.0
 const BUTTON_HEIGHT: float = 64.0
 
-# 裏モードでだけ追加するリンクです。
-const SECRET_LINK: Dictionary = {
-	"label": "旧テニスタイマー",
-	"url": "https://scratch.mit.edu/projects/1013694253"
-}
-
-const SECRET_LITLINK: Dictionary = {
-	"label": "旧litlink",
-	"url": "https://lit.link/syukugawalink"
-}
-
-# リンクを増減するときは、まずこの配列を編集すると画面へ自動反映されます。
+# リンクを増やすときは、この配列を編集すると画面へ自動反映されます。
 const BASE_LINK_SECTIONS: Array[Dictionary] = [
 	{
 		"title": "WRO",
 		"description": "各地域や公式大会ページへのリンクです。",
 		"links": [
-			{"label": "WRO Japanホームページ", "url": "https://www.wroj.org/action/2026"},
-			{"label": "WRO 兵庫ホームページ", "url": "https://wro-hyogo.jp/"},
-			{"label": "WRO 東京ホームページ", "url": "https://www.wro-tokyo-competition.net/"},
-			{"label": "WRO 奈良ホームページ", "url": "https://sites.google.com/view/wro-nara/%E3%83%AD%E3%83%9C%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%84"},
-			{"label": "WRO 三重ホームページ", "url": "https://wro2025.miraido.net/"}
+			{"label": "WRO Japan ホームページ", "url": "https://www.wroj.org/action/2026"},
+			{"label": "WRO 兵庫 ホームページ", "url": "https://wro-hyogo.jp/"},
+			{"label": "WRO 東京 ホームページ", "url": "https://www.wro-tokyo-competition.net/"},
+			{"label": "WRO 奈良 ホームページ", "url": "https://sites.google.com/view/wro-nara/%E3%83%AD%E3%83%9C%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%84"},
+			{"label": "WRO 三重 ホームページ", "url": "https://wro2025.miraido.net/"}
 		]
 	},
 	{
 		"title": "公式資料",
-		"description": "Q&Aやルール関連の公式資料ページです。",
+		"description": "Q&A とルール関連の公式資料ページです。",
 		"links": [
+			{"label": "ルールなど", "url": "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"},
 			{"label": "Q&A", "url": "https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations"},
-			{"label": "ルールなど", "url": "https://wro-association.org/competition/2026-season/#:~:text=3D%20PRINTING%20FILES-,ROBOSPORTS,-GENERAL%20%26%20GAME%20RULES"},
-			{"label": "英語ルール", "url": "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"},
-			{"label": "Google翻訳ルール", "url": "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"},
-			{"label": "DeepL翻訳ルール", "url": "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"}
 		]
 	},
 	{
 		"title": "その他",
-		"description": "動画や共有用の補助リンクです。",
+		"description": "動画など、運用補助リンクです。",
 		"links": [
-			{"label": "YouTubeまとめ", "url": "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"}
 		]
 	}
 ]
@@ -51,7 +36,6 @@ const BASE_LINK_SECTIONS: Array[Dictionary] = [
 @onready var status_label: Label = $Layout/LinksPanel/LinksMargin/LinksLayout/StatusLabel
 
 var section_grids: Array[GridContainer] = []
-var secret_mode_enabled: bool = false
 
 func _ready() -> void:
 	_rebuild_sections()
@@ -60,12 +44,6 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_layout()
-
-func set_secret_mode_enabled(enabled: bool) -> void:
-	if secret_mode_enabled == enabled:
-		return
-	secret_mode_enabled = enabled
-	_rebuild_sections()
 
 func _rebuild_sections() -> void:
 	if sections_list == null:
@@ -99,11 +77,6 @@ func _build_sections_data() -> Array[Dictionary]:
 			for link_variant in links_array:
 				if typeof(link_variant) == TYPE_DICTIONARY:
 					cloned_links.append(link_variant.duplicate(true))
-
-		# 裏モード限定リンクは「その他」セクションにだけ足します。
-		if secret_mode_enabled and clone["title"] == "その他":
-			cloned_links.append(SECRET_LINK.duplicate(true))
-			cloned_links.append(SECRET_LITLINK.duplicate(true))
 
 		clone["links"] = cloned_links
 		sections.append(clone)

@@ -167,7 +167,7 @@ text = "進行状況: 対戦を開始してください"
 
 [node name="TournamentStatusLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout" unique_id=127017]
 layout_mode = 2
-text = "サンプルのチーム一覧を読み込んでいます。"
+text = "チーム一覧を読み込んでいます。"
 autowrap_mode = 3
 
 [node name="TournamentStatsPanel" type="PanelContainer" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout" unique_id=268300838]
@@ -645,10 +645,14 @@ theme_override_constants/separation = 12
 custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 
+[node name="TeamStatsPeriodSelect" type="OptionButton" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader" unique_id=1383116038]
+custom_minimum_size = Vector2(150, 48)
+layout_mode = 2
+
 [node name="TeamStatsHint" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader" unique_id=2039610265]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "チーム一覧から選んだチームの全期間と今週のデータを表示します。"
+text = "チーム一覧から選んだチームの全期間と選択期間のデータを表示します。"
 vertical_alignment = 1
 
 [node name="TeamStatsValues" type="VBoxContainer" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout" unique_id=163075486]
@@ -724,7 +728,7 @@ theme_override_constants/margin_bottom = 18
 
 [node name="AllTimePurpleRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimePurpleRatePanel/AllTimePurpleRateMargin" unique_id=326925902]
 layout_mode = 2
-text = "全期間 紫取得率
+text = "全期間 違反数
 -"
 vertical_alignment = 1
 
@@ -797,7 +801,7 @@ theme_override_constants/margin_bottom = 18
 
 [node name="WeeklyPurpleRateLabel" type="Label" parent="Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyPurpleRatePanel/WeeklyPurpleRateMargin" unique_id=583895826]
 layout_mode = 2
-text = "今週 紫取得率
+text = "今週 違反数
 -"
 vertical_alignment = 1
 

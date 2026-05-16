@@ -1,46 +1,49 @@
 # WRO RoboSports Assist
 
-Godot 4 ベースの `WRO RoboSports Double Tennis` 用サポートアプリです。
+Godot 4 で作成した、WRO 2026 RoboSports Double Tennis 向けの大会運営サポートアプリです。
 
-主な機能:
-- 競技タイマー
+## 主な機能
+
+- 試合タイマー
 - ボール配置ランダマイザー
 - 試合記録
 - ルールビューア
-- ニュース
-- リンク集
+- ニュース表示
+- 関連リンク集
 
-## Web公開向け構成
+## Web 公開
 
-このプロジェクトは `GitHub Pages` で公開しやすいように、Web書き出し先を `docs/index.html` に設定しています。
+このプロジェクトは GitHub Pages で公開しやすいように、Web 書き出し先を `docs/index.html` に設定しています。
 
-Godot エディタでの手順:
-1. `Project` -> `Export`
-2. `Web` プリセットを選択
-3. 書き出し先が `docs/index.html` になっていることを確認
-4. `Export Project` を実行
+Godot エディタでの書き出し手順:
 
-書き出し後は `docs/` に以下のようなファイルができます。
+1. `Project` -> `Export` を開く
+2. `Web` プリセットを選択する
+3. 書き出し先が `docs/index.html` になっていることを確認する
+4. `Export Project` を実行する
+
+書き出し後、`docs/` には主に次のファイルが生成されます。
+
 - `index.html`
 - `index.js`
 - `index.wasm`
 - `index.pck`
 
-## GitHub で公開する手順
+## GitHub Pages の設定
 
-1. GitHub で新しい空リポジトリを作成
-2. このプロジェクトをそのリポジトリへ push
-3. GitHub の `Settings` -> `Pages`
-4. `Deploy from a branch` を選択
-5. Branch は `main`
-6. Folder は `/docs`
-7. 保存
+1. GitHub で新しいリポジトリを作成する
+2. このプロジェクトをリポジトリへ push する
+3. GitHub の `Settings` -> `Pages` を開く
+4. `Deploy from a branch` を選択する
+5. Branch は `main` を選ぶ
+6. Folder は `/docs` を選ぶ
+7. 保存する
 
-しばらくすると GitHub Pages でブラウザ公開されます。
+しばらくすると、GitHub Pages でブラウザ公開されます。
 
-## ローカルGit初期化
+## ローカル Git 初期設定
 
-このフォルダは `git init` 済みです。必要に応じて以下でリモートを追加できます。
+このフォルダは `git init` 済みです。必要に応じてリモートを追加してください。
 
 ```powershell
 git remote add origin https://github.com/<your-account>/<repo-name>.git
@@ -49,7 +52,8 @@ git commit -m "Initial commit"
 git push -u origin main
 ```
 
-## 補足
+## ライセンスと素材
 
-- この環境では Godot 実行ファイルが見つからなかったため、Web書き出し自体はまだ未実行です。
-- タイマー数字には `DSEG`、通常の日本語UIには `Noto Sans JP` を使っています。
+- 数字表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
+- 日本語 UI には Noto Sans JP を使用しています。ライセンスは `assets/fonts/Noto_Sans_JP/OFL.txt` を確認してください。
+- WRO 公式資料の利用条件は、各資料の配布元と WRO の案内を確認してください。

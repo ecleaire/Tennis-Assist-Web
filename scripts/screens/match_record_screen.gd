@@ -11,6 +11,7 @@ const MatchRecordStore = preload("res://scripts/services/match_record_store.gd")
 
 # 大会進行の基本設定です。試合数やチーム一覧の参照先はここで調整します。
 const TEAM_LIST_PATH: String = "res://data/team_list_example.csv"
+const USER_TEAM_LIST_PATH: String = "user://team_list.csv"
 const SERIES_MATCH_COUNT: int = 3
 const MATCH_TYPE_OFFICIAL: String = "公式試合"
 const MATCH_TYPE_PRACTICE: String = "練習"
@@ -19,6 +20,9 @@ const RESULT_LOSE: String = "負け"
 const RESULT_DRAW: String = "引き分け"
 const TARGET_TEAM_UNSELECTED: String = "対象チーム未選択"
 const TARGET_TEAM_DRAW: String = "引き分け"
+const TEAM_STATS_PERIOD_TODAY: int = 0
+const TEAM_STATS_PERIOD_WEEK: int = 1
+const TEAM_STATS_PERIOD_MONTH: int = 2
 const COLOR_WINNER: Color = Color("67e08a")
 const COLOR_NORMAL: Color = Color("e7edf8")
 const COLOR_SUBTLE: Color = Color("9fb0d2")
@@ -75,6 +79,7 @@ const END_REASONS_INMATCH: PackedStringArray = [
 @onready var team_a_select: OptionButton = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow/TeamASelect
 @onready var scroll: ScrollContainer = $Scroll
 @onready var tournament_layout: VBoxContainer = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout
+@onready var team_selection_layout: VBoxContainer = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout
 @onready var result_input_panel: PanelContainer = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel
 @onready var team_b_select: OptionButton = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow/TeamBSelect
 @onready var start_series_button: Button = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/SelectionRow/StartSeriesButton
@@ -84,14 +89,15 @@ const END_REASONS_INMATCH: PackedStringArray = [
 @onready var tournament_status_label: Label = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/TeamSelectionPanel/TeamSelectionMargin/TeamSelectionLayout/TournamentStatusLabel
 @onready var old_stats_flow: Control = $Scroll/Layout/StatsFlow
 @onready var team_stats_select: OptionButton = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader/TeamStatsSelect
+@onready var team_stats_period_select: OptionButton = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsHeader/TeamStatsPeriodSelect
 @onready var all_time_matches_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeMatchesPanel/AllTimeMatchesMargin/AllTimeMatchesLabel
 @onready var all_time_record_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeRecordPanel/AllTimeRecordMargin/AllTimeRecordLabel
 @onready var all_time_win_rate_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeWinRatePanel/AllTimeWinRateMargin/AllTimeWinRateLabel
-@onready var all_time_purple_rate_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimePurpleRatePanel/AllTimePurpleRateMargin/AllTimePurpleRateLabel
+@onready var all_time_violation_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimePurpleRatePanel/AllTimePurpleRateMargin/AllTimePurpleRateLabel
 @onready var weekly_matches_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyMatchesPanel/WeeklyMatchesMargin/WeeklyMatchesLabel
 @onready var weekly_record_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyRecordPanel/WeeklyRecordMargin/WeeklyRecordLabel
 @onready var weekly_win_rate_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyWinRatePanel/WeeklyWinRateMargin/WeeklyWinRateLabel
-@onready var weekly_purple_rate_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyPurpleRatePanel/WeeklyPurpleRateMargin/WeeklyPurpleRateLabel
+@onready var weekly_violation_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyPurpleRatePanel/WeeklyPurpleRateMargin/WeeklyPurpleRateLabel
 @onready var all_time_total_matches_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeMatchesPanel/AllTimeMatchesMargin/AllTimeMatchesLabel
 @onready var all_time_average_score_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/AllTimeFlow/AllTimeRecordPanel/AllTimeRecordMargin/AllTimeRecordLabel
 @onready var weekly_total_matches_label: Label = $Scroll/Layout/TeamStatsPanel/TeamStatsMargin/TeamStatsLayout/TeamStatsValues/WeeklyFlow/WeeklyMatchesPanel/WeeklyMatchesMargin/WeeklyMatchesLabel
@@ -133,7 +139,20 @@ var back_to_balls_button: Button
 var back_to_timer_button: Button
 var restart_match_button: Button
 var reinput_result_button: Button
+var team_editor_toggle_button: Button
+var team_editor_panel: PanelContainer
+var team_editor_text: TextEdit
+var team_editor_status_label: Label
+var team_editor_load_button: Button
+var team_editor_save_button: Button
+var team_editor_cancel_button: Button
+var team_editor_reset_button: Button
+var team_editor_file_dialog: FileDialog
+var team_editor_web_file_callback: JavaScriptObject
 var save_confirm_dialog: ConfirmationDialog
+var action_confirm_dialog: ConfirmationDialog
+var pending_confirm_action: String = ""
+var pending_confirm_match_number: int = 0
 var final_agreement_panel: PanelContainer
 var final_agreement_label: Label
 var team_a_agree_button: Button
@@ -149,7 +168,9 @@ var is_syncing_ball_options: bool = false
 
 func _ready() -> void:
 	_create_flow_tools()
+	_create_team_editor()
 	_create_save_confirm_dialog()
+	_create_action_confirm_dialog()
 	_create_final_agreement_panel()
 	_setup_static_options()
 	_setup_ball_count_options()
@@ -158,6 +179,7 @@ func _ready() -> void:
 	team_list = _load_team_list()
 	_populate_team_selects()
 	_populate_team_stats_select()
+	_setup_team_stats_period_select()
 	_build_intermediate_header()
 	_build_final_header()
 	_reset_series_state()
@@ -211,6 +233,66 @@ func _create_flow_button(text_value: String) -> Button:
 	button.custom_minimum_size = Vector2(190, 46)
 	return button
 
+func _create_team_editor() -> void:
+	team_editor_toggle_button = Button.new()
+	team_editor_toggle_button.text = "チームリスト編集"
+	team_editor_toggle_button.custom_minimum_size = Vector2(190, 44)
+	team_selection_layout.add_child(team_editor_toggle_button)
+
+	team_editor_panel = PanelContainer.new()
+	team_editor_panel.name = "TeamEditorPanel"
+	team_editor_panel.visible = false
+	team_editor_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	team_selection_layout.add_child(team_editor_panel)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	team_editor_panel.add_child(margin)
+
+	var layout: VBoxContainer = VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 10)
+	margin.add_child(layout)
+
+	team_editor_text = TextEdit.new()
+	team_editor_text.custom_minimum_size = Vector2(0, 220)
+	team_editor_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	team_editor_text.placeholder_text = "1行に1チーム名"
+	layout.add_child(team_editor_text)
+
+	var button_row: HFlowContainer = HFlowContainer.new()
+	button_row.add_theme_constant_override("h_separation", 10)
+	button_row.add_theme_constant_override("v_separation", 10)
+	layout.add_child(button_row)
+
+	team_editor_load_button = _create_flow_button("ファイル読込")
+	team_editor_save_button = _create_flow_button("保存して反映")
+	team_editor_cancel_button = _create_flow_button("閉じる")
+	team_editor_reset_button = _create_flow_button("初期リストに戻す")
+	button_row.add_child(team_editor_load_button)
+	button_row.add_child(team_editor_save_button)
+	button_row.add_child(team_editor_cancel_button)
+	button_row.add_child(team_editor_reset_button)
+
+	team_editor_status_label = Label.new()
+	team_editor_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	layout.add_child(team_editor_status_label)
+
+	team_editor_file_dialog = FileDialog.new()
+	team_editor_file_dialog.title = "チームリストを読み込み"
+	team_editor_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	team_editor_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	team_editor_file_dialog.filters = PackedStringArray(["*.csv ; CSV", "*.txt ; Text"])
+	add_child(team_editor_file_dialog)
+
+	if Engine.has_singleton("JavaScriptBridge"):
+		team_editor_web_file_callback = JavaScriptBridge.create_callback(_on_web_team_list_file_loaded)
+		var window = JavaScriptBridge.get_interface("window")
+		if window != null and team_editor_web_file_callback != null:
+			window.wroTeamListFileLoaded = team_editor_web_file_callback
+
 func _create_save_confirm_dialog() -> void:
 	save_confirm_dialog = ConfirmationDialog.new()
 	save_confirm_dialog.title = "保存前確認"
@@ -218,6 +300,14 @@ func _create_save_confirm_dialog() -> void:
 	add_child(save_confirm_dialog)
 	save_confirm_dialog.get_ok_button().text = "保存する"
 	save_confirm_dialog.get_cancel_button().text = "戻る"
+
+func _create_action_confirm_dialog() -> void:
+	action_confirm_dialog = ConfirmationDialog.new()
+	action_confirm_dialog.title = "操作確認"
+	action_confirm_dialog.confirmed.connect(_perform_pending_confirm_action)
+	add_child(action_confirm_dialog)
+	action_confirm_dialog.get_ok_button().text = "実行する"
+	action_confirm_dialog.get_cancel_button().text = "キャンセル"
 
 func _create_final_agreement_panel() -> void:
 	final_agreement_panel = PanelContainer.new()
@@ -332,17 +422,24 @@ func _selected_target_team_text() -> String:
 
 func _connect_signals() -> void:
 	start_series_button.pressed.connect(_start_series)
-	reset_series_button.pressed.connect(_reset_series_state)
+	reset_series_button.pressed.connect(_request_reset_series_state)
 	save_match_button.pressed.connect(_request_save_current_match)
 	back_to_balls_button.pressed.connect(_request_back_to_balls)
 	back_to_timer_button.pressed.connect(_request_back_to_timer)
 	restart_match_button.pressed.connect(_restart_current_match)
 	reinput_result_button.pressed.connect(_reinput_current_match_result)
+	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
+	team_editor_load_button.pressed.connect(_open_team_list_file_dialog)
+	team_editor_save_button.pressed.connect(_save_team_editor)
+	team_editor_cancel_button.pressed.connect(_hide_team_editor)
+	team_editor_reset_button.pressed.connect(_reset_team_editor_to_default)
+	team_editor_file_dialog.file_selected.connect(_load_team_list_file)
 	team_a_agree_button.pressed.connect(_on_team_a_agreed)
 	team_b_agree_button.pressed.connect(_on_team_b_agreed)
 	finalize_series_button.pressed.connect(_finalize_series_result)
 	filter_option.item_selected.connect(_refresh_history)
 	team_stats_select.item_selected.connect(_refresh_history)
+	team_stats_period_select.item_selected.connect(_refresh_history)
 	reason_category_option.item_selected.connect(_on_reason_category_selected)
 	target_team_option.item_selected.connect(_on_target_team_selected)
 	team_a_orange.item_selected.connect(_on_team_a_orange_selected)
@@ -350,25 +447,248 @@ func _connect_signals() -> void:
 	team_b_orange.item_selected.connect(_on_team_b_orange_selected)
 	team_b_purple.item_selected.connect(_on_team_b_purple_selected)
 
+func _request_confirm_action(title_text: String, body_text: String, action_name: String, match_number: int = 0) -> void:
+	pending_confirm_action = action_name
+	pending_confirm_match_number = match_number
+	action_confirm_dialog.title = title_text
+	action_confirm_dialog.dialog_text = body_text
+	action_confirm_dialog.popup_centered(Vector2i(640, 340))
+
+func _perform_pending_confirm_action() -> void:
+	var action_name: String = pending_confirm_action
+	var match_number: int = pending_confirm_match_number
+	pending_confirm_action = ""
+	pending_confirm_match_number = 0
+	match action_name:
+		"reset_series":
+			_reset_series_state()
+		"restart_match":
+			_restart_current_match_now()
+		"reinput_result":
+			_reinput_current_match_result_now()
+		"edit_match":
+			_load_match_for_edit_now(match_number)
+
 func _load_team_list() -> Array[String]:
-	# CSVは「番号,チーム名」の想定です。読み込めない場合はサンプル名を使います。
-	var loaded: Array[String] = []
-	if FileAccess.file_exists(TEAM_LIST_PATH):
-		var file: FileAccess = FileAccess.open(TEAM_LIST_PATH, FileAccess.READ)
-		if file != null:
-			var lines: PackedStringArray = file.get_as_text().split("\n", false)
-			for i in range(lines.size()):
-				var line: String = lines[i].strip_edges()
-				if line.is_empty():
-					continue
-				if i == 0 and line.contains("team"):
-					continue
-				var columns: PackedStringArray = line.split(",", false)
-				if columns.size() >= 2:
-					loaded.append(columns[1].strip_edges())
+	# CSVは「番号,チーム名」の想定です。読み込めない場合は仮チーム名を使います。
+	var path: String = USER_TEAM_LIST_PATH if FileAccess.file_exists(USER_TEAM_LIST_PATH) else TEAM_LIST_PATH
+	var loaded: Array[String] = _load_team_list_from_path(path)
 	if loaded.is_empty():
 		loaded.assign(["ALFA", "BRAVO", "CHARLIE", "DELTA"])
 	return loaded
+
+func _load_team_list_from_path(path: String) -> Array[String]:
+	if not FileAccess.file_exists(path):
+		return []
+
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return []
+
+	return _team_list_from_text(file.get_as_text())
+
+func _save_team_list_to_user() -> bool:
+	var file: FileAccess = FileAccess.open(USER_TEAM_LIST_PATH, FileAccess.WRITE)
+	if file == null:
+		return false
+
+	file.store_string("チーム番号,チーム名\n")
+	for i in range(team_list.size()):
+		file.store_string("%d,%s\n" % [i + 1, _csv_escape(team_list[i])])
+	return true
+
+func _parse_csv_line(line: String) -> PackedStringArray:
+	var columns: PackedStringArray = []
+	var current: String = ""
+	var in_quotes: bool = false
+	var i: int = 0
+	while i < line.length():
+		var character: String = line.substr(i, 1)
+		if character == "\"":
+			if in_quotes and i + 1 < line.length() and line.substr(i + 1, 1) == "\"":
+				current += "\""
+				i += 1
+			else:
+				in_quotes = not in_quotes
+		elif character == "," and not in_quotes:
+			columns.append(current)
+			current = ""
+		else:
+			current += character
+		i += 1
+	columns.append(current)
+	return columns
+
+func _csv_escape(value: String) -> String:
+	if value.contains(",") or value.contains("\"") or value.contains("\n"):
+		return "\"%s\"" % value.replace("\"", "\"\"")
+	return value
+
+func _toggle_team_editor() -> void:
+	team_editor_panel.visible = not team_editor_panel.visible
+	if team_editor_panel.visible:
+		_refresh_team_editor_text()
+		team_editor_status_label.text = ""
+
+func _hide_team_editor() -> void:
+	team_editor_panel.visible = false
+
+func _refresh_team_editor_text() -> void:
+	team_editor_text.text = "\n".join(team_list)
+
+func _open_team_list_file_dialog() -> void:
+	if not active_series.is_empty():
+		team_editor_status_label.text = "対戦中はチームリストを読み込めません。"
+		return
+	if OS.has_feature("web") and team_editor_web_file_callback != null and Engine.has_singleton("JavaScriptBridge"):
+		_open_web_team_list_file_picker()
+	else:
+		team_editor_file_dialog.popup_centered_ratio(0.7)
+
+func _open_web_team_list_file_picker() -> void:
+	var command: String = """
+(function () {
+	const oldInput = document.getElementById('wro-team-list-file-input');
+	if (oldInput) {
+		oldInput.remove();
+	}
+
+	const input = document.createElement('input');
+	input.id = 'wro-team-list-file-input';
+	input.type = 'file';
+	input.accept = '.csv,.txt,text/csv,text/plain';
+	input.style.display = 'none';
+	input.onchange = function (event) {
+		const file = event.target.files && event.target.files[0];
+		if (!file) {
+			input.remove();
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = function () {
+			if (window.wroTeamListFileLoaded) {
+				window.wroTeamListFileLoaded(String(reader.result || ''), file.name || '');
+			}
+			input.remove();
+		};
+		reader.onerror = function () {
+			if (window.wroTeamListFileLoaded) {
+				window.wroTeamListFileLoaded('', file.name || '', 'read_error');
+			}
+			input.remove();
+		};
+		reader.readAsText(file);
+	};
+
+	document.body.appendChild(input);
+	input.click();
+}());
+"""
+	JavaScriptBridge.eval(command, true)
+
+func _load_team_list_file(path: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		team_editor_status_label.text = "ファイルを読み込めませんでした。"
+		return
+
+	_apply_loaded_team_list_text(file.get_as_text(), path.get_file())
+
+func _on_web_team_list_file_loaded(args: Array) -> void:
+	if args.size() >= 3 and str(args[2]) == "read_error":
+		team_editor_status_label.text = "ファイルを読み込めませんでした。"
+		return
+	if args.is_empty():
+		team_editor_status_label.text = "ファイルを読み込めませんでした。"
+		return
+
+	var file_name: String = str(args[1]) if args.size() >= 2 else "選択ファイル"
+	_apply_loaded_team_list_text(str(args[0]), file_name)
+
+func _apply_loaded_team_list_text(text: String, source_name: String) -> void:
+	var parsed: Array[String] = _team_list_from_text(text)
+	if parsed.size() < 2:
+		team_editor_status_label.text = "2チーム以上のCSV/TXTを選んでください。"
+		return
+
+	team_editor_text.text = "\n".join(parsed)
+	team_editor_status_label.text = "%s から%dチームを読み込みました。確認して「保存して反映」を押してください。" % [source_name, parsed.size()]
+
+func _save_team_editor() -> void:
+	if not active_series.is_empty():
+		team_editor_status_label.text = "対戦中はチームリストを変更できません。"
+		return
+
+	var parsed: Array[String] = _team_list_from_editor_text(team_editor_text.text)
+	if parsed.size() < 2:
+		team_editor_status_label.text = "2チーム以上入力してください。"
+		return
+
+	team_list = parsed
+	if not _save_team_list_to_user():
+		team_editor_status_label.text = "チームリストを保存できませんでした。"
+		return
+
+	_apply_team_list_change()
+	team_editor_status_label.text = "%dチームを保存しました。" % team_list.size()
+
+func _reset_team_editor_to_default() -> void:
+	if not active_series.is_empty():
+		team_editor_status_label.text = "対戦中はチームリストを変更できません。"
+		return
+
+	var default_team_list: Array[String] = _load_team_list_from_path(TEAM_LIST_PATH)
+	if default_team_list.size() < 2:
+		team_editor_status_label.text = "初期リストを読み込めませんでした。"
+		return
+
+	team_list = default_team_list
+	if not _save_team_list_to_user():
+		team_editor_status_label.text = "チームリストを保存できませんでした。"
+		return
+
+	_apply_team_list_change()
+	team_editor_status_label.text = "初期リストに戻しました。"
+
+func _team_list_from_text(text: String) -> Array[String]:
+	var parsed: Array[String] = []
+	var seen: Dictionary = {}
+	var line_index: int = 0
+	var lines: PackedStringArray = text.split("\n", false)
+	for line in lines:
+		var team_name: String = line.strip_edges()
+		if team_name.is_empty():
+			continue
+
+		if line_index == 0 and _looks_like_team_list_header(team_name):
+			line_index += 1
+			continue
+
+		var csv_columns: PackedStringArray = _parse_csv_line(team_name)
+		if csv_columns.size() >= 2:
+			team_name = csv_columns[1].strip_edges()
+		if team_name.is_empty() or seen.has(team_name):
+			line_index += 1
+			continue
+		seen[team_name] = true
+		parsed.append(team_name)
+		line_index += 1
+	return parsed
+
+func _team_list_from_editor_text(text: String) -> Array[String]:
+	return _team_list_from_text(text)
+
+func _looks_like_team_list_header(line: String) -> bool:
+	var normalized: String = line.to_lower()
+	return normalized.contains("team") or normalized.contains("チーム")
+
+func _apply_team_list_change() -> void:
+	_populate_team_selects()
+	_populate_team_stats_select()
+	_refresh_target_team_visibility()
+	_refresh_history()
+	_refresh_team_editor_text()
 
 func _populate_team_selects() -> void:
 	# チーム選択欄をチーム一覧から作り直します。
@@ -390,6 +710,13 @@ func _populate_team_stats_select() -> void:
 	for team_name in team_list:
 		team_stats_select.add_item(team_name)
 	team_stats_select.select(0)
+
+func _setup_team_stats_period_select() -> void:
+	team_stats_period_select.clear()
+	team_stats_period_select.add_item("本日")
+	team_stats_period_select.add_item("今週")
+	team_stats_period_select.add_item("今月")
+	team_stats_period_select.select(TEAM_STATS_PERIOD_WEEK)
 
 func _start_series() -> void:
 	if team_a_select.selected < 0 or team_b_select.selected < 0:
@@ -418,6 +745,17 @@ func _start_series() -> void:
 	_show_flow_tools("第%dマッチ進行中" % _next_match_number())
 	series_started.emit(_next_match_number())
 	tournament_status_label.text = "対戦カードを開始しました。第1マッチを入力してください。"
+	_sync_series_control_locks()
+
+func _request_reset_series_state() -> void:
+	if active_series.is_empty():
+		_reset_series_state()
+		return
+	_request_confirm_action(
+		"対戦カードをリセット",
+		"現在の対戦カードをリセットしますか？\n入力中のマッチ内容と進行状態は破棄されます。",
+		"reset_series"
+	)
 
 func _reset_series_state() -> void:
 	active_series.clear()
@@ -434,13 +772,22 @@ func _reset_series_state() -> void:
 	match_teams_label.text = "対戦カード未選択"
 	team_a_name_label.text = "チームA"
 	team_b_name_label.text = "チームB"
-	tournament_status_label.text = "サンプルのチーム一覧を読み込んでいます。"
+	tournament_status_label.text = "チーム一覧を読み込んでいます。"
 	tournament_save_status_label.text = "まずは対戦カードを開始してください。"
 	_clear_target_team_options()
 	_refresh_target_team_visibility()
 	_update_winner_preview()
 	_build_intermediate_placeholder()
 	_build_final_placeholder()
+	_sync_series_control_locks()
+
+func _sync_series_control_locks() -> void:
+	var locked: bool = not active_series.is_empty()
+	team_a_select.disabled = locked
+	team_b_select.disabled = locked
+	start_series_button.disabled = locked
+	if team_editor_toggle_button != null:
+		team_editor_toggle_button.disabled = locked
 
 func _clear_target_team_options() -> void:
 	target_team_option.clear()
@@ -578,6 +925,15 @@ func _request_back_to_timer() -> void:
 func _restart_current_match() -> void:
 	if active_series.is_empty() or _series_is_finished():
 		return
+	_request_confirm_action(
+		"このマッチをやり直す",
+		"現在入力中のマッチ内容を破棄して、ボール配置からやり直しますか？",
+		"restart_match"
+	)
+
+func _restart_current_match_now() -> void:
+	if active_series.is_empty() or _series_is_finished():
+		return
 	_reset_match_inputs()
 	_show_flow_tools("第%dマッチをやり直し中" % _next_match_number())
 	tournament_save_status_label.text = "このマッチをやり直します。ボール配置から再開します。"
@@ -586,12 +942,29 @@ func _restart_current_match() -> void:
 func _reinput_current_match_result() -> void:
 	if active_series.is_empty() or _series_is_finished():
 		return
+	_request_confirm_action(
+		"結果を再入力",
+		"現在入力中のスコアと終了理由をクリアして、結果入力欄に戻りますか？",
+		"reinput_result"
+	)
+
+func _reinput_current_match_result_now() -> void:
+	if active_series.is_empty() or _series_is_finished():
+		return
 	_reset_match_inputs()
 	_show_flow_tools("第%dマッチ結果を再入力中" % _next_match_number())
 	tournament_save_status_label.text = "試合結果とボール数を再入力できます。"
 	_scroll_to_control(result_input_panel)
 
 func _load_match_for_edit(match_number: int) -> void:
+	_request_confirm_action(
+		"保存済みマッチを再入力",
+		"第%dマッチの保存済み結果を入力欄に読み込みます。\n現在入力中の内容は置き換わります。" % match_number,
+		"edit_match",
+		match_number
+	)
+
+func _load_match_for_edit_now(match_number: int) -> void:
 	var records: Array = active_series.get("records", [])
 	for record in records:
 		if int(record.get("match_number", 0)) != match_number:
@@ -1164,30 +1537,40 @@ func _refresh_team_statistics(source_records: Array) -> void:
 
 func _refresh_team_statistics_cards(source_records: Array) -> void:
 	var selected_team: String = _selected_team_stats_team()
+	var period_label: String = _selected_team_stats_period_label()
 	if selected_team.is_empty():
 		all_time_matches_label.text = "全期間 試合数\n-"
 		all_time_record_label.text = "全期間 勝敗\n-"
 		all_time_win_rate_label.text = "全期間 勝率\n-"
-		all_time_purple_rate_label.text = "全期間 紫取得率\n-"
-		weekly_matches_label.text = "今週 試合数\n-"
-		weekly_record_label.text = "今週 勝敗\n-"
-		weekly_win_rate_label.text = "今週 勝率\n-"
-		weekly_purple_rate_label.text = "今週 紫取得率\n-"
+		all_time_violation_label.text = "全期間 違反数\n-"
+		weekly_matches_label.text = "%s 試合数\n-" % period_label
+		weekly_record_label.text = "%s 勝敗\n-" % period_label
+		weekly_win_rate_label.text = "%s 勝率\n-" % period_label
+		weekly_violation_label.text = "%s 違反数\n-" % period_label
 		return
 
 	var all_time_records: Array = _records_for_team(source_records, selected_team)
-	var weekly_records: Array = []
+	var period_records: Array = []
 	for record in all_time_records:
-		if _is_record_in_current_week(record):
-			weekly_records.append(record)
+		if _is_record_in_selected_stats_period(record):
+			period_records.append(record)
 
-	_apply_team_stat_cards(all_time_matches_label, all_time_record_label, all_time_win_rate_label, all_time_purple_rate_label, "全期間", _team_statistics_cards_for_records(all_time_records, selected_team))
-	_apply_team_stat_cards(weekly_matches_label, weekly_record_label, weekly_win_rate_label, weekly_purple_rate_label, "今週", _team_statistics_cards_for_records(weekly_records, selected_team))
+	_apply_team_stat_cards(all_time_matches_label, all_time_record_label, all_time_win_rate_label, all_time_violation_label, "全期間", _team_statistics_cards_for_records(all_time_records, selected_team))
+	_apply_team_stat_cards(weekly_matches_label, weekly_record_label, weekly_win_rate_label, weekly_violation_label, period_label, _team_statistics_cards_for_records(period_records, selected_team))
 
 func _selected_team_stats_team() -> String:
 	if team_stats_select.item_count == 0 or team_stats_select.selected <= 0:
 		return ""
 	return team_stats_select.get_item_text(team_stats_select.selected)
+
+func _selected_team_stats_period_label() -> String:
+	match team_stats_period_select.selected:
+		TEAM_STATS_PERIOD_TODAY:
+			return "本日"
+		TEAM_STATS_PERIOD_MONTH:
+			return "今月"
+		_:
+			return "今週"
 
 func _records_for_team(source_records: Array, team_name: String) -> Array:
 	var filtered: Array = []
@@ -1227,57 +1610,80 @@ func _apply_team_stat_labels(win_rate_target: Label, total_target: Label, averag
 func _team_statistics_cards_for_records(source_records: Array, team_name: String) -> Dictionary:
 	var total_matches: int = source_records.size()
 	if total_matches == 0:
-		return {"wins": 0, "losses": 0, "draws": 0, "win_rate": 0.0, "total_matches": 0, "purple_rate": 0.0}
+		return {"wins": 0, "losses": 0, "draws": 0, "win_rate": 0.0, "total_matches": 0, "violations": 0}
 
 	var wins: int = 0
 	var draws: int = 0
-	var purple_total: int = 0
+	var violations: int = 0
 	for record in source_records:
 		var winner_name: String = str(record.get("winner", ""))
 		if winner_name == team_name:
 			wins += 1
 		elif winner_name == TARGET_TEAM_DRAW:
 			draws += 1
-		purple_total += _purple_for_team(record, team_name)
+		violations += _violation_count_for_record(record, team_name)
 
 	var losses: int = total_matches - wins - draws
-	var purple_max: int = total_matches * PURPLE_TOTAL
 	return {
 		"wins": wins,
 		"losses": losses,
 		"draws": draws,
 		"win_rate": (float(wins) / float(total_matches)) * 100.0,
 		"total_matches": total_matches,
-		"purple_rate": (float(purple_total) / float(purple_max)) * 100.0 if purple_max > 0 else 0.0
+		"violations": violations
 	}
 
-func _purple_for_team(record: Dictionary, team_name: String) -> int:
-	if str(record.get("team_a", "")) == team_name:
-		return int(record.get("team_a_purple", 0))
-	return int(record.get("team_b_purple", 0))
-
-func _apply_team_stat_cards(matches_target: Label, record_target: Label, win_rate_target: Label, purple_rate_target: Label, prefix: String, stats: Dictionary) -> void:
+func _apply_team_stat_cards(matches_target: Label, record_target: Label, win_rate_target: Label, violation_target: Label, prefix: String, stats: Dictionary) -> void:
 	var wins: int = int(stats.get("wins", 0))
 	var losses: int = int(stats.get("losses", 0))
 	var draws: int = int(stats.get("draws", 0))
 	matches_target.text = "%s 試合数\n%d" % [prefix, int(stats.get("total_matches", 0))]
 	record_target.text = "%s 勝敗\n%d勝 %d敗 %d分" % [prefix, wins, losses, draws]
 	win_rate_target.text = "%s 勝率\n%.1f%%" % [prefix, float(stats.get("win_rate", 0.0))]
-	purple_rate_target.text = "%s 紫取得率\n%.1f%%" % [prefix, float(stats.get("purple_rate", 0.0))]
+	violation_target.text = "%s 違反数\n%d" % [prefix, int(stats.get("violations", 0))]
 
-func _is_record_in_current_week(record: Dictionary) -> bool:
+func _is_record_in_selected_stats_period(record: Dictionary) -> bool:
+	match team_stats_period_select.selected:
+		TEAM_STATS_PERIOD_TODAY:
+			return _is_record_in_current_day(record)
+		TEAM_STATS_PERIOD_MONTH:
+			return _is_record_in_current_month(record)
+		_:
+			return _is_record_in_current_week(record)
+
+func _record_unix_time(record: Dictionary) -> float:
 	var timestamp_text: String = str(record.get("timestamp", ""))
 	if timestamp_text.length() < 19:
-		return false
+		return -1.0
+	return Time.get_unix_time_from_datetime_string(timestamp_text.replace(" ", "T"))
 
+func _is_record_in_current_day(record: Dictionary) -> bool:
+	var current_datetime: Dictionary = Time.get_datetime_dict_from_system()
+	var day_start: float = Time.get_unix_time_from_datetime_string("%04d-%02d-%02dT00:00:00" % [current_datetime.year, current_datetime.month, current_datetime.day])
+	var record_unix: float = _record_unix_time(record)
+	return record_unix >= day_start and record_unix < day_start + 86400.0
+
+func _is_record_in_current_week(record: Dictionary) -> bool:
 	var current_datetime: Dictionary = Time.get_datetime_dict_from_system()
 	var weekday: int = int(current_datetime.get("weekday", 1))
 	var days_from_monday: int = (weekday + 6) % 7
 	var current_midnight: float = Time.get_unix_time_from_datetime_string("%04d-%02d-%02dT00:00:00" % [current_datetime.year, current_datetime.month, current_datetime.day])
 	var week_start: float = current_midnight - float(days_from_monday * 86400)
 	var week_end: float = week_start + float(7 * 86400)
-	var record_unix: float = Time.get_unix_time_from_datetime_string(timestamp_text.replace(" ", "T"))
+	var record_unix: float = _record_unix_time(record)
 	return record_unix >= week_start and record_unix < week_end
+
+func _is_record_in_current_month(record: Dictionary) -> bool:
+	var current_datetime: Dictionary = Time.get_datetime_dict_from_system()
+	var month_start: float = Time.get_unix_time_from_datetime_string("%04d-%02d-01T00:00:00" % [current_datetime.year, current_datetime.month])
+	var next_year: int = int(current_datetime.year)
+	var next_month: int = int(current_datetime.month) + 1
+	if next_month > 12:
+		next_month = 1
+		next_year += 1
+	var month_end: float = Time.get_unix_time_from_datetime_string("%04d-%02d-01T00:00:00" % [next_year, next_month])
+	var record_unix: float = _record_unix_time(record)
+	return record_unix >= month_start and record_unix < month_end
 
 func _build_history_card(record: Dictionary) -> PanelContainer:
 	var card: PanelContainer = PanelContainer.new()

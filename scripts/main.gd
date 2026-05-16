@@ -1,12 +1,10 @@
 extends Control
 
 const WROTheme = preload("res://scripts/ui/wro_theme.gd")
+const TimerScreenScene = preload("res://scenes/screens/TimerScreen.tscn")
+const BallRandomizerScreenScene = preload("res://scenes/screens/BallRandomizerScreen.tscn")
 
-const SECRET_MODE_TRIGGER_COUNT: int = 10
-const SECRET_MODE_DURATION: float = 60.0
-const SECRET_LINK_URL: String = "https://scratch.mit.edu/projects/1013694253"
 const TITLE_NORMAL_BBCODE: String = "[font_size=30]WRO RoboSports Assist[/font_size]"
-const TITLE_SECRET_BBCODE: String = "[font_size=30]WRO RoboSports Assist  [color=#ff9a2f]MasterMode[/color][/font_size]"
 
 @onready var outer_margin: MarginContainer = $MarginContainer
 @onready var root_layout: VBoxContainer = $MarginContainer/RootLayout
@@ -14,7 +12,8 @@ const TITLE_SECRET_BBCODE: String = "[font_size=30]WRO RoboSports Assist  [color
 @onready var content_panel: PanelContainer = $MarginContainer/RootLayout/ContentPanel
 @onready var content_margin: MarginContainer = $MarginContainer/RootLayout/ContentPanel/ContentMargin
 @onready var title_label: RichTextLabel = $MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/TitleBlock/TitleLabel
-@onready var secret_ready_button: Button = $MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/NavFlow/SecretReadyButton
+@onready var nav_flow: HFlowContainer = $MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/NavFlow
+@onready var screen_host: Control = $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost
 @onready var nav_buttons: Dictionary = {
 	"timer": $MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/NavFlow/TimerButton,
 	"balls": $MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/NavFlow/BallsButton,
@@ -32,31 +31,30 @@ const TITLE_SECRET_BBCODE: String = "[font_size=30]WRO RoboSports Assist  [color
 	"links": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/LinksScreen
 }
 
-var current_screen: String = "timer"
-var links_press_count: int = 0
-var secret_mode_active: bool = false
-var secret_mode_timer: SceneTreeTimer
+var current_screen: String = "dashboard"
 var flow_status_panel: PanelContainer
 var flow_status_label: Label
 var flow_current_match_number: int = 0
 var flow_status_active: bool = false
+var dashboard_body: BoxContainer
+var dashboard_ball_panel: PanelContainer
+var dashboard_timer_panel: PanelContainer
 
 func _ready() -> void:
 	_apply_theme()
 	_create_flow_status_bar()
+	_create_dashboard_screen()
 	_update_title_label()
 	_connect_nav_buttons()
 	_connect_fullscreen_signal()
 	_connect_competition_flow_signals()
-	secret_ready_button.pressed.connect(_open_secret_link)
-	_apply_secret_mode(false)
 	_show_screen(current_screen)
 
 func _apply_theme() -> void:
-	theme = WROTheme.create_theme(secret_mode_active)
+	theme = WROTheme.create_theme()
 
 func _update_title_label() -> void:
-	title_label.text = TITLE_SECRET_BBCODE if secret_mode_active else TITLE_NORMAL_BBCODE
+	title_label.text = TITLE_NORMAL_BBCODE
 
 func _connect_nav_buttons() -> void:
 	for screen_name_variant in nav_buttons.keys():
@@ -64,10 +62,7 @@ func _connect_nav_buttons() -> void:
 		var button_variant: Variant = nav_buttons[screen_name]
 		if button_variant is Button:
 			var button: Button = button_variant
-			if screen_name == "links":
-				button.pressed.connect(_on_links_button_pressed)
-			else:
-				button.pressed.connect(_show_screen.bind(screen_name))
+			button.pressed.connect(_show_screen.bind(screen_name))
 
 func _connect_fullscreen_signal() -> void:
 	var timer_screen_variant: Variant = screens["timer"]
@@ -105,6 +100,96 @@ func _connect_competition_flow_signals() -> void:
 		var timer_screen: Control = timer_screen_variant
 		if timer_screen.has_signal("match_finished"):
 			timer_screen.connect("match_finished", Callable(self, "_on_timer_match_finished"))
+
+func _create_dashboard_screen() -> void:
+	var dashboard_scroll: ScrollContainer = ScrollContainer.new()
+	dashboard_scroll.name = "Scroll"
+	dashboard_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dashboard_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dashboard_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_host.add_child(dashboard_scroll)
+	screen_host.move_child(dashboard_scroll, 0)
+
+	dashboard_body = BoxContainer.new()
+	dashboard_body.name = "DashboardBody"
+	dashboard_body.vertical = true
+	dashboard_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dashboard_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dashboard_body.add_theme_constant_override("separation", 14)
+	dashboard_scroll.add_child(dashboard_body)
+
+	dashboard_ball_panel = _create_dashboard_card("ボール配置", BallRandomizerScreenScene.instantiate())
+	dashboard_timer_panel = _create_dashboard_card("タイマー", TimerScreenScene.instantiate())
+	dashboard_body.add_child(dashboard_ball_panel)
+	dashboard_body.add_child(dashboard_timer_panel)
+
+	var ball_screen: Node = dashboard_ball_panel.get_node("DashboardMargin/DashboardStack/BallRandomizerScreen")
+	if ball_screen != null and ball_screen.has_method("set_dashboard_mode"):
+		ball_screen.call_deferred("set_dashboard_mode", true)
+
+	var timer_screen: Node = dashboard_timer_panel.get_node("DashboardMargin/DashboardStack/TimerScreen")
+	if timer_screen != null:
+		timer_screen.set_process_unhandled_input(false)
+		if timer_screen.has_method("set_dashboard_mode"):
+			timer_screen.call_deferred("set_dashboard_mode", true)
+
+	var dashboard_button: Button = Button.new()
+	dashboard_button.text = "ホーム"
+	dashboard_button.custom_minimum_size = Vector2(110, 48)
+	nav_flow.add_child(dashboard_button)
+	nav_flow.move_child(dashboard_button, 0)
+
+	nav_buttons["dashboard"] = dashboard_button
+	screens["dashboard"] = dashboard_scroll
+	_update_dashboard_layout()
+
+func _create_dashboard_card(title_text: String, content: Node) -> PanelContainer:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.name = "DashboardMargin"
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	panel.add_child(margin)
+
+	var stack: VBoxContainer = VBoxContainer.new()
+	stack.name = "DashboardStack"
+	stack.add_theme_constant_override("separation", 8)
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(stack)
+
+	var title: Label = Label.new()
+	title.text = title_text
+	title.add_theme_font_size_override("font_size", 20)
+	stack.add_child(title)
+
+	if content is Control:
+		var control: Control = content
+		control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stack.add_child(content)
+	return panel
+
+func _update_dashboard_layout() -> void:
+	if dashboard_body == null:
+		return
+
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var portrait: bool = viewport_size.y >= viewport_size.x
+	dashboard_body.vertical = portrait
+	dashboard_body.custom_minimum_size = Vector2(0, 720 if portrait else 460)
+
+	if portrait:
+		dashboard_ball_panel.custom_minimum_size = Vector2(0, 390)
+		dashboard_timer_panel.custom_minimum_size = Vector2(0, 330)
+	else:
+		dashboard_ball_panel.custom_minimum_size = Vector2(560, 0)
+		dashboard_timer_panel.custom_minimum_size = Vector2(420, 0)
 
 func _on_series_started(match_number: int) -> void:
 	_open_ball_preparation(match_number)
@@ -180,50 +265,6 @@ func _hide_flow_status() -> void:
 	flow_status_active = false
 	flow_status_panel.visible = false
 
-func _on_links_button_pressed() -> void:
-	links_press_count += 1
-	if not secret_mode_active and links_press_count >= SECRET_MODE_TRIGGER_COUNT:
-		_activate_secret_mode()
-	_show_screen("links")
-
-func _open_secret_link() -> void:
-	OS.shell_open(SECRET_LINK_URL)
-
-func _activate_secret_mode() -> void:
-	links_press_count = 0
-	_apply_secret_mode(true)
-
-	if secret_mode_timer != null:
-		var timeout_callable: Callable = Callable(self, "_on_secret_mode_timeout")
-		if secret_mode_timer.timeout.is_connected(timeout_callable):
-			secret_mode_timer.timeout.disconnect(timeout_callable)
-
-	secret_mode_timer = get_tree().create_timer(SECRET_MODE_DURATION)
-	secret_mode_timer.timeout.connect(_on_secret_mode_timeout)
-
-func _on_secret_mode_timeout() -> void:
-	_apply_secret_mode(false)
-	secret_mode_timer = null
-
-func _apply_secret_mode(active: bool) -> void:
-	secret_mode_active = active
-	_apply_theme()
-	_update_title_label()
-	secret_ready_button.visible = active
-
-	var links_screen_variant: Variant = screens.get("links")
-	if links_screen_variant != null and links_screen_variant.has_method("set_secret_mode_enabled"):
-		links_screen_variant.call("set_secret_mode_enabled", active)
-
-	var timer_screen_variant: Variant = screens.get("timer")
-	if timer_screen_variant != null and timer_screen_variant.has_method("set_secret_mode_enabled"):
-		timer_screen_variant.call("set_secret_mode_enabled", active)
-
-	if not active:
-		links_press_count = 0
-
-	_show_screen(current_screen)
-
 func _show_screen(screen_name: String) -> void:
 	if not screens.has(screen_name):
 		return
@@ -232,7 +273,7 @@ func _show_screen(screen_name: String) -> void:
 	for key_variant in screens.keys():
 		var key: String = String(key_variant)
 		var screen_variant: Variant = screens[key]
-		var button_variant: Variant = nav_buttons[key]
+		var button_variant: Variant = nav_buttons.get(key)
 		if screen_variant is Control and button_variant is Button:
 			var screen: Control = screen_variant
 			var button: Button = button_variant
@@ -242,8 +283,6 @@ func _show_screen(screen_name: String) -> void:
 func _set_button_selected(button: Button, selected: bool) -> void:
 	if selected:
 		button.modulate = Color.WHITE
-	elif secret_mode_active:
-		button.modulate = Color(1.0, 0.85, 0.72, 1.0)
 	else:
 		button.modulate = Color(0.82, 0.88, 0.98, 1.0)
 
@@ -266,6 +305,10 @@ func _set_competition_chrome_hidden(hidden: bool) -> void:
 	content_margin.add_theme_constant_override("margin_top", inner_margin_size)
 	content_margin.add_theme_constant_override("margin_right", inner_margin_size)
 	content_margin.add_theme_constant_override("margin_bottom", inner_margin_size)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_update_dashboard_layout()
 
 func _input(event: InputEvent) -> void:
 	# Route mobile touch drags to the active screen ScrollContainer.

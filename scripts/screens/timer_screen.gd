@@ -18,7 +18,6 @@ const MENU_ID_MANUAL: int = 3
 const SPACE_DOUBLE_PRESS_WINDOW_MS: int = 450
 
 const NORMAL_MANUAL_MINUTE_MAX: int = 2
-const SECRET_MANUAL_MINUTE_MAX: int = 120
 
 const HINT_TEXT: String = "Space / Enter: 開始    Enter / Space２回: 一時停止    F: 全画面"
 const PAUSE_HINT_TEXT: String = "Space / Enter: 再開    F: 全画面"
@@ -27,7 +26,7 @@ const PREPARE_TEXT: String = "試合準備完了"
 const RUNNING_TEXT: String = "試合進行中"
 const PAUSED_TEXT: String = "一時停止中"
 const FINISHED_TEXT: String = "終了"
-const COLD_NOTICE_TEXT: String = "ここからコールドが適応されます"
+const COLD_NOTICE_TEXT: String = "ここからコールドが適用されます"
 const PAUSE_NOTICE_TEXT: String = "タイマーを一時停止しています"
 const RANGE_LABEL_TEXT: String = "ランダム範囲: 1:00〜2:00"
 
@@ -40,6 +39,7 @@ const PROGRESS_WARNING_COLOR: Color = Color("ff5d73")
 const SUB_TIMER_ACCENT_COLOR: Color = Color(1.0, 0.0, 0.0, 1.0)
 const HINT_CAPTION_COLOR: Color = Color.WHITE
 
+@onready var overlay: MarginContainer = $Overlay
 @onready var header_row: HBoxContainer = $Overlay/Layout/HeaderRow
 @onready var mode_label: Label = $Overlay/Layout/HeaderRow/ModeLabel
 @onready var range_label: Label = $Overlay/Layout/HeaderRow/RangeLabel
@@ -81,12 +81,12 @@ var sub_timer_total: float = 0.0
 var sub_timer_caption_text: String = ""
 var random_step_seconds: int = RANDOM_STEP_FIVE_SECONDS
 var manual_duration_seconds: int = 90
-var secret_mode_enabled: bool = false
 var progress_fill_style: StyleBoxFlat
 var bottom_caption_text: String = HINT_TEXT
 var last_space_press_msec: int = -1000
 var timer_has_started: bool = false
 var match_finish_signal_emitted: bool = false
+var dashboard_mode: bool = false
 
 func _ready() -> void:
 	randomize()
@@ -110,9 +110,22 @@ func _ready() -> void:
 	_update_responsive_sizes()
 	_apply_compact_ui(false)
 
-func set_secret_mode_enabled(enabled: bool) -> void:
-	secret_mode_enabled = enabled
-	_setup_manual_time_options()
+func set_dashboard_mode(enabled: bool) -> void:
+	dashboard_mode = enabled
+	if not is_node_ready():
+		return
+	_apply_dashboard_mode()
+	_update_control_visibility()
+	_update_responsive_sizes()
+
+func _apply_dashboard_mode() -> void:
+	header_row.visible = not dashboard_mode and not is_compact_fullscreen_ui
+	legacy_hint_label.visible = false
+	var margin_size: int = 8 if dashboard_mode else 0
+	overlay.add_theme_constant_override("margin_left", margin_size)
+	overlay.add_theme_constant_override("margin_top", margin_size)
+	overlay.add_theme_constant_override("margin_right", margin_size)
+	overlay.add_theme_constant_override("margin_bottom", margin_size)
 
 func _setup_random_interval_menu() -> void:
 	random_interval_menu.clear()
@@ -124,7 +137,7 @@ func _setup_random_interval_menu() -> void:
 		random_interval_menu.id_pressed.connect(_on_random_interval_selected)
 
 func _setup_manual_time_options() -> void:
-	var max_minute: int = SECRET_MANUAL_MINUTE_MAX if secret_mode_enabled else NORMAL_MANUAL_MINUTE_MAX
+	var max_minute: int = NORMAL_MANUAL_MINUTE_MAX
 	var selected_minute: int = clampi(manual_duration_seconds / 60, 0, max_minute)
 	var selected_second: int = manual_duration_seconds % 60
 
@@ -383,8 +396,9 @@ func _set_web_fullscreen(enabled: bool) -> void:
 
 func _apply_compact_ui(compact: bool) -> void:
 	is_compact_fullscreen_ui = compact
-	header_row.visible = not compact
+	header_row.visible = not compact and not dashboard_mode
 	fullscreen_ui_toggled.emit(compact)
+	_apply_dashboard_mode()
 	_update_control_visibility()
 	_update_responsive_sizes()
 
@@ -466,7 +480,7 @@ func _sync_primary_button   () -> void:
 func _update_control_visibility() -> void:
 	var hide_random_controls: bool = is_running
 	fullscreen_button.text = "全画面解除" if is_compact_fullscreen_ui else "全画面"
-	_set_button_placeholder(fullscreen_button, false)
+	_set_button_placeholder(fullscreen_button, dashboard_mode)
 	_set_button_placeholder(reset_button, hide_random_controls)
 	_set_button_placeholder(random_option_count_button, hide_random_controls)
 	if not hide_random_controls:
@@ -474,7 +488,7 @@ func _update_control_visibility() -> void:
 		_update_random_option_button_text()
 
 	count_spacer4.visible = true
-	count_spacer5.visible = true
+	count_spacer5.visible = not dashboard_mode
 	count_spacer6.visible = true
 	count_spacer7.visible = true
 
@@ -493,12 +507,19 @@ func _update_responsive_sizes() -> void:
 	if timer_label == null:
 		return
 
-	var font_scale: float = 0.28 if is_compact_fullscreen_ui else 0.20
-	var min_size: int = 128 if is_compact_fullscreen_ui else 110
-	var max_size: int = 420 if is_compact_fullscreen_ui else 300
-	var font_size: int = clampi(int(size.x * font_scale), min_size, max_size)
+	var available_width: float = size.x
+	if available_width <= 1.0:
+		available_width = get_viewport_rect().size.x
+
+	var font_scale: float = 0.16 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20)
+	var min_size: int = 56 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84)
+	var max_size: int = 150 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300)
+	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
 	timer_label.add_theme_font_size_override("font_size", font_size)
-	timer_label.custom_minimum_size = Vector2(980.0, clampf(float(font_size) * 1.25, 180.0, 360.0))
+	var label_width: float = maxf(260.0, minf(980.0, available_width * (0.82 if dashboard_mode else 0.90)))
+	var min_height: float = 78.0 if dashboard_mode else 160.0
+	var max_height: float = 180.0 if dashboard_mode else 360.0
+	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)
 	var sub_timer_size: int = clampi(int(font_size * 0.20), 26, 64)
@@ -530,7 +551,7 @@ func _on_random_interval_selected(menu_id: int) -> void:
 			_open_manual_time_popup()
 
 func _open_manual_time_popup() -> void:
-	var max_minute: int = SECRET_MANUAL_MINUTE_MAX if secret_mode_enabled else NORMAL_MANUAL_MINUTE_MAX
+	var max_minute: int = NORMAL_MANUAL_MINUTE_MAX
 	var minute_index: int = clampi(manual_duration_seconds / 60, 0, max_minute)
 	var second_value: int = manual_duration_seconds % 60
 	manual_minute_option.select(minute_index)

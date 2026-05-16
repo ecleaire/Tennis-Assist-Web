@@ -14,7 +14,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="wro_tennis"
+config/name="WRO RoboSports Assist 公開版"
 run/main_scene="uid://cxpvgovh404ha"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://cwxpf75m73qll"

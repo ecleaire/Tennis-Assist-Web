@@ -63,7 +63,7 @@ text = "再読み込み"
 
 [node name="StatusLabel" type="Label" parent="Scroll/Layout" unique_id=346801315]
 layout_mode = 2
-text = "ローカルのサンプルJSONを読み込みました。"
+text = "ローカルニュース JSON を読み込みました。"
 
 [node name="NewsScroll" type="ScrollContainer" parent="Scroll/Layout" unique_id=819765581]
 custom_minimum_size = Vector2(0, 720)

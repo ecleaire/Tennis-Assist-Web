@@ -3,3 +3,6 @@
 /android/
 desktop.ini
 rules_tmp.pdf
+rules_extracted.txt
+*.psd
+docs/*.import

@@ -7,17 +7,14 @@ const SURFACE_ALT: Color = Color("182546")
 const BORDER: Color = Color("2b4375")
 const ACCENT_BLUE: Color = Color("2ea8ff")
 const ACCENT_BLUE_SOFT: Color = Color("163968")
-const ACCENT_ORANGE: Color = Color("ff9a2f")
-const ACCENT_ORANGE_SOFT: Color = Color("5b3110")
 const TEXT: Color = Color("edf4ff")
 const TEXT_MUTED: Color = Color("a6bad8")
 
-static func create_theme(secret_mode: bool = false) -> Theme:
-	var accent: Color = ACCENT_ORANGE if secret_mode else ACCENT_BLUE
-	var accent_soft: Color = ACCENT_ORANGE_SOFT if secret_mode else ACCENT_BLUE_SOFT
-	var button_hover: Color = Color("5b3110") if secret_mode else Color("1c3b69")
-	var button_pressed: Color = Color("8a4b12") if secret_mode else Color("24548f")
-
+static func create_theme() -> Theme:
+	var accent: Color = ACCENT_BLUE
+	var accent_soft: Color = ACCENT_BLUE_SOFT
+	var button_hover: Color = Color("1c3b69")
+	var button_pressed: Color = Color("24548f")
 	var theme_instance: Theme = Theme.new()
 	theme_instance.default_font = DEFAULT_JP_FONT
 	theme_instance.default_font_size = 18

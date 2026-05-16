@@ -74,7 +74,7 @@ modulate = Color(0.65098, 0.713726, 0.823529, 1)
 custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "競技運用と練習向けにタイマーや資料を表示するレイアウトです"
+text = "競技運営と練習を支える、タイマー・記録・資料ビューアです。"
 autowrap_mode = 3
 
 [node name="NavFlow" type="HFlowContainer" parent="MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow" unique_id=1941407070]
@@ -113,12 +113,6 @@ text = "ニュース"
 custom_minimum_size = Vector2(110, 48)
 layout_mode = 2
 text = "リンク"
-
-[node name="SecretReadyButton" type="Button" parent="MarginContainer/RootLayout/HeaderPanel/HeaderMargin/HeaderRow/NavFlow" unique_id=493084833]
-visible = false
-custom_minimum_size = Vector2(170, 48)
-layout_mode = 2
-text = "準備はいいですか？"
 
 [node name="ContentPanel" type="PanelContainer" parent="MarginContainer/RootLayout" unique_id=210159655]
 layout_mode = 2

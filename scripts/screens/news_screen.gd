@@ -45,12 +45,12 @@ func load_news() -> void:
 	status_label.text = "外部ニュースを読み込み中です..."
 	var error: int = $HTTPRequest.request(news_url)
 	if error != OK:
-		status_label.text = "外部ニュースを取得できなかったため、ローカルのサンプルJSONを表示します。"
+		status_label.text = "外部ニュースを取得できなかったため、ローカルのニュース JSON を表示します。"
 		_load_local_news()
 
 func _on_news_response(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if response_code < 200 or response_code >= 300:
-		status_label.text = "外部レスポンスを利用できなかったため、ローカルのサンプルJSONを表示します。"
+		status_label.text = "外部レスポンスを利用できなかったため、ローカルのニュース JSON を表示します。"
 		_load_local_news()
 		return
 
@@ -59,7 +59,7 @@ func _on_news_response(_result: int, response_code: int, _headers: PackedStringA
 		news_items = _to_news_dictionary_array(parsed["news"])
 		status_label.text = "外部ニュースを読み込みました。"
 	else:
-		status_label.text = "外部ニュースの形式が正しくないため、ローカルのサンプルJSONを表示します。"
+		status_label.text = "外部ニュースの形式が正しくないため、ローカルのニュース JSON を表示します。"
 		_load_local_news()
 		return
 
@@ -67,14 +67,14 @@ func _on_news_response(_result: int, response_code: int, _headers: PackedStringA
 
 func _load_local_news() -> void:
 	if not FileAccess.file_exists(SAMPLE_NEWS_PATH):
-		status_label.text = "ローカルニュースJSONが見つかりません。"
+		status_label.text = "ローカルニュース JSON が見つかりません。"
 		news_items.clear()
 		_render_news_cards()
 		return
 
 	var file: FileAccess = FileAccess.open(SAMPLE_NEWS_PATH, FileAccess.READ)
 	if file == null:
-		status_label.text = "ローカルニュースJSONを開けませんでした。"
+		status_label.text = "ローカルニュース JSON を開けませんでした。"
 		news_items.clear()
 		_render_news_cards()
 		return
@@ -82,10 +82,10 @@ func _load_local_news() -> void:
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	if parsed is Dictionary and parsed.has("news"):
 		news_items = _to_news_dictionary_array(parsed["news"])
-		status_label.text = "ローカルのサンプルJSONを読み込みました。"
+		status_label.text = "ローカルニュース JSON を読み込みました。"
 	else:
 		news_items.clear()
-		status_label.text = "ローカルニュースJSONの形式が正しくありません。"
+		status_label.text = "ローカルニュース JSON の形式が正しくありません。"
 
 	_render_news_cards()
 
