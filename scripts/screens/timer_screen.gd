@@ -43,11 +43,14 @@ const HINT_CAPTION_COLOR: Color = Color.WHITE
 @onready var header_row: HBoxContainer = $Overlay/Layout/HeaderRow
 @onready var mode_label: Label = $Overlay/Layout/HeaderRow/ModeLabel
 @onready var range_label: Label = $Overlay/Layout/HeaderRow/RangeLabel
+@onready var timer_center: CenterContainer = $Overlay/Layout/TimerCenter
 @onready var cold_notice_label: Label = $Overlay/Layout/TimerCenter/TimerStack/ColdNoticeLabel
 @onready var timer_label: Label = $Overlay/Layout/TimerCenter/TimerStack/TimerLabel
 @onready var sub_timer_caption_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerCaptionLabel
 @onready var sub_timer_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerLabel
+@onready var bottom_panel: PanelContainer = $Overlay/Layout/BottomPanel
 @onready var progress_bar: ProgressBar = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ProgressBar
+@onready var controls_row: HFlowContainer = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow
 @onready var start_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/StartButton
 @onready var end_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/StopButton
 @onready var fullscreen_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/FullscreenButton
@@ -56,6 +59,8 @@ const HINT_CAPTION_COLOR: Color = Color.WHITE
 @onready var ten_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/TenCountButton
 @onready var five_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/FiveCountButton
 @onready var legacy_hint_label: Label = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/HintLabel
+@onready var count_spacer1: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer
+@onready var count_spacer2: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer2
 @onready var count_spacer4: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer4
 @onready var count_spacer5: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer5
 @onready var count_spacer6: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer6
@@ -126,6 +131,13 @@ func _apply_dashboard_mode() -> void:
 	overlay.add_theme_constant_override("margin_top", margin_size)
 	overlay.add_theme_constant_override("margin_right", margin_size)
 	overlay.add_theme_constant_override("margin_bottom", margin_size)
+	controls_row.add_theme_constant_override("h_separation", 8 if dashboard_mode else 20)
+	controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 14)
+	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
+
+	var button_size: Vector2 = Vector2(118, 42) if dashboard_mode else Vector2(160, 45)
+	for button in [start_button, end_button, reset_button, fullscreen_button, random_option_count_button, ten_count_button, five_count_button]:
+		button.custom_minimum_size = button_size
 
 func _setup_random_interval_menu() -> void:
 	random_interval_menu.clear()
@@ -487,10 +499,12 @@ func _update_control_visibility() -> void:
 		reset_button.text = "ランダム再生成"
 		_update_random_option_button_text()
 
-	count_spacer4.visible = true
+	count_spacer1.visible = not dashboard_mode
+	count_spacer2.visible = not dashboard_mode
+	count_spacer4.visible = not dashboard_mode
 	count_spacer5.visible = not dashboard_mode
-	count_spacer6.visible = true
-	count_spacer7.visible = true
+	count_spacer6.visible = not dashboard_mode
+	count_spacer7.visible = not dashboard_mode
 
 func _set_button_placeholder(button: Button, hidden: bool) -> void:
 	if hidden:
@@ -511,14 +525,14 @@ func _update_responsive_sizes() -> void:
 	if available_width <= 1.0:
 		available_width = get_viewport_rect().size.x
 
-	var font_scale: float = 0.16 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20)
-	var min_size: int = 56 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84)
-	var max_size: int = 150 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300)
+	var font_scale: float = 0.24 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20)
+	var min_size: int = 82 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84)
+	var max_size: int = 220 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300)
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
 	timer_label.add_theme_font_size_override("font_size", font_size)
-	var label_width: float = maxf(260.0, minf(980.0, available_width * (0.82 if dashboard_mode else 0.90)))
-	var min_height: float = 78.0 if dashboard_mode else 160.0
-	var max_height: float = 180.0 if dashboard_mode else 360.0
+	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.92 if dashboard_mode else 0.90)))
+	var min_height: float = 120.0 if dashboard_mode else 160.0
+	var max_height: float = 260.0 if dashboard_mode else 360.0
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)

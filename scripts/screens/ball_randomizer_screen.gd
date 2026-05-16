@@ -26,6 +26,7 @@ func set_dashboard_mode(enabled: bool) -> void:
 		return
 	_update_dashboard_mode()
 	_update_playfield_size()
+	call_deferred("_update_playfield_size")
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -43,7 +44,9 @@ func _update_playfield_size() -> void:
 	var available_width: float = size.x
 	if available_width <= 1.0:
 		available_width = get_viewport_rect().size.x
-	var target_width: float = clampf(available_width - (24.0 if dashboard_mode else 40.0), 300.0 if dashboard_mode else 360.0, 780.0 if dashboard_mode else 1281.0)
+	if dashboard_mode:
+		available_width = maxf(available_width, get_viewport_rect().size.x - 48.0)
+	var target_width: float = clampf(available_width - (16.0 if dashboard_mode else 40.0), 360.0 if dashboard_mode else 360.0, 900.0 if dashboard_mode else 1281.0)
 	playfield.custom_minimum_size = Vector2(target_width, target_width / 2.066)
 
 func begin_match_preparation(match_number: int) -> void:

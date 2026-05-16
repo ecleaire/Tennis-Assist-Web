@@ -185,8 +185,8 @@ func _update_dashboard_layout() -> void:
 	dashboard_body.custom_minimum_size = Vector2(0, 720 if portrait else 460)
 
 	if portrait:
-		dashboard_ball_panel.custom_minimum_size = Vector2(0, 390)
-		dashboard_timer_panel.custom_minimum_size = Vector2(0, 330)
+		dashboard_ball_panel.custom_minimum_size = Vector2(0, 500)
+		dashboard_timer_panel.custom_minimum_size = Vector2(0, 430)
 	else:
 		dashboard_ball_panel.custom_minimum_size = Vector2(560, 0)
 		dashboard_timer_panel.custom_minimum_size = Vector2(420, 0)

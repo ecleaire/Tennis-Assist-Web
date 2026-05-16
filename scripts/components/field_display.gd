@@ -52,9 +52,9 @@ func _ensure_layout_initialized() -> bool:
 	default_layout_data = _capture_current_layout()
 	slot_reference = _build_slot_reference_from_defaults()
 	layout_data = default_layout_data.duplicate(true)
-	use_pixel_default_layout = true
+	use_pixel_default_layout = false
 	layout_initialized = true
-	_apply_pixel_layout(default_pixel_layout_data, false)
+	_apply_layout(false)
 	return true
 
 func _collect_ball_nodes() -> void:
@@ -156,8 +156,8 @@ func set_default_layout() -> void:
 		return
 
 	layout_data = default_layout_data.duplicate(true)
-	use_pixel_default_layout = true
-	_apply_pixel_layout(default_pixel_layout_data, false)
+	use_pixel_default_layout = false
+	_apply_layout(false)
 
 func animate_random_layout() -> void:
 	if not _ensure_layout_initialized():
