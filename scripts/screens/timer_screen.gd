@@ -49,13 +49,15 @@ const HINT_CAPTION_COLOR: Color = Color.WHITE
 @onready var sub_timer_caption_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerCaptionLabel
 @onready var sub_timer_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerLabel
 @onready var bottom_panel: PanelContainer = $Overlay/Layout/BottomPanel
+@onready var bottom_stack: VBoxContainer = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack
 @onready var progress_bar: ProgressBar = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ProgressBar
 @onready var controls_row: HFlowContainer = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow
+@onready var random_controls_row: HFlowContainer = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/RandomControlsRow
 @onready var start_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/StartButton
 @onready var end_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/StopButton
 @onready var fullscreen_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/FullscreenButton
-@onready var reset_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/ResetButton
-@onready var random_option_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/RandomOptionCountButton
+@onready var reset_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/RandomControlsRow/ResetButton
+@onready var random_option_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/RandomControlsRow/RandomOptionCountButton
 @onready var ten_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/TenCountButton
 @onready var five_count_button: Button = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/FiveCountButton
 @onready var legacy_hint_label: Label = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/HintLabel
@@ -97,6 +99,7 @@ func _ready() -> void:
 	randomize()
 	_setup_random_interval_menu()
 	_setup_manual_time_options()
+	bottom_stack.move_child(random_controls_row, controls_row.get_index() + 1)
 	start_button.pressed.connect(_toggle_start_stop)
 	end_button.pressed.connect(_end_timer)
 	fullscreen_button.pressed.connect(_toggle_fullscreen)
@@ -133,6 +136,8 @@ func _apply_dashboard_mode() -> void:
 	overlay.add_theme_constant_override("margin_bottom", margin_size)
 	controls_row.add_theme_constant_override("h_separation", 8 if dashboard_mode else 20)
 	controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 14)
+	random_controls_row.add_theme_constant_override("h_separation", 8 if dashboard_mode else 16)
+	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 10)
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
 	var button_size: Vector2 = Vector2(118, 42) if dashboard_mode else Vector2(160, 45)
@@ -499,12 +504,12 @@ func _update_control_visibility() -> void:
 		reset_button.text = "ランダム再生成"
 		_update_random_option_button_text()
 
-	count_spacer1.visible = not dashboard_mode
-	count_spacer2.visible = not dashboard_mode
-	count_spacer4.visible = not dashboard_mode
-	count_spacer5.visible = not dashboard_mode
-	count_spacer6.visible = not dashboard_mode
-	count_spacer7.visible = not dashboard_mode
+	count_spacer1.visible = false
+	count_spacer2.visible = false
+	count_spacer4.visible = false
+	count_spacer5.visible = false
+	count_spacer6.visible = false
+	count_spacer7.visible = false
 
 func _set_button_placeholder(button: Button, hidden: bool) -> void:
 	if hidden:

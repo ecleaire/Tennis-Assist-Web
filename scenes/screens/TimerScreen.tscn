@@ -143,6 +143,12 @@ layout_mode = 2
 value = 100.0
 show_percentage = false
 
+[node name="RandomControlsRow" type="HFlowContainer" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack" unique_id=402913781]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+alignment = 1
+
 [node name="ControlsRow" type="HFlowContainer" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack" unique_id=1288226355]
 layout_mode = 2
 theme_override_constants/h_separation = 3
@@ -167,7 +173,7 @@ text = "終了"
 custom_minimum_size = Vector2(20, 45)
 layout_mode = 2
 
-[node name="ResetButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=1575110693]
+[node name="ResetButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/RandomControlsRow" unique_id=1575110693]
 custom_minimum_size = Vector2(160, 45)
 layout_mode = 2
 text = "ランダム再生成"
@@ -185,7 +191,7 @@ text = "全画面"
 custom_minimum_size = Vector2(20, 45)
 layout_mode = 2
 
-[node name="RandomOptionCountButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow" unique_id=536211811]
+[node name="RandomOptionCountButton" type="Button" parent="Overlay/Layout/BottomPanel/BottomMargin/BottomStack/RandomControlsRow" unique_id=536211811]
 custom_minimum_size = Vector2(160, 45)
 layout_mode = 2
 text = "ランダム設定"
