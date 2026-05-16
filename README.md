@@ -98,4 +98,3 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 
 - 数字表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
 - 日本語 UI には Noto Sans JP を使用しています。ライセンスは `assets/fonts/Noto_Sans_JP/OFL.txt` を確認してください。
-- WRO 公式資料の利用条件は、各資料の配布元と WRO の案内を確認してください。
