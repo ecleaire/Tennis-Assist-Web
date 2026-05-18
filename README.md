@@ -1,8 +1,13 @@
 # WRO RoboSports Assist
-
+![Godot](https://img.shields.io/badge/Godot-4.6.2-478CBF?logo=godotengine&logoColor=white)
+![Web](https://img.shields.io/badge/Platform-Web-2ea44f)
+![PWA](https://img.shields.io/badge/PWA-Supported-8A2BE2)
+###
 WRO RoboSports Double Tennis の大会運営・選手の練習をサポートする Godot 製アプリです。  
-タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集をブラウザ上で利用できます。
+選手は本番さながらの練習環境を構築でき、大会スタッフや審判はタイマー管理から試合記録・集計までをタブレットやPC、スマートフォン上でスムーズに行うことができます。
 
+タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集などの機能をブラウザ上で利用できます。
+#
 #
 ## Web 版（ダウンロード不要）
 
@@ -97,7 +102,19 @@ WRO RoboSports Double Tennis の大会運営・選手の練習をサポートす
 - OpenAI Codex
 - VOICEVOX
 
+## フィードバック / バグ報告
+
+バグや不具合、表示崩れや誤動作などを発見した場合は、  
+お手数をおかけしますが、Issues よりご報告いただけますと幸いです。
+
+また、機能提案や改善案、運営向けアイデアなども  
+Discussions にて歓迎しています。
+
+皆様からのフィードバックやご協力を励みに開発を進めています。  
+お気軽にご投稿ください。
+
 ## ライセンスと素材
 
 - 数字表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
 - 日本語 UI には Noto Sans JP を使用しています。ライセンスは `assets/fonts/Noto_Sans_JP/OFL.txt` を確認してください。
+
