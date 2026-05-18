@@ -1,12 +1,14 @@
 # WRO RoboSports Assist
 
-WRO RoboSports Double Tennis の試合運営・練習をサポートする Godot 製アプリです。  
+WRO RoboSports Double Tennis の大会運営・選手の練習をサポートする Godot 製アプリです。  
 タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集をブラウザ上で利用できます。
 
+#
 ## Web 版（ダウンロード不要）
 
-https://ecleaire.github.io/Tennis-Assist-Public/
+# https://ecleaire.github.io/Tennis-Assist-Public/
 
+#
 ## 搭載機能
 
 - 試合タイマー
@@ -42,6 +44,7 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 - チームを選択して 3 マッチ構成の試合を管理
 - 各マッチの終了理由、得点、勝敗、違反数を記録
 - 公式試合・練習試合の履歴を保存
+- マッチ、試合結果をCSV形式でエクスポート可能
 - 誤操作防止の確認表示に対応
 
 ### 集計機能
@@ -52,7 +55,7 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 
 ### チーム管理
 
-- アプリ内でチームリストを編集可能
+- アプリ内でチームリストを編集可能(ローカルデータ)
 - 各端末のファイルシステムからチームリストを読み込み可能
 - CSV 形式のチームリストに対応
 
@@ -69,11 +72,11 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 
 ### リンク集
 
-- WRO 公式サイト、各予選会公式サイト、ルール資料などのショートカット
+- WRO 公式サイト、各予選会公式サイト、ルール資料などへのショートカット
 
 ### PWA / オフライン対応
 
-- iPad、スマートフォン、PC のブラウザからホーム画面に追加可能
+- iPad、スマートフォン、PC のブラウザからアプリ形式でホーム画面に追加可能
 - 一度読み込んだ後は、オフライン環境でも起動できるように対応
 
 ## 今後のアップデート予定
