@@ -11,8 +11,8 @@ const COURT_BLUE: Color = Color("2b7fc0")
 const COURT_RED: Color = Color("ff332a")
 const COURT_DASH: Color = Color("75c763")
 
-# 2Dビューで位置調整した基準サイズです。
 @export var reference_playfield_size: Vector2 = Vector2(1280.0, 620.0)
+@export var draw_fallback_playfield: bool = false
 
 var layout_data: Dictionary = {}
 var default_layout_data: Dictionary = {}
@@ -40,7 +40,8 @@ func _notification(what: int) -> void:
 		_apply_layout(false)
 
 func _draw() -> void:
-	_draw_playfield_background()
+	if draw_fallback_playfield:
+		_draw_playfield_background()
 
 func _draw_playfield_background() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
