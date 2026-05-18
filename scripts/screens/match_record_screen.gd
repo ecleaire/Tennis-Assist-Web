@@ -23,6 +23,28 @@ const TARGET_TEAM_DRAW: String = "引き分け"
 const TEAM_STATS_PERIOD_TODAY: int = 0
 const TEAM_STATS_PERIOD_WEEK: int = 1
 const TEAM_STATS_PERIOD_MONTH: int = 2
+const CSV_EXPORT_COLUMNS: PackedStringArray = [
+	"日時",
+	"種別",
+	"対戦ID",
+	"マッチ番号",
+	"チームA",
+	"チームB",
+	"チームAオレンジ",
+	"チームA紫",
+	"チームA得点",
+	"チームA違反数",
+	"チームBオレンジ",
+	"チームB紫",
+	"チームB得点",
+	"チームB違反数",
+	"勝者",
+	"結果",
+	"終了カテゴリ",
+	"終了理由",
+	"対象チーム",
+	"メモ"
+]
 const COLOR_WINNER: Color = Color("67e08a")
 const COLOR_NORMAL: Color = Color("e7edf8")
 const COLOR_SUBTLE: Color = Color("9fb0d2")
@@ -128,6 +150,8 @@ const END_REASONS_INMATCH: PackedStringArray = [
 @onready var final_header: VBoxContainer = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout/FinalHeader
 @onready var final_list: VBoxContainer = $Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultBoards/FinalPanel/FinalMargin/FinalLayout/FinalList
 
+@onready var history_panel: PanelContainer = $Scroll/Layout/HistoryPanel
+@onready var history_header: HBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryHeader
 @onready var filter_option: OptionButton = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryHeader/FilterOption
 @onready var history_list: VBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout/HistoryScroll/HistoryList
 var store: RefCounted = MatchRecordStore.new()
@@ -140,6 +164,9 @@ var back_to_timer_button: Button
 var restart_match_button: Button
 var reinput_result_button: Button
 var team_editor_toggle_button: Button
+var history_toggle_button: Button
+var history_export_button: Button
+var history_status_label: Label
 var team_editor_panel: PanelContainer
 var team_editor_text: TextEdit
 var team_editor_status_label: Label
@@ -168,6 +195,7 @@ var is_syncing_ball_options: bool = false
 
 func _ready() -> void:
 	_create_flow_tools()
+	_create_history_tools()
 	_create_team_editor()
 	_create_save_confirm_dialog()
 	_create_action_confirm_dialog()
@@ -186,6 +214,7 @@ func _ready() -> void:
 	_refresh_history()
 	_update_score_labels()
 	old_stats_flow.visible = false
+	history_panel.visible = false
 
 func _create_flow_tools() -> void:
 	flow_tools_panel = PanelContainer.new()
@@ -232,6 +261,21 @@ func _create_flow_button(text_value: String) -> Button:
 	button.text = text_value
 	button.custom_minimum_size = Vector2(190, 46)
 	return button
+
+func _create_history_tools() -> void:
+	history_toggle_button = _create_flow_button("対戦履歴閲覧")
+	team_selection_layout.add_child(history_toggle_button)
+
+	history_export_button = Button.new()
+	history_export_button.text = "CSVエクスポート"
+	history_export_button.custom_minimum_size = Vector2(180, 44)
+	history_header.add_child(history_export_button)
+
+	history_status_label = Label.new()
+	history_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	history_status_label.text = ""
+	var history_layout: VBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout
+	history_layout.add_child(history_status_label)
 
 func _create_team_editor() -> void:
 	team_editor_toggle_button = Button.new()
@@ -428,6 +472,8 @@ func _connect_signals() -> void:
 	back_to_timer_button.pressed.connect(_request_back_to_timer)
 	restart_match_button.pressed.connect(_restart_current_match)
 	reinput_result_button.pressed.connect(_reinput_current_match_result)
+	history_toggle_button.pressed.connect(_toggle_history_panel)
+	history_export_button.pressed.connect(_export_all_history_csv)
 	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
 	team_editor_load_button.pressed.connect(_open_team_list_file_dialog)
 	team_editor_save_button.pressed.connect(_save_team_editor)
@@ -520,9 +566,133 @@ func _parse_csv_line(line: String) -> PackedStringArray:
 	return columns
 
 func _csv_escape(value: String) -> String:
-	if value.contains(",") or value.contains("\"") or value.contains("\n"):
+	if value.contains(",") or value.contains("\"") or value.contains("\n") or value.contains("\r"):
 		return "\"%s\"" % value.replace("\"", "\"\"")
 	return value
+
+func _csv_line(values: PackedStringArray) -> String:
+	var escaped: PackedStringArray = []
+	for value in values:
+		escaped.append(_csv_escape(value))
+	return ",".join(escaped)
+
+func _toggle_history_panel() -> void:
+	history_panel.visible = not history_panel.visible
+	if history_panel.visible:
+		_refresh_history()
+		_update_history_status_count()
+		call_deferred("_scroll_to_control", history_panel)
+
+func _update_history_status_count() -> void:
+	var all_records: Array = store.get_filtered_records("all")
+	var filtered_records: Array = store.get_filtered_records(_current_filter_key())
+	history_status_label.text = "表示 %d件 / 全履歴 %d件。CSVは全履歴を出力します。" % [filtered_records.size(), all_records.size()]
+
+func _export_all_history_csv() -> void:
+	var all_records: Array = store.get_filtered_records("all")
+	if all_records.is_empty():
+		history_panel.visible = true
+		history_status_label.text = "エクスポートできる対戦履歴がまだありません。"
+		return
+
+	var export_records: Array = all_records.duplicate(true)
+	export_records.reverse()
+	var csv_text: String = _build_match_history_csv(export_records)
+	var filename: String = "wro_match_history_%s.csv" % _timestamp_for_filename()
+	var status_text: String = ""
+
+	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+		_download_csv_web(filename, csv_text)
+		status_text = "%s をダウンロードしました。ExcelやGoogleスプレッドシートに読み込めます。" % filename
+	else:
+		var saved_path: String = _save_csv_native(filename, csv_text)
+		if saved_path.is_empty():
+			status_text = "CSVの保存に失敗しました。"
+		else:
+			status_text = "CSVを保存しました: %s" % saved_path
+
+	history_panel.visible = true
+	_refresh_history()
+	history_status_label.text = status_text
+	call_deferred("_scroll_to_control", history_panel)
+
+func _build_match_history_csv(records: Array) -> String:
+	var lines: PackedStringArray = [_csv_line(CSV_EXPORT_COLUMNS)]
+	for record in records:
+		if record is Dictionary:
+			lines.append(_csv_line(_record_to_csv_row(record)))
+	return "\r\n".join(lines)
+
+func _record_to_csv_row(record: Dictionary) -> PackedStringArray:
+	var team_a_name: String = str(record.get("team_a", ""))
+	var team_b_name: String = str(record.get("team_b", ""))
+	return PackedStringArray([
+		str(record.get("timestamp", "")),
+		str(record.get("match_type", "")),
+		str(record.get("series_id", "")),
+		str(record.get("match_number", "")),
+		team_a_name,
+		team_b_name,
+		str(int(record.get("team_a_orange", 0))),
+		str(int(record.get("team_a_purple", 0))),
+		str(int(record.get("team_a_score", 0))),
+		str(_violation_count_for_record(record, team_a_name)),
+		str(int(record.get("team_b_orange", 0))),
+		str(int(record.get("team_b_purple", 0))),
+		str(int(record.get("team_b_score", 0))),
+		str(_violation_count_for_record(record, team_b_name)),
+		str(record.get("winner", "")),
+		str(record.get("result", "")),
+		str(record.get("reason_category", "")),
+		str(record.get("end_reason", "")),
+		str(record.get("target_team", "")),
+		str(record.get("notes", ""))
+	])
+
+func _save_csv_native(filename: String, csv_text: String) -> String:
+	var path: String = "user://%s" % filename
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return ""
+
+	file.store_buffer(("\uFEFF" + csv_text).to_utf8_buffer())
+	return ProjectSettings.globalize_path(path)
+
+func _download_csv_web(filename: String, csv_text: String) -> void:
+	var payload: PackedByteArray = ("\uFEFF" + csv_text).to_utf8_buffer()
+	var base64_text: String = Marshalls.raw_to_base64(payload)
+	var command: String = """
+(function () {
+	const b64 = '%s';
+	const filename = '%s';
+	const binary = atob(b64);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}());
+""" % [base64_text, filename]
+	JavaScriptBridge.eval(command, true)
+
+func _timestamp_for_filename() -> String:
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	return "%04d%02d%02d_%02d%02d%02d" % [
+		now.year,
+		now.month,
+		now.day,
+		now.hour,
+		now.minute,
+		now.second
+	]
 
 func _toggle_team_editor() -> void:
 	team_editor_panel.visible = not team_editor_panel.visible
@@ -1507,6 +1677,8 @@ func _refresh_history(_index: int = -1) -> void:
 
 	var filtered_records: Array = store.get_filtered_records(_current_filter_key())
 	_refresh_team_statistics_cards(store.get_filtered_records("all"))
+	if history_status_label != null and history_panel.visible:
+		_update_history_status_count()
 
 	if filtered_records.is_empty():
 		history_list.add_child(_empty_label("この条件の記録はまだありません。"))
