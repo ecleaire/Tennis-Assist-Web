@@ -20,24 +20,35 @@ const RESULT_LOSE: String = "負け"
 const RESULT_DRAW: String = "引き分け"
 const TARGET_TEAM_UNSELECTED: String = "対象チーム未選択"
 const TARGET_TEAM_DRAW: String = "引き分け"
+const RECORD_KIND_MATCH: String = "マッチ"
+const RECORD_KIND_SERIES_RESULT: String = "試合結果"
 const TEAM_STATS_PERIOD_TODAY: int = 0
 const TEAM_STATS_PERIOD_WEEK: int = 1
 const TEAM_STATS_PERIOD_MONTH: int = 2
 const CSV_EXPORT_COLUMNS: PackedStringArray = [
 	"日時",
+	"記録種別",
 	"種別",
 	"対戦ID",
+	"コート",
+	"試合番号",
 	"マッチ番号",
 	"チームA",
 	"チームB",
+	"チームA勝数",
+	"チームA敗数",
 	"チームAオレンジ",
 	"チームA紫",
 	"チームA得点",
 	"チームA違反数",
+	"チームB勝数",
+	"チームB敗数",
 	"チームBオレンジ",
 	"チームB紫",
 	"チームB得点",
 	"チームB違反数",
+	"引き分け数",
+	"総合勝者",
 	"勝者",
 	"結果",
 	"終了カテゴリ",
@@ -164,6 +175,7 @@ var back_to_timer_button: Button
 var restart_match_button: Button
 var reinput_result_button: Button
 var team_editor_toggle_button: Button
+var court_select: OptionButton
 var history_toggle_button: Button
 var history_export_button: Button
 var history_status_label: Label
@@ -185,6 +197,8 @@ var final_agreement_label: Label
 var team_a_agree_button: Button
 var team_b_agree_button: Button
 var finalize_series_button: Button
+var agreement_confirm_dialog: ConfirmationDialog
+var pending_agreement_team: String = ""
 var editing_match_number: int = 0
 var team_a_agreed: bool = false
 var team_b_agreed: bool = false
@@ -195,10 +209,12 @@ var is_syncing_ball_options: bool = false
 
 func _ready() -> void:
 	_create_flow_tools()
+	_create_court_selector()
 	_create_history_tools()
 	_create_team_editor()
 	_create_save_confirm_dialog()
 	_create_action_confirm_dialog()
+	_create_agreement_confirm_dialog()
 	_create_final_agreement_panel()
 	_setup_static_options()
 	_setup_ball_count_options()
@@ -261,6 +277,24 @@ func _create_flow_button(text_value: String) -> Button:
 	button.text = text_value
 	button.custom_minimum_size = Vector2(190, 46)
 	return button
+
+func _create_court_selector() -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	team_selection_layout.add_child(row)
+
+	var label: Label = Label.new()
+	label.text = "コート"
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.custom_minimum_size = Vector2(80, 44)
+	row.add_child(label)
+
+	court_select = OptionButton.new()
+	court_select.custom_minimum_size = Vector2(180, 44)
+	for code_number in range(65, 91):
+		court_select.add_item("%sコート" % String.chr(code_number))
+	court_select.select(0)
+	row.add_child(court_select)
 
 func _create_history_tools() -> void:
 	history_toggle_button = _create_flow_button("対戦履歴閲覧")
@@ -352,6 +386,14 @@ func _create_action_confirm_dialog() -> void:
 	add_child(action_confirm_dialog)
 	action_confirm_dialog.get_ok_button().text = "実行する"
 	action_confirm_dialog.get_cancel_button().text = "キャンセル"
+
+func _create_agreement_confirm_dialog() -> void:
+	agreement_confirm_dialog = ConfirmationDialog.new()
+	agreement_confirm_dialog.title = "代表同意前の最終確認"
+	agreement_confirm_dialog.confirmed.connect(_confirm_pending_team_agreement)
+	add_child(agreement_confirm_dialog)
+	agreement_confirm_dialog.get_ok_button().text = "同意する"
+	agreement_confirm_dialog.get_cancel_button().text = "戻る"
 
 func _create_final_agreement_panel() -> void:
 	final_agreement_panel = PanelContainer.new()
@@ -626,21 +668,32 @@ func _build_match_history_csv(records: Array) -> String:
 func _record_to_csv_row(record: Dictionary) -> PackedStringArray:
 	var team_a_name: String = str(record.get("team_a", ""))
 	var team_b_name: String = str(record.get("team_b", ""))
+	var team_a_violations: int = int(record.get("team_a_violations", _violation_count_for_record(record, team_a_name)))
+	var team_b_violations: int = int(record.get("team_b_violations", _violation_count_for_record(record, team_b_name)))
 	return PackedStringArray([
 		str(record.get("timestamp", "")),
+		str(record.get("record_kind", RECORD_KIND_MATCH)),
 		str(record.get("match_type", "")),
 		str(record.get("series_id", "")),
+		str(record.get("court", "")),
+		str(record.get("series_number", "")),
 		str(record.get("match_number", "")),
 		team_a_name,
 		team_b_name,
+		str(record.get("team_a_wins", "")),
+		str(record.get("team_a_losses", "")),
 		str(int(record.get("team_a_orange", 0))),
 		str(int(record.get("team_a_purple", 0))),
 		str(int(record.get("team_a_score", 0))),
-		str(_violation_count_for_record(record, team_a_name)),
+		str(team_a_violations),
+		str(record.get("team_b_wins", "")),
+		str(record.get("team_b_losses", "")),
 		str(int(record.get("team_b_orange", 0))),
 		str(int(record.get("team_b_purple", 0))),
 		str(int(record.get("team_b_score", 0))),
-		str(_violation_count_for_record(record, team_b_name)),
+		str(team_b_violations),
+		str(record.get("draws", "")),
+		str(record.get("overall_winner", "")),
 		str(record.get("winner", "")),
 		str(record.get("result", "")),
 		str(record.get("reason_category", "")),
@@ -901,6 +954,8 @@ func _start_series() -> void:
 
 	active_series = {
 		"series_id": "%s__%s__%s" % [team_a_name, team_b_name, _timestamp_string().replace(" ", "_").replace(":", "-")],
+		"series_number": _next_series_number(),
+		"court": _selected_court_name(),
 		"team_a": team_a_name,
 		"team_b": team_b_name,
 		"records": []
@@ -914,8 +969,24 @@ func _start_series() -> void:
 	_refresh_series_ui()
 	_show_flow_tools("第%dマッチ進行中" % _next_match_number())
 	series_started.emit(_next_match_number())
-	tournament_status_label.text = "対戦カードを開始しました。第1マッチを入力してください。"
+	tournament_status_label.text = "%s 第%d試合を開始しました。第1マッチを入力してください。" % [active_series.get("court", "Aコート"), int(active_series.get("series_number", 1))]
 	_sync_series_control_locks()
+
+func _selected_court_name() -> String:
+	if court_select == null or court_select.item_count == 0 or court_select.selected < 0:
+		return "Aコート"
+	return court_select.get_item_text(court_select.selected)
+
+func _next_series_number() -> int:
+	var series_ids: Dictionary = {}
+	for record in store.get_filtered_records("all"):
+		if not (record is Dictionary):
+			continue
+		var series_id: String = str(record.get("series_id", ""))
+		if series_id.is_empty():
+			continue
+		series_ids[series_id] = true
+	return series_ids.size() + 1
 
 func _request_reset_series_state() -> void:
 	if active_series.is_empty():
@@ -927,12 +998,13 @@ func _request_reset_series_state() -> void:
 		"reset_series"
 	)
 
-func _reset_series_state() -> void:
+func _reset_series_state(status_message: String = "", save_status_message: String = "") -> void:
 	active_series.clear()
 	editing_match_number = 0
 	team_a_agreed = false
 	team_b_agreed = false
 	series_finalized = false
+	pending_agreement_team = ""
 	final_agreement_panel.visible = false
 	_hide_flow_tools()
 	_reset_match_inputs()
@@ -942,8 +1014,8 @@ func _reset_series_state() -> void:
 	match_teams_label.text = "対戦カード未選択"
 	team_a_name_label.text = "チームA"
 	team_b_name_label.text = "チームB"
-	tournament_status_label.text = "チーム一覧を読み込んでいます。"
-	tournament_save_status_label.text = "まずは対戦カードを開始してください。"
+	tournament_status_label.text = status_message if not status_message.is_empty() else "チーム一覧を読み込んでいます。"
+	tournament_save_status_label.text = save_status_message if not save_status_message.is_empty() else "まずは対戦カードを開始してください。"
 	_clear_target_team_options()
 	_refresh_target_team_visibility()
 	_update_winner_preview()
@@ -955,6 +1027,8 @@ func _sync_series_control_locks() -> void:
 	var locked: bool = not active_series.is_empty()
 	team_a_select.disabled = locked
 	team_b_select.disabled = locked
+	if court_select != null:
+		court_select.disabled = locked
 	start_series_button.disabled = locked
 	if team_editor_toggle_button != null:
 		team_editor_toggle_button.disabled = locked
@@ -985,7 +1059,12 @@ func _refresh_series_ui() -> void:
 	var team_b_name: String = active_series.get("team_b", "")
 	var next_match_number: int = _current_input_match_number()
 
-	current_series_label.text = "対戦カード: %s vs %s" % [team_a_name, team_b_name]
+	current_series_label.text = "対戦カード: %s vs %s / %s 第%d試合" % [
+		team_a_name,
+		team_b_name,
+		active_series.get("court", "Aコート"),
+		int(active_series.get("series_number", 1))
+	]
 	match_progress_label.text = "進行状況: 第%dマッチ / 全%dマッチ" % [mini(next_match_number, SERIES_MATCH_COUNT), SERIES_MATCH_COUNT]
 	match_title_label.text = "第%dマッチ リザルト入力" % mini(next_match_number, SERIES_MATCH_COUNT)
 	match_teams_label.text = "%s vs %s" % [team_a_name, team_b_name]
@@ -1058,7 +1137,9 @@ func _save_current_match() -> void:
 		match_saved_for_next_match.emit(_next_match_number())
 
 func _build_save_confirmation_text(record: Dictionary) -> String:
-	return "この内容で保存しますか？\n\n第%dマッチ\n%s vs %s\n終了理由: %s\n勝者: %s\n%s: オレンジ%d / 紫%d / 得点%d\n%s: オレンジ%d / 紫%d / 得点%d" % [
+	return "この内容で保存しますか？\n\n%s 第%d試合 第%dマッチ\n%s vs %s\n終了理由: %s\n勝者: %s\n%s: オレンジ%d / 紫%d / 得点%d\n%s: オレンジ%d / 紫%d / 得点%d" % [
+		String(record.get("court", "Aコート")),
+		int(record.get("series_number", 1)),
 		int(record.get("match_number", 0)),
 		String(record.get("team_a", "")),
 		String(record.get("team_b", "")),
@@ -1208,12 +1289,59 @@ func _update_final_agreement_panel() -> void:
 	final_agreement_label.text = "各チーム代表が結果を確認して同意してください。結果を修正した場合、同意はリセットされます。"
 
 func _on_team_a_agreed() -> void:
-	team_a_agreed = true
-	_update_final_agreement_panel()
+	_request_team_agreement("team_a")
 
 func _on_team_b_agreed() -> void:
-	team_b_agreed = true
+	_request_team_agreement("team_b")
+
+func _request_team_agreement(team_key: String) -> void:
+	if not _series_is_finished():
+		tournament_save_status_label.text = "第3マッチまで保存してから同意してください。"
+		return
+	pending_agreement_team = team_key
+	var team_name: String = str(active_series.get("team_a", "チームA")) if team_key == "team_a" else str(active_series.get("team_b", "チームB"))
+	agreement_confirm_dialog.title = "%s代表 同意確認" % team_name
+	agreement_confirm_dialog.dialog_text = _build_agreement_confirmation_text(team_name)
+	agreement_confirm_dialog.popup_centered(Vector2i(820, 620))
+
+func _confirm_pending_team_agreement() -> void:
+	match pending_agreement_team:
+		"team_a":
+			team_a_agreed = true
+		"team_b":
+			team_b_agreed = true
+	pending_agreement_team = ""
 	_update_final_agreement_panel()
+
+func _build_agreement_confirmation_text(team_name: String) -> String:
+	var lines: PackedStringArray = []
+	lines.append("%s代表として、以下の1〜3マッチ結果を確認してください。" % team_name)
+	lines.append("")
+	lines.append("%s 第%d試合 / %s vs %s" % [
+		active_series.get("court", "Aコート"),
+		int(active_series.get("series_number", 1)),
+		active_series.get("team_a", "チームA"),
+		active_series.get("team_b", "チームB")
+	])
+	lines.append("")
+	var records: Array = active_series.get("records", [])
+	for record in records:
+		lines.append("第%dマッチ: 勝者 %s / A 得点%d (橙%d 紫%d) / B 得点%d (橙%d 紫%d) / %s" % [
+			int(record.get("match_number", 0)),
+			str(record.get("winner", "")),
+			int(record.get("team_a_score", 0)),
+			int(record.get("team_a_orange", 0)),
+			int(record.get("team_a_purple", 0)),
+			int(record.get("team_b_score", 0)),
+			int(record.get("team_b_orange", 0)),
+			int(record.get("team_b_purple", 0)),
+			str(record.get("end_reason", ""))
+		])
+	lines.append("")
+	lines.append(_final_summary_text(_series_summary()))
+	lines.append("")
+	lines.append("内容が正しければ「同意する」を押してください。")
+	return "\n".join(lines)
 
 func _finalize_series_result() -> void:
 	if not (team_a_agreed and team_b_agreed):
@@ -1221,8 +1349,62 @@ func _finalize_series_result() -> void:
 		return
 	series_finalized = true
 	finalize_series_button.disabled = true
-	tournament_save_status_label.text = "両チーム代表の同意を確認し、試合結果を確定しました。"
+	var result_record: Dictionary = _build_series_result_record()
+	if not store.add_record(result_record):
+		series_finalized = false
+		_update_final_agreement_panel()
+		tournament_save_status_label.text = "試合結果を保存できませんでした。"
+		return
+	_refresh_history()
+	var finished_message: String = "試合が終了しました。お疲れさまでした。"
 	series_completed.emit()
+	_reset_series_state(finished_message, "両チーム代表の同意を確認し、試合結果を確定しました。")
+
+func _build_series_result_record() -> Dictionary:
+	var summary: Dictionary = _series_summary()
+	var team_a_name: String = str(active_series.get("team_a", ""))
+	var team_b_name: String = str(active_series.get("team_b", ""))
+	var team_a_wins: int = int(summary.get("team_a_wins", 0))
+	var team_b_wins: int = int(summary.get("team_b_wins", 0))
+	var draws: int = int(summary.get("draws", 0))
+	var winner_key: String = _overall_winner_key(summary)
+	var overall_winner: String = TARGET_TEAM_DRAW
+	if winner_key == "team_a":
+		overall_winner = team_a_name
+	elif winner_key == "team_b":
+		overall_winner = team_b_name
+
+	return {
+		"timestamp": _timestamp_string(),
+		"record_kind": RECORD_KIND_SERIES_RESULT,
+		"team_a": team_a_name,
+		"team_b": team_b_name,
+		"series_id": active_series.get("series_id", ""),
+		"series_number": int(active_series.get("series_number", 1)),
+		"court": active_series.get("court", "Aコート"),
+		"match_number": "全体",
+		"match_type": MATCH_TYPE_OFFICIAL,
+		"team_a_wins": team_a_wins,
+		"team_a_losses": team_b_wins,
+		"team_b_wins": team_b_wins,
+		"team_b_losses": team_a_wins,
+		"draws": draws,
+		"overall_winner": overall_winner,
+		"winner": overall_winner,
+		"result": "%s %d勝%d敗 / %s %d勝%d敗 / 引き分け%d" % [team_a_name, team_a_wins, team_b_wins, team_b_name, team_b_wins, team_a_wins, draws],
+		"team_a_orange": int(summary.get("team_a_orange", 0)),
+		"team_a_purple": int(summary.get("team_a_purple", 0)),
+		"team_a_score": int(summary.get("team_a_score", 0)),
+		"team_a_violations": int(summary.get("team_a_violations", 0)),
+		"team_b_orange": int(summary.get("team_b_orange", 0)),
+		"team_b_purple": int(summary.get("team_b_purple", 0)),
+		"team_b_score": int(summary.get("team_b_score", 0)),
+		"team_b_violations": int(summary.get("team_b_violations", 0)),
+		"reason_category": "",
+		"end_reason": "3マッチ終了・代表同意済み",
+		"target_team": overall_winner,
+		"notes": _final_summary_text(summary)
+	}
 
 func _scroll_to_control(target: Control) -> void:
 	var target_y: int = int(target.global_position.y - scroll.global_position.y + scroll.scroll_vertical) - 18
@@ -1257,9 +1439,12 @@ func _build_series_record() -> Dictionary:
 
 	return {
 		"timestamp": _timestamp_string(),
+		"record_kind": RECORD_KIND_MATCH,
 		"team_a": team_a_name,
 		"team_b": team_b_name,
 		"series_id": active_series.get("series_id", ""),
+		"series_number": int(active_series.get("series_number", 1)),
+		"court": active_series.get("court", "Aコート"),
 		"match_number": _current_input_match_number(),
 		"match_type": MATCH_TYPE_OFFICIAL,
 		"result": result_text,
@@ -1747,9 +1932,14 @@ func _selected_team_stats_period_label() -> String:
 func _records_for_team(source_records: Array, team_name: String) -> Array:
 	var filtered: Array = []
 	for record in source_records:
+		if not _is_match_record(record):
+			continue
 		if str(record.get("team_a", "")) == team_name or str(record.get("team_b", "")) == team_name:
 			filtered.append(record)
 	return filtered
+
+func _is_match_record(record: Variant) -> bool:
+	return record is Dictionary and str(record.get("record_kind", RECORD_KIND_MATCH)) != RECORD_KIND_SERIES_RESULT
 
 func _team_statistics_for_records(source_records: Array, team_name: String) -> Dictionary:
 	var total_matches: int = source_records.size()
@@ -1870,9 +2060,17 @@ func _build_history_card(record: Dictionary) -> PanelContainer:
 	body.add_theme_constant_override("separation", 8)
 	margin.add_child(body)
 
+	if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT:
+		return _build_series_result_history_card(card, body, record)
+
 	var title: Label = Label.new()
 	title.add_theme_font_size_override("font_size", 22)
-	title.text = "%s vs %s" % [record.get("team_a", "-"), record.get("team_b", "-")]
+	title.text = "%s vs %s / %s 第%s試合" % [
+		record.get("team_a", "-"),
+		record.get("team_b", "-"),
+		record.get("court", "Aコート"),
+		str(record.get("series_number", ""))
+	]
 	body.add_child(title)
 
 	var detail: Label = Label.new()
@@ -1897,6 +2095,35 @@ func _build_history_card(record: Dictionary) -> PanelContainer:
 	]
 	body.add_child(detail)
 
+	return card
+
+func _build_series_result_history_card(card: PanelContainer, body: VBoxContainer, record: Dictionary) -> PanelContainer:
+	var title: Label = Label.new()
+	title.add_theme_font_size_override("font_size", 22)
+	title.text = "試合結果: %s vs %s / %s 第%s試合" % [
+		record.get("team_a", "-"),
+		record.get("team_b", "-"),
+		record.get("court", "Aコート"),
+		str(record.get("series_number", ""))
+	]
+	body.add_child(title)
+
+	var detail: Label = Label.new()
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.text = "%s | %s\n%s\n総合勝者: %s\n%s %s勝%s敗 / %s %s勝%s敗 / 引き分け%s" % [
+		record.get("timestamp", "-"),
+		record.get("match_type", "-"),
+		record.get("notes", ""),
+		record.get("overall_winner", record.get("winner", "-")),
+		record.get("team_a", "-"),
+		str(record.get("team_a_wins", 0)),
+		str(record.get("team_a_losses", 0)),
+		record.get("team_b", "-"),
+		str(record.get("team_b_wins", 0)),
+		str(record.get("team_b_losses", 0)),
+		str(record.get("draws", 0))
+	]
+	body.add_child(detail)
 	return card
 
 func _current_filter_key() -> String:

@@ -233,6 +233,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("3_playfield")
 expand_mode = 1
+stretch_mode = 0
 
 [node name="FieldDisplay" type="Control" parent="Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack" unique_id=1232624480]
 layout_mode = 1
