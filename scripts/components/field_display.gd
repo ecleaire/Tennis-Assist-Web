@@ -4,6 +4,12 @@ extends Control
 const ORANGE_COLOR: Color = Color("ff9f1a")
 const PURPLE_COLOR: Color = Color("ff38ff")
 const BALL_RADIUS: float = 16.0
+const COURT_WHITE: Color = Color("f8f8f6")
+const COURT_BLACK: Color = Color("231f20")
+const COURT_GREEN: Color = Color("82c46b")
+const COURT_BLUE: Color = Color("2b7fc0")
+const COURT_RED: Color = Color("ff332a")
+const COURT_DASH: Color = Color("75c763")
 
 # 2Dビューで位置調整した基準サイズです。
 @export var reference_playfield_size: Vector2 = Vector2(1280.0, 620.0)
@@ -25,12 +31,90 @@ func _notification(what: int) -> void:
 	if what != NOTIFICATION_RESIZED:
 		return
 
+	queue_redraw()
 	if not layout_initialized:
 		call_deferred("_ensure_layout_initialized")
 		return
 
 	if not layout_data.is_empty() and not use_pixel_default_layout:
 		_apply_layout(false)
+
+func _draw() -> void:
+	_draw_playfield_background()
+
+func _draw_playfield_background() -> void:
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+
+	draw_rect(Rect2(Vector2.ZERO, size), COURT_WHITE)
+
+	var line_width: float = maxf(4.0, size.y * 0.012)
+	var thin_width: float = maxf(1.0, size.y * 0.002)
+
+	_draw_vertical(0.066, 0.0, 1.0, line_width)
+	_draw_vertical(0.376, 0.0, 1.0, line_width)
+	_draw_vertical(0.486, 0.0, 1.0, line_width)
+	_draw_vertical(0.514, 0.0, 1.0, line_width)
+	_draw_vertical(0.596, 0.0, 1.0, line_width)
+	_draw_vertical(0.690, 0.0, 1.0, line_width)
+	_draw_vertical(0.938, 0.0, 1.0, line_width)
+	_draw_vertical(0.984, 0.0, 1.0, line_width)
+
+	for y in [0.13, 0.31, 0.50, 0.69, 0.87]:
+		_draw_horizontal(y, 0.0, 0.376, line_width)
+		_draw_horizontal(y, 0.596, 1.0, line_width)
+
+	_draw_horizontal(0.50, 0.376, 0.690, line_width)
+	_draw_horizontal(0.31, 0.486, 0.596, line_width)
+	_draw_horizontal(0.69, 0.486, 0.596, line_width)
+
+	_draw_color_strip(Rect2(0.376, 0.50, 0.043, 0.50), COURT_GREEN)
+	_draw_color_strip(Rect2(0.419, 0.50, 0.028, 0.50), COURT_BLUE)
+	_draw_color_strip(Rect2(0.447, 0.50, 0.017, 0.50), COURT_RED)
+	_draw_color_strip(Rect2(0.514, 0.0, 0.040, 0.32), COURT_RED)
+	_draw_color_strip(Rect2(0.554, 0.0, 0.040, 0.32), COURT_BLUE)
+	_draw_color_strip(Rect2(0.594, 0.0, 0.062, 0.32), COURT_GREEN)
+
+	_draw_dashed_rect(Rect2(0.012, 0.12, 0.060, 0.12), thin_width)
+	_draw_dashed_rect(Rect2(0.012, 0.67, 0.060, 0.12), thin_width)
+	_draw_dashed_rect(Rect2(0.925, 0.18, 0.060, 0.12), thin_width)
+	_draw_dashed_rect(Rect2(0.925, 0.73, 0.060, 0.12), thin_width)
+
+func _draw_vertical(x: float, y_from: float, y_to: float, width: float) -> void:
+	var from_point: Vector2 = Vector2(x * size.x, y_from * size.y)
+	var to_point: Vector2 = Vector2(x * size.x, y_to * size.y)
+	draw_line(from_point, to_point, COURT_BLACK, width, true)
+
+func _draw_horizontal(y: float, x_from: float, x_to: float, width: float) -> void:
+	var from_point: Vector2 = Vector2(x_from * size.x, y * size.y)
+	var to_point: Vector2 = Vector2(x_to * size.x, y * size.y)
+	draw_line(from_point, to_point, COURT_BLACK, width, true)
+
+func _draw_color_strip(rect: Rect2, color: Color) -> void:
+	draw_rect(Rect2(rect.position * size, rect.size * size), color)
+
+func _draw_dashed_rect(rect: Rect2, width: float) -> void:
+	var pixel_rect: Rect2 = Rect2(rect.position * size, rect.size * size)
+	var dash: float = maxf(4.0, size.y * 0.012)
+	_draw_dashed_line(pixel_rect.position, Vector2(pixel_rect.end.x, pixel_rect.position.y), dash, width)
+	_draw_dashed_line(Vector2(pixel_rect.end.x, pixel_rect.position.y), pixel_rect.end, dash, width)
+	_draw_dashed_line(pixel_rect.end, Vector2(pixel_rect.position.x, pixel_rect.end.y), dash, width)
+	_draw_dashed_line(Vector2(pixel_rect.position.x, pixel_rect.end.y), pixel_rect.position, dash, width)
+
+func _draw_dashed_line(from_point: Vector2, to_point: Vector2, dash_length: float, width: float) -> void:
+	var vector: Vector2 = to_point - from_point
+	var length: float = vector.length()
+	if length <= 0.0:
+		return
+	var direction: Vector2 = vector / length
+	var cursor: float = 0.0
+	var draw_dash: bool = true
+	while cursor < length:
+		var next_cursor: float = minf(cursor + dash_length, length)
+		if draw_dash:
+			draw_line(from_point + direction * cursor, from_point + direction * next_cursor, COURT_DASH, width, true)
+		cursor = next_cursor
+		draw_dash = not draw_dash
 
 func is_layout_ready() -> bool:
 	return layout_initialized
