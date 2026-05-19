@@ -178,6 +178,11 @@ custom_minimum_size = Vector2(180, 52)
 layout_mode = 2
 text = "配置を初期化"
 
+[node name="FullscreenButton" type="Button" parent="Layout/Toolbar"]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+text = "蜈ｨ逕ｻ"
+
 [node name="ReadyButton" type="Button" parent="Layout/Toolbar"]
 visible = false
 custom_minimum_size = Vector2(180, 52)

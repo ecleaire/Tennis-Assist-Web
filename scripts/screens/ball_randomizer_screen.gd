@@ -1,5 +1,6 @@
 extends Control
 
+signal fullscreen_ui_toggled(is_compact: bool)
 signal preparation_completed(match_number: int)
 
 @onready var field_display: Control = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/FieldDisplay
@@ -7,6 +8,7 @@ signal preparation_completed(match_number: int)
 @onready var toolbar: HFlowContainer = $Layout/Toolbar
 @onready var randomize_button: Button = $Layout/Toolbar/RandomizeButton
 @onready var reset_button: Button = $Layout/Toolbar/ResetButton
+@onready var fullscreen_button: Button = $Layout/Toolbar/FullscreenButton
 @onready var title_label: Label = $Layout/Title
 @onready var status_label: Label = $Layout/Toolbar/StatusLabel
 @onready var status_label_2: Label = $Layout/Toolbar/StatusLabel2
@@ -23,6 +25,7 @@ var workflow_preparation_active: bool = false
 var dashboard_mode: bool = false
 var playfield_portrait: bool = false
 var playfield_refresh_token: int = 0
+var is_fullscreen_ui: bool = false
 
 func _enter_tree() -> void:
 	call_deferred("refresh_responsive_layout")
@@ -30,9 +33,11 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	$Layout/Toolbar/RandomizeButton.pressed.connect(_randomize)
 	$Layout/Toolbar/ResetButton.pressed.connect(_reset_layout)
+	fullscreen_button.pressed.connect(_toggle_fullscreen)
 	ready_button.pressed.connect(_complete_preparation)
 	visibility_changed.connect(_on_visibility_changed)
 	ready_button.visible = false
+	_disable_button_focus()
 	status_label.text = "4ライン分の配置を準備しました。紫ボールは180度反転で配置します。"
 
 func set_dashboard_mode(enabled: bool) -> void:
@@ -45,6 +50,10 @@ func set_dashboard_mode(enabled: bool) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		refresh_responsive_layout()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+		_toggle_fullscreen()
 
 func refresh_responsive_layout() -> void:
 	if not is_node_ready():
@@ -60,10 +69,10 @@ func _update_dashboard_mode() -> void:
 
 func _apply_responsive_controls(available_size: Vector2) -> void:
 	var portrait: bool = available_size.y > available_size.x * 1.08
-	var compact: bool = dashboard_mode or portrait
-	title_label.visible = not dashboard_mode
+	var compact: bool = dashboard_mode or portrait or is_fullscreen_ui
+	title_label.visible = not dashboard_mode and not is_fullscreen_ui
 	status_label_2.visible = not dashboard_mode
-	status_label.visible = not dashboard_mode
+	status_label.visible = not dashboard_mode and not is_fullscreen_ui
 	status_label.custom_minimum_size = Vector2(0, 28 if compact else 52)
 	status_label.add_theme_font_size_override("font_size", 12 if compact else 16)
 	layout.add_theme_constant_override("separation", 8 if compact else 18)
@@ -73,7 +82,9 @@ func _apply_responsive_controls(available_size: Vector2) -> void:
 	var button_size: Vector2 = Vector2(108, 38) if portrait else (Vector2(132, 44) if dashboard_mode else Vector2(180, 52))
 	randomize_button.custom_minimum_size = button_size
 	reset_button.custom_minimum_size = button_size
+	fullscreen_button.custom_minimum_size = button_size
 	ready_button.custom_minimum_size = button_size
+	fullscreen_button.text = "全画面解除" if is_fullscreen_ui else "全画面"
 	var field_margin_size: int = 6 if portrait else (10 if dashboard_mode else 18)
 	field_margin.add_theme_constant_override("margin_left", field_margin_size)
 	field_margin.add_theme_constant_override("margin_top", field_margin_size)
@@ -186,6 +197,50 @@ func _apply_layer_full_rect(layer: Control) -> void:
 	if layer == null:
 		return
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _toggle_fullscreen() -> void:
+	_set_fullscreen_enabled(not is_fullscreen_ui)
+
+func toggle_fullscreen_ui() -> void:
+	_toggle_fullscreen()
+
+func _set_fullscreen_enabled(enabled: bool) -> void:
+	is_fullscreen_ui = enabled
+	fullscreen_ui_toggled.emit(enabled)
+	_apply_responsive_controls(_get_effective_available_size())
+	refresh_responsive_layout()
+
+	if OS.has_feature("web"):
+		_set_web_fullscreen(enabled)
+	else:
+		var target_mode: int = DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED
+		if DisplayServer.window_get_mode() != target_mode:
+			DisplayServer.window_set_mode(target_mode)
+
+func _set_web_fullscreen(enabled: bool) -> void:
+	if not Engine.has_singleton("JavaScriptBridge"):
+		return
+
+	var command: String = ""
+	if enabled:
+		command = """
+			if (!document.fullscreenElement) {
+				document.documentElement.requestFullscreen();
+			}
+		"""
+	else:
+		command = """
+			if (document.fullscreenElement) {
+				document.exitFullscreen();
+			}
+		"""
+	JavaScriptBridge.eval(command)
+
+func _disable_button_focus() -> void:
+	randomize_button.focus_mode = Control.FOCUS_NONE
+	reset_button.focus_mode = Control.FOCUS_NONE
+	fullscreen_button.focus_mode = Control.FOCUS_NONE
+	ready_button.focus_mode = Control.FOCUS_NONE
 
 func begin_match_preparation(match_number: int) -> void:
 	# Only the guided match flow shows the ready button.

@@ -72,6 +72,11 @@ func _connect_fullscreen_signal() -> void:
 		var timer_screen: Control = timer_screen_variant
 		if timer_screen.has_signal("fullscreen_ui_toggled"):
 			timer_screen.connect("fullscreen_ui_toggled", Callable(self, "_set_competition_chrome_hidden"))
+	var balls_screen_variant: Variant = screens.get("balls")
+	if balls_screen_variant is Control:
+		var balls_screen: Control = balls_screen_variant
+		if balls_screen.has_signal("fullscreen_ui_toggled"):
+			balls_screen.connect("fullscreen_ui_toggled", Callable(self, "_set_competition_chrome_hidden"))
 
 func _connect_competition_flow_signals() -> void:
 	# Main owns the automatic competition flow between screens.
@@ -299,7 +304,7 @@ func _show_screen(screen_name: String) -> void:
 			var screen: Control = screen_variant
 			var button: Button = button_variant
 			screen.visible = key == screen_name
-			if key == "timer":
+			if key == "timer" or key == "balls":
 				screen.set_process_unhandled_input(key == screen_name)
 			if key == screen_name and screen.has_method("refresh_responsive_layout"):
 				screen.call_deferred("refresh_responsive_layout")
