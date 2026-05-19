@@ -14,7 +14,7 @@ const TEAM_LIST_PATH: String = "res://data/team_list_example.csv"
 const USER_TEAM_LIST_PATH: String = "user://team_list.csv"
 const SERIES_MATCH_COUNT: int = 3
 const MATCH_TYPE_OFFICIAL: String = "公式試合"
-const MATCH_TYPE_PRACTICE: String = "練習"
+const MATCH_TYPE_PRACTICE: String = "練習試合"
 const RESULT_WIN: String = "勝ち"
 const RESULT_LOSE: String = "負け"
 const RESULT_DRAW: String = "引き分け"
@@ -49,7 +49,7 @@ const CSV_EXPORT_COLUMNS: PackedStringArray = [
 	"チームB違反数",
 	"引き分け数",
 	"総合勝者",
-	"勝者",
+	"マッチ勝者",
 	"結果",
 	"終了カテゴリ",
 	"終了理由",
@@ -670,37 +670,65 @@ func _record_to_csv_row(record: Dictionary) -> PackedStringArray:
 	var team_b_name: String = str(record.get("team_b", ""))
 	var team_a_violations: int = int(record.get("team_a_violations", _violation_count_for_record(record, team_a_name)))
 	var team_b_violations: int = int(record.get("team_b_violations", _violation_count_for_record(record, team_b_name)))
+	var is_series_result: bool = str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT
 	return PackedStringArray([
 		str(record.get("timestamp", "")),
 		str(record.get("record_kind", RECORD_KIND_MATCH)),
 		str(record.get("match_type", "")),
 		str(record.get("series_id", "")),
 		str(record.get("court", "")),
-		str(record.get("series_number", "")),
-		str(record.get("match_number", "")),
+		_record_competition_id(record),
+		_record_match_number_text(record),
 		team_a_name,
 		team_b_name,
-		str(record.get("team_a_wins", "")),
-		str(record.get("team_a_losses", "")),
+		_optional_int_text(record, "team_a_wins"),
+		_optional_int_text(record, "team_a_losses"),
 		str(int(record.get("team_a_orange", 0))),
 		str(int(record.get("team_a_purple", 0))),
 		str(int(record.get("team_a_score", 0))),
 		str(team_a_violations),
-		str(record.get("team_b_wins", "")),
-		str(record.get("team_b_losses", "")),
+		_optional_int_text(record, "team_b_wins"),
+		_optional_int_text(record, "team_b_losses"),
 		str(int(record.get("team_b_orange", 0))),
 		str(int(record.get("team_b_purple", 0))),
 		str(int(record.get("team_b_score", 0))),
 		str(team_b_violations),
-		str(record.get("draws", "")),
+		_optional_int_text(record, "draws"),
 		str(record.get("overall_winner", "")),
-		str(record.get("winner", "")),
-		str(record.get("result", "")),
+		"" if is_series_result else str(record.get("winner", "")),
+		str(record.get("result", "")) if is_series_result else "",
 		str(record.get("reason_category", "")),
 		str(record.get("end_reason", "")),
 		str(record.get("target_team", "")),
 		str(record.get("notes", ""))
 	])
+
+func _optional_int_text(record: Dictionary, key: String) -> String:
+	if not record.has(key):
+		return ""
+	return str(int(record.get(key, 0)))
+
+func _record_match_number_text(record: Dictionary) -> String:
+	if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT:
+		return ""
+	if not record.has("match_number"):
+		return ""
+	return str(int(record.get("match_number", 0)))
+
+func _record_competition_id(record: Dictionary) -> String:
+	if record.has("competition_id"):
+		return str(record.get("competition_id", ""))
+	var court_code: String = _court_code_from_name(str(record.get("court", "Aコート")))
+	var series_number: int = int(record.get("series_number", 1))
+	if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT:
+		return "%s_%02d_RESULT" % [court_code, series_number]
+	return "%s_%02d_%d" % [court_code, series_number, int(record.get("match_number", 0))]
+
+func _court_code_from_name(court_name: String) -> String:
+	var trimmed: String = court_name.strip_edges()
+	if trimmed.is_empty():
+		return "A"
+	return trimmed.substr(0, 1).to_upper()
 
 func _save_csv_native(filename: String, csv_text: String) -> String:
 	var path: String = "user://%s" % filename
@@ -978,9 +1006,12 @@ func _selected_court_name() -> String:
 	return court_select.get_item_text(court_select.selected)
 
 func _next_series_number() -> int:
+	var selected_court: String = _selected_court_name()
 	var series_ids: Dictionary = {}
 	for record in store.get_filtered_records("all"):
 		if not (record is Dictionary):
+			continue
+		if str(record.get("court", "Aコート")) != selected_court:
 			continue
 		var series_id: String = str(record.get("series_id", ""))
 		if series_id.is_empty():
@@ -1382,15 +1413,16 @@ func _build_series_result_record() -> Dictionary:
 		"series_id": active_series.get("series_id", ""),
 		"series_number": int(active_series.get("series_number", 1)),
 		"court": active_series.get("court", "Aコート"),
-		"match_number": "全体",
-		"match_type": MATCH_TYPE_OFFICIAL,
+		"competition_id": "%s_%02d_RESULT" % [_court_code_from_name(str(active_series.get("court", "Aコート"))), int(active_series.get("series_number", 1))],
+		"match_number": 0,
+		"match_type": MATCH_TYPE_PRACTICE,
 		"team_a_wins": team_a_wins,
 		"team_a_losses": team_b_wins,
 		"team_b_wins": team_b_wins,
 		"team_b_losses": team_a_wins,
 		"draws": draws,
 		"overall_winner": overall_winner,
-		"winner": overall_winner,
+		"winner": "",
 		"result": "%s %d勝%d敗 / %s %d勝%d敗 / 引き分け%d" % [team_a_name, team_a_wins, team_b_wins, team_b_name, team_b_wins, team_a_wins, draws],
 		"team_a_orange": int(summary.get("team_a_orange", 0)),
 		"team_a_purple": int(summary.get("team_a_purple", 0)),
@@ -1445,8 +1477,13 @@ func _build_series_record() -> Dictionary:
 		"series_id": active_series.get("series_id", ""),
 		"series_number": int(active_series.get("series_number", 1)),
 		"court": active_series.get("court", "Aコート"),
+		"competition_id": "%s_%02d_%d" % [
+			_court_code_from_name(str(active_series.get("court", "Aコート"))),
+			int(active_series.get("series_number", 1)),
+			_current_input_match_number()
+		],
 		"match_number": _current_input_match_number(),
-		"match_type": MATCH_TYPE_OFFICIAL,
+		"match_type": MATCH_TYPE_PRACTICE,
 		"result": result_text,
 		"winner": winner_name,
 		"target_team": target_team,
@@ -2069,7 +2106,7 @@ func _build_history_card(record: Dictionary) -> PanelContainer:
 		record.get("team_a", "-"),
 		record.get("team_b", "-"),
 		record.get("court", "Aコート"),
-		str(record.get("series_number", ""))
+		str(int(record.get("series_number", 0)))
 	]
 	body.add_child(title)
 
@@ -2104,24 +2141,24 @@ func _build_series_result_history_card(card: PanelContainer, body: VBoxContainer
 		record.get("team_a", "-"),
 		record.get("team_b", "-"),
 		record.get("court", "Aコート"),
-		str(record.get("series_number", ""))
+		str(int(record.get("series_number", 0)))
 	]
 	body.add_child(title)
 
 	var detail: Label = Label.new()
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.text = "%s | %s\n%s\n総合勝者: %s\n%s %s勝%s敗 / %s %s勝%s敗 / 引き分け%s" % [
+	detail.text = "%s | %s\n%s\n総合勝者: %s\n%s %d勝%d敗 / %s %d勝%d敗 / 引き分け%d" % [
 		record.get("timestamp", "-"),
 		record.get("match_type", "-"),
 		record.get("notes", ""),
 		record.get("overall_winner", record.get("winner", "-")),
 		record.get("team_a", "-"),
-		str(record.get("team_a_wins", 0)),
-		str(record.get("team_a_losses", 0)),
+		int(record.get("team_a_wins", 0)),
+		int(record.get("team_a_losses", 0)),
 		record.get("team_b", "-"),
-		str(record.get("team_b_wins", 0)),
-		str(record.get("team_b_losses", 0)),
-		str(record.get("draws", 0))
+		int(record.get("team_b_wins", 0)),
+		int(record.get("team_b_losses", 0)),
+		int(record.get("draws", 0))
 	]
 	body.add_child(detail)
 	return card
