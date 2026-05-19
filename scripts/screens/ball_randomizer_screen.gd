@@ -100,8 +100,8 @@ func _update_playfield_transform() -> void:
 	playfield_stack.pivot_offset = Vector2.ZERO
 	if playfield_portrait:
 		playfield_stack.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-		playfield_stack.rotation_degrees = -90.0
-		playfield_stack.position = Vector2(0.0, target_size.y)
+		playfield_stack.rotation_degrees = 90.0
+		playfield_stack.position = Vector2(target_size.x, 0.0)
 		playfield_stack.size = Vector2(target_size.y, target_size.x)
 	else:
 		playfield_stack.rotation_degrees = 0.0
