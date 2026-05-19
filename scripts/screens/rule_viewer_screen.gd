@@ -103,7 +103,9 @@ func _update_layout() -> void:
 	responsive_body.vertical = size.x < MOBILE_BREAKPOINT
 	navigation_panel.custom_minimum_size = Vector2(0.0, 0.0) if responsive_body.vertical else Vector2(280.0, 0.0)
 	if responsive_body.vertical:
-		navigation_scroll.custom_minimum_size = Vector2(0.0, 420.0)
+		var viewport_height: float = maxf(size.y, get_viewport_rect().size.y)
+		var expanded_height: float = viewport_height - 250.0
+		navigation_scroll.custom_minimum_size = Vector2(0.0, clampf(expanded_height, 620.0, 1040.0))
 	else:
 		var available_height: float = size.y - 300.0
 		navigation_scroll.custom_minimum_size = Vector2(0.0, clampf(available_height, 420.0, 760.0))

@@ -117,6 +117,11 @@ func _draw_dashed_line(from_point: Vector2, to_point: Vector2, dash_length: floa
 func is_layout_ready() -> bool:
 	return layout_initialized
 
+func refresh_layout() -> void:
+	if layout_initialized and not layout_data.is_empty():
+		_apply_layout(false)
+	queue_redraw()
+
 func _ensure_layout_initialized() -> bool:
 	if layout_initialized:
 		return true

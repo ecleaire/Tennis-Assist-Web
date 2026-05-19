@@ -13,10 +13,14 @@ signal preparation_completed(match_number: int)
 @onready var ready_button: Button = $Layout/Toolbar/ReadyButton
 @onready var field_margin: MarginContainer = $Layout/FieldPanel/FieldMargin
 @onready var playfield: AspectRatioContainer = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield
+@onready var playfield_stack: Control = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack
+
+const PLAYFIELD_RATIO: float = 2.066
 
 var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
 var dashboard_mode: bool = false
+var playfield_portrait: bool = false
 
 func _ready() -> void:
 	$Layout/Toolbar/RandomizeButton.pressed.connect(_randomize)
@@ -36,6 +40,7 @@ func set_dashboard_mode(enabled: bool) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_playfield_size()
+		call_deferred("_update_playfield_transform")
 
 func _update_dashboard_mode() -> void:
 	title_label.visible = not dashboard_mode
@@ -60,17 +65,51 @@ func _update_dashboard_mode() -> void:
 func _update_playfield_size() -> void:
 	if playfield == null:
 		return
-	var available_width: float = size.x
-	if available_width <= 1.0:
-		available_width = get_parent_area_size().x
-	if available_width <= 1.0:
-		available_width = get_viewport_rect().size.x
+	var available_size: Vector2 = size
+	if available_size.x <= 1.0 or available_size.y <= 1.0:
+		available_size = get_parent_area_size()
+	if available_size.x <= 1.0 or available_size.y <= 1.0:
+		available_size = get_viewport_rect().size
 
 	var horizontal_padding: float = 20.0 if dashboard_mode else 40.0
-	var max_width: float = minf(820.0, maxf(320.0, available_width - horizontal_padding)) if dashboard_mode else 1281.0
-	var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
-	var target_width: float = clampf(available_width - horizontal_padding, min_width, max_width)
-	playfield.custom_minimum_size = Vector2(target_width, target_width / 2.066)
+	playfield_portrait = available_size.y > available_size.x * 1.08
+	if playfield_portrait:
+		playfield.ratio = 1.0 / PLAYFIELD_RATIO
+		var reserved_height: float = 120.0 if dashboard_mode else 230.0
+		var height_limited_width: float = maxf(240.0, (available_size.y - reserved_height) / PLAYFIELD_RATIO)
+		var max_portrait_width: float = minf(760.0, height_limited_width)
+		var min_portrait_width: float = minf(320.0, max_portrait_width)
+		var target_portrait_width: float = clampf(available_size.x - horizontal_padding, min_portrait_width, max_portrait_width)
+		playfield.custom_minimum_size = Vector2(target_portrait_width, target_portrait_width * PLAYFIELD_RATIO)
+	else:
+		playfield.ratio = PLAYFIELD_RATIO
+		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_mode else 1281.0
+		var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
+		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
+		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)
+	call_deferred("_update_playfield_transform")
+
+func _update_playfield_transform() -> void:
+	if playfield == null or playfield_stack == null:
+		return
+	var target_size: Vector2 = playfield.size
+	if target_size.x <= 1.0 or target_size.y <= 1.0:
+		return
+
+	playfield.clip_contents = true
+	playfield_stack.pivot_offset = Vector2.ZERO
+	if playfield_portrait:
+		playfield_stack.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		playfield_stack.rotation_degrees = -90.0
+		playfield_stack.position = Vector2(0.0, target_size.y)
+		playfield_stack.size = Vector2(target_size.y, target_size.x)
+	else:
+		playfield_stack.rotation_degrees = 0.0
+		playfield_stack.position = Vector2.ZERO
+		playfield_stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	if field_display.has_method("refresh_layout"):
+		field_display.call("refresh_layout")
 
 func begin_match_preparation(match_number: int) -> void:
 	# Only the guided match flow shows the ready button.
