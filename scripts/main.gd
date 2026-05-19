@@ -301,6 +301,8 @@ func _show_screen(screen_name: String) -> void:
 			screen.visible = key == screen_name
 			if key == "timer":
 				screen.set_process_unhandled_input(key == screen_name)
+			if key == screen_name and screen.has_method("refresh_responsive_layout"):
+				screen.call_deferred("refresh_responsive_layout")
 			_set_button_selected(button, key == screen_name)
 
 func _set_button_selected(button: Button, selected: bool) -> void:

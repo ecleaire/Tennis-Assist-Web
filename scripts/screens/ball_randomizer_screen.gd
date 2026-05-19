@@ -22,14 +22,16 @@ var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
 var dashboard_mode: bool = false
 var playfield_portrait: bool = false
+var playfield_refresh_token: int = 0
 
 func _enter_tree() -> void:
-	call_deferred("_update_playfield_size")
+	call_deferred("refresh_responsive_layout")
 
 func _ready() -> void:
 	$Layout/Toolbar/RandomizeButton.pressed.connect(_randomize)
 	$Layout/Toolbar/ResetButton.pressed.connect(_reset_layout)
 	ready_button.pressed.connect(_complete_preparation)
+	visibility_changed.connect(_on_visibility_changed)
 	ready_button.visible = false
 	status_label.text = "4ライン分の配置を準備しました。紫ボールは180度反転で配置します。"
 
@@ -38,13 +40,20 @@ func set_dashboard_mode(enabled: bool) -> void:
 	if not is_node_ready():
 		return
 	_update_dashboard_mode()
-	_update_playfield_size()
-	call_deferred("_update_playfield_size")
+	refresh_responsive_layout()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
-		_update_playfield_size()
-		_schedule_playfield_transform()
+		refresh_responsive_layout()
+
+func refresh_responsive_layout() -> void:
+	if not is_node_ready():
+		return
+	_schedule_playfield_refresh(10)
+
+func _on_visibility_changed() -> void:
+	if visible:
+		refresh_responsive_layout()
 
 func _update_dashboard_mode() -> void:
 	title_label.visible = not dashboard_mode
@@ -66,10 +75,10 @@ func _update_dashboard_mode() -> void:
 	field_margin.add_theme_constant_override("margin_right", field_margin_size)
 	field_margin.add_theme_constant_override("margin_bottom", field_margin_size)
 
-func _update_playfield_size() -> void:
+func _update_playfield_size(schedule_transform: bool = true) -> void:
 	if playfield == null:
 		return
-	var available_size: Vector2 = size
+	var available_size: Vector2 = _get_effective_available_size()
 	if available_size.x <= 1.0 or available_size.y <= 1.0:
 		available_size = get_parent_area_size()
 	if available_size.x <= 1.0 or available_size.y <= 1.0:
@@ -91,7 +100,38 @@ func _update_playfield_size() -> void:
 		var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
 		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
 		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)
-	_schedule_playfield_transform()
+	if schedule_transform:
+		_schedule_playfield_transform()
+
+func _get_effective_available_size() -> Vector2:
+	var local_size: Vector2 = size
+	var browser_size: Vector2 = _get_browser_viewport_size()
+	if browser_size.x > 1.0 and browser_size.y > 1.0:
+		if browser_size.y > browser_size.x and local_size.y <= local_size.x:
+			return browser_size
+	return local_size
+
+func _get_browser_viewport_size() -> Vector2:
+	if not OS.has_feature("web") or not Engine.has_singleton("JavaScriptBridge"):
+		return Vector2.ZERO
+	var width_variant: Variant = JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.width : window.innerWidth", true)
+	var height_variant: Variant = JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.height : window.innerHeight", true)
+	return Vector2(float(width_variant), float(height_variant))
+
+func _schedule_playfield_refresh(frame_count: int = 6) -> void:
+	playfield_refresh_token += 1
+	call_deferred("_refresh_playfield_for_frames", playfield_refresh_token, frame_count)
+
+func _refresh_playfield_for_frames(token: int, frame_count: int) -> void:
+	for _index in frame_count:
+		if token != playfield_refresh_token:
+			return
+		_update_playfield_size(false)
+		_update_playfield_transform()
+		await get_tree().process_frame
+	if token == playfield_refresh_token:
+		_update_playfield_size(false)
+		_update_playfield_transform()
 
 func _schedule_playfield_transform() -> void:
 	call_deferred("_update_playfield_transform")
