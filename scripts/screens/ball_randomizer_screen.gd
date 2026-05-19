@@ -56,20 +56,25 @@ func _on_visibility_changed() -> void:
 		refresh_responsive_layout()
 
 func _update_dashboard_mode() -> void:
+	_apply_responsive_controls(_get_effective_available_size())
+
+func _apply_responsive_controls(available_size: Vector2) -> void:
+	var portrait: bool = available_size.y > available_size.x * 1.08
+	var compact: bool = dashboard_mode or portrait
 	title_label.visible = not dashboard_mode
 	status_label_2.visible = not dashboard_mode
 	status_label.visible = not dashboard_mode
-	status_label.custom_minimum_size = Vector2(0, 34 if dashboard_mode else 52)
-	status_label.add_theme_font_size_override("font_size", 14 if dashboard_mode else 16)
-	layout.add_theme_constant_override("separation", 10 if dashboard_mode else 18)
-	toolbar.alignment = FlowContainer.ALIGNMENT_CENTER if dashboard_mode else FlowContainer.ALIGNMENT_BEGIN
-	toolbar.add_theme_constant_override("h_separation", 8 if dashboard_mode else 12)
-	toolbar.add_theme_constant_override("v_separation", 8 if dashboard_mode else 12)
-	var button_size: Vector2 = Vector2(132, 44) if dashboard_mode else Vector2(180, 52)
+	status_label.custom_minimum_size = Vector2(0, 28 if compact else 52)
+	status_label.add_theme_font_size_override("font_size", 12 if compact else 16)
+	layout.add_theme_constant_override("separation", 8 if compact else 18)
+	toolbar.alignment = FlowContainer.ALIGNMENT_CENTER if compact else FlowContainer.ALIGNMENT_BEGIN
+	toolbar.add_theme_constant_override("h_separation", 6 if compact else 12)
+	toolbar.add_theme_constant_override("v_separation", 6 if compact else 12)
+	var button_size: Vector2 = Vector2(108, 38) if portrait else (Vector2(132, 44) if dashboard_mode else Vector2(180, 52))
 	randomize_button.custom_minimum_size = button_size
 	reset_button.custom_minimum_size = button_size
 	ready_button.custom_minimum_size = button_size
-	var field_margin_size: int = 10 if dashboard_mode else 18
+	var field_margin_size: int = 6 if portrait else (10 if dashboard_mode else 18)
 	field_margin.add_theme_constant_override("margin_left", field_margin_size)
 	field_margin.add_theme_constant_override("margin_top", field_margin_size)
 	field_margin.add_theme_constant_override("margin_right", field_margin_size)
@@ -86,13 +91,15 @@ func _update_playfield_size(schedule_transform: bool = true) -> void:
 
 	var horizontal_padding: float = 20.0 if dashboard_mode else 40.0
 	playfield_portrait = available_size.y > available_size.x * 1.08
+	_apply_responsive_controls(available_size)
 	if playfield_portrait:
 		playfield.ratio = 1.0 / PLAYFIELD_RATIO
-		var reserved_height: float = 120.0 if dashboard_mode else 230.0
+		var horizontal_padding_portrait: float = 12.0 if dashboard_mode else 18.0
+		var reserved_height: float = 88.0 if dashboard_mode else 165.0
 		var height_limited_width: float = maxf(240.0, (available_size.y - reserved_height) / PLAYFIELD_RATIO)
 		var max_portrait_width: float = minf(760.0, height_limited_width)
-		var min_portrait_width: float = minf(320.0, max_portrait_width)
-		var target_portrait_width: float = clampf(available_size.x - horizontal_padding, min_portrait_width, max_portrait_width)
+		var min_portrait_width: float = minf(300.0, max_portrait_width)
+		var target_portrait_width: float = clampf(available_size.x - horizontal_padding_portrait, min_portrait_width, max_portrait_width)
 		playfield.custom_minimum_size = Vector2(target_portrait_width, target_portrait_width * PLAYFIELD_RATIO)
 	else:
 		playfield.ratio = PLAYFIELD_RATIO
