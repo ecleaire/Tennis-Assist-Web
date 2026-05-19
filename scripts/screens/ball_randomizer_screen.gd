@@ -14,6 +14,7 @@ signal preparation_completed(match_number: int)
 @onready var field_margin: MarginContainer = $Layout/FieldPanel/FieldMargin
 @onready var playfield: AspectRatioContainer = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield
 @onready var playfield_stack: Control = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack
+@onready var playfield_image: TextureRect = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/PlayfieldImage
 
 const PLAYFIELD_RATIO: float = 2.066
 
@@ -21,6 +22,9 @@ var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
 var dashboard_mode: bool = false
 var playfield_portrait: bool = false
+
+func _enter_tree() -> void:
+	call_deferred("_update_playfield_size")
 
 func _ready() -> void:
 	$Layout/Toolbar/RandomizeButton.pressed.connect(_randomize)
@@ -40,7 +44,7 @@ func set_dashboard_mode(enabled: bool) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_playfield_size()
-		call_deferred("_update_playfield_transform")
+		_schedule_playfield_transform()
 
 func _update_dashboard_mode() -> void:
 	title_label.visible = not dashboard_mode
@@ -87,7 +91,15 @@ func _update_playfield_size() -> void:
 		var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
 		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
 		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)
+	_schedule_playfield_transform()
+
+func _schedule_playfield_transform() -> void:
 	call_deferred("_update_playfield_transform")
+	call_deferred("_update_playfield_transform_after_frame")
+
+func _update_playfield_transform_after_frame() -> void:
+	await get_tree().process_frame
+	_update_playfield_transform()
 
 func _update_playfield_transform() -> void:
 	if playfield == null or playfield_stack == null:
@@ -102,14 +114,31 @@ func _update_playfield_transform() -> void:
 		playfield_stack.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 		playfield_stack.rotation_degrees = 90.0
 		playfield_stack.position = Vector2(target_size.x, 0.0)
-		playfield_stack.size = Vector2(target_size.y, target_size.x)
+		var rotated_stack_size: Vector2 = Vector2(target_size.y, target_size.x)
+		playfield_stack.size = rotated_stack_size
+		_apply_layer_size(playfield_image, rotated_stack_size)
+		_apply_layer_size(field_display, rotated_stack_size)
 	else:
 		playfield_stack.rotation_degrees = 0.0
 		playfield_stack.position = Vector2.ZERO
 		playfield_stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_apply_layer_full_rect(playfield_image)
+		_apply_layer_full_rect(field_display)
 
 	if field_display.has_method("refresh_layout"):
 		field_display.call("refresh_layout")
+
+func _apply_layer_size(layer: Control, target_size: Vector2) -> void:
+	if layer == null:
+		return
+	layer.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	layer.position = Vector2.ZERO
+	layer.size = target_size
+
+func _apply_layer_full_rect(layer: Control) -> void:
+	if layer == null:
+		return
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func begin_match_preparation(match_number: int) -> void:
 	# Only the guided match flow shows the ready button.
