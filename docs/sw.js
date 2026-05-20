@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260521-4';
+const CACHE_NAME = 'wro-robosports-assist-v20260521-5';
 
 const APP_SHELL = [
 	'./',

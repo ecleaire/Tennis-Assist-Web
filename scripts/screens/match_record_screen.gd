@@ -178,6 +178,7 @@ var team_editor_toggle_button: Button
 var court_select: OptionButton
 var history_toggle_button: Button
 var history_export_button: Button
+var history_import_button: Button
 var history_team_select: OptionButton
 var history_clear_button: Button
 var history_status_label: Label
@@ -190,6 +191,8 @@ var team_editor_cancel_button: Button
 var team_editor_reset_button: Button
 var team_editor_file_dialog: FileDialog
 var team_editor_web_file_callback: JavaScriptObject
+var history_import_file_dialog: FileDialog
+var history_import_web_file_callback: JavaScriptObject
 var save_confirm_dialog: ConfirmationDialog
 var action_confirm_dialog: ConfirmationDialog
 var clear_history_confirm_dialog: ConfirmationDialog
@@ -315,6 +318,11 @@ func _create_history_tools() -> void:
 	history_export_button.custom_minimum_size = Vector2(180, 44)
 	history_header.add_child(history_export_button)
 
+	history_import_button = Button.new()
+	history_import_button.text = "CSVインポート"
+	history_import_button.custom_minimum_size = Vector2(180, 44)
+	history_header.add_child(history_import_button)
+
 	history_clear_button = Button.new()
 	history_clear_button.text = "履歴削除"
 	history_clear_button.custom_minimum_size = Vector2(150, 44)
@@ -325,6 +333,19 @@ func _create_history_tools() -> void:
 	history_status_label.text = ""
 	var history_layout: VBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout
 	history_layout.add_child(history_status_label)
+
+	history_import_file_dialog = FileDialog.new()
+	history_import_file_dialog.title = "対戦履歴CSVを読み込み"
+	history_import_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	history_import_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	history_import_file_dialog.filters = PackedStringArray(["*.csv ; CSV"])
+	add_child(history_import_file_dialog)
+
+	if Engine.has_singleton("JavaScriptBridge"):
+		history_import_web_file_callback = JavaScriptBridge.create_callback(_on_web_history_csv_file_loaded)
+		var window = JavaScriptBridge.get_interface("window")
+		if window != null and history_import_web_file_callback != null:
+			window.wroHistoryCsvFileLoaded = history_import_web_file_callback
 
 func _create_team_editor() -> void:
 	team_editor_toggle_button = Button.new()
@@ -548,6 +569,7 @@ func _connect_signals() -> void:
 	reinput_result_button.pressed.connect(_reinput_current_match_result)
 	history_toggle_button.pressed.connect(_toggle_history_panel)
 	history_export_button.pressed.connect(_export_all_history_csv)
+	history_import_button.pressed.connect(_open_history_csv_import)
 	history_team_select.item_selected.connect(_refresh_history)
 	history_clear_button.pressed.connect(_request_clear_all_history)
 	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
@@ -556,6 +578,7 @@ func _connect_signals() -> void:
 	team_editor_cancel_button.pressed.connect(_hide_team_editor)
 	team_editor_reset_button.pressed.connect(_reset_team_editor_to_default)
 	team_editor_file_dialog.file_selected.connect(_load_team_list_file)
+	history_import_file_dialog.file_selected.connect(_load_history_csv_file)
 	team_a_agree_button.pressed.connect(_on_team_a_agreed)
 	team_b_agree_button.pressed.connect(_on_team_b_agreed)
 	finalize_series_button.pressed.connect(_finalize_series_result)
@@ -716,6 +739,222 @@ func _selected_history_team() -> String:
 
 func _record_involves_team(record: Variant, team_name: String) -> bool:
 	return record is Dictionary and (str(record.get("team_a", "")) == team_name or str(record.get("team_b", "")) == team_name)
+
+func _open_history_csv_import() -> void:
+	if active_series.is_empty():
+		_open_history_csv_import_picker()
+		return
+	history_status_label.text = "対戦中は履歴CSVを読み込めません。対戦を終了またはリセットしてから読み込んでください。"
+
+func _open_history_csv_import_picker() -> void:
+	history_panel.visible = true
+	if OS.has_feature("web") and history_import_web_file_callback != null and Engine.has_singleton("JavaScriptBridge"):
+		_open_web_history_csv_file_picker()
+	else:
+		history_import_file_dialog.popup_centered_ratio(0.7)
+
+func _open_web_history_csv_file_picker() -> void:
+	var command: String = """
+(function () {
+	const oldInput = document.getElementById('wro-history-csv-file-input');
+	if (oldInput) {
+		oldInput.remove();
+	}
+
+	const input = document.createElement('input');
+	input.id = 'wro-history-csv-file-input';
+	input.type = 'file';
+	input.accept = '.csv,text/csv';
+	input.style.display = 'none';
+	input.onchange = function (event) {
+		const file = event.target.files && event.target.files[0];
+		if (!file) {
+			input.remove();
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = function () {
+			if (window.wroHistoryCsvFileLoaded) {
+				window.wroHistoryCsvFileLoaded(String(reader.result || ''), file.name || '');
+			}
+			input.remove();
+		};
+		reader.onerror = function () {
+			if (window.wroHistoryCsvFileLoaded) {
+				window.wroHistoryCsvFileLoaded('', file.name || '', 'read_error');
+			}
+			input.remove();
+		};
+		reader.readAsText(file);
+	};
+
+	document.body.appendChild(input);
+	input.click();
+}());
+"""
+	JavaScriptBridge.eval(command, true)
+
+func _load_history_csv_file(path: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		history_status_label.text = "CSVファイルを読み込めませんでした。"
+		return
+	_apply_imported_history_csv_text(file.get_as_text(), path.get_file())
+
+func _on_web_history_csv_file_loaded(args: Array) -> void:
+	if args.size() >= 3 and str(args[2]) == "read_error":
+		history_status_label.text = "CSVファイルを読み込めませんでした。"
+		return
+	if args.is_empty():
+		history_status_label.text = "CSVファイルを読み込めませんでした。"
+		return
+
+	var file_name: String = str(args[1]) if args.size() >= 2 else "選択ファイル"
+	_apply_imported_history_csv_text(str(args[0]), file_name)
+
+func _apply_imported_history_csv_text(text: String, source_name: String) -> void:
+	var imported_records: Array = _records_from_history_csv(text)
+	if imported_records.is_empty():
+		history_panel.visible = true
+		history_status_label.text = "%s から読み込める対戦履歴が見つかりませんでした。" % source_name
+		return
+
+	var result: Dictionary = store.import_records(imported_records)
+	if not bool(result.get("ok", false)):
+		history_status_label.text = "対戦履歴の保存に失敗しました。"
+		return
+
+	_populate_history_team_select()
+	_refresh_history()
+	history_panel.visible = true
+	history_status_label.text = "%s から%d件を追加しました。重複%d件はスキップしました。続きの記録はこの履歴に追加されます。" % [
+		source_name,
+		int(result.get("added", 0)),
+		int(result.get("skipped", 0))
+	]
+	call_deferred("_scroll_to_control", history_panel)
+
+func _records_from_history_csv(text: String) -> Array:
+	var normalized_text: String = text.replace("\r\n", "\n").replace("\r", "\n")
+	var lines: PackedStringArray = normalized_text.split("\n", false)
+	if lines.is_empty():
+		return []
+
+	var header: PackedStringArray = _parse_csv_line(_strip_utf8_bom(lines[0].strip_edges()))
+	var index_by_name: Dictionary = {}
+	for index in range(header.size()):
+		index_by_name[header[index].strip_edges()] = index
+	if not index_by_name.has("日時") or not index_by_name.has("記録種別"):
+		return []
+
+	var imported_records: Array = []
+	for line_index in range(1, lines.size()):
+		var line: String = lines[line_index].strip_edges()
+		if line.is_empty():
+			continue
+		var columns: PackedStringArray = _parse_csv_line(line)
+		var record: Dictionary = _record_from_history_csv_columns(columns, index_by_name)
+		if not record.is_empty():
+			imported_records.append(record)
+	return imported_records
+
+func _record_from_history_csv_columns(columns: PackedStringArray, index_by_name: Dictionary) -> Dictionary:
+	var record_kind: String = _csv_column(columns, index_by_name, "記録種別", RECORD_KIND_MATCH)
+	var team_a_name: String = _csv_column(columns, index_by_name, "チームA")
+	var team_b_name: String = _csv_column(columns, index_by_name, "チームB")
+	var court_name: String = _csv_column(columns, index_by_name, "コート", "Aコート")
+	if team_a_name.is_empty() and team_b_name.is_empty():
+		return {}
+
+	var record: Dictionary = {
+		"timestamp": _csv_column(columns, index_by_name, "日時", _timestamp_string()),
+		"record_kind": record_kind,
+		"match_type": _csv_column(columns, index_by_name, "種別", MATCH_TYPE_PRACTICE),
+		"series_id": _csv_column(columns, index_by_name, "対戦ID"),
+		"court": court_name,
+		"competition_id": _csv_column(columns, index_by_name, "試合番号"),
+		"match_number": _csv_int_column(columns, index_by_name, "マッチ番号", 0),
+		"team_a": team_a_name,
+		"team_b": team_b_name,
+		"team_a_wins": _csv_int_column(columns, index_by_name, "チームA勝数", 0),
+		"team_a_losses": _csv_int_column(columns, index_by_name, "チームA敗数", 0),
+		"team_a_orange": _csv_int_column(columns, index_by_name, "チームAオレンジ", 0),
+		"team_a_purple": _csv_int_column(columns, index_by_name, "チームA紫", 0),
+		"team_a_score": _csv_int_column(columns, index_by_name, "チームA得点", 0),
+		"team_a_violations": _csv_int_column(columns, index_by_name, "チームA違反数", 0),
+		"team_b_wins": _csv_int_column(columns, index_by_name, "チームB勝数", 0),
+		"team_b_losses": _csv_int_column(columns, index_by_name, "チームB敗数", 0),
+		"team_b_orange": _csv_int_column(columns, index_by_name, "チームBオレンジ", 0),
+		"team_b_purple": _csv_int_column(columns, index_by_name, "チームB紫", 0),
+		"team_b_score": _csv_int_column(columns, index_by_name, "チームB得点", 0),
+		"team_b_violations": _csv_int_column(columns, index_by_name, "チームB違反数", 0),
+		"draws": _csv_int_column(columns, index_by_name, "引き分け数", 0),
+		"overall_winner": _csv_column(columns, index_by_name, "総合勝者"),
+		"winner": _csv_column(columns, index_by_name, "マッチ勝者"),
+		"result": _csv_column(columns, index_by_name, "結果"),
+		"reason_category": _csv_column(columns, index_by_name, "終了カテゴリ"),
+		"end_reason": _csv_column(columns, index_by_name, "終了理由"),
+		"target_team": _csv_column(columns, index_by_name, "対象チーム"),
+		"notes": _csv_column(columns, index_by_name, "メモ")
+	}
+
+	var series_number: int = _series_number_from_competition_id(str(record.get("competition_id", "")))
+	if series_number <= 0:
+		series_number = 1
+	record["series_number"] = series_number
+
+	if str(record.get("series_id", "")).is_empty():
+		record["series_id"] = "%s__%s__%s_%02d" % [
+			team_a_name,
+			team_b_name,
+			_court_code_from_name(court_name),
+			series_number
+		]
+
+	if record_kind == RECORD_KIND_SERIES_RESULT:
+		record["winner"] = ""
+		record["target_team"] = str(record.get("overall_winner", ""))
+	else:
+		if str(record.get("result", "")).is_empty():
+			record["result"] = _result_text_for_imported_winner(str(record.get("winner", "")), team_a_name, team_b_name)
+		if str(record.get("target_team", "")).is_empty():
+			record["target_team"] = str(record.get("winner", ""))
+	return record
+
+func _csv_column(columns: PackedStringArray, index_by_name: Dictionary, column_name: String, fallback: String = "") -> String:
+	if not index_by_name.has(column_name):
+		return fallback
+	var index: int = int(index_by_name[column_name])
+	if index < 0 or index >= columns.size():
+		return fallback
+	return _strip_utf8_bom(columns[index].strip_edges())
+
+func _csv_int_column(columns: PackedStringArray, index_by_name: Dictionary, column_name: String, fallback: int = 0) -> int:
+	var text_value: String = _csv_column(columns, index_by_name, column_name)
+	if text_value.is_empty():
+		return fallback
+	return int(float(text_value))
+
+func _strip_utf8_bom(value: String) -> String:
+	if value.begins_with("\uFEFF"):
+		return value.substr(1)
+	return value
+
+func _series_number_from_competition_id(competition_id: String) -> int:
+	var parts: PackedStringArray = competition_id.split("_", false)
+	if parts.size() >= 2:
+		return int(parts[1])
+	return 0
+
+func _result_text_for_imported_winner(winner_name: String, team_a_name: String, team_b_name: String) -> String:
+	if winner_name == team_a_name:
+		return RESULT_WIN
+	if winner_name == team_b_name:
+		return RESULT_LOSE
+	if winner_name == TARGET_TEAM_DRAW:
+		return RESULT_DRAW
+	return ""
 
 func _export_all_history_csv() -> void:
 	var all_records: Array = store.get_filtered_records("all")
@@ -1056,7 +1295,7 @@ func _populate_history_team_select() -> void:
 	var previous_team: String = _selected_history_team()
 	history_team_select.clear()
 	history_team_select.add_item("全チーム")
-	for team_name in team_list:
+	for team_name in _history_team_names():
 		history_team_select.add_item(team_name)
 	var selected_index: int = 0
 	for index in range(history_team_select.item_count):
@@ -1064,6 +1303,25 @@ func _populate_history_team_select() -> void:
 			selected_index = index
 			break
 	history_team_select.select(selected_index)
+
+func _history_team_names() -> Array[String]:
+	var names: Array[String] = []
+	var seen: Dictionary = {}
+	for team_name in team_list:
+		if team_name.is_empty() or seen.has(team_name):
+			continue
+		seen[team_name] = true
+		names.append(team_name)
+	for record in store.get_filtered_records("all"):
+		if not (record is Dictionary):
+			continue
+		for key in ["team_a", "team_b"]:
+			var team_name: String = str(record.get(key, "")).strip_edges()
+			if team_name.is_empty() or seen.has(team_name):
+				continue
+			seen[team_name] = true
+			names.append(team_name)
+	return names
 
 func _setup_team_stats_period_select() -> void:
 	team_stats_period_select.clear()
