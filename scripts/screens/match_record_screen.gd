@@ -179,6 +179,7 @@ var court_select: OptionButton
 var history_toggle_button: Button
 var history_export_button: Button
 var history_team_select: OptionButton
+var history_clear_button: Button
 var history_status_label: Label
 var team_editor_panel: PanelContainer
 var team_editor_text: TextEdit
@@ -309,6 +310,11 @@ func _create_history_tools() -> void:
 	history_export_button.text = "CSVエクスポート"
 	history_export_button.custom_minimum_size = Vector2(180, 44)
 	history_header.add_child(history_export_button)
+
+	history_clear_button = Button.new()
+	history_clear_button.text = "履歴削除"
+	history_clear_button.custom_minimum_size = Vector2(150, 44)
+	history_header.add_child(history_clear_button)
 
 	history_status_label = Label.new()
 	history_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -522,6 +528,7 @@ func _connect_signals() -> void:
 	history_toggle_button.pressed.connect(_toggle_history_panel)
 	history_export_button.pressed.connect(_export_all_history_csv)
 	history_team_select.item_selected.connect(_refresh_history)
+	history_clear_button.pressed.connect(_request_clear_all_history)
 	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
 	team_editor_load_button.pressed.connect(_open_team_list_file_dialog)
 	team_editor_save_button.pressed.connect(_save_team_editor)
@@ -562,6 +569,8 @@ func _perform_pending_confirm_action() -> void:
 			_reinput_current_match_result_now()
 		"edit_match":
 			_load_match_for_edit_now(match_number)
+		"clear_history":
+			_clear_all_history_now()
 
 func _load_team_list() -> Array[String]:
 	# CSVは「番号,チーム名」の想定です。読み込めない場合は仮チーム名を使います。
@@ -637,6 +646,25 @@ func _update_history_status_count() -> void:
 	var selected_team: String = _selected_history_team()
 	var team_text: String = "全チーム" if selected_team.is_empty() else selected_team
 	history_status_label.text = "表示 %d件 / 全履歴 %d件 / 対象: %s。CSVは全履歴を出力します。" % [filtered_records.size(), all_records.size(), team_text]
+
+func _request_clear_all_history() -> void:
+	var all_records: Array = store.get_filtered_records("all")
+	if all_records.is_empty():
+		history_status_label.text = "削除できる履歴はありません。"
+		return
+	_request_confirm_action(
+		"この端末の履歴を全削除",
+		"この端末・このブラウザに保存された対戦履歴 %d件を削除します。\n公開版サーバーや他端末の履歴には影響しません。\nこの操作は元に戻せません。削除しますか？" % all_records.size(),
+		"clear_history"
+	)
+
+func _clear_all_history_now() -> void:
+	if not store.clear_records():
+		history_status_label.text = "履歴の削除に失敗しました。"
+		return
+	history_panel.visible = true
+	_refresh_history()
+	history_status_label.text = "この端末の対戦履歴をすべて削除しました。"
 
 func _history_records_for_current_filters() -> Array:
 	var records_for_type: Array = store.get_filtered_records(_current_filter_key())

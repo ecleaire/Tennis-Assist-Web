@@ -39,6 +39,10 @@ func replace_series_record(series_id: String, match_number: int, updated_record:
 
 	return add_record(updated_record)
 
+func clear_records() -> bool:
+	records.clear()
+	return save_records()
+
 func get_filtered_records(filter_name: String) -> Array:
 	if filter_name == "all":
 		return records.duplicate(true)
