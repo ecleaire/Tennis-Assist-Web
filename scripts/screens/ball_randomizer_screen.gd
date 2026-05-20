@@ -114,7 +114,8 @@ func _update_playfield_size(schedule_transform: bool = true) -> void:
 		playfield.custom_minimum_size = Vector2(target_portrait_width, target_portrait_width * PLAYFIELD_RATIO)
 	else:
 		playfield.ratio = PLAYFIELD_RATIO
-		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_mode else 1281.0
+		var height_limited_width: float = maxf(360.0, (available_size.y - 118.0) * PLAYFIELD_RATIO)
+		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_mode else minf(1680.0, height_limited_width)
 		var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
 		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
 		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)

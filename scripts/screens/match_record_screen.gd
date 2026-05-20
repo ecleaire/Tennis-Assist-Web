@@ -178,6 +178,7 @@ var team_editor_toggle_button: Button
 var court_select: OptionButton
 var history_toggle_button: Button
 var history_export_button: Button
+var history_team_select: OptionButton
 var history_status_label: Label
 var team_editor_panel: PanelContainer
 var team_editor_text: TextEdit
@@ -299,6 +300,10 @@ func _create_court_selector() -> void:
 func _create_history_tools() -> void:
 	history_toggle_button = _create_flow_button("対戦履歴閲覧")
 	team_selection_layout.add_child(history_toggle_button)
+
+	history_team_select = OptionButton.new()
+	history_team_select.custom_minimum_size = Vector2(190, 44)
+	history_header.add_child(history_team_select)
 
 	history_export_button = Button.new()
 	history_export_button.text = "CSVエクスポート"
@@ -516,6 +521,7 @@ func _connect_signals() -> void:
 	reinput_result_button.pressed.connect(_reinput_current_match_result)
 	history_toggle_button.pressed.connect(_toggle_history_panel)
 	history_export_button.pressed.connect(_export_all_history_csv)
+	history_team_select.item_selected.connect(_refresh_history)
 	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
 	team_editor_load_button.pressed.connect(_open_team_list_file_dialog)
 	team_editor_save_button.pressed.connect(_save_team_editor)
@@ -627,8 +633,29 @@ func _toggle_history_panel() -> void:
 
 func _update_history_status_count() -> void:
 	var all_records: Array = store.get_filtered_records("all")
-	var filtered_records: Array = store.get_filtered_records(_current_filter_key())
-	history_status_label.text = "表示 %d件 / 全履歴 %d件。CSVは全履歴を出力します。" % [filtered_records.size(), all_records.size()]
+	var filtered_records: Array = _history_records_for_current_filters()
+	var selected_team: String = _selected_history_team()
+	var team_text: String = "全チーム" if selected_team.is_empty() else selected_team
+	history_status_label.text = "表示 %d件 / 全履歴 %d件 / 対象: %s。CSVは全履歴を出力します。" % [filtered_records.size(), all_records.size(), team_text]
+
+func _history_records_for_current_filters() -> Array:
+	var records_for_type: Array = store.get_filtered_records(_current_filter_key())
+	var selected_team: String = _selected_history_team()
+	if selected_team.is_empty():
+		return records_for_type
+	var filtered: Array = []
+	for record in records_for_type:
+		if _record_involves_team(record, selected_team):
+			filtered.append(record)
+	return filtered
+
+func _selected_history_team() -> String:
+	if history_team_select == null or history_team_select.item_count == 0 or history_team_select.selected <= 0:
+		return ""
+	return history_team_select.get_item_text(history_team_select.selected)
+
+func _record_involves_team(record: Variant, team_name: String) -> bool:
+	return record is Dictionary and (str(record.get("team_a", "")) == team_name or str(record.get("team_b", "")) == team_name)
 
 func _export_all_history_csv() -> void:
 	var all_records: Array = store.get_filtered_records("all")
@@ -961,6 +988,22 @@ func _populate_team_stats_select() -> void:
 	for team_name in team_list:
 		team_stats_select.add_item(team_name)
 	team_stats_select.select(0)
+	_populate_history_team_select()
+
+func _populate_history_team_select() -> void:
+	if history_team_select == null:
+		return
+	var previous_team: String = _selected_history_team()
+	history_team_select.clear()
+	history_team_select.add_item("全チーム")
+	for team_name in team_list:
+		history_team_select.add_item(team_name)
+	var selected_index: int = 0
+	for index in range(history_team_select.item_count):
+		if history_team_select.get_item_text(index) == previous_team:
+			selected_index = index
+			break
+	history_team_select.select(selected_index)
 
 func _setup_team_stats_period_select() -> void:
 	team_stats_period_select.clear()
@@ -1897,7 +1940,7 @@ func _refresh_history(_index: int = -1) -> void:
 	# 保存済み履歴はフィルター後にカードとして再生成します。
 	_clear_children(history_list)
 
-	var filtered_records: Array = store.get_filtered_records(_current_filter_key())
+	var filtered_records: Array = _history_records_for_current_filters()
 	_refresh_team_statistics_cards(store.get_filtered_records("all"))
 	if history_status_label != null and history_panel.visible:
 		_update_history_status_count()
