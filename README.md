@@ -12,7 +12,7 @@ WRO RoboSports Double Tennis の大会運営・選手の練習をサポートす
 タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集などの機能をブラウザ上で利用できます。
 #
 #
-## Web 版（ダウンロード不要）
+# Web 版（ダウンロード不要）
 
 # https://ecleaire.github.io/Tennis-Assist-Public/
 
@@ -105,7 +105,7 @@ WRO RoboSports Double Tennis の大会運営・選手の練習をサポートす
 - OpenAI Codex
 - VOICEVOX
 
-## フィードバック / バグ報告
+# フィードバック / バグ報告
 
 バグや不具合、表示崩れや誤動作などを発見した場合は、  
 お手数をおかけしますが、Issues よりご報告いただけますと幸いです。
