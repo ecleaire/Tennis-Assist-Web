@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260520-1';
+const CACHE_NAME = 'wro-robosports-assist-v20260520-2';
 
 const APP_SHELL = [
 	'./',
@@ -9,6 +9,7 @@ const APP_SHELL = [
 	'./index.png',
 	'./index.icon.png',
 	'./index.apple-touch-icon.png',
+	'./index.pwa.png',
 	'./index.audio.worklet.js',
 	'./index.audio.position.worklet.js',
 	'./manifest.webmanifest'
