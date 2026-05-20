@@ -205,6 +205,11 @@ func _toggle_fullscreen() -> void:
 func toggle_fullscreen_ui() -> void:
 	_toggle_fullscreen()
 
+func set_fullscreen_ui_enabled(enabled: bool) -> void:
+	if is_fullscreen_ui == enabled:
+		return
+	_set_fullscreen_enabled(enabled)
+
 func _set_fullscreen_enabled(enabled: bool) -> void:
 	is_fullscreen_ui = enabled
 	fullscreen_ui_toggled.emit(enabled)

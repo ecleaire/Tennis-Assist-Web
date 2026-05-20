@@ -39,7 +39,9 @@ var flow_status_active: bool = false
 var dashboard_body: BoxContainer
 var dashboard_ball_panel: PanelContainer
 var dashboard_timer_panel: PanelContainer
+var dashboard_ball_screen: Control
 var dashboard_timer_screen: Control
+var dashboard_ball_fullscreen_active: bool = false
 var dashboard_timer_fullscreen_active: bool = false
 
 func _ready() -> void:
@@ -133,6 +135,11 @@ func _create_dashboard_screen() -> void:
 	var ball_screen: Node = dashboard_ball_panel.get_node("DashboardMargin/DashboardStack/BallRandomizerScreen")
 	if ball_screen != null and ball_screen.has_method("set_dashboard_mode"):
 		ball_screen.call_deferred("set_dashboard_mode", true)
+	if ball_screen != null:
+		if ball_screen is Control:
+			dashboard_ball_screen = ball_screen
+		if ball_screen.has_signal("fullscreen_ui_toggled"):
+			ball_screen.connect("fullscreen_ui_toggled", Callable(self, "_on_dashboard_ball_fullscreen_toggled"))
 
 	var timer_screen: Node = dashboard_timer_panel.get_node("DashboardMargin/DashboardStack/TimerScreen")
 	if timer_screen != null:
@@ -192,10 +199,15 @@ func _update_dashboard_layout() -> void:
 
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var portrait: bool = viewport_size.y >= viewport_size.x
-	dashboard_body.vertical = portrait or dashboard_timer_fullscreen_active
+	var fullscreen_active: bool = dashboard_ball_fullscreen_active or dashboard_timer_fullscreen_active
+	dashboard_body.vertical = portrait or fullscreen_active
 	dashboard_body.custom_minimum_size = Vector2(0, 720 if portrait else 460)
 
 	dashboard_ball_panel.visible = not dashboard_timer_fullscreen_active
+	dashboard_timer_panel.visible = not dashboard_ball_fullscreen_active
+	if dashboard_ball_fullscreen_active:
+		dashboard_ball_panel.custom_minimum_size = Vector2(0, maxf(520.0, viewport_size.y - 48.0))
+		return
 	if dashboard_timer_fullscreen_active:
 		dashboard_timer_panel.custom_minimum_size = Vector2(0, maxf(520.0, viewport_size.y - 48.0))
 		return
@@ -207,8 +219,18 @@ func _update_dashboard_layout() -> void:
 		dashboard_ball_panel.custom_minimum_size = Vector2(560, 0)
 		dashboard_timer_panel.custom_minimum_size = Vector2(420, 0)
 
+func _on_dashboard_ball_fullscreen_toggled(is_compact: bool) -> void:
+	dashboard_ball_fullscreen_active = is_compact
+	if is_compact and dashboard_timer_screen != null and dashboard_timer_screen.has_method("set_fullscreen_ui_enabled"):
+		dashboard_timer_screen.call("set_fullscreen_ui_enabled", false)
+	if current_screen == "dashboard":
+		_set_competition_chrome_hidden(is_compact)
+	_update_dashboard_layout()
+
 func _on_dashboard_timer_fullscreen_toggled(is_compact: bool) -> void:
 	dashboard_timer_fullscreen_active = is_compact
+	if is_compact and dashboard_ball_screen != null and dashboard_ball_screen.has_method("set_fullscreen_ui_enabled"):
+		dashboard_ball_screen.call("set_fullscreen_ui_enabled", false)
 	if current_screen == "dashboard":
 		_set_competition_chrome_hidden(is_compact)
 	_update_dashboard_layout()

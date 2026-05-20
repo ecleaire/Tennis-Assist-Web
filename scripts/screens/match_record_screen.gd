@@ -192,6 +192,9 @@ var team_editor_file_dialog: FileDialog
 var team_editor_web_file_callback: JavaScriptObject
 var save_confirm_dialog: ConfirmationDialog
 var action_confirm_dialog: ConfirmationDialog
+var clear_history_confirm_dialog: ConfirmationDialog
+var clear_history_final_dialog: ConfirmationDialog
+var clear_history_export_button: Button
 var pending_confirm_action: String = ""
 var pending_confirm_match_number: int = 0
 var final_agreement_panel: PanelContainer
@@ -216,6 +219,7 @@ func _ready() -> void:
 	_create_team_editor()
 	_create_save_confirm_dialog()
 	_create_action_confirm_dialog()
+	_create_clear_history_confirm_dialogs()
 	_create_agreement_confirm_dialog()
 	_create_final_agreement_panel()
 	_setup_static_options()
@@ -397,6 +401,23 @@ func _create_action_confirm_dialog() -> void:
 	add_child(action_confirm_dialog)
 	action_confirm_dialog.get_ok_button().text = "実行する"
 	action_confirm_dialog.get_cancel_button().text = "キャンセル"
+
+func _create_clear_history_confirm_dialogs() -> void:
+	clear_history_confirm_dialog = ConfirmationDialog.new()
+	clear_history_confirm_dialog.title = "履歴削除の確認"
+	clear_history_confirm_dialog.confirmed.connect(_open_clear_history_final_confirm)
+	add_child(clear_history_confirm_dialog)
+	clear_history_confirm_dialog.get_ok_button().text = "削除確認へ進む"
+	clear_history_confirm_dialog.get_cancel_button().text = "戻る"
+	clear_history_export_button = clear_history_confirm_dialog.add_button("CSVエクスポート", false, "export_csv")
+	clear_history_export_button.pressed.connect(_export_all_history_csv_from_clear_dialog)
+
+	clear_history_final_dialog = ConfirmationDialog.new()
+	clear_history_final_dialog.title = "履歴削除の最終確認"
+	clear_history_final_dialog.confirmed.connect(_clear_all_history_now)
+	add_child(clear_history_final_dialog)
+	clear_history_final_dialog.get_ok_button().text = "完全に削除"
+	clear_history_final_dialog.get_cancel_button().text = "戻る"
 
 func _create_agreement_confirm_dialog() -> void:
 	agreement_confirm_dialog = ConfirmationDialog.new()
@@ -652,11 +673,22 @@ func _request_clear_all_history() -> void:
 	if all_records.is_empty():
 		history_status_label.text = "削除できる履歴はありません。"
 		return
-	_request_confirm_action(
-		"この端末の履歴を全削除",
-		"この端末・このブラウザに保存された対戦履歴 %d件を削除します。\n公開版サーバーや他端末の履歴には影響しません。\nこの操作は元に戻せません。削除しますか？" % all_records.size(),
-		"clear_history"
-	)
+	clear_history_confirm_dialog.dialog_text = "この端末・このブラウザに保存された対戦履歴 %d件を削除します。\n公開版サーバーや他端末の履歴には影響しません。\nこの操作は元に戻せません。\n\n削除前にCSVエクスポートしておくと、あとでExcelやGoogleスプレッドシートに読み込んで確認できます。" % all_records.size()
+	clear_history_confirm_dialog.popup_centered(Vector2i(680, 380))
+
+func _export_all_history_csv_from_clear_dialog() -> void:
+	_export_all_history_csv()
+	if clear_history_confirm_dialog != null:
+		clear_history_confirm_dialog.popup_centered(Vector2i(680, 380))
+
+func _open_clear_history_final_confirm() -> void:
+	var all_records: Array = store.get_filtered_records("all")
+	if all_records.is_empty():
+		history_panel.visible = true
+		history_status_label.text = "削除できる履歴はありません。"
+		return
+	clear_history_final_dialog.dialog_text = "最終確認です。\nこの端末の対戦履歴 %d件をすべて削除します。\nCSVエクスポートが必要な場合は、戻ってから保存してください。\n\n本当に削除しますか？" % all_records.size()
+	clear_history_final_dialog.popup_centered(Vector2i(680, 340))
 
 func _clear_all_history_now() -> void:
 	if not store.clear_records():
