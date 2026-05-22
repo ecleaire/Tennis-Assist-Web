@@ -129,7 +129,7 @@ func _apply_responsive_controls(available_size: Vector2) -> void:
 	fullscreen_button.custom_minimum_size = button_size
 	ready_button.custom_minimum_size = button_size
 	fullscreen_button.text = "全画面解除" if is_fullscreen_ui else "全画面"
-	var field_margin_size: int = 6 if portrait else (10 if dashboard_limited else (8 if is_fullscreen_ui else 18))
+	var field_margin_size: int = 6 if portrait else (10 if dashboard_limited else 18)
 	field_margin.add_theme_constant_override("margin_left", field_margin_size)
 	field_margin.add_theme_constant_override("margin_top", field_margin_size)
 	field_margin.add_theme_constant_override("margin_right", field_margin_size)
@@ -145,23 +145,23 @@ func _update_playfield_size(schedule_transform: bool = true) -> void:
 		available_size = get_viewport_rect().size
 
 	var dashboard_limited: bool = _uses_dashboard_layout_limits()
-	var horizontal_padding: float = 20.0 if dashboard_limited else (16.0 if is_fullscreen_ui else 40.0)
+	var horizontal_padding: float = 20.0 if dashboard_limited else 40.0
 	playfield_portrait = available_size.y > available_size.x * 1.08
 	_apply_responsive_controls(available_size)
 	if playfield_portrait:
 		playfield.ratio = 1.0 / PLAYFIELD_RATIO
-		var horizontal_padding_portrait: float = 12.0 if dashboard_limited else (8.0 if is_fullscreen_ui else 18.0)
-		var reserved_height: float = 88.0 if dashboard_limited else (92.0 if is_fullscreen_ui else 165.0)
+		var horizontal_padding_portrait: float = 12.0 if dashboard_limited else 18.0
+		var reserved_height: float = 88.0 if dashboard_limited else 165.0
 		var height_limited_width: float = maxf(240.0, (available_size.y - reserved_height) / PLAYFIELD_RATIO)
-		var max_portrait_width: float = minf(960.0 if is_fullscreen_ui else 760.0, height_limited_width)
+		var max_portrait_width: float = minf(760.0, height_limited_width)
 		var min_portrait_width: float = minf(300.0, max_portrait_width)
 		var target_portrait_width: float = clampf(available_size.x - horizontal_padding_portrait, min_portrait_width, max_portrait_width)
 		playfield.custom_minimum_size = Vector2(target_portrait_width, target_portrait_width * PLAYFIELD_RATIO)
 	else:
 		playfield.ratio = PLAYFIELD_RATIO
-		var reserved_height_landscape: float = 96.0 if is_fullscreen_ui else 118.0
+		var reserved_height_landscape: float = 118.0
 		var height_limited_width: float = maxf(360.0, (available_size.y - reserved_height_landscape) * PLAYFIELD_RATIO)
-		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_limited else minf(1920.0 if is_fullscreen_ui else 1680.0, height_limited_width)
+		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_limited else minf(1680.0, height_limited_width)
 		var min_width: float = minf(360.0, max_width) if dashboard_limited else 360.0
 		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
 		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)
