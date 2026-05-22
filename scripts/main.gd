@@ -3,8 +3,10 @@ extends Control
 const WROTheme = preload("res://scripts/ui/wro_theme.gd")
 const TimerScreenScene = preload("res://scenes/screens/TimerScreen.tscn")
 const BallRandomizerScreenScene = preload("res://scenes/screens/BallRandomizerScreen.tscn")
+const DevelopmentScreenScript = preload("res://scripts/screens/development_screen.gd")
 
 const TITLE_NORMAL_BBCODE: String = "[font_size=30]WRO RoboSports Assist[/font_size]"
+const ADMIN_ENTRY_PRESS_COUNT: int = 10
 
 @onready var outer_margin: MarginContainer = $MarginContainer
 @onready var root_layout: VBoxContainer = $MarginContainer/RootLayout
@@ -43,11 +45,15 @@ var dashboard_ball_screen: Control
 var dashboard_timer_screen: Control
 var dashboard_ball_fullscreen_active: bool = false
 var dashboard_timer_fullscreen_active: bool = false
+var admin_link_press_streak: int = 0
+var admin_mode_enabled: bool = false
+var development_button: Button
 
 func _ready() -> void:
 	_apply_theme()
 	_create_flow_status_bar()
 	_create_dashboard_screen()
+	_create_development_screen()
 	_update_title_label()
 	_connect_nav_buttons()
 	_connect_fullscreen_signal()
@@ -66,7 +72,26 @@ func _connect_nav_buttons() -> void:
 		var button_variant: Variant = nav_buttons[screen_name]
 		if button_variant is Button:
 			var button: Button = button_variant
-			button.pressed.connect(_show_screen.bind(screen_name))
+			if screen_name == "links":
+				button.pressed.connect(_on_links_button_pressed)
+			else:
+				button.pressed.connect(_on_nav_button_pressed.bind(screen_name))
+
+func _on_nav_button_pressed(screen_name: String) -> void:
+	admin_link_press_streak = 0
+	_show_screen(screen_name)
+
+func _on_links_button_pressed() -> void:
+	admin_link_press_streak += 1
+	if not admin_mode_enabled and admin_link_press_streak >= ADMIN_ENTRY_PRESS_COUNT:
+		_enable_admin_mode()
+	_show_screen("links")
+
+func _enable_admin_mode() -> void:
+	admin_mode_enabled = true
+	admin_link_press_streak = 0
+	if development_button != null:
+		development_button.visible = true
 
 func _connect_fullscreen_signal() -> void:
 	var timer_screen_variant: Variant = screens["timer"]
@@ -160,6 +185,24 @@ func _create_dashboard_screen() -> void:
 	nav_buttons["dashboard"] = dashboard_button
 	screens["dashboard"] = dashboard_scroll
 	_update_dashboard_layout()
+
+func _create_development_screen() -> void:
+	var development_screen: Control = DevelopmentScreenScript.new()
+	development_screen.name = "DevelopmentScreen"
+	development_screen.visible = false
+	development_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	development_screen.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	development_screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_host.add_child(development_screen)
+
+	development_button = Button.new()
+	development_button.text = "開発中"
+	development_button.visible = false
+	development_button.custom_minimum_size = Vector2(110, 48)
+	nav_flow.add_child(development_button)
+
+	nav_buttons["development"] = development_button
+	screens["development"] = development_screen
 
 func _create_dashboard_card(title_text: String, content: Node) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
@@ -336,6 +379,8 @@ func _hide_flow_status() -> void:
 
 func _show_screen(screen_name: String) -> void:
 	if not screens.has(screen_name):
+		return
+	if screen_name == "development" and not admin_mode_enabled:
 		return
 
 	current_screen = screen_name

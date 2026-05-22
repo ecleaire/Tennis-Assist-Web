@@ -3,8 +3,6 @@ extends Control
 signal fullscreen_ui_toggled(is_compact: bool)
 signal match_finished(finish_type: String)
 
-const BUTTON_BOLD_FONT: FontFile = preload("res://assets/fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf")
-
 const MIN_DURATION: int = 60
 const MAX_DURATION: int = 120
 
@@ -209,10 +207,6 @@ func _apply_button_color(button: Button, base_color: Color, text_color: Color = 
 	button.add_theme_stylebox_override("hover", _timer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _timer_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _timer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
-	if is_danger:
-		button.add_theme_font_override("font", BUTTON_BOLD_FONT)
-	else:
-		button.remove_theme_font_override("font")
 	button.add_theme_color_override("font_color", text_color)
 	button.add_theme_color_override("font_hover_color", text_color)
 	button.add_theme_color_override("font_pressed_color", text_color)
