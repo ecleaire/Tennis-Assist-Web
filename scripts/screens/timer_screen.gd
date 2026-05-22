@@ -38,6 +38,10 @@ const PROGRESS_NORMAL_COLOR: Color = Color("2ea8ff")
 const PROGRESS_WARNING_COLOR: Color = Color("ff5d73")
 const SUB_TIMER_ACCENT_COLOR: Color = Color(1.0, 0.0, 0.0, 1.0)
 const HINT_CAPTION_COLOR: Color = Color.WHITE
+const COLOR_BUTTON_SUCCESS: Color = Color("23864b")
+const COLOR_BUTTON_WARNING: Color = Color("8a6420")
+const COLOR_BUTTON_DANGER: Color = Color("8b2635")
+const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 
 @onready var overlay: MarginContainer = $Overlay
 @onready var header_row: HBoxContainer = $Overlay/Layout/HeaderRow
@@ -110,6 +114,7 @@ func _ready() -> void:
 	manual_cancel_button.pressed.connect(manual_time_popup.hide)
 	manual_apply_button.pressed.connect(_apply_manual_duration)
 	_disable_button_focus()
+	_apply_button_colors()
 	_apply_static_text()
 	_setup_progress_styles()
 	legacy_hint_label.visible = false
@@ -148,6 +153,38 @@ func _apply_dashboard_mode() -> void:
 	for button in [reset_button, random_option_count_button]:
 		button.custom_minimum_size = random_button_size
 		button.add_theme_font_size_override("font_size", 18 if dashboard_mode else 20)
+
+func _timer_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 9
+	style.content_margin_bottom = 9
+	return style
+
+func _apply_button_color(button: Button, base_color: Color) -> void:
+	if button == null:
+		return
+	var border_color: Color = base_color.lightened(0.26)
+	button.add_theme_stylebox_override("normal", _timer_button_style(base_color, border_color))
+	button.add_theme_stylebox_override("hover", _timer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
+	button.add_theme_stylebox_override("pressed", _timer_button_style(base_color.darkened(0.12), border_color))
+	button.add_theme_stylebox_override("focus", _timer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+
+func _apply_button_colors() -> void:
+	_apply_button_color(start_button, COLOR_BUTTON_SUCCESS)
+	_apply_button_color(end_button, COLOR_BUTTON_DANGER)
+	_apply_button_color(fullscreen_button, COLOR_BUTTON_UTILITY)
+	_apply_button_color(reset_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(random_option_count_button, COLOR_BUTTON_UTILITY)
+	_apply_button_color(ten_count_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(five_count_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(manual_cancel_button, COLOR_BUTTON_UTILITY)
+	_apply_button_color(manual_apply_button, COLOR_BUTTON_SUCCESS)
 
 func _setup_random_interval_menu() -> void:
 	random_interval_menu.clear()

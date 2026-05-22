@@ -72,6 +72,11 @@ const COLOR_TABLE_WIN: Color = Color(0.18, 0.34, 0.24, 0.95)
 const COLOR_TABLE_LOSE: Color = Color(0.34, 0.18, 0.20, 0.95)
 const COLOR_TABLE_NEUTRAL: Color = Color(0.12, 0.17, 0.29, 0.92)
 const COLOR_TABLE_HEADER: Color = Color(0.17, 0.22, 0.36, 0.98)
+const COLOR_BUTTON_PRIMARY: Color = Color("1f6fb2")
+const COLOR_BUTTON_SUCCESS: Color = Color("23864b")
+const COLOR_BUTTON_WARNING: Color = Color("8a6420")
+const COLOR_BUTTON_DANGER: Color = Color("8b2635")
+const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 const AUTO_WINNER_SCORE: int = -4
 const AUTO_LOSER_SCORE: int = 9
 
@@ -217,8 +222,10 @@ var final_agreement_panel: PanelContainer
 var final_agreement_label: Label
 var team_a_agree_button: Button
 var team_b_agree_button: Button
+var show_final_result_button: Button
 var finalize_series_button: Button
 var agreement_confirm_dialog: ConfirmationDialog
+var final_result_dialog: AcceptDialog
 var pending_agreement_team: String = ""
 var editing_match_number: int = 0
 var team_a_agreed: bool = false
@@ -237,10 +244,12 @@ func _ready() -> void:
 	_create_action_confirm_dialog()
 	_create_clear_history_confirm_dialogs()
 	_create_agreement_confirm_dialog()
+	_create_final_result_dialog()
 	_create_final_agreement_panel()
 	_setup_static_options()
 	_setup_ball_count_options()
 	_connect_signals()
+	_apply_button_colors()
 	store.load_records()
 	team_list = _load_team_list()
 	_populate_team_selects()
@@ -533,12 +542,20 @@ func _create_final_agreement_panel() -> void:
 	team_a_agree_button = _create_flow_button("チームA代表 同意")
 	team_b_agree_button = _create_flow_button("チームB代表 同意")
 	finalize_series_button = _create_flow_button("試合結果を確定")
+	show_final_result_button = _create_flow_button("最終結果を表示")
 	finalize_series_button.disabled = true
 	agree_row.add_child(team_a_agree_button)
 	agree_row.add_child(team_b_agree_button)
+	agree_row.add_child(show_final_result_button)
 	agree_row.add_child(finalize_series_button)
 
 	tournament_layout.add_child(final_agreement_panel)
+
+func _create_final_result_dialog() -> void:
+	final_result_dialog = AcceptDialog.new()
+	final_result_dialog.title = "選手確認用・最終結果"
+	final_result_dialog.ok_button_text = "閉じる"
+	add_child(final_result_dialog)
 
 func _setup_static_options() -> void:
 	# 保存済み履歴の表示フィルターです。
@@ -630,6 +647,7 @@ func _connect_signals() -> void:
 	history_import_file_dialog.file_selected.connect(_load_history_csv_file)
 	team_a_agree_button.pressed.connect(_on_team_a_agreed)
 	team_b_agree_button.pressed.connect(_on_team_b_agreed)
+	show_final_result_button.pressed.connect(_show_final_result_dialog)
 	finalize_series_button.pressed.connect(_finalize_series_result)
 	filter_option.item_selected.connect(_refresh_history)
 	team_stats_select.item_selected.connect(_refresh_history)
@@ -664,6 +682,59 @@ func _perform_pending_confirm_action() -> void:
 			_load_match_for_edit_now(match_number)
 		"clear_history":
 			_clear_all_history_now()
+
+func _record_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	return style
+
+func _apply_button_color(button: Button, base_color: Color) -> void:
+	if button == null:
+		return
+	var border_color: Color = base_color.lightened(0.26)
+	button.add_theme_stylebox_override("normal", _record_button_style(base_color, border_color))
+	button.add_theme_stylebox_override("hover", _record_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
+	button.add_theme_stylebox_override("pressed", _record_button_style(base_color.darkened(0.12), border_color))
+	button.add_theme_stylebox_override("focus", _record_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+
+func _apply_button_colors() -> void:
+	for button in [
+		start_series_button,
+		save_match_button,
+		team_editor_save_button,
+		team_a_agree_button,
+		team_b_agree_button,
+		finalize_series_button
+	]:
+		_apply_button_color(button, COLOR_BUTTON_SUCCESS)
+	for button in [
+		reset_series_button,
+		restart_match_button,
+		reinput_result_button,
+		team_editor_reset_button
+	]:
+		_apply_button_color(button, COLOR_BUTTON_WARNING)
+	for button in [history_clear_button]:
+		_apply_button_color(button, COLOR_BUTTON_DANGER)
+	for button in [
+		back_to_balls_button,
+		back_to_timer_button,
+		history_toggle_button,
+		history_export_button,
+		history_import_button,
+		team_editor_toggle_button,
+		team_editor_load_button,
+		team_editor_cancel_button,
+		show_final_result_button
+	]:
+		_apply_button_color(button, COLOR_BUTTON_UTILITY)
 
 func _load_team_list() -> Array[String]:
 	# CSVは「番号,チーム名」の想定です。読み込めない場合は仮チーム名を使います。
@@ -1557,12 +1628,12 @@ func _clear_target_team_options() -> void:
 	target_team_option.select(0)
 
 func _reset_match_inputs() -> void:
-	# 入力欄を初期状態に戻します。紫は合計2個になるように初期化します。
+	# 入力欄を初期状態に戻します。紫は未入力が分かるように0/0から始めます。
 	is_syncing_ball_options = true
 	_select_option_value(team_a_orange, 0)
 	_select_option_value(team_b_orange, 0)
 	_select_option_value(team_a_purple, 0)
-	_select_option_value(team_b_purple, PURPLE_TOTAL)
+	_select_option_value(team_b_purple, 0)
 	is_syncing_ball_options = false
 	reason_category_option.select(0)
 	_refresh_end_reason_options()
@@ -1793,6 +1864,7 @@ func _show_final_agreement_panel() -> void:
 	final_agreement_panel.visible = true
 	_update_final_agreement_panel()
 	_scroll_to_control(final_agreement_panel)
+	call_deferred("_show_final_result_dialog")
 
 func _update_final_agreement_panel() -> void:
 	if final_agreement_panel == null:
@@ -1803,8 +1875,15 @@ func _update_final_agreement_panel() -> void:
 	team_b_agree_button.text = "%s代表 同意%s" % [team_b_name, "済" if team_b_agreed else ""]
 	team_a_agree_button.disabled = series_finalized
 	team_b_agree_button.disabled = series_finalized
+	show_final_result_button.disabled = not _series_is_finished()
 	finalize_series_button.disabled = series_finalized or not (team_a_agreed and team_b_agreed)
-	final_agreement_label.text = "各チーム代表が結果を確認して同意してください。結果を修正した場合、同意はリセットされます。"
+	final_agreement_label.text = "最終結果表示で1〜3マッチを確認してから、各チーム代表が同意してください。結果を修正した場合、同意はリセットされます。"
+
+func _show_final_result_dialog() -> void:
+	if final_result_dialog == null or not _series_is_finished():
+		return
+	final_result_dialog.dialog_text = _build_final_result_confirmation_text()
+	final_result_dialog.popup_centered(Vector2i(900, 700))
 
 func _on_team_a_agreed() -> void:
 	_request_team_agreement("team_a")
@@ -1859,6 +1938,61 @@ func _build_agreement_confirmation_text(team_name: String) -> String:
 	lines.append(_final_summary_text(_series_summary()))
 	lines.append("")
 	lines.append("内容が正しければ「同意する」を押してください。")
+	return "\n".join(lines)
+
+func _build_final_result_confirmation_text() -> String:
+	var lines: PackedStringArray = []
+	var team_a_name: String = str(active_series.get("team_a", "チームA"))
+	var team_b_name: String = str(active_series.get("team_b", "チームB"))
+	var summary: Dictionary = _series_summary()
+	lines.append("%s 第%d試合" % [
+		str(active_series.get("court", "Aコート")),
+		int(active_series.get("series_number", 1))
+	])
+	lines.append("%s vs %s" % [team_a_name, team_b_name])
+	lines.append("")
+	lines.append("【マッチ別結果】")
+	var records: Array = active_series.get("records", [])
+	for record in records:
+		lines.append("第%dマッチ  勝者: %s" % [
+			int(record.get("match_number", 0)),
+			str(record.get("winner", ""))
+		])
+		lines.append("  %s: 得点%d / 橙%d / 紫%d / 違反%d" % [
+			team_a_name,
+			int(record.get("team_a_score", 0)),
+			int(record.get("team_a_orange", 0)),
+			int(record.get("team_a_purple", 0)),
+			_violation_count_for_record(record, team_a_name)
+		])
+		lines.append("  %s: 得点%d / 橙%d / 紫%d / 違反%d" % [
+			team_b_name,
+			int(record.get("team_b_score", 0)),
+			int(record.get("team_b_orange", 0)),
+			int(record.get("team_b_purple", 0)),
+			_violation_count_for_record(record, team_b_name)
+		])
+		lines.append("  終了理由: %s" % str(record.get("end_reason", "")))
+		lines.append("")
+	lines.append("【最終結果】")
+	lines.append("%s: %d勝 %d敗 / 合計得点%d / 違反%d" % [
+		team_a_name,
+		int(summary.get("team_a_wins", 0)),
+		int(summary.get("team_b_wins", 0)),
+		int(summary.get("team_a_score", 0)),
+		int(summary.get("team_a_violations", 0))
+	])
+	lines.append("%s: %d勝 %d敗 / 合計得点%d / 違反%d" % [
+		team_b_name,
+		int(summary.get("team_b_wins", 0)),
+		int(summary.get("team_a_wins", 0)),
+		int(summary.get("team_b_score", 0)),
+		int(summary.get("team_b_violations", 0))
+	])
+	lines.append("引き分け: %d" % int(summary.get("draws", 0)))
+	lines.append(_final_summary_text(summary))
+	lines.append("")
+	lines.append("この内容を選手確認用として表示しています。紙面記録と照合してください。")
 	return "\n".join(lines)
 
 func _finalize_series_result() -> void:
@@ -2029,6 +2163,10 @@ func _validate_match_result_selection() -> bool:
 		if selected_target == TARGET_TEAM_UNSELECTED or selected_target == TARGET_TEAM_DRAW:
 			tournament_save_status_label.text = "違反したチームを選択してください。"
 			return false
+	var purple_total: int = _selected_option_value(team_a_purple) + _selected_option_value(team_b_purple)
+	if not _is_auto_defeat_reason(reason_category, "") and purple_total != PURPLE_TOTAL:
+		tournament_save_status_label.text = "紫ボールは合計%d個になるように選択してください。" % PURPLE_TOTAL
+		return false
 	return true
 
 
@@ -2286,6 +2424,7 @@ func _edit_match_button_row(match_number: int) -> HBoxContainer:
 	var button: Button = Button.new()
 	button.text = "第%dマッチを再入力" % match_number
 	button.custom_minimum_size = Vector2(180, 38)
+	_apply_button_color(button, COLOR_BUTTON_WARNING)
 	button.pressed.connect(_load_match_for_edit.bind(match_number))
 	row.add_child(button)
 	return row

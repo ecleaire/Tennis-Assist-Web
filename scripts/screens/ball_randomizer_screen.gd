@@ -19,6 +19,10 @@ signal preparation_completed(match_number: int)
 @onready var playfield_image: TextureRect = $Layout/FieldPanel/FieldMargin/FieldCenter/Playfield/PlayfieldStack/PlayfieldImage
 
 const PLAYFIELD_RATIO: float = 2.066
+const COLOR_BUTTON_PRIMARY: Color = Color("1f6fb2")
+const COLOR_BUTTON_SUCCESS: Color = Color("23864b")
+const COLOR_BUTTON_WARNING: Color = Color("8a6420")
+const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 
 var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
@@ -38,6 +42,7 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 	ready_button.visible = false
 	_disable_button_focus()
+	_apply_button_colors()
 	status_label.text = "4ライン分の配置を準備しました。紫ボールは180度反転で配置します。"
 
 func set_dashboard_mode(enabled: bool) -> void:
@@ -66,6 +71,33 @@ func _on_visibility_changed() -> void:
 
 func _update_dashboard_mode() -> void:
 	_apply_responsive_controls(_get_effective_available_size())
+
+func _randomizer_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(14)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 9
+	style.content_margin_bottom = 9
+	return style
+
+func _apply_button_color(button: Button, base_color: Color) -> void:
+	if button == null:
+		return
+	var border_color: Color = base_color.lightened(0.26)
+	button.add_theme_stylebox_override("normal", _randomizer_button_style(base_color, border_color))
+	button.add_theme_stylebox_override("hover", _randomizer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
+	button.add_theme_stylebox_override("pressed", _randomizer_button_style(base_color.darkened(0.12), border_color))
+	button.add_theme_stylebox_override("focus", _randomizer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+
+func _apply_button_colors() -> void:
+	_apply_button_color(randomize_button, COLOR_BUTTON_PRIMARY)
+	_apply_button_color(reset_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(fullscreen_button, COLOR_BUTTON_UTILITY)
+	_apply_button_color(ready_button, COLOR_BUTTON_SUCCESS)
 
 func _apply_responsive_controls(available_size: Vector2) -> void:
 	var portrait: bool = available_size.y > available_size.x * 1.08
