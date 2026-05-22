@@ -38,10 +38,12 @@ const PROGRESS_NORMAL_COLOR: Color = Color("2ea8ff")
 const PROGRESS_WARNING_COLOR: Color = Color("ff5d73")
 const SUB_TIMER_ACCENT_COLOR: Color = Color(1.0, 0.0, 0.0, 1.0)
 const HINT_CAPTION_COLOR: Color = Color.WHITE
-const COLOR_BUTTON_SUCCESS: Color = Color("32d97a")
+const COLOR_BUTTON_SUCCESS: Color = Color("2ec66f")
 const COLOR_BUTTON_WARNING: Color = Color("35cfff")
-const COLOR_BUTTON_DANGER: Color = Color("ff4d4d")
+const COLOR_BUTTON_DANGER: Color = Color("ff0000")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
+const COLOR_BUTTON_SUCCESS_TEXT: Color = Color("07111f")
+const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
 
 @onready var overlay: MarginContainer = $Overlay
 @onready var header_row: HBoxContainer = $Overlay/Layout/HeaderRow
@@ -145,14 +147,14 @@ func _apply_dashboard_mode() -> void:
 	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 10)
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
-	var primary_button_size: Vector2 = Vector2(118, 42) if dashboard_mode else Vector2(150, 44)
+	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(150, 44)
 	for button in [start_button, end_button, fullscreen_button, ten_count_button, five_count_button]:
 		button.custom_minimum_size = primary_button_size
 
-	var random_button_size: Vector2 = Vector2(150, 58) if dashboard_mode else Vector2(190, 58)
+	var random_button_size: Vector2 = Vector2(132, 44) if dashboard_mode else Vector2(190, 58)
 	for button in [reset_button, random_option_count_button]:
 		button.custom_minimum_size = random_button_size
-		button.add_theme_font_size_override("font_size", 18 if dashboard_mode else 20)
+		button.add_theme_font_size_override("font_size", 16 if dashboard_mode else 20)
 
 func _timer_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
@@ -166,7 +168,7 @@ func _timer_button_style(bg_color: Color, border_color: Color, border_width: int
 	style.content_margin_bottom = 9
 	return style
 
-func _apply_button_color(button: Button, base_color: Color) -> void:
+func _apply_button_color(button: Button, base_color: Color, text_color: Color = COLOR_BUTTON_LIGHT_TEXT) -> void:
 	if button == null:
 		return
 	var border_color: Color = base_color.lightened(0.26)
@@ -174,17 +176,24 @@ func _apply_button_color(button: Button, base_color: Color) -> void:
 	button.add_theme_stylebox_override("hover", _timer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _timer_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _timer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_hover_color", text_color)
+	button.add_theme_color_override("font_pressed_color", text_color)
+	button.add_theme_color_override("font_focus_color", text_color)
+	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.35))
+	button.add_theme_constant_override("outline_size", 1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0)
+	button.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0))
 
 func _apply_button_colors() -> void:
-	_apply_button_color(start_button, COLOR_BUTTON_SUCCESS)
+	_apply_button_color(start_button, COLOR_BUTTON_SUCCESS, COLOR_BUTTON_SUCCESS_TEXT)
 	_apply_button_color(end_button, COLOR_BUTTON_DANGER)
 	_apply_button_color(fullscreen_button, COLOR_BUTTON_UTILITY)
-	_apply_button_color(reset_button, COLOR_BUTTON_DANGER)
+	_apply_button_color(reset_button, COLOR_BUTTON_UTILITY)
 	_apply_button_color(random_option_count_button, COLOR_BUTTON_UTILITY)
-	_apply_button_color(ten_count_button, COLOR_BUTTON_WARNING)
-	_apply_button_color(five_count_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(ten_count_button, COLOR_BUTTON_DANGER)
+	_apply_button_color(five_count_button, COLOR_BUTTON_DANGER)
 	_apply_button_color(manual_cancel_button, COLOR_BUTTON_UTILITY)
-	_apply_button_color(manual_apply_button, COLOR_BUTTON_SUCCESS)
+	_apply_button_color(manual_apply_button, COLOR_BUTTON_SUCCESS, COLOR_BUTTON_SUCCESS_TEXT)
 
 func _setup_random_interval_menu() -> void:
 	random_interval_menu.clear()
@@ -269,6 +278,11 @@ func _handle_enter_key() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_responsive_sizes()
+
+func refresh_responsive_layout() -> void:
+	_apply_dashboard_mode()
+	_update_control_visibility()
+	_update_responsive_sizes()
 
 func _toggle_start_stop() -> void:
 	if is_running:
@@ -579,16 +593,24 @@ func _update_responsive_sizes() -> void:
 	var available_width: float = size.x
 	if available_width <= 1.0:
 		available_width = get_viewport_rect().size.x
+	var available_height: float = size.y
+	if available_height <= 1.0:
+		available_height = get_viewport_rect().size.y
 
 	var dashboard_fullscreen: bool = dashboard_mode and is_compact_fullscreen_ui
-	var font_scale: float = 0.30 if dashboard_fullscreen else (0.24 if dashboard_mode else (0.28 if is_compact_fullscreen_ui else 0.20))
-	var min_size: int = 128 if dashboard_fullscreen else (82 if dashboard_mode else (128 if is_compact_fullscreen_ui else 84))
-	var max_size: int = 420 if dashboard_fullscreen else (220 if dashboard_mode else (420 if is_compact_fullscreen_ui else 300))
+	var font_scale: float = 0.28 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.25 if is_compact_fullscreen_ui else 0.18))
+	var min_size: int = 118 if dashboard_fullscreen else (72 if dashboard_mode else (116 if is_compact_fullscreen_ui else 76))
+	var max_size: int = 380 if dashboard_fullscreen else (180 if dashboard_mode else (360 if is_compact_fullscreen_ui else 260))
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
+	var controls_height: float = 150.0 if dashboard_mode else 174.0
+	var header_height: float = 0.0 if (dashboard_mode or is_compact_fullscreen_ui) else 54.0
+	var caption_height: float = 58.0 if dashboard_mode else 70.0
+	var height_limited_font: int = int(maxf(float(min_size), (available_height - controls_height - header_height - caption_height) * 0.34))
+	font_size = mini(font_size, height_limited_font)
 	timer_label.add_theme_font_size_override("font_size", font_size)
 	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90))))
-	var min_height: float = 180.0 if dashboard_fullscreen else (120.0 if dashboard_mode else 160.0)
-	var max_height: float = 360.0 if dashboard_fullscreen else (260.0 if dashboard_mode else 360.0)
+	var min_height: float = 170.0 if dashboard_fullscreen else (92.0 if dashboard_mode else 140.0)
+	var max_height: float = 320.0 if dashboard_fullscreen else (205.0 if dashboard_mode else 320.0)
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)

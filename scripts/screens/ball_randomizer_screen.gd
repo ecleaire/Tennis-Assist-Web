@@ -20,9 +20,10 @@ signal preparation_completed(match_number: int)
 
 const PLAYFIELD_RATIO: float = 2.066
 const COLOR_BUTTON_PRIMARY: Color = Color("1f6fb2")
-const COLOR_BUTTON_SUCCESS: Color = Color("32d97a")
-const COLOR_BUTTON_WARNING: Color = Color("ff4d4d")
+const COLOR_BUTTON_SUCCESS: Color = Color("2ec66f")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
+const COLOR_BUTTON_SUCCESS_TEXT: Color = Color("07111f")
+const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
 
 var workflow_match_number: int = 0
 var workflow_preparation_active: bool = false
@@ -84,7 +85,7 @@ func _randomizer_button_style(bg_color: Color, border_color: Color, border_width
 	style.content_margin_bottom = 9
 	return style
 
-func _apply_button_color(button: Button, base_color: Color) -> void:
+func _apply_button_color(button: Button, base_color: Color, text_color: Color = COLOR_BUTTON_LIGHT_TEXT) -> void:
 	if button == null:
 		return
 	var border_color: Color = base_color.lightened(0.26)
@@ -92,12 +93,19 @@ func _apply_button_color(button: Button, base_color: Color) -> void:
 	button.add_theme_stylebox_override("hover", _randomizer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _randomizer_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _randomizer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_hover_color", text_color)
+	button.add_theme_color_override("font_pressed_color", text_color)
+	button.add_theme_color_override("font_focus_color", text_color)
+	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.35))
+	button.add_theme_constant_override("outline_size", 1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0)
+	button.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0))
 
 func _apply_button_colors() -> void:
 	_apply_button_color(randomize_button, COLOR_BUTTON_PRIMARY)
-	_apply_button_color(reset_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(reset_button, COLOR_BUTTON_UTILITY)
 	_apply_button_color(fullscreen_button, COLOR_BUTTON_UTILITY)
-	_apply_button_color(ready_button, COLOR_BUTTON_SUCCESS)
+	_apply_button_color(ready_button, COLOR_BUTTON_SUCCESS, COLOR_BUTTON_SUCCESS_TEXT)
 
 func _apply_responsive_controls(available_size: Vector2) -> void:
 	var portrait: bool = available_size.y > available_size.x * 1.08

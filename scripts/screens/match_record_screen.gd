@@ -73,10 +73,12 @@ const COLOR_TABLE_LOSE: Color = Color(0.34, 0.18, 0.20, 0.95)
 const COLOR_TABLE_NEUTRAL: Color = Color(0.12, 0.17, 0.29, 0.92)
 const COLOR_TABLE_HEADER: Color = Color(0.17, 0.22, 0.36, 0.98)
 const COLOR_BUTTON_PRIMARY: Color = Color("1f6fb2")
-const COLOR_BUTTON_SUCCESS: Color = Color("32d97a")
+const COLOR_BUTTON_SUCCESS: Color = Color("2ec66f")
 const COLOR_BUTTON_WARNING: Color = Color("35cfff")
-const COLOR_BUTTON_DANGER: Color = Color("ff4d4d")
+const COLOR_BUTTON_DANGER: Color = Color("ff0000")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
+const COLOR_BUTTON_SUCCESS_TEXT: Color = Color("07111f")
+const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
 const AUTO_WINNER_SCORE: int = -4
 const AUTO_LOSER_SCORE: int = 9
 
@@ -226,6 +228,7 @@ var show_final_result_button: Button
 var finalize_series_button: Button
 var final_complete_panel: PanelContainer
 var final_complete_title_label: Label
+var final_complete_winner_label: Label
 var final_complete_body_label: Label
 var next_series_button: Button
 var agreement_confirm_dialog: ConfirmationDialog
@@ -581,6 +584,15 @@ func _create_final_complete_panel() -> void:
 	final_complete_title_label.add_theme_font_size_override("font_size", 34)
 	layout.add_child(final_complete_title_label)
 
+	final_complete_winner_label = Label.new()
+	final_complete_winner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	final_complete_winner_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	final_complete_winner_label.add_theme_color_override("font_color", COLOR_BUTTON_SUCCESS)
+	final_complete_winner_label.add_theme_constant_override("outline_size", 2)
+	final_complete_winner_label.add_theme_color_override("font_outline_color", Color(0.02, 0.05, 0.10, 0.95))
+	final_complete_winner_label.add_theme_font_size_override("font_size", 28)
+	layout.add_child(final_complete_winner_label)
+
 	final_complete_body_label = Label.new()
 	final_complete_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	final_complete_body_label.add_theme_font_size_override("font_size", 22)
@@ -742,7 +754,7 @@ func _record_button_style(bg_color: Color, border_color: Color, border_width: in
 	style.content_margin_bottom = 10
 	return style
 
-func _apply_button_color(button: Button, base_color: Color) -> void:
+func _apply_button_color(button: Button, base_color: Color, text_color: Color = COLOR_BUTTON_LIGHT_TEXT) -> void:
 	if button == null:
 		return
 	var border_color: Color = base_color.lightened(0.26)
@@ -750,6 +762,13 @@ func _apply_button_color(button: Button, base_color: Color) -> void:
 	button.add_theme_stylebox_override("hover", _record_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _record_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _record_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_hover_color", text_color)
+	button.add_theme_color_override("font_pressed_color", text_color)
+	button.add_theme_color_override("font_focus_color", text_color)
+	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.35))
+	button.add_theme_constant_override("outline_size", 1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0)
+	button.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0))
 
 func _apply_button_colors() -> void:
 	for button in [
@@ -761,7 +780,7 @@ func _apply_button_colors() -> void:
 		finalize_series_button,
 		next_series_button
 	]:
-		_apply_button_color(button, COLOR_BUTTON_SUCCESS)
+		_apply_button_color(button, COLOR_BUTTON_SUCCESS, COLOR_BUTTON_SUCCESS_TEXT)
 	for button in [
 		reset_series_button,
 		team_editor_reset_button
@@ -1925,6 +1944,8 @@ func _update_final_agreement_panel() -> void:
 	var team_b_name: String = str(active_series.get("team_b", "チームB"))
 	team_a_agree_button.text = "%s代表 同意%s" % [team_a_name, "済" if team_a_agreed else ""]
 	team_b_agree_button.text = "%s代表 同意%s" % [team_b_name, "済" if team_b_agreed else ""]
+	_apply_button_color(team_a_agree_button, COLOR_BUTTON_SUCCESS if team_a_agreed else COLOR_BUTTON_DANGER, COLOR_BUTTON_SUCCESS_TEXT if team_a_agreed else COLOR_BUTTON_LIGHT_TEXT)
+	_apply_button_color(team_b_agree_button, COLOR_BUTTON_SUCCESS if team_b_agreed else COLOR_BUTTON_DANGER, COLOR_BUTTON_SUCCESS_TEXT if team_b_agreed else COLOR_BUTTON_LIGHT_TEXT)
 	team_a_agree_button.disabled = series_finalized
 	team_b_agree_button.disabled = series_finalized
 	show_final_result_button.disabled = not _series_is_finished()
@@ -2076,7 +2097,7 @@ func _build_final_complete_text() -> String:
 	lines.append("%s 勝数: %d" % [team_a_name, int(summary.get("team_a_wins", 0))])
 	lines.append("%s 勝数: %d" % [team_b_name, int(summary.get("team_b_wins", 0))])
 	lines.append("引き分け数: %d" % int(summary.get("draws", 0)))
-	lines.append("総合勝者: %s" % _overall_winner_name(summary))
+	lines.append("試合勝者: %s" % _overall_winner_name(summary))
 	lines.append("")
 	lines.append("試合が終了しました。お疲れさまでした。")
 	return "\n".join(lines)
@@ -2109,6 +2130,7 @@ func _finalize_series_result() -> void:
 func _show_final_complete_panel() -> void:
 	final_agreement_panel.visible = false
 	final_complete_panel.visible = true
+	final_complete_winner_label.text = "試合勝者: %s" % _overall_winner_name(_series_summary())
 	final_complete_body_label.text = _build_final_complete_text()
 	tournament_status_label.text = "試合が終了しました。お疲れさまでした。"
 	tournament_save_status_label.text = "両チーム代表の同意を確認し、試合結果を確定しました。"
@@ -2116,6 +2138,7 @@ func _show_final_complete_panel() -> void:
 
 func _start_next_series_after_complete() -> void:
 	_reset_series_state("次の対戦を開始できます。", "前の試合結果は対戦履歴に保存されています。")
+	_reset_scroll_to_top()
 
 func _build_series_result_record() -> Dictionary:
 	var summary: Dictionary = _series_summary()
@@ -2167,6 +2190,13 @@ func _build_series_result_record() -> Dictionary:
 func _scroll_to_control(target: Control) -> void:
 	var target_y: int = int(target.global_position.y - scroll.global_position.y + scroll.scroll_vertical) - 18
 	scroll.scroll_vertical = maxi(0, target_y)
+
+func _reset_scroll_to_top() -> void:
+	if scroll == null:
+		return
+	scroll.scroll_vertical = 0
+	await get_tree().process_frame
+	scroll.scroll_vertical = 0
 
 func _build_series_record() -> Dictionary:
 	var team_a_name: String = active_series.get("team_a", "")
