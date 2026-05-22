@@ -40,7 +40,7 @@ const SUB_TIMER_ACCENT_COLOR: Color = Color(1.0, 0.0, 0.0, 1.0)
 const HINT_CAPTION_COLOR: Color = Color.WHITE
 const COLOR_BUTTON_SUCCESS: Color = Color("2ec66f")
 const COLOR_BUTTON_WARNING: Color = Color("35cfff")
-const COLOR_BUTTON_DANGER: Color = Color("ff0000")
+const COLOR_BUTTON_DANGER: Color = Color("e84a4a")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 const COLOR_BUTTON_SUCCESS_TEXT: Color = Color("07111f")
 const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
@@ -99,6 +99,7 @@ var bottom_caption_text: String = HINT_TEXT
 var last_space_press_msec: int = -1000
 var timer_has_started: bool = false
 var match_finish_signal_emitted: bool = false
+var auto_fullscreen_requested_for_run: bool = false
 var dashboard_mode: bool = false
 
 func _ready() -> void:
@@ -106,6 +107,7 @@ func _ready() -> void:
 	_setup_random_interval_menu()
 	_setup_manual_time_options()
 	bottom_stack.move_child(random_controls_row, controls_row.get_index() + 1)
+	_arrange_timer_buttons()
 	start_button.pressed.connect(_toggle_start_stop)
 	end_button.pressed.connect(_end_timer)
 	fullscreen_button.pressed.connect(_toggle_fullscreen)
@@ -147,14 +149,41 @@ func _apply_dashboard_mode() -> void:
 	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 10)
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
-	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(150, 44)
-	for button in [start_button, end_button, fullscreen_button, ten_count_button, five_count_button]:
+	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(138, 44)
+	for button in [start_button, end_button, fullscreen_button]:
 		button.custom_minimum_size = primary_button_size
 
-	var random_button_size: Vector2 = Vector2(132, 44) if dashboard_mode else Vector2(190, 58)
+	var random_button_size: Vector2 = Vector2(132, 40) if dashboard_mode else Vector2(164, 44)
 	for button in [reset_button, random_option_count_button]:
 		button.custom_minimum_size = random_button_size
 		button.add_theme_font_size_override("font_size", 16 if dashboard_mode else 20)
+
+	var count_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(132, 44)
+	for button in [ten_count_button, five_count_button]:
+		button.custom_minimum_size = count_button_size
+
+func _arrange_timer_buttons() -> void:
+	if reset_button.get_parent() != controls_row:
+		reset_button.reparent(controls_row)
+	if random_option_count_button.get_parent() != controls_row:
+		random_option_count_button.reparent(controls_row)
+	random_controls_row.visible = false
+	var ordered_nodes: Array[Node] = [
+		start_button,
+		end_button,
+		fullscreen_button,
+		reset_button,
+		random_option_count_button,
+		count_spacer6,
+		ten_count_button,
+		five_count_button
+	]
+	for index in range(ordered_nodes.size()):
+		controls_row.move_child(ordered_nodes[index], index)
+	controls_row.alignment = FlowContainer.ALIGNMENT_BEGIN
+	count_spacer6.visible = true
+	count_spacer6.custom_minimum_size = Vector2(24, 40)
+	count_spacer6.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 func _timer_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
@@ -293,8 +322,12 @@ func _toggle_start_stop() -> void:
 func _start_timer() -> void:
 	if remaining_time <= 0.0:
 		return
+	var should_auto_fullscreen: bool = not timer_has_started and not auto_fullscreen_requested_for_run
 	is_running = true
 	timer_has_started = true
+	if should_auto_fullscreen:
+		auto_fullscreen_requested_for_run = true
+		_set_fullscreen_enabled(true)
 	last_space_press_msec = -1000
 	mode_label.text = RUNNING_TEXT
 	_set_bottom_caption_text("")
@@ -316,6 +349,7 @@ func _pause_timer() -> void:
 
 func _end_timer() -> void:
 	is_running = false
+	auto_fullscreen_requested_for_run = false
 	last_space_press_msec = -1000
 	remaining_time = 0.0
 	mode_label.text = FINISHED_TEXT
@@ -331,6 +365,7 @@ func _reset_timer() -> void:
 	is_running = false
 	timer_has_started = false
 	match_finish_signal_emitted = false
+	auto_fullscreen_requested_for_run = false
 	last_space_press_msec = -1000
 	total_duration = _generate_duration_from_mode()
 	remaining_time = float(total_duration)
@@ -432,8 +467,10 @@ func _update_sub_timer_visuals() -> void:
 
 	var whole_seconds: int = int(ceil(sub_timer_remaining))
 	sub_timer_label.text = "00 : %02d" % whole_seconds
+	sub_timer_label.add_theme_color_override("font_color", PROGRESS_WARNING_COLOR)
 	sub_timer_caption_label.text = sub_timer_caption_text
 	_apply_caption_visuals(false)
+	_update_responsive_sizes()
 
 func _toggle_fullscreen() -> void:
 	_set_fullscreen_enabled(not is_compact_fullscreen_ui)
@@ -527,15 +564,18 @@ func _set_cold_notice_visible(visible_state: bool) -> void:
 func _set_sub_timer_visible(visible_state: bool) -> void:
 	if visible_state:
 		sub_timer_label.visible = true
+		sub_timer_label.add_theme_color_override("font_color", PROGRESS_WARNING_COLOR)
 		sub_timer_caption_label.text = sub_timer_caption_text
 		_apply_caption_visuals(false)
 		var initial_seconds: int = int(ceil(sub_timer_total))
 		sub_timer_label.text = "00 : %02d" % initial_seconds
 	else:
 		sub_timer_label.visible = false
+		sub_timer_label.remove_theme_color_override("font_color")
 		sub_timer_caption_label.text = bottom_caption_text
 		_apply_caption_visuals(true)
 		sub_timer_label.text = ""
+	_update_responsive_sizes()
 
 func _set_bottom_caption_text(text: String) -> void:
 	bottom_caption_text = text
@@ -572,7 +612,7 @@ func _update_control_visibility() -> void:
 	count_spacer2.visible = false
 	count_spacer4.visible = false
 	count_spacer5.visible = false
-	count_spacer6.visible = false
+	count_spacer6.visible = true
 	count_spacer7.visible = false
 
 func _set_button_placeholder(button: Button, hidden: bool) -> void:
@@ -598,25 +638,26 @@ func _update_responsive_sizes() -> void:
 		available_height = get_viewport_rect().size.y
 
 	var dashboard_fullscreen: bool = dashboard_mode and is_compact_fullscreen_ui
-	var font_scale: float = 0.28 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.25 if is_compact_fullscreen_ui else 0.18))
-	var min_size: int = 118 if dashboard_fullscreen else (72 if dashboard_mode else (116 if is_compact_fullscreen_ui else 76))
-	var max_size: int = 380 if dashboard_fullscreen else (180 if dashboard_mode else (360 if is_compact_fullscreen_ui else 260))
+	var font_scale: float = 0.34 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.32 if is_compact_fullscreen_ui else 0.18))
+	var min_size: int = 136 if dashboard_fullscreen else (72 if dashboard_mode else (132 if is_compact_fullscreen_ui else 76))
+	var max_size: int = 500 if dashboard_fullscreen else (180 if dashboard_mode else (500 if is_compact_fullscreen_ui else 260))
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
 	var controls_height: float = 150.0 if dashboard_mode else 174.0
 	var header_height: float = 0.0 if (dashboard_mode or is_compact_fullscreen_ui) else 54.0
 	var caption_height: float = 58.0 if dashboard_mode else 70.0
-	var height_limited_font: int = int(maxf(float(min_size), (available_height - controls_height - header_height - caption_height) * 0.34))
+	var height_ratio: float = 0.48 if (dashboard_fullscreen or is_compact_fullscreen_ui) else 0.34
+	var height_limited_font: int = int(maxf(float(min_size), (available_height - controls_height - header_height - caption_height) * height_ratio))
 	font_size = mini(font_size, height_limited_font)
 	timer_label.add_theme_font_size_override("font_size", font_size)
 	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90))))
-	var min_height: float = 170.0 if dashboard_fullscreen else (92.0 if dashboard_mode else 140.0)
-	var max_height: float = 320.0 if dashboard_fullscreen else (205.0 if dashboard_mode else 320.0)
+	var min_height: float = 200.0 if dashboard_fullscreen else (92.0 if dashboard_mode else (190.0 if is_compact_fullscreen_ui else 140.0))
+	var max_height: float = 430.0 if dashboard_fullscreen else (205.0 if dashboard_mode else (430.0 if is_compact_fullscreen_ui else 320.0))
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)
-	var sub_timer_size: int = clampi(int(font_size * 0.20), 26, 64)
+	var sub_timer_size: int = clampi(int(font_size * (0.34 if sub_timer_running else 0.22)), 36, 150)
 	cold_notice_label.add_theme_font_size_override("font_size", notice_size)
-	sub_timer_caption_label.add_theme_font_size_override("font_size", clampi(int(sub_timer_size * 0.66), 20, 34))
+	sub_timer_caption_label.add_theme_font_size_override("font_size", clampi(int(sub_timer_size * 0.48), 22, 48))
 	sub_timer_label.add_theme_font_size_override("font_size", sub_timer_size)
 
 func _show_random_interval_menu() -> void:
