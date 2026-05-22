@@ -20,8 +20,8 @@ signal preparation_completed(match_number: int)
 
 const PLAYFIELD_RATIO: float = 2.066
 const COLOR_BUTTON_PRIMARY: Color = Color("1f6fb2")
-const COLOR_BUTTON_SUCCESS: Color = Color("23864b")
-const COLOR_BUTTON_WARNING: Color = Color("8a6420")
+const COLOR_BUTTON_SUCCESS: Color = Color("32d97a")
+const COLOR_BUTTON_WARNING: Color = Color("ff4d4d")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 
 var workflow_match_number: int = 0

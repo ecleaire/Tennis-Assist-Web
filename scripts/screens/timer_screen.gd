@@ -38,9 +38,9 @@ const PROGRESS_NORMAL_COLOR: Color = Color("2ea8ff")
 const PROGRESS_WARNING_COLOR: Color = Color("ff5d73")
 const SUB_TIMER_ACCENT_COLOR: Color = Color(1.0, 0.0, 0.0, 1.0)
 const HINT_CAPTION_COLOR: Color = Color.WHITE
-const COLOR_BUTTON_SUCCESS: Color = Color("23864b")
-const COLOR_BUTTON_WARNING: Color = Color("8a6420")
-const COLOR_BUTTON_DANGER: Color = Color("8b2635")
+const COLOR_BUTTON_SUCCESS: Color = Color("32d97a")
+const COLOR_BUTTON_WARNING: Color = Color("35cfff")
+const COLOR_BUTTON_DANGER: Color = Color("ff4d4d")
 const COLOR_BUTTON_UTILITY: Color = Color("24426f")
 
 @onready var overlay: MarginContainer = $Overlay
@@ -179,7 +179,7 @@ func _apply_button_colors() -> void:
 	_apply_button_color(start_button, COLOR_BUTTON_SUCCESS)
 	_apply_button_color(end_button, COLOR_BUTTON_DANGER)
 	_apply_button_color(fullscreen_button, COLOR_BUTTON_UTILITY)
-	_apply_button_color(reset_button, COLOR_BUTTON_WARNING)
+	_apply_button_color(reset_button, COLOR_BUTTON_DANGER)
 	_apply_button_color(random_option_count_button, COLOR_BUTTON_UTILITY)
 	_apply_button_color(ten_count_button, COLOR_BUTTON_WARNING)
 	_apply_button_color(five_count_button, COLOR_BUTTON_WARNING)
