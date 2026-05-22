@@ -25,6 +25,15 @@ const RECORD_KIND_SERIES_RESULT: String = "試合結果"
 const TEAM_STATS_PERIOD_TODAY: int = 0
 const TEAM_STATS_PERIOD_WEEK: int = 1
 const TEAM_STATS_PERIOD_MONTH: int = 2
+const HISTORY_SORT_NEWEST: int = 0
+const HISTORY_SORT_OLDEST: int = 1
+const HISTORY_RESULT_ALL: int = 0
+const HISTORY_RESULT_WIN: int = 1
+const HISTORY_RESULT_LOSS: int = 2
+const HISTORY_RESULT_DRAW: int = 3
+const HISTORY_KIND_ALL: int = 0
+const HISTORY_KIND_MATCH: int = 1
+const HISTORY_KIND_SERIES_RESULT: int = 2
 const CSV_EXPORT_COLUMNS: PackedStringArray = [
 	"日時",
 	"記録種別",
@@ -179,7 +188,11 @@ var court_select: OptionButton
 var history_toggle_button: Button
 var history_export_button: Button
 var history_import_button: Button
+var history_filter_row: HFlowContainer
 var history_team_select: OptionButton
+var history_sort_select: OptionButton
+var history_result_select: OptionButton
+var history_kind_select: OptionButton
 var history_clear_button: Button
 var history_status_label: Label
 var team_editor_panel: PanelContainer
@@ -309,9 +322,38 @@ func _create_history_tools() -> void:
 	history_toggle_button = _create_flow_button("対戦履歴閲覧")
 	team_selection_layout.add_child(history_toggle_button)
 
-	history_team_select = OptionButton.new()
-	history_team_select.custom_minimum_size = Vector2(190, 44)
-	history_header.add_child(history_team_select)
+	var history_layout: VBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout
+
+	history_filter_row = HFlowContainer.new()
+	history_filter_row.alignment = FlowContainer.ALIGNMENT_BEGIN
+	history_filter_row.add_theme_constant_override("h_separation", 10)
+	history_filter_row.add_theme_constant_override("v_separation", 8)
+	history_layout.add_child(history_filter_row)
+	history_layout.move_child(history_filter_row, history_header.get_index() + 1)
+
+	history_team_select = _create_history_option(Vector2(190, 44))
+	history_filter_row.add_child(history_team_select)
+
+	history_sort_select = _create_history_option(Vector2(160, 44))
+	history_sort_select.add_item("新しい順")
+	history_sort_select.add_item("古い順")
+	history_sort_select.select(HISTORY_SORT_NEWEST)
+	history_filter_row.add_child(history_sort_select)
+
+	history_result_select = _create_history_option(Vector2(190, 44))
+	history_result_select.add_item("勝敗すべて")
+	history_result_select.add_item("勝利のみ")
+	history_result_select.add_item("敗北のみ")
+	history_result_select.add_item("引き分けのみ")
+	history_result_select.select(HISTORY_RESULT_ALL)
+	history_filter_row.add_child(history_result_select)
+
+	history_kind_select = _create_history_option(Vector2(190, 44))
+	history_kind_select.add_item("全レコード")
+	history_kind_select.add_item("マッチ記録")
+	history_kind_select.add_item("試合結果")
+	history_kind_select.select(HISTORY_KIND_ALL)
+	history_filter_row.add_child(history_kind_select)
 
 	history_export_button = Button.new()
 	history_export_button.text = "CSVエクスポート"
@@ -331,7 +373,6 @@ func _create_history_tools() -> void:
 	history_status_label = Label.new()
 	history_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	history_status_label.text = ""
-	var history_layout: VBoxContainer = $Scroll/Layout/HistoryPanel/HistoryMargin/HistoryLayout
 	history_layout.add_child(history_status_label)
 
 	history_import_file_dialog = FileDialog.new()
@@ -346,6 +387,11 @@ func _create_history_tools() -> void:
 		var window = JavaScriptBridge.get_interface("window")
 		if window != null and history_import_web_file_callback != null:
 			window.wroHistoryCsvFileLoaded = history_import_web_file_callback
+
+func _create_history_option(minimum_size: Vector2) -> OptionButton:
+	var option: OptionButton = OptionButton.new()
+	option.custom_minimum_size = minimum_size
+	return option
 
 func _create_team_editor() -> void:
 	team_editor_toggle_button = Button.new()
@@ -571,6 +617,9 @@ func _connect_signals() -> void:
 	history_export_button.pressed.connect(_export_all_history_csv)
 	history_import_button.pressed.connect(_open_history_csv_import)
 	history_team_select.item_selected.connect(_refresh_history)
+	history_sort_select.item_selected.connect(_refresh_history)
+	history_result_select.item_selected.connect(_refresh_history)
+	history_kind_select.item_selected.connect(_refresh_history)
 	history_clear_button.pressed.connect(_request_clear_all_history)
 	team_editor_toggle_button.pressed.connect(_toggle_team_editor)
 	team_editor_load_button.pressed.connect(_open_team_list_file_dialog)
@@ -689,7 +738,17 @@ func _update_history_status_count() -> void:
 	var filtered_records: Array = _history_records_for_current_filters()
 	var selected_team: String = _selected_history_team()
 	var team_text: String = "全チーム" if selected_team.is_empty() else selected_team
-	history_status_label.text = "表示 %d件 / 全履歴 %d件 / 対象: %s。CSVは全履歴を出力します。" % [filtered_records.size(), all_records.size(), team_text]
+	var result_text: String = _selected_history_result_label()
+	var kind_text: String = _selected_history_kind_label()
+	var sort_text: String = _selected_history_sort_label()
+	history_status_label.text = "表示 %d件 / 全履歴 %d件 / 対象: %s / 勝敗: %s / 種別: %s / %s。CSVは全履歴を出力します。" % [
+		filtered_records.size(),
+		all_records.size(),
+		team_text,
+		result_text,
+		kind_text,
+		sort_text
+	]
 
 func _request_clear_all_history() -> void:
 	var all_records: Array = store.get_filtered_records("all")
@@ -724,12 +783,18 @@ func _clear_all_history_now() -> void:
 func _history_records_for_current_filters() -> Array:
 	var records_for_type: Array = store.get_filtered_records(_current_filter_key())
 	var selected_team: String = _selected_history_team()
-	if selected_team.is_empty():
-		return records_for_type
 	var filtered: Array = []
 	for record in records_for_type:
-		if _record_involves_team(record, selected_team):
-			filtered.append(record)
+		if not (record is Dictionary):
+			continue
+		if not selected_team.is_empty() and not _record_involves_team(record, selected_team):
+			continue
+		if not _history_record_kind_matches(record):
+			continue
+		if not _history_result_matches(record, selected_team):
+			continue
+		filtered.append(record)
+	filtered.sort_custom(Callable(self, "_sort_history_records"))
 	return filtered
 
 func _selected_history_team() -> String:
@@ -739,6 +804,67 @@ func _selected_history_team() -> String:
 
 func _record_involves_team(record: Variant, team_name: String) -> bool:
 	return record is Dictionary and (str(record.get("team_a", "")) == team_name or str(record.get("team_b", "")) == team_name)
+
+func _history_record_kind_matches(record: Dictionary) -> bool:
+	if history_kind_select == null:
+		return true
+	var record_kind: String = str(record.get("record_kind", RECORD_KIND_MATCH))
+	match history_kind_select.selected:
+		HISTORY_KIND_MATCH:
+			return record_kind == RECORD_KIND_MATCH
+		HISTORY_KIND_SERIES_RESULT:
+			return record_kind == RECORD_KIND_SERIES_RESULT
+		_:
+			return true
+
+func _history_result_matches(record: Dictionary, selected_team: String) -> bool:
+	if history_result_select == null or history_result_select.selected == HISTORY_RESULT_ALL:
+		return true
+
+	var result_key: String = _history_result_key_for_team(record, selected_team)
+	match history_result_select.selected:
+		HISTORY_RESULT_WIN:
+			return result_key == "win"
+		HISTORY_RESULT_LOSS:
+			return result_key == "loss"
+		HISTORY_RESULT_DRAW:
+			return result_key == "draw"
+		_:
+			return true
+
+func _history_result_key_for_team(record: Dictionary, selected_team: String) -> String:
+	var winner_name: String = str(record.get("overall_winner", record.get("winner", ""))) if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT else str(record.get("winner", ""))
+	if winner_name == TARGET_TEAM_DRAW or str(record.get("result", "")) == RESULT_DRAW:
+		return "draw"
+	if selected_team.is_empty():
+		return "win" if not winner_name.is_empty() else ""
+	if winner_name == selected_team:
+		return "win"
+	if _record_involves_team(record, selected_team):
+		return "loss"
+	return ""
+
+func _sort_history_records(a: Dictionary, b: Dictionary) -> bool:
+	var a_time: float = _record_unix_time(a)
+	var b_time: float = _record_unix_time(b)
+	if history_sort_select != null and history_sort_select.selected == HISTORY_SORT_OLDEST:
+		return a_time < b_time
+	return a_time > b_time
+
+func _selected_history_result_label() -> String:
+	if history_result_select == null or history_result_select.selected < 0:
+		return "すべて"
+	return history_result_select.get_item_text(history_result_select.selected)
+
+func _selected_history_kind_label() -> String:
+	if history_kind_select == null or history_kind_select.selected < 0:
+		return "全レコード"
+	return history_kind_select.get_item_text(history_kind_select.selected)
+
+func _selected_history_sort_label() -> String:
+	if history_sort_select == null or history_sort_select.selected < 0:
+		return "新しい順"
+	return history_sort_select.get_item_text(history_sort_select.selected)
 
 func _open_history_csv_import() -> void:
 	if active_series.is_empty():
@@ -2458,42 +2584,87 @@ func _build_history_card(record: Dictionary) -> PanelContainer:
 	body.add_theme_constant_override("separation", 8)
 	margin.add_child(body)
 
-	if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT:
-		return _build_series_result_history_card(card, body, record)
-
 	var title: Label = Label.new()
 	title.add_theme_font_size_override("font_size", 22)
-	title.text = "%s vs %s / %s 第%s試合" % [
-		record.get("team_a", "-"),
-		record.get("team_b", "-"),
-		record.get("court", "Aコート"),
-		str(int(record.get("series_number", 0)))
-	]
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.text = _history_card_title(record)
 	body.add_child(title)
 
-	var detail: Label = Label.new()
-	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var reason_text: String = "%s / %s" % [str(record.get("reason_category", "")), str(record.get("end_reason", "未設定"))]
-	var winner_text: String = str(record.get("winner", "-"))
-	var match_label: String = ""
-	if record.has("match_number"):
-		match_label = " | 第%dマッチ" % int(record.get("match_number", 0))
-	detail.text = "%s | %s%s\n終了理由: %s\nA 橙%d 紫%d 得点%d / B 橙%d 紫%d 得点%d / 勝者 %s" % [
-		record.get("timestamp", "-"),
-		record.get("match_type", "-"),
-		match_label,
-		reason_text,
-		int(record.get("team_a_orange", 0)),
-		int(record.get("team_a_purple", 0)),
-		int(record.get("team_a_score", 0)),
-		int(record.get("team_b_orange", 0)),
-		int(record.get("team_b_purple", 0)),
-		int(record.get("team_b_score", 0)),
-		winner_text
-	]
-	body.add_child(detail)
+	var summary: Label = Label.new()
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary.text = _history_card_summary(record)
+	body.add_child(summary)
+
+	var data_grid: HFlowContainer = HFlowContainer.new()
+	data_grid.add_theme_constant_override("h_separation", 8)
+	data_grid.add_theme_constant_override("v_separation", 8)
+	body.add_child(data_grid)
+
+	var csv_values: PackedStringArray = _record_to_csv_row(record)
+	for index in range(CSV_EXPORT_COLUMNS.size()):
+		data_grid.add_child(_history_data_cell(CSV_EXPORT_COLUMNS[index], csv_values[index]))
 
 	return card
+
+func _history_card_title(record: Dictionary) -> String:
+	var record_kind: String = str(record.get("record_kind", RECORD_KIND_MATCH))
+	var kind_label: String = "試合結果" if record_kind == RECORD_KIND_SERIES_RESULT else "マッチ記録"
+	var competition_id: String = _record_competition_id(record)
+	return "[%s] %s / %s vs %s / %s" % [
+		kind_label,
+		competition_id,
+		str(record.get("team_a", "-")),
+		str(record.get("team_b", "-")),
+		str(record.get("timestamp", "-"))
+	]
+
+func _history_card_summary(record: Dictionary) -> String:
+	if str(record.get("record_kind", RECORD_KIND_MATCH)) == RECORD_KIND_SERIES_RESULT:
+		return "総合勝者: %s / %s %d勝%d敗 / %s %d勝%d敗 / 引き分け%d" % [
+			str(record.get("overall_winner", record.get("winner", "-"))),
+			str(record.get("team_a", "-")),
+			int(record.get("team_a_wins", 0)),
+			int(record.get("team_a_losses", 0)),
+			str(record.get("team_b", "-")),
+			int(record.get("team_b_wins", 0)),
+			int(record.get("team_b_losses", 0)),
+			int(record.get("draws", 0))
+		]
+	return "マッチ勝者: %s / 終了理由: %s / A 得点%d 違反%d / B 得点%d 違反%d" % [
+		str(record.get("winner", "-")),
+		str(record.get("end_reason", "未設定")),
+		int(record.get("team_a_score", 0)),
+		int(record.get("team_a_violations", _violation_count_for_record(record, str(record.get("team_a", ""))))),
+		int(record.get("team_b_score", 0)),
+		int(record.get("team_b_violations", _violation_count_for_record(record, str(record.get("team_b", "")))))
+	]
+
+func _history_data_cell(label_text: String, value_text: String) -> PanelContainer:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(270, 64)
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var stack: VBoxContainer = VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 2)
+	margin.add_child(stack)
+
+	var label: Label = Label.new()
+	label.add_theme_color_override("font_color", COLOR_SUBTLE)
+	label.add_theme_font_size_override("font_size", 13)
+	label.text = label_text
+	stack.add_child(label)
+
+	var value: Label = Label.new()
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value.text = value_text if not value_text.is_empty() else "-"
+	stack.add_child(value)
+	return panel
 
 func _build_series_result_history_card(card: PanelContainer, body: VBoxContainer, record: Dictionary) -> PanelContainer:
 	var title: Label = Label.new()
