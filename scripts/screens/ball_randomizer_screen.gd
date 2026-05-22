@@ -73,6 +73,9 @@ func _on_visibility_changed() -> void:
 func _update_dashboard_mode() -> void:
 	_apply_responsive_controls(_get_effective_available_size())
 
+func _uses_dashboard_layout_limits() -> bool:
+	return dashboard_mode and not is_fullscreen_ui
+
 func _randomizer_button_style(bg_color: Color, border_color: Color, border_width: int = 1) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = bg_color
@@ -109,23 +112,24 @@ func _apply_button_colors() -> void:
 
 func _apply_responsive_controls(available_size: Vector2) -> void:
 	var portrait: bool = available_size.y > available_size.x * 1.08
-	var compact: bool = dashboard_mode or portrait or is_fullscreen_ui
+	var dashboard_limited: bool = _uses_dashboard_layout_limits()
+	var compact: bool = dashboard_limited or portrait or is_fullscreen_ui
 	title_label.visible = not dashboard_mode and not is_fullscreen_ui
-	status_label_2.visible = not dashboard_mode
-	status_label.visible = not dashboard_mode and not is_fullscreen_ui
+	status_label_2.visible = not dashboard_limited
+	status_label.visible = not dashboard_limited and not is_fullscreen_ui
 	status_label.custom_minimum_size = Vector2(0, 28 if compact else 52)
 	status_label.add_theme_font_size_override("font_size", 12 if compact else 16)
 	layout.add_theme_constant_override("separation", 8 if compact else 18)
 	toolbar.alignment = FlowContainer.ALIGNMENT_CENTER if compact else FlowContainer.ALIGNMENT_BEGIN
 	toolbar.add_theme_constant_override("h_separation", 6 if compact else 12)
 	toolbar.add_theme_constant_override("v_separation", 6 if compact else 12)
-	var button_size: Vector2 = Vector2(108, 38) if portrait else (Vector2(132, 44) if dashboard_mode else Vector2(180, 52))
+	var button_size: Vector2 = Vector2(108, 38) if portrait else (Vector2(132, 44) if dashboard_limited else Vector2(180, 52))
 	randomize_button.custom_minimum_size = button_size
 	reset_button.custom_minimum_size = button_size
 	fullscreen_button.custom_minimum_size = button_size
 	ready_button.custom_minimum_size = button_size
 	fullscreen_button.text = "全画面解除" if is_fullscreen_ui else "全画面"
-	var field_margin_size: int = 6 if portrait else (10 if dashboard_mode else 18)
+	var field_margin_size: int = 6 if portrait else (10 if dashboard_limited else (8 if is_fullscreen_ui else 18))
 	field_margin.add_theme_constant_override("margin_left", field_margin_size)
 	field_margin.add_theme_constant_override("margin_top", field_margin_size)
 	field_margin.add_theme_constant_override("margin_right", field_margin_size)
@@ -140,23 +144,25 @@ func _update_playfield_size(schedule_transform: bool = true) -> void:
 	if available_size.x <= 1.0 or available_size.y <= 1.0:
 		available_size = get_viewport_rect().size
 
-	var horizontal_padding: float = 20.0 if dashboard_mode else 40.0
+	var dashboard_limited: bool = _uses_dashboard_layout_limits()
+	var horizontal_padding: float = 20.0 if dashboard_limited else (16.0 if is_fullscreen_ui else 40.0)
 	playfield_portrait = available_size.y > available_size.x * 1.08
 	_apply_responsive_controls(available_size)
 	if playfield_portrait:
 		playfield.ratio = 1.0 / PLAYFIELD_RATIO
-		var horizontal_padding_portrait: float = 12.0 if dashboard_mode else 18.0
-		var reserved_height: float = 88.0 if dashboard_mode else 165.0
+		var horizontal_padding_portrait: float = 12.0 if dashboard_limited else (8.0 if is_fullscreen_ui else 18.0)
+		var reserved_height: float = 88.0 if dashboard_limited else (92.0 if is_fullscreen_ui else 165.0)
 		var height_limited_width: float = maxf(240.0, (available_size.y - reserved_height) / PLAYFIELD_RATIO)
-		var max_portrait_width: float = minf(760.0, height_limited_width)
+		var max_portrait_width: float = minf(960.0 if is_fullscreen_ui else 760.0, height_limited_width)
 		var min_portrait_width: float = minf(300.0, max_portrait_width)
 		var target_portrait_width: float = clampf(available_size.x - horizontal_padding_portrait, min_portrait_width, max_portrait_width)
 		playfield.custom_minimum_size = Vector2(target_portrait_width, target_portrait_width * PLAYFIELD_RATIO)
 	else:
 		playfield.ratio = PLAYFIELD_RATIO
-		var height_limited_width: float = maxf(360.0, (available_size.y - 118.0) * PLAYFIELD_RATIO)
-		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_mode else minf(1680.0, height_limited_width)
-		var min_width: float = minf(360.0, max_width) if dashboard_mode else 360.0
+		var reserved_height_landscape: float = 96.0 if is_fullscreen_ui else 118.0
+		var height_limited_width: float = maxf(360.0, (available_size.y - reserved_height_landscape) * PLAYFIELD_RATIO)
+		var max_width: float = minf(820.0, maxf(320.0, available_size.x - horizontal_padding)) if dashboard_limited else minf(1920.0 if is_fullscreen_ui else 1680.0, height_limited_width)
+		var min_width: float = minf(360.0, max_width) if dashboard_limited else 360.0
 		var target_width: float = clampf(available_size.x - horizontal_padding, min_width, max_width)
 		playfield.custom_minimum_size = Vector2(target_width, target_width / PLAYFIELD_RATIO)
 	if schedule_transform:
@@ -166,6 +172,8 @@ func _get_effective_available_size() -> Vector2:
 	var local_size: Vector2 = size
 	var browser_size: Vector2 = _get_browser_viewport_size()
 	if browser_size.x > 1.0 and browser_size.y > 1.0:
+		if is_fullscreen_ui:
+			return browser_size
 		if browser_size.y > browser_size.x and local_size.y <= local_size.x:
 			return browser_size
 	return local_size

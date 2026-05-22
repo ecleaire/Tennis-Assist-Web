@@ -8,6 +8,7 @@ signal requested_timer_return(match_number: int)
 signal requested_match_restart(match_number: int)
 
 const MatchRecordStore = preload("res://scripts/services/match_record_store.gd")
+const BUTTON_BOLD_FONT: FontFile = preload("res://assets/fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf")
 
 # 大会進行の基本設定です。試合数やチーム一覧の参照先はここで調整します。
 const TEAM_LIST_PATH: String = "res://data/team_list_example.csv"
@@ -758,17 +759,22 @@ func _apply_button_color(button: Button, base_color: Color, text_color: Color = 
 	if button == null:
 		return
 	var border_color: Color = base_color.lightened(0.26)
+	var is_danger: bool = base_color.is_equal_approx(COLOR_BUTTON_DANGER)
 	button.add_theme_stylebox_override("normal", _record_button_style(base_color, border_color))
 	button.add_theme_stylebox_override("hover", _record_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _record_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _record_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+	if is_danger:
+		button.add_theme_font_override("font", BUTTON_BOLD_FONT)
+	else:
+		button.remove_theme_font_override("font")
 	button.add_theme_color_override("font_color", text_color)
 	button.add_theme_color_override("font_hover_color", text_color)
 	button.add_theme_color_override("font_pressed_color", text_color)
 	button.add_theme_color_override("font_focus_color", text_color)
 	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.35))
-	button.add_theme_constant_override("outline_size", 1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0)
-	button.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0))
+	button.add_theme_constant_override("outline_size", 2 if is_danger else (1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0))
+	button.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.45) if is_danger else (Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0)))
 
 func _apply_button_colors() -> void:
 	for button in [

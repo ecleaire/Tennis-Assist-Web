@@ -182,6 +182,7 @@ func _create_dashboard_card(title_text: String, content: Node) -> PanelContainer
 	margin.add_child(stack)
 
 	var title: Label = Label.new()
+	title.name = "DashboardTitle"
 	title.text = title_text
 	title.add_theme_font_size_override("font_size", 20)
 	stack.add_child(title)
@@ -205,6 +206,8 @@ func _update_dashboard_layout() -> void:
 
 	dashboard_ball_panel.visible = not dashboard_timer_fullscreen_active
 	dashboard_timer_panel.visible = not dashboard_ball_fullscreen_active
+	_set_dashboard_card_fullscreen(dashboard_ball_panel, dashboard_ball_fullscreen_active)
+	_set_dashboard_card_fullscreen(dashboard_timer_panel, dashboard_timer_fullscreen_active)
 	if dashboard_ball_fullscreen_active:
 		dashboard_ball_panel.custom_minimum_size = Vector2(0, maxf(520.0, viewport_size.y - 48.0))
 		return
@@ -218,6 +221,24 @@ func _update_dashboard_layout() -> void:
 	else:
 		dashboard_ball_panel.custom_minimum_size = Vector2(560, 0)
 		dashboard_timer_panel.custom_minimum_size = Vector2(420, 0)
+
+func _set_dashboard_card_fullscreen(panel: PanelContainer, fullscreen: bool) -> void:
+	if panel == null:
+		return
+	var margin: MarginContainer = panel.get_node_or_null("DashboardMargin") as MarginContainer
+	if margin != null:
+		var margin_size: int = 0 if fullscreen else 16
+		margin.add_theme_constant_override("margin_left", margin_size)
+		margin.add_theme_constant_override("margin_top", margin_size)
+		margin.add_theme_constant_override("margin_right", margin_size)
+		margin.add_theme_constant_override("margin_bottom", margin_size)
+
+	var stack: VBoxContainer = panel.get_node_or_null("DashboardMargin/DashboardStack") as VBoxContainer
+	if stack != null:
+		stack.add_theme_constant_override("separation", 0 if fullscreen else 12)
+		var title: Label = stack.get_node_or_null("DashboardTitle") as Label
+		if title != null:
+			title.visible = not fullscreen
 
 func _on_dashboard_ball_fullscreen_toggled(is_compact: bool) -> void:
 	dashboard_ball_fullscreen_active = is_compact

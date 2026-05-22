@@ -3,6 +3,8 @@ extends Control
 signal fullscreen_ui_toggled(is_compact: bool)
 signal match_finished(finish_type: String)
 
+const BUTTON_BOLD_FONT: FontFile = preload("res://assets/fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf")
+
 const MIN_DURATION: int = 60
 const MAX_DURATION: int = 120
 
@@ -52,6 +54,7 @@ const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
 @onready var timer_center: CenterContainer = $Overlay/Layout/TimerCenter
 @onready var cold_notice_label: Label = $Overlay/Layout/TimerCenter/TimerStack/ColdNoticeLabel
 @onready var timer_label: Label = $Overlay/Layout/TimerCenter/TimerStack/TimerLabel
+@onready var sub_timer_row: HFlowContainer = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow
 @onready var sub_timer_caption_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerCaptionLabel
 @onready var sub_timer_label: Label = $Overlay/Layout/TimerCenter/TimerStack/SubTimerRow/SubTimerLabel
 @onready var bottom_panel: PanelContainer = $Overlay/Layout/BottomPanel
@@ -201,17 +204,22 @@ func _apply_button_color(button: Button, base_color: Color, text_color: Color = 
 	if button == null:
 		return
 	var border_color: Color = base_color.lightened(0.26)
+	var is_danger: bool = base_color.is_equal_approx(COLOR_BUTTON_DANGER)
 	button.add_theme_stylebox_override("normal", _timer_button_style(base_color, border_color))
 	button.add_theme_stylebox_override("hover", _timer_button_style(base_color.lightened(0.10), border_color.lightened(0.12)))
 	button.add_theme_stylebox_override("pressed", _timer_button_style(base_color.darkened(0.12), border_color))
 	button.add_theme_stylebox_override("focus", _timer_button_style(base_color.lightened(0.04), Color("8bd8ff"), 2))
+	if is_danger:
+		button.add_theme_font_override("font", BUTTON_BOLD_FONT)
+	else:
+		button.remove_theme_font_override("font")
 	button.add_theme_color_override("font_color", text_color)
 	button.add_theme_color_override("font_hover_color", text_color)
 	button.add_theme_color_override("font_pressed_color", text_color)
 	button.add_theme_color_override("font_focus_color", text_color)
 	button.add_theme_color_override("font_disabled_color", text_color.darkened(0.35))
-	button.add_theme_constant_override("outline_size", 1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0)
-	button.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0))
+	button.add_theme_constant_override("outline_size", 2 if is_danger else (1 if text_color == COLOR_BUTTON_SUCCESS_TEXT else 0))
+	button.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.45) if is_danger else (Color(1, 1, 1, 0.18) if text_color == COLOR_BUTTON_SUCCESS_TEXT else Color(0, 0, 0, 0)))
 
 func _apply_button_colors() -> void:
 	_apply_button_color(start_button, COLOR_BUTTON_SUCCESS, COLOR_BUTTON_SUCCESS_TEXT)
@@ -655,10 +663,12 @@ func _update_responsive_sizes() -> void:
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)
-	var sub_timer_size: int = clampi(int(font_size * (0.34 if sub_timer_running else 0.22)), 36, 150)
+	var reserved_sub_timer_size: int = clampi(int(font_size * 0.34), 44, 150)
+	var sub_timer_size: int = reserved_sub_timer_size if sub_timer_running else clampi(int(font_size * 0.22), 36, 96)
 	cold_notice_label.add_theme_font_size_override("font_size", notice_size)
 	sub_timer_caption_label.add_theme_font_size_override("font_size", clampi(int(sub_timer_size * 0.48), 22, 48))
 	sub_timer_label.add_theme_font_size_override("font_size", sub_timer_size)
+	sub_timer_row.custom_minimum_size = Vector2(0, clampf(float(reserved_sub_timer_size) * 1.28, 72.0, 190.0))
 
 func _show_random_interval_menu() -> void:
 	var button_rect: Rect2 = random_option_count_button.get_global_rect()
