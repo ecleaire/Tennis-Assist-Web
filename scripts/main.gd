@@ -6,6 +6,7 @@ const BallRandomizerScreenScene = preload("res://scenes/screens/BallRandomizerSc
 const DevelopmentScreenScript = preload("res://scripts/screens/development_screen.gd")
 
 const TITLE_NORMAL_BBCODE: String = "[font_size=30]WRO RoboSports Assist[/font_size]"
+const TITLE_ADMIN_BBCODE: String = "[font_size=30][color=#9BE23D]WRO RoboSports Assist Master[/color][/font_size]"
 const ADMIN_ENTRY_PRESS_COUNT: int = 10
 
 @onready var outer_margin: MarginContainer = $MarginContainer
@@ -64,7 +65,7 @@ func _apply_theme() -> void:
 	theme = WROTheme.create_theme()
 
 func _update_title_label() -> void:
-	title_label.text = TITLE_NORMAL_BBCODE
+	title_label.text = TITLE_ADMIN_BBCODE if admin_mode_enabled else TITLE_NORMAL_BBCODE
 
 func _connect_nav_buttons() -> void:
 	for screen_name_variant in nav_buttons.keys():
@@ -90,6 +91,7 @@ func _on_links_button_pressed() -> void:
 func _enable_admin_mode() -> void:
 	admin_mode_enabled = true
 	admin_link_press_streak = 0
+	_update_title_label()
 	if development_button != null:
 		development_button.visible = true
 
