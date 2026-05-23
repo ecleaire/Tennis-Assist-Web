@@ -199,6 +199,9 @@ func _send_test_payload() -> void:
 	if url.is_empty() or not (url.begins_with("https://") or url.begins_with("http://")):
 		test_message.text = "GAS WebアプリURLを入力してください。"
 		return
+	if url.contains("/home/projects/") or url.ends_with("/edit"):
+		test_message.text = "GASの編集URLではなく、デプロイ後のWebアプリURL（/macros/s/.../exec）を入力してください。"
+		return
 	if api_key_input.text.is_empty():
 		test_message.text = "APIキー / 合言葉を入力してください。"
 		return
@@ -213,7 +216,7 @@ func _send_test_payload() -> void:
 			"record_kind": "connection_test"
 		}
 	}
-	var headers: PackedStringArray = PackedStringArray(["Content-Type: application/json"])
+	var headers: PackedStringArray = PackedStringArray(["Content-Type: text/plain;charset=utf-8"])
 	var err: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
 	if err != OK:
 		test_message.text = "テスト送信を開始できませんでした。エラー: %d" % err
