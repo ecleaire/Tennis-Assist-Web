@@ -16,6 +16,7 @@ const CATEGORY_COMPETITION: String = "競技情報"
 @onready var detail_content: RichTextLabel = $DetailPopup/DetailMargin/DetailLayout/DetailContent
 
 var news_items: Array[Dictionary] = []
+var news_loaded: bool = false
 
 func _ready() -> void:
 	_setup_categories()
@@ -28,7 +29,7 @@ func _ready() -> void:
 	add_child(http_request)
 	http_request.request_completed.connect(_on_news_response)
 
-	load_news()
+	status_label.text = "ニュース画面を開くと読み込みます。"
 
 func _setup_categories() -> void:
 	category_filter.clear()
@@ -37,7 +38,12 @@ func _setup_categories() -> void:
 	category_filter.add_item(CATEGORY_COMPETITION)
 	category_filter.select(0)
 
+func set_screen_active(active: bool) -> void:
+	if active and not news_loaded:
+		load_news()
+
 func load_news() -> void:
+	news_loaded = true
 	if news_url.is_empty():
 		_load_local_news()
 		return

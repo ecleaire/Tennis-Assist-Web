@@ -1825,6 +1825,7 @@ func _save_current_match() -> void:
 
 	var record: Dictionary = _build_series_record()
 	var is_editing_existing: bool = editing_match_number > 0
+	_assign_record_id(record, editing_match_number if is_editing_existing else 0)
 	var save_ok: bool = store.replace_series_record(str(active_series.get("series_id", "")), editing_match_number, record) if is_editing_existing else store.add_record(record)
 	if not save_ok:
 		tournament_save_status_label.text = "試合結果を保存できませんでした。"
@@ -2241,6 +2242,7 @@ func _build_series_result_record() -> Dictionary:
 		overall_winner = team_b_name
 
 	return {
+		"record_id": _make_record_id(RECORD_KIND_SERIES_RESULT, 0),
 		"timestamp": _timestamp_string(),
 		"record_kind": RECORD_KIND_SERIES_RESULT,
 		"team_a": team_a_name,
@@ -2294,6 +2296,7 @@ func _send_series_result_to_gas(result_record: Dictionary) -> void:
 		"target_sheet": "match_records",
 		"source": "WRO RoboSports Assist",
 		"sent_at": Time.get_datetime_string_from_system(),
+		"record_id": str(result_record.get("record_id", "")),
 		"payload": result_record.duplicate(true),
 		"csv_columns": Array(CSV_EXPORT_COLUMNS),
 		"csv_row": Array(_record_to_csv_row(result_record))
@@ -2390,6 +2393,34 @@ func _build_series_record() -> Dictionary:
 		"team_b_score": team_b_score,
 		"notes": "シリーズ進行記録"
 	}
+
+func _assign_record_id(record: Dictionary, existing_match_number: int = 0) -> void:
+	var existing_id: String = ""
+	if existing_match_number > 0:
+		var records: Array = active_series.get("records", [])
+		for record_variant in records:
+			if typeof(record_variant) != TYPE_DICTIONARY:
+				continue
+			var existing_record: Dictionary = record_variant
+			if int(existing_record.get("match_number", 0)) == existing_match_number:
+				existing_id = str(existing_record.get("record_id", ""))
+				break
+	record["record_id"] = existing_id if not existing_id.is_empty() else _make_record_id(str(record.get("record_kind", RECORD_KIND_MATCH)), int(record.get("match_number", 0)))
+
+func _make_record_id(record_kind: String, match_number: int) -> String:
+	var series_id: String = str(active_series.get("series_id", "series"))
+	var court_code: String = _court_code_from_name(str(active_series.get("court", "Aコート")))
+	var series_number: int = int(active_series.get("series_number", 1))
+	var kind_code: String = "result" if record_kind == RECORD_KIND_SERIES_RESULT else "match"
+	return "%s_%s_%02d_%d_%s_%d_%d" % [
+		series_id,
+		court_code,
+		series_number,
+		match_number,
+		kind_code,
+		Time.get_ticks_msec(),
+		randi() & 0x7fffffff
+	]
 
 func _result_text_for_scores(team_a_score: int, team_b_score: int) -> String:
 	if team_a_score < team_b_score:

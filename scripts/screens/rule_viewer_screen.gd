@@ -24,14 +24,30 @@ const QA_URL: String = "https://wro-association.org/competition/questions-answer
 var rule_sections: Array[Dictionary] = []
 var current_section_id: String = ""
 var nav_buttons: Dictionary = {}
+var rules_loaded: bool = false
 
 func _ready() -> void:
-	_load_rules_data()
 	search_edit.text_changed.connect(_on_search_text_changed)
 	open_english_rules_button.pressed.connect(_open_link.bind(ENGLISH_RULES_URL, "英語ルール"))
 	open_google_rules_button.pressed.connect(_open_link.bind(GOOGLE_TRANSLATED_RULES_URL, "Google翻訳ルール"))
 	open_deepl_rules_button.pressed.connect(_open_link.bind(DEEPL_TRANSLATED_RULES_URL, "DeepL翻訳ルール"))
 	open_qa_button.pressed.connect(_open_link.bind(QA_URL, "Q&A"))
+	_render_empty_state("ルール画面を開くと読み込みます。")
+	_update_layout()
+
+func set_screen_active(active: bool) -> void:
+	if active:
+		_ensure_rules_loaded()
+
+func refresh_responsive_layout() -> void:
+	_ensure_rules_loaded()
+	_update_layout()
+
+func _ensure_rules_loaded() -> void:
+	if rules_loaded:
+		return
+	rules_loaded = true
+	_load_rules_data()
 	_build_navigation()
 	if rule_sections.is_empty():
 		_render_empty_state("ルールデータを読み込めませんでした。")
@@ -111,9 +127,11 @@ func _update_layout() -> void:
 		navigation_scroll.custom_minimum_size = Vector2(0.0, clampf(available_height, 420.0, 760.0))
 
 func _on_search_text_changed(_new_text: String) -> void:
+	_ensure_rules_loaded()
 	_render_content()
 
 func _select_section(section_id: String) -> void:
+	_ensure_rules_loaded()
 	current_section_id = section_id
 	_update_nav_selection()
 	_render_content()

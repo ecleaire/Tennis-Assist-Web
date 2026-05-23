@@ -108,6 +108,7 @@ var timer_has_started: bool = false
 var match_finish_signal_emitted: bool = false
 var auto_fullscreen_requested_for_run: bool = false
 var dashboard_mode: bool = false
+var screen_active: bool = true
 
 func _ready() -> void:
 	randomize()
@@ -130,7 +131,7 @@ func _ready() -> void:
 	_setup_progress_styles()
 	legacy_hint_label.visible = false
 	_reset_timer()
-	set_process(true)
+	_sync_processing_state()
 	_update_responsive_sizes()
 	_apply_compact_ui(false)
 
@@ -141,6 +142,11 @@ func set_dashboard_mode(enabled: bool) -> void:
 	_apply_dashboard_mode()
 	_update_control_visibility()
 	_update_responsive_sizes()
+	_sync_processing_state()
+
+func set_screen_active(active: bool) -> void:
+	screen_active = active
+	_sync_processing_state()
 
 func _apply_dashboard_mode() -> void:
 	var available_size: Vector2 = _available_size()
@@ -300,6 +306,7 @@ func _process(delta: float) -> void:
 		_sync_primary_button()
 		_update_control_visibility()
 		_emit_match_finished("time")
+		_sync_processing_state()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -366,6 +373,7 @@ func _start_timer() -> void:
 		cold_notice_label.text = ""
 	_sync_primary_button()
 	_update_control_visibility()
+	_sync_processing_state()
 
 func _pause_timer() -> void:
 	is_running = false
@@ -375,6 +383,7 @@ func _pause_timer() -> void:
 	cold_notice_label.text = PAUSE_NOTICE_TEXT
 	_sync_primary_button()
 	_update_control_visibility()
+	_sync_processing_state()
 
 func _end_timer() -> void:
 	is_running = false
@@ -389,6 +398,7 @@ func _end_timer() -> void:
 	_sync_primary_button()
 	_update_control_visibility()
 	_emit_match_finished("manual")
+	_sync_processing_state()
 
 func _reset_timer() -> void:
 	is_running = false
@@ -411,6 +421,7 @@ func _reset_timer() -> void:
 	_update_timer_visuals()
 	_sync_primary_button()
 	_update_control_visibility()
+	_sync_processing_state()
 
 func prepare_match_timer(_match_number: int = 0) -> void:
 	# Public reset entry point used by the guided match flow.
@@ -421,6 +432,9 @@ func _emit_match_finished(finish_type: String) -> void:
 		return
 	match_finish_signal_emitted = true
 	match_finished.emit(finish_type)
+
+func _sync_processing_state() -> void:
+	set_process(screen_active or is_running or sub_timer_running or cold_notice_remaining > 0.0)
 
 func _generate_duration_from_mode() -> int:
 	if random_step_seconds == RANDOM_MODE_MANUAL:
@@ -479,6 +493,7 @@ func _toggle_sub_timer(duration: float, caption: String) -> void:
 		sub_timer_total = 0.0
 		sub_timer_caption_text = ""
 		_set_sub_timer_visible(false)
+		_sync_processing_state()
 		return
 
 	sub_timer_total = duration
@@ -487,6 +502,7 @@ func _toggle_sub_timer(duration: float, caption: String) -> void:
 	sub_timer_running = true
 	_set_sub_timer_visible(true)
 	_update_sub_timer_visuals()
+	_sync_processing_state()
 
 func _update_sub_timer_visuals() -> void:
 	if sub_timer_label == null:
@@ -605,6 +621,7 @@ func _set_sub_timer_visible(visible_state: bool) -> void:
 		_apply_caption_visuals(true)
 		sub_timer_label.text = ""
 	_update_responsive_sizes()
+	_sync_processing_state()
 
 func _set_bottom_caption_text(text: String) -> void:
 	bottom_caption_text = text

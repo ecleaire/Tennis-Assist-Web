@@ -413,6 +413,7 @@ func _show_screen(screen_name: String) -> void:
 		return
 
 	current_screen = screen_name
+	_set_dashboard_runtime_active(screen_name == "dashboard")
 	for key_variant in screens.keys():
 		var key: String = String(key_variant)
 		var screen_variant: Variant = screens[key]
@@ -420,14 +421,27 @@ func _show_screen(screen_name: String) -> void:
 		if screen_variant is Control and button_variant is Button:
 			var screen: Control = screen_variant
 			var button: Button = button_variant
-			screen.visible = key == screen_name
+			var is_active: bool = key == screen_name
+			screen.visible = is_active
 			if key == "timer" or key == "balls":
-				screen.set_process_unhandled_input(key == screen_name)
-			if key == screen_name and screen.has_method("refresh_responsive_layout"):
+				screen.set_process_unhandled_input(is_active)
+			_set_screen_runtime_active(screen, is_active)
+			if is_active and screen.has_method("refresh_responsive_layout"):
 				screen.call_deferred("refresh_responsive_layout")
-			_set_button_selected(button, key == screen_name)
+			_set_button_selected(button, is_active)
 	call_deferred("_reset_current_screen_scroll")
 	call_deferred("_reset_browser_scroll")
+
+func _set_screen_runtime_active(screen: Control, active: bool) -> void:
+	if screen.has_method("set_screen_active"):
+		screen.call("set_screen_active", active)
+
+func _set_dashboard_runtime_active(active: bool) -> void:
+	for screen in [dashboard_ball_screen, dashboard_timer_screen]:
+		if screen == null:
+			continue
+		if screen.has_method("set_screen_active"):
+			screen.call("set_screen_active", active)
 
 func _reset_current_screen_scroll() -> void:
 	var scroll_container: ScrollContainer = _current_screen_scroll_container()
