@@ -69,6 +69,7 @@ func _build_ui() -> void:
 	password_input.secret = true
 	password_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	password_input.text_submitted.connect(func(_text: String) -> void: _authenticate())
+	_prepare_mobile_line_edit(password_input)
 	auth_stack.add_child(password_input)
 
 	auth_button = Button.new()
@@ -105,6 +106,7 @@ func _build_ui() -> void:
 	gas_url_input.placeholder_text = "Google Apps Script WebアプリURL"
 	gas_url_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	gas_url_input.focus_exited.connect(_save_settings)
+	_prepare_mobile_line_edit(gas_url_input)
 	settings_stack.add_child(gas_url_input)
 
 	api_key_input = LineEdit.new()
@@ -112,6 +114,7 @@ func _build_ui() -> void:
 	api_key_input.secret = true
 	api_key_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	api_key_input.focus_exited.connect(_save_settings)
+	_prepare_mobile_line_edit(api_key_input)
 	settings_stack.add_child(api_key_input)
 
 	send_enabled_check = CheckBox.new()
@@ -144,6 +147,17 @@ func _build_ui() -> void:
 	http_request = HTTPRequest.new()
 	http_request.request_completed.connect(_on_test_request_completed)
 	add_child(http_request)
+
+func _prepare_mobile_line_edit(line_edit: LineEdit) -> void:
+	line_edit.focus_mode = Control.FOCUS_ALL
+	line_edit.mouse_filter = Control.MOUSE_FILTER_STOP
+	line_edit.gui_input.connect(_focus_line_edit_from_pointer.bind(line_edit))
+
+func _focus_line_edit_from_pointer(event: InputEvent, line_edit: LineEdit) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		line_edit.grab_focus()
+	elif event is InputEventScreenTouch and event.pressed:
+		line_edit.grab_focus()
 
 func _authenticate() -> void:
 	var password_text: String = password_input.text.strip_edges()

@@ -223,6 +223,12 @@ func _create_development_screen() -> void:
 	admin_exit_button.custom_minimum_size = Vector2(170, 48)
 	admin_exit_button.pressed.connect(_disable_admin_mode)
 	nav_flow.add_child(admin_exit_button)
+	var links_button_variant: Variant = nav_buttons.get("links")
+	if links_button_variant is Button:
+		var links_index: int = nav_flow.get_children().find(links_button_variant)
+		if links_index >= 0:
+			nav_flow.move_child(admin_exit_button, links_index)
+			nav_flow.move_child(development_button, links_index + 1)
 
 	nav_buttons["development"] = development_button
 	screens["development"] = development_screen

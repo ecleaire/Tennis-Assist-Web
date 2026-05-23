@@ -19,7 +19,7 @@ run/main_scene="uid://cxpvgovh404ha"
 run/low_processor_mode=true
 run/low_processor_mode_sleep_usec=6900
 config/features=PackedStringArray("4.6", "Forward Plus")
-config/icon="res://ROBOSPORTS/assist_icon.png"
+config/icon="res://ROBOSPORTS/assist_icon_512.png"
 
 [display]
 
