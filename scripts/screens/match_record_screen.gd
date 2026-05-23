@@ -2221,6 +2221,11 @@ func _show_final_complete_panel() -> void:
 	final_complete_body_label.text = _build_final_complete_text()
 	tournament_status_label.text = "試合が終了しました。お疲れさまでした。"
 	tournament_save_status_label.text = "両チーム代表の同意を確認し、試合結果を保存しました。"
+	call_deferred("_scroll_to_final_complete_panel")
+
+func _scroll_to_final_complete_panel() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
 	_scroll_to_control(final_complete_panel)
 
 func _start_next_series_after_complete() -> void:
