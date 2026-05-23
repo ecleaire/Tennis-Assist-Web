@@ -44,6 +44,7 @@ func refresh_responsive_layout() -> void:
 	_update_layout()
 
 func _ensure_rules_loaded() -> void:
+	# ルールJSONは大きめなので、初回起動では読まずルール画面表示時にだけ読み込みます。
 	if rules_loaded:
 		return
 	rules_loaded = true

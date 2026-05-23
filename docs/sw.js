@@ -1,5 +1,7 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260524-15';
+const CACHE_NAME = 'wro-robosports-assist-v20260524-16';
 
+// Godot Web ExportをPWAとしてオフライン起動するための最小アプリ本体です。
+// 追加データはfetch時に同じキャッシュへ入れ、初回installでは本体だけを確実に保持します。
 const APP_SHELL = [
 	'./',
 	'./index.html',
@@ -33,6 +35,7 @@ self.addEventListener('activate', (event) => {
 			.then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
 			.then((clients) => {
 				for (const client of clients) {
+					// 旧バージョンを開きっぱなしの端末にも更新を知らせ、同じURLを再読込します。
 					client.postMessage({ type: 'WRO_ASSIST_UPDATED', cacheName: CACHE_NAME });
 					if ('navigate' in client && client.url) {
 						client.navigate(client.url);
@@ -61,6 +64,7 @@ self.addEventListener('fetch', (event) => {
 
 	if (request.mode === 'navigate') {
 		event.respondWith(
+			// ページ本体はネットワーク優先にして、失敗時はキャッシュ済みindex.htmlで起動します。
 			fetch(request)
 				.then((response) => {
 					const copy = response.clone();

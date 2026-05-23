@@ -6,6 +6,7 @@ const RESULT_WIN: String = "勝ち"
 var records: Array = []
 
 func load_records() -> Array:
+	# 対戦履歴は端末内の user:// に保存します。サーバーや他端末とは共有しません。
 	if not FileAccess.file_exists(SAVE_PATH):
 		records = []
 		return records
@@ -20,6 +21,7 @@ func load_records() -> Array:
 	return records
 
 func save_records() -> bool:
+	# JSON配列として保存し、CSV出力や画面表示はこの同じ保存元から生成します。
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		return false
@@ -31,6 +33,7 @@ func add_record(record: Dictionary) -> bool:
 	return save_records()
 
 func import_records(imported_records: Array) -> Dictionary:
+	# CSV再インポート時に同じ試合を二重登録しないよう、安定したキーで照合します。
 	var existing_keys: Dictionary = {}
 	for record in records:
 		if record is Dictionary:
@@ -67,6 +70,7 @@ func clear_records() -> bool:
 	return save_records()
 
 func _record_key(record: Dictionary) -> String:
+	# competition_idがあればそれを優先し、古い履歴はシリーズ情報で近似キーを作ります。
 	var competition_id: String = str(record.get("competition_id", ""))
 	if not competition_id.is_empty():
 		return "competition:%s" % competition_id

@@ -39,6 +39,7 @@ func _setup_categories() -> void:
 	category_filter.select(0)
 
 func set_screen_active(active: bool) -> void:
+	# 初回ロードを軽くするため、ニュース画面を開くまでJSON/HTTP取得を待ちます。
 	if active and not news_loaded:
 		load_news()
 
@@ -72,6 +73,7 @@ func _on_news_response(_result: int, response_code: int, _headers: PackedStringA
 	_render_news_cards()
 
 func _load_local_news() -> void:
+	# オフライン時や外部取得失敗時も使えるよう、同梱JSONをフォールバックにします。
 	if not FileAccess.file_exists(SAMPLE_NEWS_PATH):
 		status_label.text = "ローカルニュース JSON が見つかりません。"
 		news_items.clear()

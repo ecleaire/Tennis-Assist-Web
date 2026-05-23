@@ -55,7 +55,6 @@ func _ready() -> void:
 	_apply_theme()
 	_create_flow_status_bar()
 	_create_dashboard_screen()
-	_create_development_screen()
 	_update_title_label()
 	_connect_nav_buttons()
 	_connect_fullscreen_signal()
@@ -85,6 +84,7 @@ func _on_nav_button_pressed(screen_name: String) -> void:
 
 func _on_links_button_pressed() -> void:
 	admin_link_press_streak += 1
+	# 通常UIには管理者機能を出さず、リンク連打だけで一時的に入口を開きます。
 	if not admin_mode_enabled and admin_link_press_streak >= ADMIN_ENTRY_PRESS_COUNT:
 		_enable_admin_mode()
 	_show_screen("links")
@@ -92,6 +92,9 @@ func _on_links_button_pressed() -> void:
 func _enable_admin_mode() -> void:
 	admin_mode_enabled = true
 	admin_link_press_streak = 0
+	# 管理者画面は通常利用では不要なので、MasterModeに入った時だけ生成します。
+	if development_button == null:
+		_create_development_screen()
 	_update_title_label()
 	if development_button != null:
 		development_button.visible = true
@@ -215,6 +218,7 @@ func _create_development_screen() -> void:
 	development_button.text = "開発中"
 	development_button.visible = false
 	development_button.custom_minimum_size = Vector2(110, 48)
+	development_button.pressed.connect(_on_nav_button_pressed.bind("development"))
 	nav_flow.add_child(development_button)
 
 	admin_exit_button = Button.new()

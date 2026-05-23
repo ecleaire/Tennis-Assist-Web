@@ -2,7 +2,9 @@ extends Control
 
 const SETTINGS_PATH: String = "user://admin_settings.json"
 const ADMIN_GATE_HASH: String = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275"
-const ADMIN_EXTRA_PASSWORDS: PackedStringArray = ["rsam"]
+# 公開Webアプリ内の認証は設定欄を隠すための簡易ゲートです。
+# 実際の書き込み許可はGAS側のAPIキー検証で行います。
+const ADMIN_EXTRA_PASSWORDS: PackedStringArray = ["rsam", "gas", "wrorsam"]
 
 var password_input: LineEdit
 var auth_button: Button
@@ -178,6 +180,7 @@ func _set_settings_visible(visible_state: bool) -> void:
 		settings_panel.visible = visible_state
 
 func _load_settings() -> void:
+	# 管理者設定は公開リポジトリには含めず、この端末の user:// にだけ保存します。
 	if not FileAccess.file_exists(SETTINGS_PATH):
 		return
 	var file: FileAccess = FileAccess.open(SETTINGS_PATH, FileAccess.READ)
@@ -234,6 +237,7 @@ func _send_test_payload() -> void:
 			"record_kind": "connection_test"
 		}
 	}
+	# CORS回避のため text/plain で送ります。GAS側でJSONとしてパースします。
 	var headers: PackedStringArray = PackedStringArray(["Content-Type: text/plain;charset=utf-8"])
 	var err: Error = http_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
 	if err != OK:

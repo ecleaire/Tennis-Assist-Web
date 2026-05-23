@@ -1078,6 +1078,8 @@ func _open_history_csv_import_picker() -> void:
 		history_import_file_dialog.popup_centered_ratio(0.7)
 
 func _open_web_history_csv_file_picker() -> void:
+	# Godot Web ExportではFileDialogがブラウザのファイル選択に直結しないため、
+	# JSで一時inputを作ってCSV本文をGDScriptへ戻します。
 	var command: String = """
 (function () {
 	const oldInput = document.getElementById('wro-history-csv-file-input');
@@ -1160,6 +1162,7 @@ func _apply_imported_history_csv_text(text: String, source_name: String) -> void
 	call_deferred("_scroll_to_control", history_panel)
 
 func _records_from_history_csv(text: String) -> Array:
+	# CSVエクスポートと同じ列名を見て復元します。列順が変わっても列名で追跡します。
 	var normalized_text: String = text.replace("\r\n", "\n").replace("\r", "\n")
 	var lines: PackedStringArray = normalized_text.split("\n", false)
 	if lines.is_empty():
@@ -1316,6 +1319,7 @@ func _build_match_history_csv(records: Array) -> String:
 	return "\r\n".join(lines)
 
 func _record_to_csv_row(record: Dictionary) -> PackedStringArray:
+	# CSV/GAS詳細シートで共通利用する1レコード分の正規化です。
 	var team_a_name: String = str(record.get("team_a", ""))
 	var team_b_name: String = str(record.get("team_b", ""))
 	var team_a_violations: int = int(record.get("team_a_violations", _violation_count_for_record(record, team_a_name)))
@@ -1390,6 +1394,7 @@ func _save_csv_native(filename: String, csv_text: String) -> String:
 	return ProjectSettings.globalize_path(path)
 
 func _download_csv_web(filename: String, csv_text: String) -> void:
+	# Web版はBlob URLを作ってブラウザのダウンロード動作に渡します。
 	var payload: PackedByteArray = ("\uFEFF" + csv_text).to_utf8_buffer()
 	var base64_text: String = Marshalls.raw_to_base64(payload)
 	var command: String = """
@@ -2281,6 +2286,8 @@ func _build_series_result_record() -> Dictionary:
 	}
 
 func _send_series_result_to_gas(result_record: Dictionary) -> void:
+	# 試合結果1行と、CSV相当の全マッチ詳細行を同じPOSTにまとめます。
+	# GAS側でシートを分けて追記し、record_idで二重送信を避けます。
 	var settings: Dictionary = _load_gas_settings()
 	if settings.is_empty() or not bool(settings.get("send_enabled", false)):
 		tournament_save_status_label.text = "試合結果を保存しました。スプレッドシート送信はOFFです。"
@@ -2317,6 +2324,7 @@ func _send_series_result_to_gas(result_record: Dictionary) -> void:
 	tournament_save_status_label.text = "試合結果を保存しました。スプレッドシートへ送信中..."
 
 func _build_series_detail_rows_for_gas(result_record: Dictionary) -> Array:
+	# detail_rowsはCSVエクスポートと同じ列順で、1〜3マッチ + 試合結果の4行を送ります。
 	var rows: Array = []
 	var records: Array = active_series.get("records", [])
 	for record_variant in records:
