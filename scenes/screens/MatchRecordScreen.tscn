@@ -498,7 +498,7 @@ horizontal_alignment = 1
 [node name="SaveMatchButton" type="Button" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127048]
 custom_minimum_size = Vector2(180, 52)
 layout_mode = 2
-text = "この試合を保存"
+text = "このマッチを保存"
 
 [node name="TournamentSaveStatusLabel" type="Label" parent="Scroll/Layout/TournamentPanel/TournamentMargin/TournamentLayout/ResultInputPanel/ResultInputMargin/ResultInputLayout" unique_id=127049]
 layout_mode = 2

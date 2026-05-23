@@ -232,6 +232,11 @@ var final_complete_title_label: Label
 var final_complete_winner_label: Label
 var final_complete_body_label: Label
 var next_series_button: Button
+var next_match_prep_panel: PanelContainer
+var next_match_prep_label: Label
+var next_match_prep_detail_label: Label
+var next_match_prep_button: Button
+var pending_next_match_number: int = 0
 var agreement_confirm_dialog: ConfirmationDialog
 var final_result_dialog: AcceptDialog
 var pending_agreement_team: String = ""
@@ -247,6 +252,7 @@ var is_syncing_ball_options: bool = false
 func _ready() -> void:
 	_create_gas_http_request()
 	_create_flow_tools()
+	_create_next_match_prep_panel()
 	_create_court_selector()
 	_create_history_tools()
 	_create_team_editor()
@@ -319,6 +325,47 @@ func _create_flow_tools() -> void:
 
 	tournament_layout.add_child(flow_tools_panel)
 	tournament_layout.move_child(flow_tools_panel, 1)
+
+func _create_next_match_prep_panel() -> void:
+	next_match_prep_panel = PanelContainer.new()
+	next_match_prep_panel.name = "NextMatchPrepPanel"
+	next_match_prep_panel.visible = false
+	next_match_prep_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_bottom", 18)
+	next_match_prep_panel.add_child(margin)
+
+	var layout: VBoxContainer = VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 12)
+	margin.add_child(layout)
+
+	next_match_prep_label = Label.new()
+	next_match_prep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	next_match_prep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	next_match_prep_label.add_theme_font_size_override("font_size", 28)
+	next_match_prep_label.add_theme_color_override("font_color", COLOR_BUTTON_SUCCESS)
+	layout.add_child(next_match_prep_label)
+
+	next_match_prep_detail_label = Label.new()
+	next_match_prep_detail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	next_match_prep_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	next_match_prep_detail_label.add_theme_font_size_override("font_size", 20)
+	layout.add_child(next_match_prep_detail_label)
+
+	var button_row: HFlowContainer = HFlowContainer.new()
+	button_row.alignment = FlowContainer.ALIGNMENT_CENTER
+	layout.add_child(button_row)
+
+	next_match_prep_button = _create_flow_button("ボール配置へ進む")
+	next_match_prep_button.pressed.connect(_continue_to_next_match_preparation)
+	button_row.add_child(next_match_prep_button)
+
+	tournament_layout.add_child(next_match_prep_panel)
+	tournament_layout.move_child(next_match_prep_panel, 2)
 
 func _create_flow_button(text_value: String) -> Button:
 	var button: Button = Button.new()
@@ -558,7 +605,7 @@ func _create_final_agreement_panel() -> void:
 
 	team_a_agree_button = _create_flow_button("チームA代表 同意")
 	team_b_agree_button = _create_flow_button("チームB代表 同意")
-	finalize_series_button = _create_flow_button("試合結果を確定")
+	finalize_series_button = _create_flow_button("試合結果を保存")
 	show_final_result_button = _create_flow_button("最終結果を表示")
 	finalize_series_button.disabled = true
 	agree_row.add_child(team_a_agree_button)
@@ -1630,6 +1677,8 @@ func _start_series() -> void:
 	team_a_agreed = false
 	team_b_agreed = false
 	series_finalized = false
+	pending_next_match_number = 0
+	next_match_prep_panel.visible = false
 	final_agreement_panel.visible = false
 	_reset_match_inputs()
 	_refresh_series_ui()
@@ -1674,6 +1723,8 @@ func _reset_series_state(status_message: String = "", save_status_message: Strin
 	team_b_agreed = false
 	series_finalized = false
 	pending_agreement_team = ""
+	pending_next_match_number = 0
+	next_match_prep_panel.visible = false
 	final_agreement_panel.visible = false
 	final_complete_panel.visible = false
 	_hide_flow_tools()
@@ -1797,14 +1848,17 @@ func _save_current_match() -> void:
 		tournament_save_status_label.text = "第%dマッチを保存しました。代表同意後に結果を確定します。" % int(record.get("match_number", 0))
 		tournament_status_label.text = "最終結果を確認してください。"
 		_hide_flow_tools()
+		next_match_prep_panel.visible = false
 		_show_final_agreement_panel()
-	else:
-		tournament_save_status_label.text = "第%dマッチを保存しました。次のマッチを入力できます。" % int(record.get("match_number", 0))
+	elif is_editing_existing:
+		tournament_save_status_label.text = "第%dマッチを更新しました。" % int(record.get("match_number", 0))
 		tournament_status_label.text = "中間結果を更新しました。"
 		_show_flow_tools("第%dマッチ進行中" % _next_match_number())
-
-	if not should_finish_series:
-		match_saved_for_next_match.emit(_next_match_number())
+	else:
+		tournament_save_status_label.text = "第%dマッチを保存しました。次のマッチ準備へ進んでください。" % int(record.get("match_number", 0))
+		tournament_status_label.text = "中間結果を更新しました。"
+		_hide_flow_tools()
+		_show_next_match_prep_panel(_next_match_number())
 
 func _build_save_confirmation_text(record: Dictionary) -> String:
 	return "この内容で保存しますか？\n\n%s 第%d試合 第%dマッチ\n%s vs %s\n終了理由: %s\n勝者: %s\n%s: オレンジ%d / 紫%d / 得点%d\n%s: オレンジ%d / 紫%d / 得点%d" % [
@@ -1824,6 +1878,27 @@ func _build_save_confirmation_text(record: Dictionary) -> String:
 		int(record.get("team_b_purple", 0)),
 		int(record.get("team_b_score", 0))
 	]
+
+func _show_next_match_prep_panel(next_match_number: int) -> void:
+	pending_next_match_number = next_match_number
+	next_match_prep_panel.visible = true
+	next_match_prep_label.text = "第%dマッチの準備をしてください" % next_match_number
+	next_match_prep_detail_label.text = "%s vs %s\n%s 第%d試合" % [
+		str(active_series.get("team_a", "チームA")),
+		str(active_series.get("team_b", "チームB")),
+		str(active_series.get("court", "Aコート")),
+		int(active_series.get("series_number", 1))
+	]
+	_scroll_to_control(next_match_prep_panel)
+
+func _continue_to_next_match_preparation() -> void:
+	if active_series.is_empty() or pending_next_match_number <= 0:
+		return
+	var next_match_number: int = pending_next_match_number
+	pending_next_match_number = 0
+	next_match_prep_panel.visible = false
+	_show_flow_tools("第%dマッチ進行中" % next_match_number)
+	match_saved_for_next_match.emit(next_match_number)
 
 func focus_result_entry_after_match() -> void:
 	if active_series.is_empty() or _series_is_finished():
@@ -2144,7 +2219,7 @@ func _show_final_complete_panel() -> void:
 	final_complete_winner_label.text = "試合勝者: %s" % _overall_winner_name(_series_summary())
 	final_complete_body_label.text = _build_final_complete_text()
 	tournament_status_label.text = "試合が終了しました。お疲れさまでした。"
-	tournament_save_status_label.text = "両チーム代表の同意を確認し、試合結果を確定しました。"
+	tournament_save_status_label.text = "両チーム代表の同意を確認し、試合結果を保存しました。"
 	_scroll_to_control(final_complete_panel)
 
 func _start_next_series_after_complete() -> void:
@@ -2216,6 +2291,7 @@ func _send_series_result_to_gas(result_record: Dictionary) -> void:
 	var payload: Dictionary = {
 		"api_key": api_key,
 		"event": "series_result",
+		"target_sheet": "match_records",
 		"source": "WRO RoboSports Assist",
 		"sent_at": Time.get_datetime_string_from_system(),
 		"payload": result_record.duplicate(true),

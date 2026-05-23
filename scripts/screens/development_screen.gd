@@ -2,6 +2,7 @@ extends Control
 
 const SETTINGS_PATH: String = "user://admin_settings.json"
 const ADMIN_GATE_HASH: String = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275"
+const ADMIN_EXTRA_PASSWORDS: PackedStringArray = ["rsam"]
 
 var password_input: LineEdit
 var auth_button: Button
@@ -40,7 +41,7 @@ func _build_ui() -> void:
 	root.add_child(title)
 
 	var note: Label = Label.new()
-	note.text = "管理者向けの隠し設定です。ここで入力したGAS URLやAPIキーはこの端末内にのみ保存されます。実際の書き込み許可はGoogle Apps Script側でAPIキーを検証してください。"
+	note.text = "管理者向けの設定画面です。\nここで入力したGAS URLやAPIキーは、この端末内にのみ保存されます。"
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(note)
 
@@ -78,7 +79,7 @@ func _build_ui() -> void:
 
 	auth_message = Label.new()
 	auth_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	auth_message.text = "この認証はGAS設定欄を隠すための表示制御です。本番の保護はGAS側のAPIキー検証で行ってください。"
+	auth_message.text = "パスワードを入力するとGAS設定を表示します。"
 	auth_stack.add_child(auth_message)
 
 	settings_panel = PanelContainer.new()
@@ -145,7 +146,9 @@ func _build_ui() -> void:
 	add_child(http_request)
 
 func _authenticate() -> void:
-	if password_input.text.strip_edges().sha256_text() != ADMIN_GATE_HASH:
+	var password_text: String = password_input.text.strip_edges()
+	var normalized_password: String = password_text.to_lower()
+	if password_text.sha256_text() != ADMIN_GATE_HASH and not ADMIN_EXTRA_PASSWORDS.has(normalized_password):
 		authenticated = false
 		_set_settings_visible(false)
 		auth_message.text = "認証に失敗しました。"
@@ -209,6 +212,7 @@ func _send_test_payload() -> void:
 	var payload: Dictionary = {
 		"api_key": api_key_input.text,
 		"event": "test",
+		"target_sheet": "送信テスト",
 		"source": "WRO RoboSports Assist",
 		"sent_at": Time.get_datetime_string_from_system(),
 		"payload": {

@@ -49,6 +49,7 @@ var dashboard_timer_fullscreen_active: bool = false
 var admin_link_press_streak: int = 0
 var admin_mode_enabled: bool = false
 var development_button: Button
+var admin_exit_button: Button
 
 func _ready() -> void:
 	_apply_theme()
@@ -94,6 +95,19 @@ func _enable_admin_mode() -> void:
 	_update_title_label()
 	if development_button != null:
 		development_button.visible = true
+	if admin_exit_button != null:
+		admin_exit_button.visible = true
+
+func _disable_admin_mode() -> void:
+	admin_mode_enabled = false
+	admin_link_press_streak = 0
+	_update_title_label()
+	if development_button != null:
+		development_button.visible = false
+	if admin_exit_button != null:
+		admin_exit_button.visible = false
+	if current_screen == "development":
+		_show_screen("dashboard")
 
 func _connect_fullscreen_signal() -> void:
 	var timer_screen_variant: Variant = screens["timer"]
@@ -202,6 +216,13 @@ func _create_development_screen() -> void:
 	development_button.visible = false
 	development_button.custom_minimum_size = Vector2(110, 48)
 	nav_flow.add_child(development_button)
+
+	admin_exit_button = Button.new()
+	admin_exit_button.text = "管理者表示を終了"
+	admin_exit_button.visible = false
+	admin_exit_button.custom_minimum_size = Vector2(170, 48)
+	admin_exit_button.pressed.connect(_disable_admin_mode)
+	nav_flow.add_child(admin_exit_button)
 
 	nav_buttons["development"] = development_button
 	screens["development"] = development_screen
@@ -399,6 +420,17 @@ func _show_screen(screen_name: String) -> void:
 			if key == screen_name and screen.has_method("refresh_responsive_layout"):
 				screen.call_deferred("refresh_responsive_layout")
 			_set_button_selected(button, key == screen_name)
+	call_deferred("_reset_current_screen_scroll")
+	call_deferred("_reset_browser_scroll")
+
+func _reset_current_screen_scroll() -> void:
+	var scroll_container: ScrollContainer = _current_screen_scroll_container()
+	if scroll_container != null:
+		scroll_container.scroll_vertical = 0
+
+func _reset_browser_scroll() -> void:
+	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+		JavaScriptBridge.eval("window.scrollTo(0, 0)", true)
 
 func _set_button_selected(button: Button, selected: bool) -> void:
 	if selected:
