@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260523-11';
+const CACHE_NAME = 'wro-robosports-assist-v20260523-12';
 
 const APP_SHELL = [
 	'./',
@@ -30,7 +30,22 @@ self.addEventListener('activate', (event) => {
 				keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
 			))
 			.then(() => self.clients.claim())
+			.then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+			.then((clients) => {
+				for (const client of clients) {
+					client.postMessage({ type: 'WRO_ASSIST_UPDATED', cacheName: CACHE_NAME });
+					if ('navigate' in client && client.url) {
+						client.navigate(client.url);
+					}
+				}
+			})
 	);
+});
+
+self.addEventListener('message', (event) => {
+	if (event.data && event.data.type === 'SKIP_WAITING') {
+		self.skipWaiting();
+	}
 });
 
 self.addEventListener('fetch', (event) => {

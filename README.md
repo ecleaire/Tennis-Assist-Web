@@ -121,4 +121,3 @@ Discussions にて歓迎しています。
 
 - 数字表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
 - 日本語 UI には Noto Sans JP を使用しています。ライセンスは `assets/fonts/Noto_Sans_JP/OFL.txt` を確認してください。
-

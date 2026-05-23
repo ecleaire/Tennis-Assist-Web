@@ -97,7 +97,40 @@ body {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="WRO Assist">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script>if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('Service worker registration failed:', err); }); }); }</script>
+<script>
+if ('serviceWorker' in navigator) {
+	let wroAssistReloading = false;
+	const reloadForUpdate = function () {
+		if (wroAssistReloading) {
+			return;
+		}
+		wroAssistReloading = true;
+		window.location.reload();
+	};
+	navigator.serviceWorker.addEventListener('message', function (event) {
+		if (event.data && event.data.type === 'WRO_ASSIST_UPDATED') {
+			reloadForUpdate();
+		}
+	});
+	navigator.serviceWorker.addEventListener('controllerchange', reloadForUpdate);
+	window.addEventListener('load', function () {
+		navigator.serviceWorker.register('./sw.js').then(function (registration) {
+			registration.update().catch(function (err) { console.warn('Service worker update check failed:', err); });
+			registration.addEventListener('updatefound', function () {
+				const worker = registration.installing;
+				if (!worker) {
+					return;
+				}
+				worker.addEventListener('statechange', function () {
+					if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+						worker.postMessage({ type: 'SKIP_WAITING' });
+					}
+				});
+			});
+		}).catch(function (err) { console.warn('Service worker registration failed:', err); });
+	});
+}
+</script>
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -222,4 +255,3 @@ const engine = new Engine(GODOT_CONFIG);
 		</script>
 	</body>
 </html>
-
