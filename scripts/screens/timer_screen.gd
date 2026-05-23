@@ -76,6 +76,12 @@ const COLOR_BUTTON_LIGHT_TEXT: Color = Color.WHITE
 @onready var count_spacer7: Control = $Overlay/Layout/BottomPanel/BottomMargin/BottomStack/ControlsRow/CountSpacer7
 @onready var random_interval_menu: PopupMenu = $RandomIntervalMenu
 @onready var manual_time_popup: PopupPanel = $ManualTimePopup
+@onready var manual_time_margin: MarginContainer = $ManualTimePopup/ManualTimeMargin
+@onready var manual_time_layout: VBoxContainer = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout
+@onready var manual_time_title: Label = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualTimeTitle
+@onready var manual_time_hint: Label = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualTimeHint
+@onready var manual_selectors: HBoxContainer = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualSelectors
+@onready var manual_buttons: HBoxContainer = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualButtons
 @onready var manual_minute_option: OptionButton = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualSelectors/MinuteOption
 @onready var manual_second_option: OptionButton = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualSelectors/SecondOption
 @onready var manual_cancel_button: Button = $ManualTimePopup/ManualTimeMargin/ManualTimeLayout/ManualButtons/ManualCancelButton
@@ -137,6 +143,9 @@ func set_dashboard_mode(enabled: bool) -> void:
 	_update_responsive_sizes()
 
 func _apply_dashboard_mode() -> void:
+	var available_size: Vector2 = _available_size()
+	var portrait: bool = _is_portrait_size(available_size)
+	var tablet_portrait: bool = _is_tablet_portrait_size(available_size)
 	header_row.visible = not dashboard_mode and not is_compact_fullscreen_ui
 	legacy_hint_label.visible = false
 	var margin_size: int = 8 if dashboard_mode else 0
@@ -144,24 +153,42 @@ func _apply_dashboard_mode() -> void:
 	overlay.add_theme_constant_override("margin_top", margin_size)
 	overlay.add_theme_constant_override("margin_right", margin_size)
 	overlay.add_theme_constant_override("margin_bottom", margin_size)
-	controls_row.add_theme_constant_override("h_separation", 8 if dashboard_mode else 20)
-	controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 14)
-	random_controls_row.add_theme_constant_override("h_separation", 8 if dashboard_mode else 16)
-	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else 10)
+	controls_row.add_theme_constant_override("h_separation", 8 if (dashboard_mode or portrait) else 20)
+	controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else (12 if portrait else 14))
+	random_controls_row.add_theme_constant_override("h_separation", 8 if (dashboard_mode or portrait) else 16)
+	random_controls_row.add_theme_constant_override("v_separation", 8 if dashboard_mode else (12 if portrait else 10))
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
-	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(138, 44)
+	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else (Vector2(124, 48) if tablet_portrait else (Vector2(104, 42) if portrait else Vector2(138, 44)))
 	for button in [start_button, end_button, fullscreen_button]:
 		button.custom_minimum_size = primary_button_size
+		button.add_theme_font_size_override("font_size", 17 if tablet_portrait else (14 if portrait else 18))
 
-	var random_button_size: Vector2 = Vector2(132, 40) if dashboard_mode else Vector2(164, 44)
+	var random_button_size: Vector2 = Vector2(132, 40) if dashboard_mode else (Vector2(148, 48) if tablet_portrait else (Vector2(124, 42) if portrait else Vector2(164, 44)))
 	for button in [reset_button, random_option_count_button]:
 		button.custom_minimum_size = random_button_size
-		button.add_theme_font_size_override("font_size", 16 if dashboard_mode else 20)
+		button.add_theme_font_size_override("font_size", 16 if dashboard_mode else (17 if tablet_portrait else (14 if portrait else 20)))
 
-	var count_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else Vector2(132, 44)
+	var count_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else (Vector2(120, 48) if tablet_portrait else (Vector2(104, 42) if portrait else Vector2(132, 44)))
 	for button in [ten_count_button, five_count_button]:
 		button.custom_minimum_size = count_button_size
+		button.add_theme_font_size_override("font_size", 16 if tablet_portrait else (13 if portrait else 18))
+
+	if portrait:
+		controls_row.alignment = FlowContainer.ALIGNMENT_CENTER
+		count_spacer6.custom_minimum_size = Vector2(0, 0)
+		count_spacer6.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	else:
+		controls_row.alignment = FlowContainer.ALIGNMENT_BEGIN
+		count_spacer6.custom_minimum_size = Vector2(24, 40)
+		count_spacer6.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	random_interval_menu.add_theme_font_size_override("font_size", 22 if tablet_portrait else (18 if portrait else 16))
+	random_interval_menu.add_theme_constant_override("item_start_padding", 18 if tablet_portrait else 12)
+	random_interval_menu.add_theme_constant_override("item_end_padding", 18 if tablet_portrait else 12)
+	random_interval_menu.add_theme_constant_override("v_separation", 10 if tablet_portrait else 6)
+
+	_apply_manual_time_popup_responsive(available_size)
 
 func _arrange_timer_buttons() -> void:
 	if reset_button.get_parent() != controls_row:
@@ -632,28 +659,28 @@ func _update_responsive_sizes() -> void:
 	if timer_label == null:
 		return
 
-	var available_width: float = size.x
-	if available_width <= 1.0:
-		available_width = get_viewport_rect().size.x
-	var available_height: float = size.y
-	if available_height <= 1.0:
-		available_height = get_viewport_rect().size.y
+	var available_size: Vector2 = _available_size()
+	var available_width: float = available_size.x
+	var available_height: float = available_size.y
+	var portrait: bool = _is_portrait_size(available_size)
 
 	var dashboard_fullscreen: bool = dashboard_mode and is_compact_fullscreen_ui
-	var font_scale: float = 0.34 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.32 if is_compact_fullscreen_ui else 0.18))
-	var min_size: int = 136 if dashboard_fullscreen else (72 if dashboard_mode else (132 if is_compact_fullscreen_ui else 76))
-	var max_size: int = 500 if dashboard_fullscreen else (180 if dashboard_mode else (500 if is_compact_fullscreen_ui else 260))
+	var font_scale: float = 0.34 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.22 if (is_compact_fullscreen_ui and portrait) else (0.32 if is_compact_fullscreen_ui else (0.15 if portrait else 0.18))))
+	var min_size: int = 136 if dashboard_fullscreen else (72 if dashboard_mode else (96 if (is_compact_fullscreen_ui and portrait) else (132 if is_compact_fullscreen_ui else (64 if portrait else 76))))
+	var max_size: int = 500 if dashboard_fullscreen else (180 if dashboard_mode else (260 if (is_compact_fullscreen_ui and portrait) else (500 if is_compact_fullscreen_ui else (200 if portrait else 260))))
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
-	var controls_height: float = 150.0 if dashboard_mode else 174.0
+	var controls_height: float = 150.0 if dashboard_mode else (210.0 if portrait else 174.0)
 	var header_height: float = 0.0 if (dashboard_mode or is_compact_fullscreen_ui) else 54.0
-	var caption_height: float = 58.0 if dashboard_mode else 70.0
-	var height_ratio: float = 0.48 if (dashboard_fullscreen or is_compact_fullscreen_ui) else 0.34
+	var caption_height: float = 58.0 if dashboard_mode else (82.0 if portrait else 70.0)
+	var height_ratio: float = 0.42 if (is_compact_fullscreen_ui and portrait) else (0.48 if (dashboard_fullscreen or is_compact_fullscreen_ui) else (0.30 if portrait else 0.34))
 	var height_limited_font: int = int(maxf(float(min_size), (available_height - controls_height - header_height - caption_height) * height_ratio))
 	font_size = mini(font_size, height_limited_font)
 	timer_label.add_theme_font_size_override("font_size", font_size)
-	var label_width: float = maxf(300.0, minf(980.0, available_width * (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90))))
-	var min_height: float = 200.0 if dashboard_fullscreen else (92.0 if dashboard_mode else (190.0 if is_compact_fullscreen_ui else 140.0))
-	var max_height: float = 430.0 if dashboard_fullscreen else (205.0 if dashboard_mode else (430.0 if is_compact_fullscreen_ui else 320.0))
+	var label_width_max: float = maxf(220.0, available_width - (24.0 if portrait else 72.0))
+	var desired_width: float = available_width * (0.94 if portrait else (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90)))
+	var label_width: float = clampf(desired_width, minf(300.0, label_width_max), minf(980.0, label_width_max))
+	var min_height: float = 200.0 if dashboard_fullscreen else (92.0 if dashboard_mode else (150.0 if (is_compact_fullscreen_ui and portrait) else (190.0 if is_compact_fullscreen_ui else (120.0 if portrait else 140.0))))
+	var max_height: float = 430.0 if dashboard_fullscreen else (205.0 if dashboard_mode else (330.0 if (is_compact_fullscreen_ui and portrait) else (430.0 if is_compact_fullscreen_ui else (250.0 if portrait else 320.0))))
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
 
 	var notice_size: int = clampi(int(font_size * 0.24), 24, 56)
@@ -663,12 +690,59 @@ func _update_responsive_sizes() -> void:
 	sub_timer_caption_label.add_theme_font_size_override("font_size", clampi(int(sub_timer_size * 0.48), 22, 48))
 	sub_timer_label.add_theme_font_size_override("font_size", sub_timer_size)
 	sub_timer_row.custom_minimum_size = Vector2(0, clampf(float(reserved_sub_timer_size) * 1.28, 72.0, 190.0))
+	_apply_dashboard_mode()
 
 func _show_random_interval_menu() -> void:
 	var button_rect: Rect2 = random_option_count_button.get_global_rect()
 	random_interval_menu.position = Vector2i(int(button_rect.position.x), int(button_rect.end.y + 4.0))
 	random_interval_menu.reset_size()
 	random_interval_menu.popup()
+
+func _available_size() -> Vector2:
+	var available_size: Vector2 = size
+	if available_size.x <= 1.0 or available_size.y <= 1.0:
+		available_size = get_viewport_rect().size
+	return available_size
+
+func _is_portrait_size(available_size: Vector2) -> bool:
+	return available_size.y > available_size.x * 1.08
+
+func _is_tablet_portrait_size(available_size: Vector2) -> bool:
+	return _is_portrait_size(available_size) and available_size.x >= 640.0
+
+func _manual_popup_size(available_size: Vector2) -> Vector2i:
+	var tablet_portrait: bool = _is_tablet_portrait_size(available_size)
+	var portrait: bool = _is_portrait_size(available_size)
+	var width: int = 560 if tablet_portrait else (min(420, int(available_size.x - 32.0)) if portrait else 420)
+	var height: int = 330 if tablet_portrait else (300 if portrait else 260)
+	return Vector2i(maxi(300, width), height)
+
+func _apply_manual_time_popup_responsive(available_size: Vector2) -> void:
+	if manual_time_margin == null:
+		return
+	var tablet_portrait: bool = _is_tablet_portrait_size(available_size)
+	var portrait: bool = _is_portrait_size(available_size)
+	var margin_size: int = 24 if tablet_portrait else (18 if portrait else 20)
+	var separation: int = 16 if tablet_portrait else (12 if portrait else 10)
+	manual_time_margin.add_theme_constant_override("margin_left", margin_size)
+	manual_time_margin.add_theme_constant_override("margin_top", margin_size)
+	manual_time_margin.add_theme_constant_override("margin_right", margin_size)
+	manual_time_margin.add_theme_constant_override("margin_bottom", margin_size)
+	manual_time_layout.add_theme_constant_override("separation", separation)
+	manual_selectors.add_theme_constant_override("separation", 16 if tablet_portrait else 10)
+	manual_buttons.add_theme_constant_override("separation", 16 if tablet_portrait else 10)
+	manual_time_title.add_theme_font_size_override("font_size", 30 if tablet_portrait else (26 if portrait else 24))
+	manual_time_hint.add_theme_font_size_override("font_size", 20 if tablet_portrait else (17 if portrait else 16))
+	var option_size: Vector2 = Vector2(180, 60) if tablet_portrait else (Vector2(150, 54) if portrait else Vector2(140, 48))
+	manual_minute_option.custom_minimum_size = option_size
+	manual_second_option.custom_minimum_size = option_size
+	manual_minute_option.add_theme_font_size_override("font_size", 22 if tablet_portrait else (18 if portrait else 16))
+	manual_second_option.add_theme_font_size_override("font_size", 22 if tablet_portrait else (18 if portrait else 16))
+	var button_size: Vector2 = Vector2(170, 58) if tablet_portrait else (Vector2(140, 52) if portrait else Vector2(130, 48))
+	manual_cancel_button.custom_minimum_size = button_size
+	manual_apply_button.custom_minimum_size = button_size
+	manual_cancel_button.add_theme_font_size_override("font_size", 20 if tablet_portrait else (17 if portrait else 16))
+	manual_apply_button.add_theme_font_size_override("font_size", 20 if tablet_portrait else (17 if portrait else 16))
 
 func _on_random_interval_selected(menu_id: int) -> void:
 	match menu_id:
@@ -693,7 +767,8 @@ func _open_manual_time_popup() -> void:
 	var second_value: int = manual_duration_seconds % 60
 	manual_minute_option.select(minute_index)
 	manual_second_option.select(second_value)
-	manual_time_popup.popup_centered()
+	_apply_manual_time_popup_responsive(_available_size())
+	manual_time_popup.popup_centered(_manual_popup_size(_available_size()))
 
 func _apply_manual_duration() -> void:
 	var selected_minute: int = manual_minute_option.get_selected_id()
