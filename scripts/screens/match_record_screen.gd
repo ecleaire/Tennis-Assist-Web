@@ -2304,7 +2304,9 @@ func _send_series_result_to_gas(result_record: Dictionary) -> void:
 		"record_id": str(result_record.get("record_id", "")),
 		"payload": result_record.duplicate(true),
 		"csv_columns": Array(CSV_EXPORT_COLUMNS),
-		"csv_row": Array(_record_to_csv_row(result_record))
+		"csv_row": Array(_record_to_csv_row(result_record)),
+		"detail_sheet": "match_records_detail",
+		"detail_rows": _build_series_detail_rows_for_gas(result_record)
 	}
 	var headers: PackedStringArray = PackedStringArray(["Content-Type: text/plain;charset=utf-8"])
 	var err: Error = gas_http_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
@@ -2313,6 +2315,26 @@ func _send_series_result_to_gas(result_record: Dictionary) -> void:
 		return
 
 	tournament_save_status_label.text = "試合結果を保存しました。スプレッドシートへ送信中..."
+
+func _build_series_detail_rows_for_gas(result_record: Dictionary) -> Array:
+	var rows: Array = []
+	var records: Array = active_series.get("records", [])
+	for record_variant in records:
+		if typeof(record_variant) != TYPE_DICTIONARY:
+			continue
+		var record: Dictionary = (record_variant as Dictionary).duplicate(true)
+		if str(record.get("record_id", "")).is_empty():
+			record["record_id"] = _make_record_id(str(record.get("record_kind", RECORD_KIND_MATCH)), int(record.get("match_number", 0)))
+		rows.append({
+			"record_id": str(record.get("record_id", "")),
+			"csv_row": Array(_record_to_csv_row(record))
+		})
+
+	rows.append({
+		"record_id": str(result_record.get("record_id", "")),
+		"csv_row": Array(_record_to_csv_row(result_record))
+	})
+	return rows
 
 func _load_gas_settings() -> Dictionary:
 	if not FileAccess.file_exists(ADMIN_SETTINGS_PATH):
