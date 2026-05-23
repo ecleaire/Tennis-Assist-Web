@@ -12,6 +12,7 @@ const MatchRecordStore = preload("res://scripts/services/match_record_store.gd")
 # 大会進行の基本設定です。試合数やチーム一覧の参照先はここで調整します。
 const TEAM_LIST_PATH: String = "res://data/team_list_example.csv"
 const USER_TEAM_LIST_PATH: String = "user://team_list.csv"
+const ADMIN_SETTINGS_PATH: String = "user://admin_settings.json"
 const SERIES_MATCH_COUNT: int = 3
 const MATCH_TYPE_OFFICIAL: String = "公式試合"
 const MATCH_TYPE_PRACTICE: String = "練習試合"
@@ -238,11 +239,13 @@ var editing_match_number: int = 0
 var team_a_agreed: bool = false
 var team_b_agreed: bool = false
 var series_finalized: bool = false
+var gas_http_request: HTTPRequest
 
 # 紫ボールのA/B自動補完で、相互シグナルがループしないようにするフラグです。
 var is_syncing_ball_options: bool = false
 
 func _ready() -> void:
+	_create_gas_http_request()
 	_create_flow_tools()
 	_create_court_selector()
 	_create_history_tools()
@@ -270,6 +273,12 @@ func _ready() -> void:
 	_update_score_labels()
 	old_stats_flow.visible = false
 	history_panel.visible = false
+
+func _create_gas_http_request() -> void:
+	gas_http_request = HTTPRequest.new()
+	gas_http_request.name = "GasResultRequest"
+	gas_http_request.request_completed.connect(_on_gas_result_request_completed)
+	add_child(gas_http_request)
 
 func _create_flow_tools() -> void:
 	flow_tools_panel = PanelContainer.new()
@@ -2127,6 +2136,7 @@ func _finalize_series_result() -> void:
 	_refresh_history()
 	series_completed.emit()
 	_show_final_complete_panel()
+	_send_series_result_to_gas(result_record)
 
 func _show_final_complete_panel() -> void:
 	final_agreement_panel.visible = false
@@ -2187,6 +2197,56 @@ func _build_series_result_record() -> Dictionary:
 		"target_team": overall_winner,
 		"notes": _final_summary_text(summary)
 	}
+
+func _send_series_result_to_gas(result_record: Dictionary) -> void:
+	var settings: Dictionary = _load_gas_settings()
+	if settings.is_empty() or not bool(settings.get("send_enabled", false)):
+		tournament_save_status_label.text = "試合結果を保存しました。スプレッドシート送信はOFFです。"
+		return
+
+	var url: String = str(settings.get("gas_url", "")).strip_edges()
+	var api_key: String = str(settings.get("api_key", ""))
+	if url.is_empty() or api_key.is_empty():
+		tournament_save_status_label.text = "試合結果を保存しました。GAS URLまたはAPIキーが未設定です。"
+		return
+	if url.contains("/home/projects/") or url.ends_with("/edit"):
+		tournament_save_status_label.text = "試合結果を保存しました。GASはWebアプリURL（/exec）を設定してください。"
+		return
+
+	var payload: Dictionary = {
+		"api_key": api_key,
+		"event": "series_result",
+		"source": "WRO RoboSports Assist",
+		"sent_at": Time.get_datetime_string_from_system(),
+		"payload": result_record.duplicate(true),
+		"csv_columns": Array(CSV_EXPORT_COLUMNS),
+		"csv_row": Array(_record_to_csv_row(result_record))
+	}
+	var headers: PackedStringArray = PackedStringArray(["Content-Type: text/plain;charset=utf-8"])
+	var err: Error = gas_http_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
+	if err != OK:
+		tournament_save_status_label.text = "試合結果を保存しました。スプレッドシート送信を開始できませんでした。エラー: %d" % err
+		return
+
+	tournament_save_status_label.text = "試合結果を保存しました。スプレッドシートへ送信中..."
+
+func _load_gas_settings() -> Dictionary:
+	if not FileAccess.file_exists(ADMIN_SETTINGS_PATH):
+		return {}
+	var file: FileAccess = FileAccess.open(ADMIN_SETTINGS_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if parsed is Dictionary:
+		return parsed
+	return {}
+
+func _on_gas_result_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var body_text: String = body.get_string_from_utf8()
+	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+		tournament_save_status_label.text = "試合結果を保存し、スプレッドシートへ送信しました。HTTP %d %s" % [response_code, body_text.left(120)]
+	else:
+		tournament_save_status_label.text = "試合結果は端末内に保存済みです。スプレッドシート送信に失敗しました。result=%d HTTP=%d %s" % [result, response_code, body_text.left(160)]
 
 func _scroll_to_control(target: Control) -> void:
 	var target_y: int = int(target.global_position.y - scroll.global_position.y + scroll.scroll_vertical) - 18
