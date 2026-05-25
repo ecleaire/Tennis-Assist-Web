@@ -8,6 +8,11 @@ const DevelopmentScreenScript = preload("res://scripts/screens/development_scree
 const TITLE_NORMAL_BBCODE: String = "[font_size=30]WRO RoboSports Assist[/font_size]"
 const TITLE_ADMIN_BBCODE: String = "[font_size=30][color=#9BE23D]WRO RoboSports Assist Master[/color][/font_size]"
 const ADMIN_ENTRY_PRESS_COUNT: int = 10
+const LAZY_SCREEN_PATHS: Dictionary = {
+	"rules": "res://scenes/screens/RuleViewerScreen.tscn",
+	"news": "res://scenes/screens/NewsScreen.tscn",
+	"links": "res://scenes/screens/LinksScreen.tscn"
+}
 
 @onready var outer_margin: MarginContainer = $MarginContainer
 @onready var root_layout: VBoxContainer = $MarginContainer/RootLayout
@@ -28,10 +33,7 @@ const ADMIN_ENTRY_PRESS_COUNT: int = 10
 @onready var screens: Dictionary = {
 	"timer": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/TimerScreen,
 	"balls": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/BallRandomizerScreen,
-	"records": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/MatchRecordScreen,
-	"rules": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/RuleViewerScreen,
-	"news": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/NewsScreen,
-	"links": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/LinksScreen
+	"records": $MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost/MatchRecordScreen
 }
 
 var current_screen: String = "dashboard"
@@ -411,6 +413,7 @@ func _hide_flow_status() -> void:
 	flow_status_panel.visible = false
 
 func _show_screen(screen_name: String) -> void:
+	_ensure_lazy_screen(screen_name)
 	if not screens.has(screen_name):
 		return
 	if screen_name == "development" and not admin_mode_enabled:
@@ -435,6 +438,26 @@ func _show_screen(screen_name: String) -> void:
 			_set_button_selected(button, is_active)
 	call_deferred("_reset_current_screen_scroll")
 	call_deferred("_reset_browser_scroll")
+
+func _ensure_lazy_screen(screen_name: String) -> void:
+	if screens.has(screen_name) or not LAZY_SCREEN_PATHS.has(screen_name):
+		return
+
+	var scene: PackedScene = load(String(LAZY_SCREEN_PATHS[screen_name]))
+	if scene == null:
+		push_warning("Lazy screen could not be loaded: %s" % screen_name)
+		return
+
+	var screen: Control = scene.instantiate() as Control
+	if screen == null:
+		return
+	screen.name = "%sScreen" % screen_name.capitalize()
+	screen.visible = false
+	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	screen.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_host.add_child(screen)
+	screens[screen_name] = screen
 
 func _set_screen_runtime_active(screen: Control, active: bool) -> void:
 	if screen.has_method("set_screen_active"):

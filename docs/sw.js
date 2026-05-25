@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260524-16';
+const CACHE_NAME = 'wro-robosports-assist-v20260524-17';
 
 // Godot Web ExportをPWAとしてオフライン起動するための最小アプリ本体です。
 // 追加データはfetch時に同じキャッシュへ入れ、初回installでは本体だけを確実に保持します。

@@ -4,9 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://cw2qldv4n5ml7" path="res://scenes/screens/TimerScreen.tscn" id="3_timer"]
 [ext_resource type="PackedScene" uid="uid://tfx7d3wijf4b" path="res://scenes/screens/BallRandomizerScreen.tscn" id="4_ball"]
 [ext_resource type="PackedScene" uid="uid://c3cu4aq2tbd3m" path="res://scenes/screens/MatchRecordScreen.tscn" id="5_records"]
-[ext_resource type="PackedScene" uid="uid://bx7alhlpwru6n" path="res://scenes/screens/RuleViewerScreen.tscn" id="6_rules"]
-[ext_resource type="PackedScene" uid="uid://c7n6axcxf0f54" path="res://scenes/screens/NewsScreen.tscn" id="7_news"]
-[ext_resource type="PackedScene" path="res://scenes/screens/LinksScreen.tscn" id="8_links"]
 
 [node name="Main" type="Control" unique_id=1628657873]
 layout_mode = 3
@@ -140,16 +137,5 @@ visible = false
 layout_mode = 1
 
 [node name="MatchRecordScreen" parent="MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost" unique_id=1281482879 instance=ExtResource("5_records")]
-visible = false
-layout_mode = 1
-
-[node name="RuleViewerScreen" parent="MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost" unique_id=37894730 instance=ExtResource("6_rules")]
-layout_mode = 1
-
-[node name="NewsScreen" parent="MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost" unique_id=304252420 instance=ExtResource("7_news")]
-visible = false
-layout_mode = 1
-
-[node name="LinksScreen" parent="MarginContainer/RootLayout/ContentPanel/ContentMargin/ScreenHost" unique_id=906522242 instance=ExtResource("8_links")]
 visible = false
 layout_mode = 1

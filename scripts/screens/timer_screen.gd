@@ -166,21 +166,31 @@ func _apply_dashboard_mode() -> void:
 	progress_bar.custom_minimum_size = Vector2(0, 16 if dashboard_mode else 24)
 
 	var primary_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else (Vector2(124, 48) if tablet_portrait else (Vector2(104, 42) if portrait else Vector2(138, 44)))
+	if is_compact_fullscreen_ui and tablet_portrait:
+		primary_button_size = Vector2(112, 44)
 	for button in [start_button, end_button, fullscreen_button]:
 		button.custom_minimum_size = primary_button_size
-		button.add_theme_font_size_override("font_size", 17 if tablet_portrait else (14 if portrait else 18))
+		button.add_theme_font_size_override("font_size", 16 if (is_compact_fullscreen_ui and tablet_portrait) else (17 if tablet_portrait else (14 if portrait else 18)))
 
 	var random_button_size: Vector2 = Vector2(132, 40) if dashboard_mode else (Vector2(148, 48) if tablet_portrait else (Vector2(124, 42) if portrait else Vector2(164, 44)))
+	if is_compact_fullscreen_ui and tablet_portrait:
+		random_button_size = Vector2(132, 44)
 	for button in [reset_button, random_option_count_button]:
 		button.custom_minimum_size = random_button_size
-		button.add_theme_font_size_override("font_size", 16 if dashboard_mode else (17 if tablet_portrait else (14 if portrait else 20)))
+		button.add_theme_font_size_override("font_size", 16 if (dashboard_mode or (is_compact_fullscreen_ui and tablet_portrait)) else (17 if tablet_portrait else (14 if portrait else 20)))
 
 	var count_button_size: Vector2 = Vector2(112, 40) if dashboard_mode else (Vector2(120, 48) if tablet_portrait else (Vector2(104, 42) if portrait else Vector2(132, 44)))
+	if is_compact_fullscreen_ui and tablet_portrait:
+		count_button_size = Vector2(112, 44)
 	for button in [ten_count_button, five_count_button]:
 		button.custom_minimum_size = count_button_size
-		button.add_theme_font_size_override("font_size", 16 if tablet_portrait else (13 if portrait else 18))
+		button.add_theme_font_size_override("font_size", 15 if (is_compact_fullscreen_ui and tablet_portrait) else (16 if tablet_portrait else (13 if portrait else 18)))
 
 	if portrait:
+		controls_row.alignment = FlowContainer.ALIGNMENT_CENTER
+		count_spacer6.custom_minimum_size = Vector2(0, 0)
+		count_spacer6.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	elif is_compact_fullscreen_ui and tablet_portrait:
 		controls_row.alignment = FlowContainer.ALIGNMENT_CENTER
 		count_spacer6.custom_minimum_size = Vector2(0, 0)
 		count_spacer6.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -682,9 +692,10 @@ func _update_responsive_sizes() -> void:
 	var portrait: bool = _is_portrait_size(available_size)
 
 	var dashboard_fullscreen: bool = dashboard_mode and is_compact_fullscreen_ui
-	var font_scale: float = 0.34 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.22 if (is_compact_fullscreen_ui and portrait) else (0.32 if is_compact_fullscreen_ui else (0.15 if portrait else 0.18))))
+	var tablet_portrait: bool = _is_tablet_portrait_size(available_size)
+	var font_scale: float = 0.34 if dashboard_fullscreen else (0.20 if dashboard_mode else (0.18 if (is_compact_fullscreen_ui and tablet_portrait) else (0.20 if (is_compact_fullscreen_ui and portrait) else (0.32 if is_compact_fullscreen_ui else (0.15 if portrait else 0.18)))))
 	var min_size: int = 136 if dashboard_fullscreen else (72 if dashboard_mode else (96 if (is_compact_fullscreen_ui and portrait) else (132 if is_compact_fullscreen_ui else (64 if portrait else 76))))
-	var max_size: int = 500 if dashboard_fullscreen else (180 if dashboard_mode else (260 if (is_compact_fullscreen_ui and portrait) else (500 if is_compact_fullscreen_ui else (200 if portrait else 260))))
+	var max_size: int = 500 if dashboard_fullscreen else (180 if dashboard_mode else (220 if (is_compact_fullscreen_ui and tablet_portrait) else (240 if (is_compact_fullscreen_ui and portrait) else (500 if is_compact_fullscreen_ui else (200 if portrait else 260)))))
 	var font_size: int = clampi(int(available_width * font_scale), min_size, max_size)
 	var controls_height: float = 150.0 if dashboard_mode else (210.0 if portrait else 174.0)
 	var header_height: float = 0.0 if (dashboard_mode or is_compact_fullscreen_ui) else 54.0
@@ -696,6 +707,8 @@ func _update_responsive_sizes() -> void:
 	var label_width_max: float = maxf(220.0, available_width - (24.0 if portrait else 72.0))
 	var desired_width: float = available_width * (0.94 if portrait else (0.90 if dashboard_fullscreen else (0.92 if dashboard_mode else 0.90)))
 	var label_width: float = clampf(desired_width, minf(300.0, label_width_max), minf(980.0, label_width_max))
+	font_size = mini(font_size, int(label_width / (5.35 if portrait else 5.05)))
+	timer_label.add_theme_font_size_override("font_size", font_size)
 	var min_height: float = 200.0 if dashboard_fullscreen else (92.0 if dashboard_mode else (150.0 if (is_compact_fullscreen_ui and portrait) else (190.0 if is_compact_fullscreen_ui else (120.0 if portrait else 140.0))))
 	var max_height: float = 430.0 if dashboard_fullscreen else (205.0 if dashboard_mode else (330.0 if (is_compact_fullscreen_ui and portrait) else (430.0 if is_compact_fullscreen_ui else (250.0 if portrait else 320.0))))
 	timer_label.custom_minimum_size = Vector2(label_width, clampf(float(font_size) * 1.25, min_height, max_height))
@@ -717,6 +730,13 @@ func _show_random_interval_menu() -> void:
 
 func _available_size() -> Vector2:
 	var available_size: Vector2 = size
+	if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+		var width_variant: Variant = JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.width : window.innerWidth", true)
+		var height_variant: Variant = JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.height : window.innerHeight", true)
+		var browser_size: Vector2 = Vector2(float(width_variant), float(height_variant))
+		if browser_size.x > 1.0 and browser_size.y > 1.0:
+			if is_compact_fullscreen_ui or browser_size.y > browser_size.x:
+				available_size = browser_size
 	if available_size.x <= 1.0 or available_size.y <= 1.0:
 		available_size = get_viewport_rect().size
 	return available_size
