@@ -401,6 +401,21 @@ progress::-moz-progress-bar {
   justify-content: space-between;
 }
 
+.balls-title-row {
+  min-width: 0;
+}
+
+.balls-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.balls-status {
+  font-size: 0.94rem;
+}
+
 .court {
   aspect-ratio: 1280 / 620;
   background: #e2e5dd center / contain no-repeat url("../assets/playfield.jpg");
@@ -878,6 +893,10 @@ body.compact .digital {
   .section-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .balls-heading {
+    gap: 6px 12px;
   }
 
   .toolbar .button {

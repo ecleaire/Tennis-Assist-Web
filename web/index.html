@@ -116,9 +116,12 @@
       <section id="screen-balls" class="screen">
         <article class="panel section-card">
           <div class="section-head">
-            <div>
+            <div class="balls-title-row">
               <p class="eyebrow">BALL RANDOMIZER</p>
-              <h2>ボール配置</h2>
+              <div class="balls-heading">
+                <h2>ボール配置</h2>
+                <p id="balls-status" class="muted balls-status">4列の配置を準備しました。紫ボールは180度対称です。</p>
+              </div>
             </div>
             <div class="toolbar">
               <button id="balls-random" class="button primary">ランダム生成</button>
@@ -126,7 +129,6 @@
               <button id="balls-ready" class="button accent hidden">配置完了</button>
             </div>
           </div>
-          <p id="balls-status" class="muted">4列の配置を準備しました。紫ボールは180度対称です。</p>
           <div id="court" class="court" aria-label="ダブルテニス フィールド上のボール配置"></div>
         </article>
       </section>
