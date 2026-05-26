@@ -25,7 +25,9 @@ interface MatchRecord {
   teamBOrange: number;
   teamBPurple: number;
   teamAScore: number;
+  teamAViolations?: number;
   teamBScore: number;
+  teamBViolations?: number;
   teamAWins?: number;
   teamALosses?: number;
   teamBWins?: number;
@@ -150,9 +152,9 @@ function csvRow(record: MatchRecord): string[] {
   return [
     record.timestamp, record.recordKind, record.matchType, record.seriesId, record.court, record.seriesNumber, record.matchNumber,
     record.teamA, record.teamB, record.teamAWins ?? "", record.teamALosses ?? "", record.teamAOrange, record.teamAPurple,
-    record.teamAScore, record.reasonCategory !== scoringCategory && record.targetTeam === record.teamA ? 1 : 0,
+    record.teamAScore, record.teamAViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamA ? 1 : 0),
     record.teamBWins ?? "", record.teamBLosses ?? "", record.teamBOrange, record.teamBPurple, record.teamBScore,
-    record.reasonCategory !== scoringCategory && record.targetTeam === record.teamB ? 1 : 0, record.draws ?? "",
+    record.teamBViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
   ].map(String);
 }
@@ -852,6 +854,8 @@ class RecordsController {
       teamBPurple: sum.teamBPurple,
       teamAScore: sum.teamAScore,
       teamBScore: sum.teamBScore,
+      teamAViolations: sum.teamAViolations,
+      teamBViolations: sum.teamBViolations,
       notes: `両チーム代表同意済み / ${this.series.teamA} ${sum.teamAWins}勝 / ${this.series.teamB} ${sum.teamBWins}勝 / 引き分け${sum.draws}`,
     };
     this.records.unshift(record);
@@ -1040,7 +1044,9 @@ class RecordsController {
       teamBOrange: Number(at(row, "チームBオレンジ")) || 0,
       teamBPurple: Number(at(row, "チームB紫")) || 0,
       teamAScore: Number(at(row, "チームA得点")) || 0,
+      teamAViolations: Number(at(row, "チームA違反数")) || 0,
       teamBScore: Number(at(row, "チームB得点")) || 0,
+      teamBViolations: Number(at(row, "チームB違反数")) || 0,
       notes: at(row, "メモ"),
     })).filter((record) => record.teamA || record.teamB);
     const keys = new Set(this.records.map(recordKey));
