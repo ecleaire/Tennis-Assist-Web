@@ -6,7 +6,8 @@ export default defineConfig({
   publicDir: "public",
   build: {
     outDir: "../docs",
-    emptyOutDir: true,
+    // Keep already-published hashed assets so cached HTML still loads correctly.
+    emptyOutDir: false,
     target: "es2020",
   },
 });
