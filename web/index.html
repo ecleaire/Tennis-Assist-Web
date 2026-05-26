@@ -16,17 +16,21 @@
           <p class="eyebrow">WRO 2026 / DOUBLE TENNIS</p>
           <h1 id="title">WRO RoboSports Assist</h1>
         </div>
-        <nav id="navigation" aria-label="機能メニュー">
-          <button class="nav active" data-screen="dashboard">ホーム</button>
-          <button class="nav" data-screen="timer">タイマー</button>
-          <button class="nav" data-screen="balls">ボール配置</button>
-          <button class="nav" data-screen="records">試合記録</button>
-          <button class="nav" data-screen="rules">ルール</button>
-          <button class="nav" data-screen="news">ニュース</button>
-          <button class="nav" data-screen="links">リンク</button>
-          <button id="development-nav" class="nav hidden" data-screen="development">開発中</button>
-          <button id="admin-exit" class="button accent hidden">管理者表示を終了</button>
-        </nav>
+        <div class="header-navigation">
+          <nav id="navigation" aria-label="機能メニュー">
+            <button class="nav active" data-screen="dashboard">ホーム</button>
+            <button class="nav" data-screen="timer">タイマー</button>
+            <button class="nav" data-screen="balls">ボール配置</button>
+            <button class="nav" data-screen="records">試合記録</button>
+            <button class="nav" data-screen="rules">ルール</button>
+            <button class="nav" data-screen="news">ニュース</button>
+            <button class="nav" data-screen="links">リンク</button>
+          </nav>
+          <div class="secret-navigation">
+            <button id="development-nav" class="nav hidden" data-screen="development">開発中</button>
+            <button id="admin-exit" class="button accent hidden">管理者表示を終了</button>
+          </div>
+        </div>
       </header>
       <div id="flow-status" class="panel flow-status hidden" aria-live="polite"></div>
 
@@ -38,10 +42,13 @@
                 <p class="eyebrow">BALL RANDOMIZER</p>
                 <h2>ボール配置</h2>
               </div>
-              <button id="dashboard-random" class="button primary">ランダム生成</button>
+              <div class="dashboard-actions">
+                <button id="dashboard-random" class="button primary">ランダム生成</button>
+                <button id="dashboard-balls-reset" class="button">初期位置に戻す</button>
+              </div>
             </div>
             <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
-            <button class="button jump" data-target="balls">大きく表示する</button>
+            <button class="button jump" data-target="balls">全画面表示</button>
           </article>
           <article class="panel dashboard-card timer-preview">
             <div class="section-head">
@@ -49,7 +56,7 @@
                 <p class="eyebrow">MATCH TIMER</p>
                 <h2>タイマー</h2>
               </div>
-              <button class="button jump" data-target="timer">大きく表示する</button>
+              <button class="button jump" data-target="timer">全画面表示</button>
             </div>
             <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
@@ -58,6 +65,18 @@
               <button id="dashboard-timer-end" class="button">終了</button>
               <button id="dashboard-timer-reset" class="button">ランダム再生成</button>
             </div>
+            <div class="dashboard-timer-tools">
+              <select id="dashboard-timer-step" aria-label="ホーム画面のタイマー設定">
+                <option value="5">ランダム設定: 5秒単位</option>
+                <option value="1">ランダム設定: 1秒単位</option>
+                <option value="10">ランダム設定: 10秒単位</option>
+                <option value="manual">手動指定</option>
+              </select>
+              <button id="dashboard-timer-ten" class="button">10カウント</button>
+              <button id="dashboard-timer-five" class="button">5カウント</button>
+            </div>
+            <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
+            <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
           </article>
         </div>
       </section>
@@ -148,14 +167,14 @@
             <div class="score-pair">
               <fieldset>
                 <legend id="a-name">チームA</legend>
-                <label>オレンジ<select id="a-orange"></select></label>
-                <label>紫<select id="a-purple"></select></label>
+                <label class="ball-count orange-count">オレンジ<select id="a-orange"></select></label>
+                <label class="ball-count purple-count">紫<select id="a-purple"></select></label>
                 <strong id="a-score">得点 0</strong>
               </fieldset>
               <fieldset>
                 <legend id="b-name">チームB</legend>
-                <label>オレンジ<select id="b-orange"></select></label>
-                <label>紫<select id="b-purple"></select></label>
+                <label class="ball-count orange-count">オレンジ<select id="b-orange"></select></label>
+                <label class="ball-count purple-count">紫<select id="b-purple"></select></label>
                 <strong id="b-score">得点 -4</strong>
               </fieldset>
             </div>
@@ -236,6 +255,12 @@
               <h2>ルール検索</h2>
             </div>
             <input id="rule-search" type="search" placeholder="キーワードで検索" />
+          </div>
+          <div class="rule-links" aria-label="外部ルール資料">
+            <a class="button primary" target="_blank" rel="noopener" href="https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS">公式ルール</a>
+            <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view">Google翻訳ルール</a>
+            <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view">DeepL翻訳ルール</a>
+            <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>
           </div>
           <div class="rules-body">
             <nav id="rule-nav" class="rule-nav" aria-label="ルール章"></nav>

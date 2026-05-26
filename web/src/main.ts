@@ -198,10 +198,13 @@ class TimerController {
   private readonly subTime = el<HTMLOutputElement>("sub-time");
   private readonly dashboardTime = el<HTMLOutputElement>("dashboard-time");
   private readonly dashboardMode = el<HTMLElement>("dashboard-mode");
+  private readonly dashboardSubCaption = el<HTMLElement>("dashboard-sub-caption");
+  private readonly dashboardSubTime = el<HTMLOutputElement>("dashboard-sub-time");
   private readonly startButton = el<HTMLButtonElement>("timer-start");
   private readonly dashboardStartButton = el<HTMLButtonElement>("dashboard-timer-start");
   private readonly resetButton = el<HTMLButtonElement>("timer-reset");
   private readonly step = el<HTMLSelectElement>("timer-step");
+  private readonly dashboardStep = el<HTMLSelectElement>("dashboard-timer-step");
   private total = 90;
   private remaining = 90;
   private running = false;
@@ -216,7 +219,7 @@ class TimerController {
   private manualSeconds = 90;
   private secret = false;
 
-  constructor(private readonly finished: () => void) {
+  constructor(private readonly finished: () => void, private readonly activated: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
     this.dashboardStartButton.addEventListener("click", () => this.toggle());
     el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.end());
@@ -226,7 +229,16 @@ class TimerController {
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
     el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールド カウント"));
     el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール カウント"));
-    this.step.addEventListener("change", () => this.chooseStep());
+    el<HTMLButtonElement>("dashboard-timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールド カウント"));
+    el<HTMLButtonElement>("dashboard-timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール カウント"));
+    this.step.addEventListener("change", () => {
+      this.dashboardStep.value = this.step.value;
+      this.chooseStep();
+    });
+    this.dashboardStep.addEventListener("change", () => {
+      this.step.value = this.dashboardStep.value;
+      this.chooseStep();
+    });
     this.setupManualOptions();
     el<HTMLButtonElement>("manual-apply").addEventListener("click", () => this.applyManual());
     document.addEventListener("keydown", (event) => this.onKey(event));
@@ -242,6 +254,17 @@ class TimerController {
 
   prepare(): void {
     this.reset();
+  }
+
+  async leaveFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen?.();
+      } catch {
+        // The normal in-page view is still restored below.
+      }
+    }
+    this.setCompact(false);
   }
 
   private chooseStep(): void {
@@ -266,6 +289,7 @@ class TimerController {
     this.manualSeconds = Math.max(1, minutes * 60 + seconds);
     this.randomStep = "manual";
     this.step.value = "manual";
+    this.dashboardStep.value = "manual";
     this.reset();
   }
 
@@ -287,6 +311,8 @@ class TimerController {
     this.notice.textContent = "";
     this.subRemaining = 0;
     this.subTime.classList.add("hidden");
+    this.dashboardSubTime.classList.add("hidden");
+    this.dashboardSubCaption.textContent = "";
     this.caption.textContent = "Space / Enter: 開始　F: 全画面";
     this.caption.classList.remove("count");
     this.syncControls();
@@ -300,6 +326,8 @@ class TimerController {
 
   private start(): void {
     if (this.remaining <= 0) return;
+    this.activated();
+    void this.enterFullscreen();
     this.running = true;
     this.started = true;
     this.mode.textContent = "試合進行中";
@@ -357,6 +385,8 @@ class TimerController {
       this.subRemaining = Math.max(0, this.subRemaining - delta);
       if (this.subRemaining === 0) {
         this.subTime.classList.add("hidden");
+        this.dashboardSubTime.classList.add("hidden");
+        this.dashboardSubCaption.textContent = "";
         this.caption.classList.remove("count");
         this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
       }
@@ -375,7 +405,11 @@ class TimerController {
     const warning = this.remaining <= 10;
     this.time.classList.toggle("warning", warning);
     this.progress.classList.toggle("warning", warning);
-    if (this.subRemaining > 0) this.subTime.textContent = `00 : ${String(Math.ceil(this.subRemaining)).padStart(2, "0")}`;
+    if (this.subRemaining > 0) {
+      const formattedSubTime = `00 : ${String(Math.ceil(this.subRemaining)).padStart(2, "0")}`;
+      this.subTime.textContent = formattedSubTime;
+      this.dashboardSubTime.textContent = formattedSubTime;
+    }
   }
 
   private syncControls(): void {
@@ -385,12 +419,15 @@ class TimerController {
     this.resetButton.disabled = this.running;
     el<HTMLButtonElement>("dashboard-timer-reset").disabled = this.running;
     this.step.disabled = this.running;
+    this.dashboardStep.disabled = this.running;
   }
 
   private toggleSubTimer(seconds: number, label: string): void {
     if (this.subRemaining > 0 && this.subCaption === label) {
       this.subRemaining = 0;
       this.subTime.classList.add("hidden");
+      this.dashboardSubTime.classList.add("hidden");
+      this.dashboardSubCaption.textContent = "";
       this.caption.classList.remove("count");
       this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
       return;
@@ -398,6 +435,8 @@ class TimerController {
     this.subRemaining = seconds;
     this.subCaption = label;
     this.subTime.classList.remove("hidden");
+    this.dashboardSubTime.classList.remove("hidden");
+    this.dashboardSubCaption.textContent = label;
     this.caption.classList.add("count");
     this.caption.textContent = label;
     this.render();
@@ -416,12 +455,20 @@ class TimerController {
   }
 
   private async toggleFullscreen(): Promise<void> {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen?.();
-      this.setCompact(true);
+    if (!document.fullscreenElement && !document.body.classList.contains("compact")) {
+      await this.enterFullscreen();
     } else {
-      await document.exitFullscreen?.();
-      this.setCompact(false);
+      await this.leaveFullscreen();
+    }
+  }
+
+  private async enterFullscreen(): Promise<void> {
+    this.setCompact(true);
+    if (document.fullscreenElement) return;
+    try {
+      await document.documentElement.requestFullscreen?.();
+    } catch {
+      // Keep the timer in distraction-free view when native fullscreen is unavailable.
     }
   }
 
@@ -449,6 +496,7 @@ class BallController {
     el<HTMLButtonElement>("balls-random").addEventListener("click", () => this.randomize());
     el<HTMLButtonElement>("dashboard-random").addEventListener("click", () => this.randomize());
     el<HTMLButtonElement>("balls-reset").addEventListener("click", () => this.reset());
+    el<HTMLButtonElement>("dashboard-balls-reset").addEventListener("click", () => this.reset());
     el<HTMLButtonElement>("balls-ready").addEventListener("click", () => this.complete());
     this.draw(this.defaults);
   }
@@ -1287,14 +1335,18 @@ class Application {
 
   constructor() {
     new AdminController();
-    this.timer = new TimerController(() => {
-      if (this.recordTimerPending) {
-        this.recordTimerPending = false;
-        this.clearFlow();
-        this.show("records");
-        this.records.timerFinished();
-      }
-    });
+    this.timer = new TimerController(
+      () => {
+        if (this.recordTimerPending) {
+          this.recordTimerPending = false;
+          void this.timer.leaveFullscreen();
+          this.clearFlow();
+          this.show("records");
+          this.records.timerFinished();
+        }
+      },
+      () => this.show("timer"),
+    );
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
       this.recordTimerPending = true;
