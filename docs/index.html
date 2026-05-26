@@ -8,8 +8,8 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-B7WRcn4s.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B35LcxEn.css">
+    <script type="module" crossorigin src="./assets/index-CEAnOXh_.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-vKLhMzoK.css">
   </head>
   <body>
     <main id="app">
@@ -34,17 +34,6 @@
 
       <section id="screen-dashboard" class="screen active">
         <div class="dashboard">
-          <article class="panel dashboard-card timer-preview">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">MATCH TIMER</p>
-                <h2>タイマー</h2>
-              </div>
-              <button class="button primary jump" data-target="timer">操作する</button>
-            </div>
-            <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
-            <p id="dashboard-mode" class="status-line">試合準備完了</p>
-          </article>
           <article class="panel dashboard-card">
             <div class="section-head">
               <div>
@@ -55,6 +44,22 @@
             </div>
             <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
             <button class="button jump" data-target="balls">大きく表示する</button>
+          </article>
+          <article class="panel dashboard-card timer-preview">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">MATCH TIMER</p>
+                <h2>タイマー</h2>
+              </div>
+              <button class="button jump" data-target="timer">大きく表示する</button>
+            </div>
+            <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
+            <p id="dashboard-mode" class="status-line">試合準備完了</p>
+            <div class="dashboard-timer-controls">
+              <button id="dashboard-timer-start" class="button primary">開始</button>
+              <button id="dashboard-timer-end" class="button">終了</button>
+              <button id="dashboard-timer-reset" class="button">ランダム再生成</button>
+            </div>
           </article>
         </div>
       </section>
@@ -123,7 +128,6 @@
               <label>チーム A<select id="team-a"></select></label>
               <label>チーム B<select id="team-b"></select></label>
               <label>コート<select id="court-select"></select></label>
-              <label>試合番号<select id="series-number"></select></label>
               <button id="series-start" class="button primary">対戦開始</button>
             </div>
             <p id="series-label" class="status-line">対戦カード: 未選択</p>

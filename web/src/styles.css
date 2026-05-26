@@ -181,26 +181,45 @@ input:hover {
 .dashboard {
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(390px, 1.15fr);
+  grid-template-columns: minmax(390px, 1.15fr) minmax(280px, 0.85fr);
 }
 
 .dashboard-card {
   display: grid;
   gap: 18px;
-  min-height: calc(100dvh - 142px);
+  min-height: min(540px, calc(100dvh - 164px));
   padding: clamp(15px, 2.4vw, 25px);
 }
 
 .timer-preview {
   align-content: center;
+  min-width: 0;
 }
 
 .dashboard-digital {
-  font-size: clamp(3rem, 9vw, 7.4rem);
+  font-size: clamp(1.55rem, 2.1vw, 2rem);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
 }
 
 .dashboard-court {
   align-self: center;
+}
+
+.dashboard-timer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.dashboard-timer-controls .button {
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 0;
+  padding-inline: 8px;
 }
 
 .timer-shell {

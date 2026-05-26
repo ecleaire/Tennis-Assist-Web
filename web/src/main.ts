@@ -199,6 +199,7 @@ class TimerController {
   private readonly dashboardTime = el<HTMLOutputElement>("dashboard-time");
   private readonly dashboardMode = el<HTMLElement>("dashboard-mode");
   private readonly startButton = el<HTMLButtonElement>("timer-start");
+  private readonly dashboardStartButton = el<HTMLButtonElement>("dashboard-timer-start");
   private readonly resetButton = el<HTMLButtonElement>("timer-reset");
   private readonly step = el<HTMLSelectElement>("timer-step");
   private total = 90;
@@ -217,8 +218,11 @@ class TimerController {
 
   constructor(private readonly finished: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
+    this.dashboardStartButton.addEventListener("click", () => this.toggle());
     el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.end());
+    el<HTMLButtonElement>("dashboard-timer-end").addEventListener("click", () => this.end());
     this.resetButton.addEventListener("click", () => this.reset());
+    el<HTMLButtonElement>("dashboard-timer-reset").addEventListener("click", () => this.reset());
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
     el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールド カウント"));
     el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール カウント"));
@@ -375,8 +379,11 @@ class TimerController {
   }
 
   private syncControls(): void {
-    this.startButton.textContent = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
+    const startLabel = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
+    this.startButton.textContent = startLabel;
+    this.dashboardStartButton.textContent = startLabel;
     this.resetButton.disabled = this.running;
+    el<HTMLButtonElement>("dashboard-timer-reset").disabled = this.running;
     this.step.disabled = this.running;
   }
 
@@ -428,10 +435,14 @@ class BallController {
   private readonly court = el<HTMLElement>("court");
   private readonly dashboardCourt = el<HTMLElement>("dashboard-court");
   private workflowMatch = 0;
+  private readonly leftRows = [19.35, 40.15, 68.54, 89.51];
+  private readonly rightRows = [10.16, 31.45, 59.68, 80.65];
+  private readonly leftSlots = [22.03, 28.35];
+  private readonly rightSlots = [71.56, 77.97];
   private readonly defaults = [
-    ["orange", 19, 19], ["orange", 19, 38], ["orange", 19, 67], ["orange", 19, 86],
-    ["orange", 81, 19], ["orange", 81, 38], ["orange", 81, 67], ["orange", 81, 86],
-    ["purple", 27, 38], ["purple", 73, 67], ["orange", 50, 52],
+    ["orange", 22.03, 19.35], ["orange", 22.03, 40.15], ["orange", 22.03, 68.54], ["orange", 22.03, 89.51],
+    ["orange", 77.97, 10.16], ["orange", 77.97, 31.45], ["orange", 77.97, 59.68], ["orange", 77.97, 80.65],
+    ["purple", 28.35, 19.35], ["purple", 71.56, 80.65], ["orange", 50.08, 49.99],
   ] as const;
 
   constructor(private readonly ready: (match: number) => void) {
@@ -455,17 +466,16 @@ class BallController {
   }
 
   private randomize(): void {
-    const rows = [19, 38, 67, 86];
-    const side = rows.map(() => Math.round(Math.random()));
+    const side = this.leftRows.map(() => Math.round(Math.random()));
     const purpleRow = Math.floor(Math.random() * 4);
     const generated: Array<readonly [string, number, number]> = [];
-    rows.forEach((row, index) => {
-      generated.push(["orange", side[index] ? 27 : 19, row]);
-      generated.push(["orange", side[index] ? 73 : 81, rows[3 - index]]);
+    this.leftRows.forEach((row, index) => {
+      generated.push(["orange", this.leftSlots[side[index]], row]);
+      generated.push(["orange", this.rightSlots[1 - side[index]], this.rightRows[3 - index]]);
     });
-    generated.push(["purple", side[purpleRow] ? 19 : 27, rows[purpleRow]]);
-    generated.push(["purple", side[purpleRow] ? 81 : 73, rows[3 - purpleRow]]);
-    generated.push(["orange", 50, 52]);
+    generated.push(["purple", this.leftSlots[1 - side[purpleRow]], this.leftRows[purpleRow]]);
+    generated.push(["purple", this.rightSlots[side[purpleRow]], this.rightRows[3 - purpleRow]]);
+    generated.push(["orange", 50.08, 49.99]);
     this.draw(generated);
     el("balls-status").textContent = "ボール配置を生成しました。";
   }
@@ -543,7 +553,6 @@ class RecordsController {
     options(el<HTMLSelectElement>("stats-team"), ["チームを選択", ...teams], "チームを選択");
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams], "すべてのチーム");
     options(el<HTMLSelectElement>("court-select"), Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`), "Aコート");
-    options(el<HTMLSelectElement>("series-number"), Array.from({ length: 30 }, (_, i) => String(i + 1)), "1");
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
     options(el<HTMLSelectElement>("reason-category"), Object.keys(reasons), scoringCategory);
     rangeOptions(el<HTMLSelectElement>("a-orange"), 9, 0);
@@ -571,7 +580,7 @@ class RecordsController {
       return;
     }
     const court = el<HTMLSelectElement>("court-select").value;
-    const seriesNumber = Number(el<HTMLSelectElement>("series-number").value);
+    const seriesNumber = this.nextSeriesNumber(court);
     this.series = { id: `${court}_${String(seriesNumber).padStart(2, "0")}_${Date.now()}`, court, seriesNumber, teamA, teamB, records: [] };
     this.editing = 0;
     this.agreedA = false;
@@ -647,6 +656,16 @@ class RecordsController {
     const category = el<HTMLSelectElement>("reason-category").value as Category;
     if (category !== scoringCategory && el<HTMLSelectElement>("target-team").value === "対象チーム未選択") {
       el("record-status").textContent = "違反したチームを選択してください。";
+      return null;
+    }
+    const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
+    if (orangeTotal !== 8 && orangeTotal !== 9) {
+      el("record-status").textContent = "オレンジボールの合計は8個または9個にしてください。";
+      return null;
+    }
+    const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
+    if (purpleTotal !== 2) {
+      el("record-status").textContent = "紫ボールの合計は必ず2個にしてください。";
       return null;
     }
     const matchNumber = this.editing || this.nextMatch();
@@ -1091,6 +1110,13 @@ class RecordsController {
     return (this.series?.records.length ?? 0) + 1;
   }
 
+  private nextSeriesNumber(court: string): number {
+    const seriesIds = new Set(
+      this.records.filter((record) => record.court === court && record.seriesId).map((record) => record.seriesId),
+    );
+    return seriesIds.size + 1;
+  }
+
   private isFinished(): boolean {
     return (this.series?.records.length ?? 0) >= 3;
   }
@@ -1257,16 +1283,21 @@ class Application {
   private readonly balls: BallController;
   private readonly records: RecordsController;
   private readonly content = new ContentController();
+  private recordTimerPending = false;
 
   constructor() {
     new AdminController();
     this.timer = new TimerController(() => {
-      this.clearFlow();
-      this.show("records");
-      this.records.timerFinished();
+      if (this.recordTimerPending) {
+        this.recordTimerPending = false;
+        this.clearFlow();
+        this.show("records");
+        this.records.timerFinished();
+      }
     });
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
+      this.recordTimerPending = true;
       this.timer.prepare();
       this.show("timer");
     });
@@ -1300,6 +1331,7 @@ class Application {
     }
     if (event === "timer") {
       this.setFlow(match, "タイマー確認中");
+      this.recordTimerPending = true;
       this.show("timer");
       return;
     }
