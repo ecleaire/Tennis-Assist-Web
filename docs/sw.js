@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-assist-web-v3";
+const CACHE_NAME = "tennis-assist-web-v4";
 const CORE = ["./", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg", "./data/news.json", "./data/rules_sections.json", "./data/team_list_example.csv"];
 
 self.addEventListener("install", (event) => {
@@ -7,8 +7,15 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))));
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await self.clients.claim();
+
+    // Tabs can otherwise remain on an old cached app shell after an update.
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    await Promise.all(windows.map((client) => client.navigate(client.url)));
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
