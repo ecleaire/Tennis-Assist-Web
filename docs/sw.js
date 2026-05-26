@@ -1,5 +1,5 @@
-const CACHE_NAME = "tennis-assist-web-v6";
-const CORE = ["./", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg", "./data/news.json", "./data/rules_sections.json", "./data/team_list_example.csv"];
+const CACHE_NAME = "tennis-assist-web-v9";
+const CORE = ["./", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));

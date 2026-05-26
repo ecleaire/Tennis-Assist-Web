@@ -139,6 +139,14 @@ function timestamp(): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
 }
 
+function syncViewportMetrics(): void {
+  const viewport = window.visualViewport;
+  const width = viewport?.width ?? window.innerWidth;
+  const height = viewport?.height ?? window.innerHeight;
+  document.documentElement.style.setProperty("--viewport-width", `${Math.round(width)}px`);
+  document.documentElement.style.setProperty("--viewport-height", `${Math.round(height)}px`);
+}
+
 function recordKey(record: MatchRecord): string {
   return record.competitionId || `${record.recordKind}:${record.seriesId}:${record.court}:${record.seriesNumber}:${record.matchNumber}`;
 }
@@ -1174,13 +1182,27 @@ class ContentController {
   private rules: RuleSection[] = [];
   private news: NewsItem[] = [];
   private selectedRule = "";
+  private rulesRequested = false;
+  private newsRequested = false;
 
-  async init(): Promise<void> {
-    this.renderLinks(false);
+  init(): void {
     el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
     el<HTMLSelectElement>("news-filter").addEventListener("change", () => this.renderNews());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => el<HTMLDialogElement>((button as HTMLElement).dataset.close ?? "").close()));
-    await Promise.all([this.loadRules(), this.loadNews()]);
+  }
+
+  open(screen: Screen, secret: boolean): void {
+    if (screen === "rules" && !this.rulesRequested) {
+      this.rulesRequested = true;
+      el("rule-content").innerHTML = "<p>ルールを読み込み中...</p>";
+      void this.loadRules();
+    }
+    if (screen === "news" && !this.newsRequested) {
+      this.newsRequested = true;
+      el("news-status").textContent = "最新情報を読み込み中...";
+      void this.loadNews();
+    }
+    if (screen === "links") this.renderLinks(secret);
   }
 
   renderLinks(secret: boolean): void {
@@ -1193,12 +1215,17 @@ class ContentController {
   }
 
   private async loadRules(): Promise<void> {
-    const response = await fetch(`${import.meta.env.BASE_URL}data/rules_sections.json`);
-    const data = await response.json() as { sections: RuleSection[] };
-    this.rules = data.sections;
-    this.selectedRule = this.rules[0]?.id ?? "";
-    this.renderRuleNav();
-    this.renderRules();
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}data/rules_sections.json`);
+      const data = await response.json() as { sections: RuleSection[] };
+      this.rules = data.sections;
+      this.selectedRule = this.rules[0]?.id ?? "";
+      this.renderRuleNav();
+      this.renderRules();
+    } catch {
+      this.rulesRequested = false;
+      el("rule-content").innerHTML = "<p>ルールを読み込めませんでした。もう一度ルール画面を開いてください。</p>";
+    }
   }
 
   private renderRuleNav(): void {
@@ -1231,11 +1258,16 @@ class ContentController {
   }
 
   private async loadNews(): Promise<void> {
-    const response = await fetch(`${import.meta.env.BASE_URL}data/news.json`);
-    const data = await response.json() as { news: NewsItem[] };
-    this.news = data.news;
-    el("news-status").textContent = "最新情報を表示しています。";
-    this.renderNews();
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}data/news.json`);
+      const data = await response.json() as { news: NewsItem[] };
+      this.news = data.news;
+      el("news-status").textContent = "最新情報を表示しています。";
+      this.renderNews();
+    } catch {
+      this.newsRequested = false;
+      el("news-status").textContent = "ニュースを読み込めませんでした。もう一度ニュース画面を開いてください。";
+    }
   }
 
   private renderNews(): void {
@@ -1332,9 +1364,13 @@ class Application {
   private readonly records: RecordsController;
   private readonly content = new ContentController();
   private recordTimerPending = false;
+  private admin: AdminController | null = null;
+  private ballsFullscreen = false;
 
   constructor() {
-    new AdminController();
+    syncViewportMetrics();
+    window.addEventListener("resize", syncViewportMetrics);
+    window.visualViewport?.addEventListener("resize", syncViewportMetrics);
     this.timer = new TimerController(
       () => {
         if (this.recordTimerPending) {
@@ -1362,8 +1398,13 @@ class Application {
       });
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
+    el<HTMLButtonElement>("dashboard-balls-fullscreen").addEventListener("click", () => void this.enterBallsFullscreen());
+    el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement && this.ballsFullscreen) this.setBallsFullscreen(false);
+    });
     el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.deactivateSecret());
-    void this.content.init();
+    this.content.init();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       window.addEventListener("load", () => {
         void navigator.serviceWorker
@@ -1374,10 +1415,47 @@ class Application {
   }
 
   private show(screen: Screen): void {
+    if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
     el(`screen-${screen}`).classList.add("active");
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => button.classList.toggle("active", button.dataset.screen === screen));
+    this.content.open(screen, this.secret);
     window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  private async enterBallsFullscreen(): Promise<void> {
+    this.show("balls");
+    this.setBallsFullscreen(true);
+    try {
+      await document.documentElement.requestFullscreen?.();
+    } catch {
+      // The in-page fullscreen layout still maximizes the court.
+    }
+  }
+
+  private async toggleBallsFullscreen(): Promise<void> {
+    if (this.ballsFullscreen) {
+      await this.leaveBallsFullscreen();
+    } else {
+      await this.enterBallsFullscreen();
+    }
+  }
+
+  private async leaveBallsFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen?.();
+      } catch {
+        // The in-page layout can still be restored.
+      }
+    }
+    this.setBallsFullscreen(false);
+  }
+
+  private setBallsFullscreen(active: boolean): void {
+    this.ballsFullscreen = active;
+    document.body.classList.toggle("balls-compact", active);
+    el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
   }
 
   private handleFlow(event: "start" | "next" | "balls" | "timer" | "finished", match = 0): void {
@@ -1413,6 +1491,7 @@ class Application {
   }
 
   private activateSecret(): void {
+    this.admin ??= new AdminController();
     this.secret = true;
     this.linksClicks = 0;
     document.documentElement.classList.add("secret");

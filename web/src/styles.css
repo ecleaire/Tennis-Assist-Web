@@ -17,6 +17,8 @@
   --warning: #ff9a2f;
   --danger: #ff5d73;
   --radius: 18px;
+  --viewport-height: 100dvh;
+  --viewport-width: 100dvw;
   color: var(--text);
   background: var(--bg);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
@@ -274,7 +276,7 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-height: calc(100dvh - 142px);
+  min-height: calc(var(--viewport-height) - 142px);
   padding: clamp(15px, 2.4vw, 25px);
 }
 
@@ -313,14 +315,16 @@ output.digital.dashboard-digital {
 .digital {
   color: #f7fbff;
   display: block;
-  font-family: "Roboto Mono", "Consolas", "Courier New", monospace;
+  font-family: "DSEG", monospace;
   font-size: clamp(4.2rem, 17vw, 15rem);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: 0.04em;
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+}
+
+#timer-time {
+  font-size: min(clamp(4.2rem, 17vw, 15rem), calc((var(--viewport-width) - 46px) / 6.1));
+  max-width: calc(var(--viewport-width) - 32px);
 }
 
 .digital.warning {
@@ -423,6 +427,13 @@ progress::-moz-progress-bar {
   border-radius: 14px;
   overflow: hidden;
   position: relative;
+}
+
+#screen-balls .court {
+  justify-self: center;
+  max-height: calc(var(--viewport-height) - 190px);
+  max-width: 100%;
+  width: min(100%, calc((var(--viewport-height) - 190px) * 1280 / 620));
 }
 
 .ball {
@@ -792,23 +803,69 @@ body.compact {
   padding: 0;
 }
 
+.balls-compact body,
+body.balls-compact {
+  padding: 0;
+}
+
 body.compact #app {
   width: 100%;
 }
 
+body.balls-compact #app {
+  width: 100%;
+}
+
 body.compact .app-header,
-body.compact .flow-status {
+body.compact .flow-status,
+body.balls-compact .app-header,
+body.balls-compact .flow-status {
   display: none;
 }
 
 body.compact .timer-shell {
   border: 0;
   border-radius: 0;
-  min-height: 100dvh;
+  height: var(--viewport-height);
+  min-height: var(--viewport-height);
+  padding: clamp(12px, 2.2vw, 24px);
 }
 
-body.compact .digital {
-  font-size: clamp(5rem, 26vw, 22rem);
+body.compact #timer-time {
+  font-size: min(clamp(5rem, 26vw, 22rem), calc((var(--viewport-width) - 34px) / 6.1), calc(var(--viewport-height) * 0.35));
+}
+
+body.compact .timer-center {
+  min-height: 0;
+}
+
+body.compact .controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+body.compact .controls .button,
+body.compact .controls select {
+  min-height: 52px;
+  min-width: 0;
+}
+
+body.compact #timer-step {
+  grid-column: span 2;
+}
+
+body.balls-compact #screen-balls .section-card {
+  border: 0;
+  border-radius: 0;
+  grid-template-rows: auto 1fr;
+  height: var(--viewport-height);
+  padding: clamp(10px, 2vw, 20px);
+}
+
+body.balls-compact #screen-balls .court {
+  align-self: center;
+  max-height: calc(var(--viewport-height) - 104px);
+  width: min(100%, calc((var(--viewport-height) - 104px) * 1280 / 620));
 }
 
 @media (max-width: 760px) {
@@ -841,7 +898,7 @@ body.compact .digital {
 
   .timer-shell,
   .rules-shell {
-    min-height: calc(100dvh - 203px);
+    min-height: calc(var(--viewport-height) - 203px);
   }
 
   .dashboard {
@@ -874,6 +931,10 @@ body.compact .digital {
 
   .timer-center {
     min-height: 210px;
+  }
+
+  #timer-time {
+    font-size: min(clamp(3rem, 16vw, 7rem), calc((var(--viewport-width) - 32px) / 6.1));
   }
 
   .controls {
@@ -940,5 +1001,133 @@ body.compact .digital {
 
   .link-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 700px) and (min-height: 700px) and (max-width: 1100px) {
+  body {
+    padding: clamp(10px, 1.5vw, 14px);
+  }
+
+  #app {
+    gap: 12px;
+  }
+
+  .app-header {
+    padding: clamp(13px, 2vw, 18px);
+  }
+
+  .dashboard {
+    gap: 12px;
+    grid-template-columns: minmax(380px, 1.15fr) minmax(285px, 0.85fr);
+  }
+
+  .dashboard-card {
+    min-height: min(500px, calc(var(--viewport-height) - 142px));
+    padding: clamp(13px, 2vw, 20px);
+  }
+
+  .timer-shell {
+    min-height: calc(var(--viewport-height) - 186px);
+  }
+
+  .timer-center {
+    min-height: min(300px, calc(var(--viewport-height) * 0.4));
+  }
+
+  #timer-time {
+    font-size: min(clamp(5rem, 17vw, 12rem), calc((var(--viewport-width) - 48px) / 6.1), calc(var(--viewport-height) * 0.3));
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .controls .button,
+  .controls select {
+    min-height: 52px;
+    min-width: 0;
+  }
+
+  #timer-step {
+    grid-column: span 2;
+  }
+
+  #record-input select,
+  .start-row select {
+    min-height: 56px;
+  }
+
+  .dialog {
+    padding: clamp(22px, 3vw, 30px);
+  }
+
+  .dialog select,
+  .dialog .button {
+    font-size: 1.05rem;
+    min-height: 54px;
+  }
+
+  #screen-balls .court {
+    max-height: calc(var(--viewport-height) - 174px);
+    width: min(100%, calc((var(--viewport-height) - 174px) * 1280 / 620));
+  }
+}
+
+@media (min-width: 700px) and (min-height: 700px) and (max-width: 900px) and (orientation: portrait) {
+  .app-header {
+    align-items: stretch;
+    display: grid;
+    gap: 12px;
+  }
+
+  #navigation {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card {
+    min-height: unset;
+  }
+
+  .timer-shell {
+    gap: 12px;
+    min-height: calc(var(--viewport-height) - 228px);
+    padding: clamp(12px, 2vw, 18px);
+  }
+
+  .timer-center {
+    min-height: min(294px, calc(var(--viewport-height) * 0.34));
+  }
+
+  #timer-time {
+    font-size: min(clamp(4.4rem, 19vw, 10rem), calc((var(--viewport-width) - 48px) / 6.1), calc(var(--viewport-height) * 0.23));
+  }
+
+  body.compact .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.compact #timer-time {
+    font-size: min(clamp(5rem, 24vw, 12rem), calc((var(--viewport-width) - 40px) / 6.1), calc(var(--viewport-height) * 0.25));
+  }
+
+  .score-pair {
+    grid-template-columns: 1fr;
+  }
+
+  #screen-balls .court {
+    max-height: calc(var(--viewport-height) - 188px);
+    width: min(100%, calc((var(--viewport-height) - 188px) * 1280 / 620));
+  }
+
+  body.balls-compact #screen-balls .court {
+    max-height: calc(var(--viewport-height) - 126px);
+    width: min(100%, calc((var(--viewport-height) - 126px) * 1280 / 620));
   }
 }

@@ -8,8 +8,8 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-DuedK70z.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CSadYdLJ.css">
+    <script type="module" crossorigin src="./assets/index-FY6T0gre.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DmRSxusg.css">
   </head>
   <body>
     <main id="app">
@@ -50,7 +50,7 @@
               </div>
             </div>
             <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
-            <button class="button jump" data-target="balls">全画面表示</button>
+            <button id="dashboard-balls-fullscreen" class="button">全画面表示</button>
           </article>
           <article class="panel dashboard-card timer-preview">
             <div class="section-head">
@@ -128,6 +128,7 @@
             <div class="toolbar">
               <button id="balls-random" class="button primary">ランダム生成</button>
               <button id="balls-reset" class="button">初期位置へ戻す</button>
+              <button id="balls-fullscreen" class="button">全画面表示</button>
               <button id="balls-ready" class="button accent hidden">配置完了</button>
             </div>
           </div>
