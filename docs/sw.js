@@ -1,90 +1,22 @@
-const CACHE_NAME = 'wro-robosports-assist-v20260524-17';
+const CACHE_NAME = "tennis-assist-web-v2";
+const CORE = ["./", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg", "./data/news.json", "./data/rules_sections.json", "./data/team_list_example.csv"];
 
-// Godot Web ExportをPWAとしてオフライン起動するための最小アプリ本体です。
-// 追加データはfetch時に同じキャッシュへ入れ、初回installでは本体だけを確実に保持します。
-const APP_SHELL = [
-	'./',
-	'./index.html',
-	'./index.js',
-	'./index.wasm',
-	'./index.pck',
-	'./index.png',
-	'./index.icon.png',
-	'./index.apple-touch-icon.png',
-	'./index.pwa.png',
-	'./index.audio.worklet.js',
-	'./index.audio.position.worklet.js',
-	'./manifest.webmanifest'
-];
-
-self.addEventListener('install', (event) => {
-	event.waitUntil(
-		caches.open(CACHE_NAME)
-			.then((cache) => cache.addAll(APP_SHELL))
-			.then(() => self.skipWaiting())
-	);
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-	event.waitUntil(
-		caches.keys()
-			.then((keys) => Promise.all(
-				keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-			))
-			.then(() => self.clients.claim())
-			.then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-			.then((clients) => {
-				for (const client of clients) {
-					// 旧バージョンを開きっぱなしの端末にも更新を知らせ、同じURLを再読込します。
-					client.postMessage({ type: 'WRO_ASSIST_UPDATED', cacheName: CACHE_NAME });
-					if ('navigate' in client && client.url) {
-						client.navigate(client.url);
-					}
-				}
-			})
-	);
+self.addEventListener("activate", (event) => {
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))));
+  self.clients.claim();
 });
 
-self.addEventListener('message', (event) => {
-	if (event.data && event.data.type === 'SKIP_WAITING') {
-		self.skipWaiting();
-	}
-});
-
-self.addEventListener('fetch', (event) => {
-	const request = event.request;
-	if (request.method !== 'GET') {
-		return;
-	}
-
-	const requestUrl = new URL(request.url);
-	if (requestUrl.origin !== self.location.origin) {
-		return;
-	}
-
-	if (request.mode === 'navigate') {
-		event.respondWith(
-			// ページ本体はネットワーク優先にして、失敗時はキャッシュ済みindex.htmlで起動します。
-			fetch(request)
-				.then((response) => {
-					const copy = response.clone();
-					caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
-					return response;
-				})
-				.catch(() => caches.match('./index.html'))
-		);
-		return;
-	}
-
-	event.respondWith(
-		caches.match(request)
-			.then((cached) => cached || fetch(request).then((response) => {
-				if (!response || response.status !== 200) {
-					return response;
-				}
-				const copy = response.clone();
-				caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-				return response;
-			}))
-	);
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+      return response;
+    })),
+  );
 });

@@ -1,258 +1,328 @@
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>WRO RoboSports Assist 公開版</title>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#091329" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>WRO RoboSports Assist</title>
+    <script type="module" crossorigin src="./assets/index-DfA5NjB9.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B35LcxEn.css">
+  </head>
+  <body>
+    <main id="app">
+      <header id="app-header" class="panel app-header">
+        <div class="brand">
+          <p class="eyebrow">WRO 2026 / DOUBLE TENNIS</p>
+          <h1 id="title">WRO RoboSports Assist</h1>
+        </div>
+        <nav id="navigation" aria-label="機能メニュー">
+          <button class="nav active" data-screen="dashboard">ホーム</button>
+          <button class="nav" data-screen="timer">タイマー</button>
+          <button class="nav" data-screen="balls">ボール配置</button>
+          <button class="nav" data-screen="records">試合記録</button>
+          <button class="nav" data-screen="rules">ルール</button>
+          <button class="nav" data-screen="news">ニュース</button>
+          <button class="nav" data-screen="links">リンク</button>
+          <button id="development-nav" class="nav hidden" data-screen="development">開発中</button>
+          <button id="admin-exit" class="button accent hidden">管理者表示を終了</button>
+        </nav>
+      </header>
+      <div id="flow-status" class="panel flow-status hidden" aria-live="polite"></div>
 
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
+      <section id="screen-dashboard" class="screen active">
+        <div class="dashboard">
+          <article class="panel dashboard-card timer-preview">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">MATCH TIMER</p>
+                <h2>タイマー</h2>
+              </div>
+              <button class="button primary jump" data-target="timer">操作する</button>
+            </div>
+            <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
+            <p id="dashboard-mode" class="status-line">試合準備完了</p>
+          </article>
+          <article class="panel dashboard-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">BALL RANDOMIZER</p>
+                <h2>ボール配置</h2>
+              </div>
+              <button id="dashboard-random" class="button primary">ランダム生成</button>
+            </div>
+            <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
+            <button class="button jump" data-target="balls">大きく表示する</button>
+          </article>
+        </div>
+      </section>
 
-#canvas {
-	display: block;
-}
+      <section id="screen-timer" class="screen">
+        <article id="timer-shell" class="panel timer-shell">
+          <div class="timer-top">
+            <span id="timer-mode" class="pill">試合準備完了</span>
+            <span id="timer-range" class="muted">ランダム範囲: 1:00 - 2:00</span>
+          </div>
+          <div class="timer-center">
+            <p id="cold-notice" class="notice" aria-live="polite"></p>
+            <output id="timer-time" class="digital">01 : 30</output>
+            <p id="sub-caption" class="hint">Space / Enter: 開始　F: 全画面</p>
+            <output id="sub-time" class="digital sub hidden">00 : 10</output>
+          </div>
+          <div class="timer-bottom">
+            <progress id="timer-progress" max="100" value="100"></progress>
+            <div class="controls">
+              <button id="timer-start" class="button primary">開始</button>
+              <button id="timer-end" class="button">終了</button>
+              <button id="timer-fullscreen" class="button">全画面</button>
+              <button id="timer-reset" class="button">ランダム再生成</button>
+              <select id="timer-step" aria-label="タイマー設定">
+                <option value="5">ランダム設定: 5秒単位</option>
+                <option value="1">ランダム設定: 1秒単位</option>
+                <option value="10">ランダム設定: 10秒単位</option>
+                <option value="manual">手動指定</option>
+              </select>
+              <button id="timer-ten" class="button">10カウント</button>
+              <button id="timer-five" class="button">5カウント</button>
+            </div>
+          </div>
+        </article>
+      </section>
 
-#canvas:focus {
-	outline: none;
-}
+      <section id="screen-balls" class="screen">
+        <article class="panel section-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">BALL RANDOMIZER</p>
+              <h2>ボール配置</h2>
+            </div>
+            <div class="toolbar">
+              <button id="balls-random" class="button primary">ランダム生成</button>
+              <button id="balls-reset" class="button">初期位置へ戻す</button>
+              <button id="balls-ready" class="button accent hidden">配置完了</button>
+            </div>
+          </div>
+          <p id="balls-status" class="muted">4列の配置を準備しました。紫ボールは180度対称です。</p>
+          <div id="court" class="court" aria-label="ダブルテニス フィールド上のボール配置"></div>
+        </article>
+      </section>
 
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
+      <section id="screen-records" class="screen">
+        <div class="records-layout">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">MATCH FLOW</p>
+                <h2>試合記録</h2>
+              </div>
+              <button id="series-reset" class="button">対戦をリセット</button>
+            </div>
+            <div class="form-row start-row">
+              <label>チーム A<select id="team-a"></select></label>
+              <label>チーム B<select id="team-b"></select></label>
+              <label>コート<select id="court-select"></select></label>
+              <label>試合番号<select id="series-number"></select></label>
+              <button id="series-start" class="button primary">対戦開始</button>
+            </div>
+            <p id="series-label" class="status-line">対戦カード: 未選択</p>
+            <p id="match-progress" class="muted">進行状況: 対戦を開始してください</p>
+          </article>
 
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
+          <article id="record-input" class="panel section-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">RESULT INPUT</p>
+                <h2 id="match-title">第1マッチ リザルト入力</h2>
+                <p id="match-teams" class="muted">対戦カード未選択</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label class="wide">終了カテゴリ<select id="reason-category"></select></label>
+              <label class="wide">終了理由<select id="end-reason"></select></label>
+              <label id="target-field" class="wide hidden">違反チーム<select id="target-team"></select></label>
+            </div>
+            <div class="score-pair">
+              <fieldset>
+                <legend id="a-name">チームA</legend>
+                <label>オレンジ<select id="a-orange"></select></label>
+                <label>紫<select id="a-purple"></select></label>
+                <strong id="a-score">得点 0</strong>
+              </fieldset>
+              <fieldset>
+                <legend id="b-name">チームB</legend>
+                <label>オレンジ<select id="b-orange"></select></label>
+                <label>紫<select id="b-purple"></select></label>
+                <strong id="b-score">得点 -4</strong>
+              </fieldset>
+            </div>
+            <p id="winner-preview" class="winner-preview">結果を入力してください。</p>
+            <div class="toolbar">
+              <button id="record-save" class="button primary">保存前確認</button>
+              <button id="back-balls" class="button">配置へ戻る</button>
+              <button id="back-timer" class="button">タイマーへ戻る</button>
+            </div>
+            <p id="record-status" class="muted">まずは対戦カードを開始してください。</p>
+          </article>
 
-#status {
-	background-color: #242424;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-}
+          <article class="panel section-card">
+            <h2>中間結果</h2>
+            <p id="intermediate-summary" class="muted">第1マッチの保存後に中間結果が表示されます。</p>
+            <div class="table-scroll"><table id="intermediate-table"></table></div>
+          </article>
+          <article class="panel section-card">
+            <h2>最終結果</h2>
+            <p id="final-summary" class="muted">3マッチ終了後、最終結果を確認できます。</p>
+            <div class="table-scroll"><table id="final-table"></table></div>
+            <div id="agreement" class="agreement hidden">
+              <p>各チーム代表が結果を確認して同意してください。</p>
+              <button id="agree-a" class="button"></button>
+              <button id="agree-b" class="button"></button>
+              <button id="finalize" class="button primary" disabled>結果を確定</button>
+            </div>
+          </article>
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">TEAM MANAGEMENT</p>
+                <h2>チーム一覧</h2>
+              </div>
+              <div class="toolbar">
+                <button id="team-save" class="button primary">一覧を保存</button>
+                <button id="team-reset" class="button">初期一覧</button>
+                <button id="team-import" class="button">CSV読込</button>
+              </div>
+            </div>
+            <textarea id="team-editor" rows="6" aria-label="チーム一覧。1行に1チーム"></textarea>
+            <input id="team-file" class="hidden" type="file" accept=".csv,text/csv" />
+            <p id="team-status" class="muted">この端末だけで使うチーム一覧を編集できます。</p>
+          </article>
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">HISTORY / STATS</p>
+                <h2>履歴と統計</h2>
+              </div>
+              <div class="toolbar">
+                <button id="history-export" class="button">CSVエクスポート</button>
+                <button id="history-import" class="button">CSVインポート</button>
+                <button id="history-clear" class="button danger">履歴削除</button>
+              </div>
+            </div>
+            <input id="history-file" class="hidden" type="file" accept=".csv,text/csv" />
+            <div class="filter-row">
+              <label>統計チーム<select id="stats-team"></select></label>
+              <label>集計期間<select id="stats-period"><option value="today">今日</option><option value="week">1週間</option><option value="month">1か月</option></select></label>
+              <label>履歴チーム<select id="history-team"></select></label>
+              <label>勝敗<select id="history-result"><option value="all">勝敗すべて</option><option value="win">勝利のみ</option><option value="loss">敗北のみ</option><option value="draw">引き分けのみ</option></select></label>
+              <label>種類<select id="history-kind"><option value="all">すべて表示</option><option value="match">マッチ結果のみ</option><option value="series">試合結果のみ</option></select></label>
+              <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
+            </div>
+            <div id="stats-cards" class="stats-grid"></div>
+            <p id="history-status" class="muted"></p>
+            <div id="history"></div>
+          </article>
+        </div>
+      </section>
 
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
+      <section id="screen-rules" class="screen">
+        <article class="panel section-card rules-shell">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">RULES VIEWER</p>
+              <h2>ルール検索</h2>
+            </div>
+            <input id="rule-search" type="search" placeholder="キーワードで検索" />
+          </div>
+          <div class="rules-body">
+            <nav id="rule-nav" class="rule-nav" aria-label="ルール章"></nav>
+            <div id="rule-content" class="rule-content"></div>
+          </div>
+        </article>
+      </section>
 
-#status-splash.show-image--false {
-	display: none;
-}
+      <section id="screen-news" class="screen">
+        <article class="panel section-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">NEWS</p>
+              <h2>ニュース</h2>
+            </div>
+            <select id="news-filter" aria-label="ニュースカテゴリ">
+              <option>すべて</option>
+              <option>Q&amp;A更新</option>
+              <option>競技情報</option>
+            </select>
+          </div>
+          <p id="news-status" class="muted"></p>
+          <div id="news-list" class="cards"></div>
+        </article>
+      </section>
 
-#status-splash.fullsize--true {
-	height: 100%;
-	width: 100%;
-	object-fit: contain;
-}
+      <section id="screen-links" class="screen">
+        <article class="panel section-card">
+          <p class="eyebrow">OFFICIAL LINKS</p>
+          <h2>関連リンク</h2>
+          <div id="links-list" class="cards"></div>
+        </article>
+      </section>
 
-#status-splash.use-filter--false {
-	image-rendering: pixelated;
-}
+      <section id="screen-development" class="screen">
+        <article class="panel section-card admin-shell">
+          <div>
+            <p class="eyebrow">ADMIN SETTINGS</p>
+            <h2>開発用 / スプレッドシート送信</h2>
+          </div>
+          <p class="muted">この画面のパスワードは表示制御用です。API キーの検証は Google Apps Script 側で行ってください。</p>
+          <div id="admin-gate" class="form-row">
+            <label>管理者パスワード<input id="admin-password" type="password" autocomplete="off" /></label>
+            <button id="admin-unlock" class="button primary">設定を開く</button>
+          </div>
+          <div id="admin-settings" class="admin-settings hidden">
+            <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
+            <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+            <div class="toolbar">
+              <button id="gas-save" class="button primary">設定を保存</button>
+              <button id="gas-test" class="button">テスト送信</button>
+            </div>
+            <p id="gas-status" class="muted"></p>
+          </div>
+        </article>
+      </section>
+    </main>
 
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#050315">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="WRO Assist">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script>
-if ('serviceWorker' in navigator) {
-	let wroAssistReloading = false;
-	const reloadForUpdate = function () {
-		if (wroAssistReloading) {
-			return;
-		}
-		wroAssistReloading = true;
-		window.location.reload();
-	};
-	navigator.serviceWorker.addEventListener('message', function (event) {
-		if (event.data && event.data.type === 'WRO_ASSIST_UPDATED') {
-			reloadForUpdate();
-		}
-	});
-	navigator.serviceWorker.addEventListener('controllerchange', reloadForUpdate);
-	window.addEventListener('load', function () {
-		navigator.serviceWorker.register('./sw.js').then(function (registration) {
-			registration.update().catch(function (err) { console.warn('Service worker update check failed:', err); });
-			registration.addEventListener('updatefound', function () {
-				const worker = registration.installing;
-				if (!worker) {
-					return;
-				}
-				worker.addEventListener('statechange', function () {
-					if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-						worker.postMessage({ type: 'SKIP_WAITING' });
-					}
-				});
-			});
-		}).catch(function (err) { console.warn('Service worker registration failed:', err); });
-	});
-}
-</script>
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-		</div>
-
-		<script src="index.js"></script>
-		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":4826488,"index.wasm":37695054},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
-const GODOT_THREADS_ENABLED = false;
-const engine = new Engine(GODOT_CONFIG);
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) {
-			return;
-		}
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
-
-	function setStatusNotice(text) {
-		while (statusNotice.lastChild) {
-			statusNotice.removeChild(statusNotice.lastChild);
-		}
-		const lines = text.split('\n');
-		lines.forEach((line) => {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		});
-	}
-
-	function displayFailureNotice(err) {
-		console.error(err);
-		if (err instanceof Error) {
-			setStatusNotice(err.message);
-		} else if (typeof err === 'string') {
-			setStatusNotice(err);
-		} else {
-			setStatusNotice('An unknown error occurred.');
-		}
-		setStatusMode('notice');
-		initializing = false;
-	}
-
-	const missing = Engine.getMissingFeatures({
-		threads: GODOT_THREADS_ENABLED,
-	});
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let serviceWorkerRegistrationPromise;
-			try {
-				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-			} catch (err) {
-				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
-			}
-			// There's a chance that installing the service worker would fix the issue
-			Promise.race([
-				serviceWorkerRegistrationPromise.then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).then(() => {
-				// Reload if there was no error.
-				window.location.reload();
-			}).catch((err) => {
-				console.error('Error while registering service worker:', err);
-			});
-		} else {
-			// Display the message as usual
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
-		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
-				}
-			},
-		}).then(() => {
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
-	</body>
+    <dialog id="manual-dialog" class="dialog">
+      <form method="dialog">
+        <h2>手動タイマー設定</h2>
+        <div class="form-row">
+          <label>分<select id="manual-minute"></select></label>
+          <label>秒<select id="manual-second"></select></label>
+        </div>
+        <div class="toolbar">
+          <button class="button" value="cancel">キャンセル</button>
+          <button id="manual-apply" class="button primary" value="default">適用</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="news-dialog" class="dialog detail-dialog">
+      <article>
+        <button class="dialog-close" data-close="news-dialog" aria-label="閉じる">x</button>
+        <h2 id="news-detail-title"></h2>
+        <p id="news-detail-meta" class="muted"></p>
+        <p id="news-detail-content" class="pre-wrap"></p>
+      </article>
+    </dialog>
+    <dialog id="confirm-dialog" class="dialog">
+      <form method="dialog">
+        <h2>結果の確認</h2>
+        <p id="confirm-detail" class="pre-wrap"></p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="confirm-save" class="button primary" value="default">保存</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
 </html>
-

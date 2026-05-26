@@ -6,3 +6,4 @@ rules_tmp.pdf
 rules_extracted.txt
 *.psd
 docs/*.import
+web/node_modules/

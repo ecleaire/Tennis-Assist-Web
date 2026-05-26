@@ -1,30 +1,23 @@
 {
-	"name": "WRO RoboSports Assist",
-	"short_name": "WRO Assist",
-	"start_url": "./index.html",
-	"scope": "./",
-	"display": "fullscreen",
-	"background_color": "#050315",
-	"theme_color": "#92d83b",
-	"orientation": "any",
-	"icons": [
-		{
-			"src": "index.icon.png",
-			"sizes": "144x144",
-			"type": "image/png",
-			"purpose": "any"
-		},
-		{
-			"src": "index.apple-touch-icon.png",
-			"sizes": "180x180",
-			"type": "image/png",
-			"purpose": "any"
-		},
-		{
-			"src": "index.pwa.png",
-			"sizes": "512x512",
-			"type": "image/png",
-			"purpose": "any"
-		}
-	]
+  "name": "WRO RoboSports Assist",
+  "short_name": "Tennis Assist",
+  "description": "WRO RoboSports Double Tennis competition assistant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#081126",
+  "theme_color": "#081126",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
 }

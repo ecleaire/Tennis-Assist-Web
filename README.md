@@ -1,19 +1,19 @@
 # WRO RoboSports Assist
 
-![Godot](https://img.shields.io/badge/Godot-4.6.2-478CBF?logo=godotengine&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-Vite-3178C6?logo=typescript&logoColor=white)
 ![Web](https://img.shields.io/badge/Platform-Web-2ea44f)
 ![PWA](https://img.shields.io/badge/PWA-Supported-8A2BE2)
 ![Offline](https://img.shields.io/badge/Offline-Supported-orange)
 
-WRO RoboSports Double Tennis の大会運営・選手の練習をサポートする Godot 製アプリです。
+WRO RoboSports Double Tennis の大会運営・選手の練習をサポートする軽量 Web アプリです。
 
 選手は本番さながらの練習環境を構築でき、大会スタッフや審判はタイマー管理から試合記録・集計までをタブレット、PC、スマートフォン上で行えます。
 
-タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集などの機能をブラウザ上で利用できます。初回起動時は少し時間がかかる場合があります。
+タイマー、ボール配置ランダマイザー、試合記録、ルール確認、ニュース、リンク集などを HTML/CSS/TypeScript で実装し、スマートフォンからすぐ起動できる構成にしています。
 
 ## Web 版
 
-https://ecleaire.github.io/Tennis-Assist-Public/
+https://ecleaire.github.io/Tennis-Assist-Web/
 
 ## 搭載機能
 
@@ -51,7 +51,7 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 - 試合進行の補助
 - チームを選択して 3 マッチ構成の試合を管理
 - 各マッチの終了理由、得点、勝敗、違反数を記録
-- 公式試合・練習試合の履歴を保存
+- 端末内に練習試合の履歴を保存
 - マッチ結果、試合結果を CSV 形式でエクスポート可能
 - CSV インポートに対応
 - アプリ内で対戦履歴を閲覧可能
@@ -90,17 +90,15 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 - 一度読み込んだ後は、オフライン環境でも起動可能
 - 更新時は Service Worker のキャッシュを切り替えて新バージョンへ更新
 
-## 今後のアップデート予定
-
-- 音声ガイド機能の追加
-- UI 改善
-- PC / Android アプリ版の公開
+管理者表示では、既存の Google Apps Script 連携設定と試合結果送信にも対応しています。
 
 ## 開発環境
 
-- Godot 4.6.2
-- GDScript
+- HTML / CSS / TypeScript
+- Vite
 - GitHub Pages
+
+従来の Godot Web エクスポートから移植し、WASM / PCK の大容量初期読込を不要にしました。フィールド表示には軽量化した競技フィールド画像を使用しています。
 
 ## 開発支援
 
@@ -117,4 +115,3 @@ https://ecleaire.github.io/Tennis-Assist-Public/
 ## ライセンスと素材
 
 - 数字表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
-- 日本語 UI には Noto Sans JP を使用しています。ライセンスは `assets/fonts/Noto_Sans_JP/OFL.txt` を確認してください。
