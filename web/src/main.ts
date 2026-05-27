@@ -440,6 +440,7 @@ class TimerController {
   private syncControls(): void {
     const startLabel = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
     document.body.classList.toggle("timer-running", this.running);
+    document.body.classList.toggle("timer-started", this.started);
     this.startButton.textContent = startLabel;
     this.dashboardStartButton.textContent = startLabel;
     this.resetButton.disabled = this.running;
@@ -1311,7 +1312,7 @@ class ContentController {
 
   renderLinks(secret: boolean): void {
     const sections = [
-      { title: "WRO", links: [["WRO Japan ホームページ", "https://www.wroj.org/action/2026"], ["WRO 兵庫 ホームページ", "https://wro-hyogo.jp/"], ["WRO 東京 ホームページ", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良 ホームページ", "https://sites.google.com/view/wro-nara/%E3%83%AD%E3%83%9C%E3%82%B9%E3%83%9D%E3%83%BC%E3%83%84"]] },
+      { title: "WRO", links: [["WRO Japan ホームページ", "https://www.wroj.org/action/2026"], ["WRO 兵庫 ホームページ", "https://wro-hyogo.jp/"], ["WRO 東京 ホームページ", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良 ホームページ", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"]] },
       { title: "公式資料", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["ルール", "https://wro-association.org/competition/2026-season/"], ["英語ルール PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google 翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL 翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
       { title: "その他", links: [["YouTube まとめ", "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"], ...(secret ? [["旧テニスタイマー", "https://scratch.mit.edu/projects/1013694253"], ["旧 litlink", "https://lit.link/syukugawalink"]] : [])] },
     ];

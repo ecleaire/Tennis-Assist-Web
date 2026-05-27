@@ -188,6 +188,10 @@ body.timer-running .timer-random-control {
   display: none !important;
 }
 
+body:not(.timer-started) .timer-end-action {
+  display: none !important;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -972,17 +976,20 @@ body.compact #timer-ten {
 
 @media (max-width: 760px) {
   .app-header {
-    align-items: stretch;
+    align-items: start;
     display: grid;
+    grid-template-columns: minmax(116px, 0.64fr) minmax(214px, 1fr);
     gap: 12px;
   }
 
   #navigation {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .header-navigation {
+    grid-column: 2;
+    grid-row: 1;
     width: 100%;
   }
 
@@ -1268,18 +1275,25 @@ body.compact #timer-ten {
 
 /* Some Android browsers report a desktop-like CSS width in portrait mode. */
 html.phone-portrait .app-header {
-  align-items: stretch;
+  align-items: start;
   display: grid;
+  grid-template-columns: minmax(116px, 0.64fr) minmax(214px, 1fr);
   gap: 12px;
 }
 
 html.phone-portrait #navigation {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 html.phone-portrait .header-navigation {
+  grid-column: 2;
+  grid-row: 1;
   width: 100%;
+}
+
+html.phone-portrait .brand h1 {
+  font-size: clamp(1.05rem, 3.6vw, 1.25rem);
 }
 
 html.phone-portrait .nav,
@@ -1320,6 +1334,16 @@ html.phone-portrait .dashboard-timer-tools select {
 html.phone-portrait body.compact .controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait body.compact .timer-shell {
+  gap: 10px;
+}
+
+html.phone-portrait body.compact .timer-center {
+  flex: 0 1 auto;
+  height: min(47vh, 410px);
+  min-height: min(42vh, 350px);
 }
 
 html.phone-portrait body.compact #timer-step {
