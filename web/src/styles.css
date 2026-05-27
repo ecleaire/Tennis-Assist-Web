@@ -169,6 +169,25 @@ input:hover {
   font-weight: 700;
 }
 
+.timer-start-action {
+  background: #176a43;
+  border-color: var(--success);
+  color: #ecfff2;
+  font-weight: 700;
+}
+
+.timer-end-action,
+.timer-count-control {
+  background: #b83242;
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+
+body.timer-running .timer-random-control {
+  display: none !important;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -914,21 +933,6 @@ body.compact .timer-center {
   min-height: 0;
 }
 
-body.compact .controls {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-body.compact .controls .button,
-body.compact .controls select {
-  min-height: 52px;
-  min-width: 0;
-}
-
-body.compact #timer-step {
-  grid-column: span 2;
-}
-
 body.balls-compact #screen-balls .section-card {
   border: 0;
   border-radius: 0;
@@ -941,6 +945,29 @@ body.balls-compact #screen-balls .court {
   align-self: center;
   max-height: calc(var(--viewport-height) - 104px);
   width: min(100%, calc((var(--viewport-height) - 104px) * 1280 / 620));
+}
+
+body.compact .controls {
+  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+body.compact .controls .button,
+body.compact .controls select {
+  flex: 0 1 clamp(118px, 12vw, 190px);
+  min-height: 52px;
+  min-width: 0;
+}
+
+body.compact #timer-step {
+  flex-basis: clamp(210px, 22vw, 300px);
+  grid-column: auto;
+}
+
+body.compact #timer-ten {
+  margin-left: auto;
 }
 
 @media (max-width: 760px) {
@@ -971,9 +998,13 @@ body.balls-compact #screen-balls .court {
     text-align: center;
   }
 
-  .timer-shell,
-  .rules-shell {
+  .timer-shell {
     min-height: calc(var(--viewport-height) - 203px);
+  }
+
+  .rules-shell {
+    align-content: start;
+    min-height: unset;
   }
 
   .dashboard {
@@ -1065,13 +1096,23 @@ body.balls-compact #screen-balls .court {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .rule-links .button {
+    min-height: 48px;
+    padding: 9px 7px;
+  }
+
   .rule-nav {
-    flex-direction: row;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .rule-nav .button {
-    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 8px 9px;
+  }
+
+  .rule-content {
+    padding: 14px;
   }
 
   .link-grid {
@@ -1111,7 +1152,11 @@ body.balls-compact #screen-balls .court {
   }
 
   #timer-time {
-    font-size: min(clamp(5rem, 17vw, 12rem), calc((var(--viewport-width) - 48px) / 6.1), calc(var(--viewport-height) * 0.3));
+    font-size: min(clamp(5rem, 19vw, 12rem), calc((var(--viewport-width) - 48px) / 5.4), calc(var(--viewport-height) * 0.32));
+  }
+
+  body.compact #timer-time {
+    font-size: min(clamp(5.4rem, 25vw, 20rem), calc((var(--viewport-width) - 40px) / 5.3), calc(var(--viewport-height) * 0.36));
   }
 
   .controls {
@@ -1181,15 +1226,29 @@ body.balls-compact #screen-balls .court {
   }
 
   #timer-time {
-    font-size: min(clamp(4.4rem, 19vw, 10rem), calc((var(--viewport-width) - 48px) / 6.1), calc(var(--viewport-height) * 0.23));
+    font-size: min(clamp(4.8rem, 21vw, 11rem), calc((var(--viewport-width) - 48px) / 5.35), calc(var(--viewport-height) * 0.27));
   }
 
   body.compact .controls {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  body.compact .controls .button,
+  body.compact .controls select {
+    min-width: 0;
+  }
+
+  body.compact #timer-step {
+    grid-column: span 2;
+  }
+
+  body.compact #timer-ten {
+    margin-left: 0;
+  }
+
   body.compact #timer-time {
-    font-size: min(clamp(5rem, 24vw, 12rem), calc((var(--viewport-width) - 40px) / 6.1), calc(var(--viewport-height) * 0.25));
+    font-size: min(clamp(5.4rem, 28vw, 14rem), calc((var(--viewport-width) - 40px) / 5.05), calc(var(--viewport-height) * 0.3));
   }
 
   .score-pair {
@@ -1205,4 +1264,113 @@ body.balls-compact #screen-balls .court {
     max-height: calc(var(--viewport-height) - 126px);
     width: min(100%, calc((var(--viewport-height) - 126px) * 1280 / 620));
   }
+}
+
+/* Some Android browsers report a desktop-like CSS width in portrait mode. */
+html.phone-portrait .app-header {
+  align-items: stretch;
+  display: grid;
+  gap: 12px;
+}
+
+html.phone-portrait #navigation {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html.phone-portrait .header-navigation {
+  width: 100%;
+}
+
+html.phone-portrait .nav,
+html.phone-portrait #admin-exit {
+  min-height: 42px;
+  padding: 8px 5px;
+  text-align: center;
+}
+
+html.phone-portrait .dashboard {
+  grid-template-columns: 1fr;
+}
+
+html.phone-portrait .dashboard-card {
+  min-height: unset;
+}
+
+html.phone-portrait .dashboard-actions {
+  justify-content: stretch;
+}
+
+html.phone-portrait .dashboard-actions .button {
+  flex: 1 1 135px;
+}
+
+html.phone-portrait output.digital.dashboard-digital {
+  font-size: clamp(2rem, 14vw, 3.3rem);
+}
+
+html.phone-portrait .dashboard-timer-tools {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+html.phone-portrait .dashboard-timer-tools select {
+  grid-column: span 2;
+}
+
+html.phone-portrait body.compact .controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait body.compact #timer-step {
+  grid-column: span 2;
+}
+
+html.phone-portrait body.compact #timer-ten {
+  margin-left: 0;
+}
+
+html.phone-portrait body.compact #timer-time {
+  font-size: min(clamp(5rem, 24vw, 12rem), calc((var(--viewport-width) - 40px) / 6.1), calc(var(--viewport-height) * 0.25));
+}
+
+html.phone-portrait .rules-shell {
+  align-content: start;
+  min-height: unset;
+}
+
+html.phone-portrait .rules-shell .section-head {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+html.phone-portrait .rules-shell input {
+  width: 100%;
+}
+
+html.phone-portrait .rule-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .rule-links .button {
+  min-height: 48px;
+  padding: 9px 7px;
+}
+
+html.phone-portrait .rules-body {
+  grid-template-columns: 1fr;
+}
+
+html.phone-portrait .rule-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .rule-nav .button {
+  min-height: 42px;
+  padding: 8px 9px;
+}
+
+html.phone-portrait .rule-content {
+  padding: 14px;
 }

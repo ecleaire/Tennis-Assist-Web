@@ -61,19 +61,19 @@
             <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
             <div class="dashboard-timer-controls">
-              <button id="dashboard-timer-start" class="button primary">開始</button>
-              <button id="dashboard-timer-end" class="button">終了</button>
-              <button id="dashboard-timer-reset" class="button">ランダム再生成</button>
+              <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
+              <button id="dashboard-timer-end" class="button timer-end-action">終了</button>
+              <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
             </div>
             <div class="dashboard-timer-tools">
-              <select id="dashboard-timer-step" aria-label="ホーム画面のタイマー設定">
+              <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
                 <option value="5">ランダム設定: 5秒単位</option>
                 <option value="1">ランダム設定: 1秒単位</option>
                 <option value="10">ランダム設定: 10秒単位</option>
                 <option value="manual">手動指定</option>
               </select>
-              <button id="dashboard-timer-ten" class="button">10カウント</button>
-              <button id="dashboard-timer-five" class="button">5カウント</button>
+              <button id="dashboard-timer-ten" class="button timer-count-control">10カウント</button>
+              <button id="dashboard-timer-five" class="button timer-count-control">5カウント</button>
             </div>
             <div class="dashboard-sub-slot">
               <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
@@ -102,18 +102,18 @@
           <div class="timer-bottom">
             <progress id="timer-progress" max="100" value="100"></progress>
             <div class="controls">
-              <button id="timer-start" class="button primary">開始</button>
-              <button id="timer-end" class="button">終了</button>
+              <button id="timer-start" class="button timer-start-action">開始</button>
+              <button id="timer-end" class="button timer-end-action">終了</button>
               <button id="timer-fullscreen" class="button">全画面</button>
-              <button id="timer-reset" class="button">ランダム再生成</button>
-              <select id="timer-step" aria-label="タイマー設定">
+              <button id="timer-reset" class="button timer-random-control">ランダム再生成</button>
+              <select id="timer-step" class="timer-random-control" aria-label="タイマー設定">
                 <option value="5">ランダム設定: 5秒単位</option>
                 <option value="1">ランダム設定: 1秒単位</option>
                 <option value="10">ランダム設定: 10秒単位</option>
                 <option value="manual">手動指定</option>
               </select>
-              <button id="timer-ten" class="button">10カウント</button>
-              <button id="timer-five" class="button">5カウント</button>
+              <button id="timer-ten" class="button timer-count-control">10カウント</button>
+              <button id="timer-five" class="button timer-count-control">5カウント</button>
             </div>
           </div>
         </article>

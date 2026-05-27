@@ -85,6 +85,10 @@ interface AdminSettings {
   sendEnabled: boolean;
 }
 
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: "landscape") => Promise<void>;
+};
+
 let teams = [
   "ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL",
   "INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA",
@@ -145,6 +149,14 @@ function syncViewportMetrics(): void {
   const height = viewport?.height ?? window.innerHeight;
   document.documentElement.style.setProperty("--viewport-width", `${Math.round(width)}px`);
   document.documentElement.style.setProperty("--viewport-height", `${Math.round(height)}px`);
+  const mobilePhone =
+    /Android.+Mobile|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) <= 600);
+  document.documentElement.classList.toggle("phone-portrait", mobilePhone && height > width);
+}
+
+function isPhonePortrait(): boolean {
+  return document.documentElement.classList.contains("phone-portrait");
 }
 
 function recordKey(record: MatchRecord): string {
@@ -265,6 +277,11 @@ class TimerController {
   }
 
   async leaveFullscreen(): Promise<void> {
+    try {
+      screen.orientation?.unlock?.();
+    } catch {
+      // Orientation locking is optional and browser dependent.
+    }
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen?.();
@@ -335,7 +352,7 @@ class TimerController {
   private start(): void {
     if (this.remaining <= 0) return;
     this.activated();
-    void this.enterFullscreen();
+    void this.enterFullscreen(true);
     this.running = true;
     this.started = true;
     this.mode.textContent = "試合進行中";
@@ -422,6 +439,7 @@ class TimerController {
 
   private syncControls(): void {
     const startLabel = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
+    document.body.classList.toggle("timer-running", this.running);
     this.startButton.textContent = startLabel;
     this.dashboardStartButton.textContent = startLabel;
     this.resetButton.disabled = this.running;
@@ -470,13 +488,22 @@ class TimerController {
     }
   }
 
-  private async enterFullscreen(): Promise<void> {
+  private async enterFullscreen(rotatePhone = false): Promise<void> {
+    const shouldRotate = rotatePhone && isPhonePortrait();
     this.setCompact(true);
-    if (document.fullscreenElement) return;
-    try {
-      await document.documentElement.requestFullscreen?.();
-    } catch {
-      // Keep the timer in distraction-free view when native fullscreen is unavailable.
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen?.();
+      } catch {
+        // Keep the timer in distraction-free view when native fullscreen is unavailable.
+      }
+    }
+    if (shouldRotate) {
+      try {
+        await (screen.orientation as LockableScreenOrientation | undefined)?.lock?.("landscape");
+      } catch {
+        // Android browsers that deny orientation lock still keep the focused timer view.
+      }
     }
   }
 
