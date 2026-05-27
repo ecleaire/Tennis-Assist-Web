@@ -1006,7 +1006,10 @@ class RecordsController {
     this.flow("finished");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     await this.sendSeriesResult(record);
-    this.resetInput();
+    const completedStatus = el("record-status").textContent ?? "試合結果を保存しました。";
+    this.resetSeries();
+    el("record-status").textContent = `試合が終了しました。おつかれさまでした。${completedStatus} 対戦をリセットし、次の対戦を開始できます。`;
+    el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   private renderHistory(): void {

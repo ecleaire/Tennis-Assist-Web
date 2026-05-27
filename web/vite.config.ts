@@ -6,8 +6,8 @@ export default defineConfig({
   publicDir: "public",
   build: {
     outDir: "../docs",
-    // Keep already-published hashed assets so cached HTML still loads correctly.
-    emptyOutDir: false,
+    // Publish only the current bundle; the service worker owns offline copies.
+    emptyOutDir: true,
     target: "es2020",
   },
 });
