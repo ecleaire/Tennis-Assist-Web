@@ -566,6 +566,7 @@ class RecordsController {
   private agreedA = false;
   private agreedB = false;
   private finalized = false;
+  private agreementPending: "a" | "b" | null = null;
 
   constructor(private readonly flow: (event: "start" | "next" | "balls" | "timer" | "finished", match?: number) => void) {
     this.records = this.loadRecords();
@@ -575,12 +576,15 @@ class RecordsController {
     el<HTMLButtonElement>("series-reset").addEventListener("click", () => this.resetSeries());
     el<HTMLButtonElement>("record-save").addEventListener("click", () => this.confirmSave());
     el<HTMLButtonElement>("confirm-save").addEventListener("click", () => this.save());
+    el<HTMLButtonElement>("next-match").addEventListener("click", () => this.continueToNextMatch());
     el<HTMLButtonElement>("back-balls").addEventListener("click", () => { if (this.series && !this.isFinished()) this.flow("balls", this.nextMatch()); });
     el<HTMLButtonElement>("back-timer").addEventListener("click", () => { if (this.series && !this.isFinished()) this.flow("timer", this.nextMatch()); });
-    el<HTMLButtonElement>("agree-a").addEventListener("click", () => { this.agreedA = true; this.renderAgreement(); });
-    el<HTMLButtonElement>("agree-b").addEventListener("click", () => { this.agreedB = true; this.renderAgreement(); });
-    el<HTMLButtonElement>("finalize").addEventListener("click", () => this.finalize());
-    el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.renderStats());
+    el<HTMLButtonElement>("agree-a").addEventListener("click", () => this.requestAgreement("a"));
+    el<HTMLButtonElement>("agree-b").addEventListener("click", () => this.requestAgreement("b"));
+    el<HTMLButtonElement>("agreement-accept").addEventListener("click", () => this.acceptAgreement());
+    el<HTMLButtonElement>("agreement-cancel").addEventListener("click", () => this.cancelAgreement());
+    el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
+    el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
     el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderStats());
     ["history-team", "history-result", "history-kind", "history-sort"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.renderHistory());
@@ -599,7 +603,7 @@ class RecordsController {
 
   timerFinished(): void {
     if (!this.series || this.isFinished()) return;
-    el("record-status").textContent = "試合結果を入力して、保存前確認を行ってください。";
+    el("record-status").textContent = "試合結果を入力して、「このマッチを保存」から確認してください。";
     el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -614,7 +618,7 @@ class RecordsController {
     rangeOptions(el<HTMLSelectElement>("a-orange"), 9, 0);
     rangeOptions(el<HTMLSelectElement>("b-orange"), 9, 0);
     rangeOptions(el<HTMLSelectElement>("a-purple"), 2, 0);
-    rangeOptions(el<HTMLSelectElement>("b-purple"), 2, 2);
+    rangeOptions(el<HTMLSelectElement>("b-purple"), 2, 0);
     this.refreshEndReasons();
     ["reason-category", "end-reason", "target-team", "a-orange", "b-orange", "a-purple", "b-purple"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.inputChanged(id));
@@ -642,6 +646,8 @@ class RecordsController {
     this.agreedA = false;
     this.agreedB = false;
     this.finalized = false;
+    this.agreementPending = null;
+    this.setNextMatchPrompt(false);
     this.resetInput();
     this.renderSeries();
     el("record-status").textContent = "対戦カードを開始しました。ボール配置から進行します。";
@@ -654,6 +660,8 @@ class RecordsController {
     this.agreedA = false;
     this.agreedB = false;
     this.finalized = false;
+    this.agreementPending = null;
+    this.setNextMatchPrompt(false);
     this.resetInput();
     el("series-label").textContent = "対戦カード: 未選択";
     el("match-progress").textContent = "進行状況: 対戦を開始してください";
@@ -672,7 +680,7 @@ class RecordsController {
     el<HTMLSelectElement>("a-orange").value = "0";
     el<HTMLSelectElement>("b-orange").value = "0";
     el<HTMLSelectElement>("a-purple").value = "0";
-    el<HTMLSelectElement>("b-purple").value = "2";
+    el<HTMLSelectElement>("b-purple").value = "0";
     this.renderScores();
   }
 
@@ -770,6 +778,7 @@ class RecordsController {
       this.editing = 0;
       this.agreedA = false;
       this.agreedB = false;
+      this.agreementPending = null;
     } else {
       this.series.records.push(record);
       this.records.unshift(record);
@@ -780,11 +789,24 @@ class RecordsController {
     this.renderHistory();
     if (this.isFinished()) {
       el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。代表同意後に結果を確定します。`;
+      this.setNextMatchPrompt(false);
       this.renderAgreement();
+      el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
-      el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。次のマッチへ進みます。`;
-      this.flow("next", this.nextMatch());
+      el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。次のマッチの準備をしてください。`;
+      this.setNextMatchPrompt(true);
+      el("next-match-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
+  }
+
+  private setNextMatchPrompt(visible: boolean): void {
+    el("next-match-panel").classList.toggle("hidden", !visible);
+  }
+
+  private continueToNextMatch(): void {
+    if (!this.series || this.isFinished()) return;
+    this.setNextMatchPrompt(false);
+    this.flow("next", this.nextMatch());
   }
 
   private renderSeries(): void {
@@ -860,12 +882,21 @@ class RecordsController {
   }
 
   private renderFinal(): void {
+    const matches = el<HTMLTableElement>("final-matches");
+    matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th></tr></thead>";
     const table = el<HTMLTableElement>("final-table");
     table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総橙</th><th>総紫</th><th>違反</th><th>総スコア</th><th>状態</th></tr></thead>";
     if (!this.series?.records.length) {
       el("final-summary").textContent = "3マッチ終了後、最終結果を確認できます。";
+      el("series-finished").classList.add("hidden");
       return;
     }
+    const matchesBody = matches.createTBody();
+    this.series.records.forEach((record) => {
+      const row = matchesBody.insertRow();
+      row.className = "win";
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td>${record.teamAOrange} / ${record.teamAPurple} / ${record.teamAScore}</td><td>${record.teamBOrange} / ${record.teamBPurple} / ${record.teamBScore}</td><td>勝者: ${escapeText(record.winner)}</td>`;
+    });
     const sum = this.summary();
     const winner = this.overallWinner(sum);
     const body = table.createTBody();
@@ -882,19 +913,52 @@ class RecordsController {
     el("final-summary").textContent = this.isFinished()
       ? winner === "draw" ? "総合結果: 引き分け" : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち`
       : `途中集計: 勝利マッチ数 ${sum.teamAWins} - ${sum.teamBWins} / 引き分け ${sum.draws}`;
+    el("series-finished").classList.toggle("hidden", !this.finalized);
   }
 
   private renderAgreement(): void {
     const box = el("agreement");
     const visible = Boolean(this.series && this.isFinished());
     box.classList.toggle("hidden", !visible);
-    if (!visible || !this.series) return;
-    el<HTMLButtonElement>("agree-a").textContent = `${this.series.teamA}代表 同意${this.agreedA ? "済" : ""}`;
-    el<HTMLButtonElement>("agree-b").textContent = `${this.series.teamB}代表 同意${this.agreedB ? "済" : ""}`;
+    if (!visible || !this.series) {
+      this.cancelAgreement();
+      return;
+    }
+    const agreeA = el<HTMLButtonElement>("agree-a");
+    const agreeB = el<HTMLButtonElement>("agree-b");
+    agreeA.textContent = `${this.series.teamA}代表: ${this.agreedA ? "同意済み" : "同意する"}`;
+    agreeB.textContent = `${this.series.teamB}代表: ${this.agreedB ? "同意済み" : "同意する"}`;
+    agreeA.classList.toggle("agreed", this.agreedA);
+    agreeB.classList.toggle("agreed", this.agreedB);
+    agreeA.disabled = this.agreedA || this.finalized;
+    agreeB.disabled = this.agreedB || this.finalized;
     el<HTMLButtonElement>("finalize").disabled = this.finalized || !(this.agreedA && this.agreedB);
   }
 
-  private finalize(): void {
+  private requestAgreement(side: "a" | "b"): void {
+    if (!this.series || !this.isFinished() || this.finalized || (side === "a" ? this.agreedA : this.agreedB)) return;
+    this.renderFinal();
+    this.agreementPending = side;
+    const team = side === "a" ? this.series.teamA : this.series.teamB;
+    el("agreement-confirm-team").textContent = `${team}代表が確認しています。上の試合結果をもう一度確認してください。`;
+    el("agreement-confirm").classList.remove("hidden");
+    el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  private acceptAgreement(): void {
+    if (!this.agreementPending) return;
+    if (this.agreementPending === "a") this.agreedA = true;
+    else this.agreedB = true;
+    this.cancelAgreement();
+    this.renderAgreement();
+  }
+
+  private cancelAgreement(): void {
+    this.agreementPending = null;
+    el("agreement-confirm").classList.add("hidden");
+  }
+
+  private async finalize(): Promise<void> {
     if (!this.agreedA || !this.agreedB || !this.series) return;
     this.finalized = true;
     const sum = this.summary();
@@ -935,11 +999,14 @@ class RecordsController {
     };
     this.records.unshift(record);
     localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    this.renderFinal();
     this.renderHistory();
-    el("record-status").textContent = "両チーム代表の同意を確認し、試合結果を確定しました。";
-    void this.sendSeriesResult(record);
+    el("record-status").textContent = "試合が終了しました。おつかれさまでした。結果を保存しています。";
     this.renderAgreement();
     this.flow("finished");
+    el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
+    await this.sendSeriesResult(record);
+    this.resetInput();
   }
 
   private renderHistory(): void {
@@ -988,6 +1055,13 @@ class RecordsController {
     const rate = related.length ? (wins / related.length) * 100 : 0;
     const stats = [["マッチ数", related.length.toString()], ["勝敗", `${wins}勝 ${related.length - wins - draws}敗 ${draws}分`], ["勝率", `${rate.toFixed(1)}%`], ["違反数", String(violations)]];
     host.innerHTML = stats.map(([label, value]) => `<article class="stat"><span class="muted">${label}</span><b>${value}</b></article>`).join("");
+  }
+
+  private syncTeamHistoryFilter(): void {
+    const selected = el<HTMLSelectElement>("stats-team").value;
+    el<HTMLSelectElement>("history-team").value = selected === "チームを選択" ? "すべてのチーム" : selected;
+    this.renderStats();
+    this.renderHistory();
   }
 
   private loadRecords(): MatchRecord[] {

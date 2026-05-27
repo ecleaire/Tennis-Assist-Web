@@ -8,8 +8,8 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-FY6T0gre.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DmRSxusg.css">
+    <script type="module" crossorigin src="./assets/index-BhmeysDd.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BJ6UedwA.css">
   </head>
   <body>
     <main id="app">
@@ -77,8 +77,10 @@
               <button id="dashboard-timer-ten" class="button">10カウント</button>
               <button id="dashboard-timer-five" class="button">5カウント</button>
             </div>
-            <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
-            <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
+            <div class="dashboard-sub-slot">
+              <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
+              <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
+            </div>
           </article>
         </div>
       </section>
@@ -91,9 +93,13 @@
           </div>
           <div class="timer-center">
             <p id="cold-notice" class="notice" aria-live="polite"></p>
-            <output id="timer-time" class="digital">01 : 30</output>
-            <p id="sub-caption" class="hint">Space / Enter: 開始　F: 全画面</p>
-            <output id="sub-time" class="digital sub hidden">00 : 10</output>
+            <div class="timer-face">
+              <output id="timer-time" class="digital">01 : 30</output>
+              <div class="sub-slot">
+                <p id="sub-caption" class="hint">Space / Enter: 開始　F: 全画面</p>
+                <output id="sub-time" class="digital sub hidden">00 : 10</output>
+              </div>
+            </div>
           </div>
           <div class="timer-bottom">
             <progress id="timer-progress" max="100" value="100"></progress>
@@ -154,6 +160,10 @@
             </div>
             <p id="series-label" class="status-line">対戦カード: 未選択</p>
             <p id="match-progress" class="muted">進行状況: 対戦を開始してください</p>
+            <div id="next-match-panel" class="next-match-panel hidden" aria-live="polite">
+              <p>次のマッチの準備をしてください</p>
+              <button id="next-match" class="button primary">次のマッチへ進む</button>
+            </div>
           </article>
 
           <article id="record-input" class="panel section-card">
@@ -185,7 +195,7 @@
             </div>
             <p id="winner-preview" class="winner-preview">結果を入力してください。</p>
             <div class="toolbar">
-              <button id="record-save" class="button primary">保存前確認</button>
+              <button id="record-save" class="button primary">このマッチを保存</button>
               <button id="back-balls" class="button">配置へ戻る</button>
               <button id="back-timer" class="button">タイマーへ戻る</button>
             </div>
@@ -197,15 +207,25 @@
             <p id="intermediate-summary" class="muted">第1マッチの保存後に中間結果が表示されます。</p>
             <div class="table-scroll"><table id="intermediate-table"></table></div>
           </article>
-          <article class="panel section-card">
+          <article id="final-results" class="panel section-card">
             <h2>最終結果</h2>
             <p id="final-summary" class="muted">3マッチ終了後、最終結果を確認できます。</p>
+            <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
+            <div class="table-scroll"><table id="final-matches"></table></div>
             <div class="table-scroll"><table id="final-table"></table></div>
             <div id="agreement" class="agreement hidden">
               <p>各チーム代表が結果を確認して同意してください。</p>
               <button id="agree-a" class="button"></button>
               <button id="agree-b" class="button"></button>
-              <button id="finalize" class="button primary" disabled>結果を確定</button>
+              <button id="finalize" class="button primary" disabled>試合結果を確定</button>
+              <div id="agreement-confirm" class="agreement-confirm hidden" aria-live="polite">
+                <p id="agreement-confirm-team"></p>
+                <p>この試合結果に同意すると変更できません。同意しますか？</p>
+                <div class="toolbar">
+                  <button id="agreement-accept" class="button primary">同意する</button>
+                  <button id="agreement-cancel" class="button">戻る</button>
+                </div>
+              </div>
             </div>
           </article>
           <article class="panel section-card">
@@ -238,9 +258,9 @@
             </div>
             <input id="history-file" class="hidden" type="file" accept=".csv,text/csv" />
             <div class="filter-row">
-              <label>統計チーム<select id="stats-team"></select></label>
+              <label>チーム<select id="stats-team"></select></label>
               <label>集計期間<select id="stats-period"><option value="today">今日</option><option value="week">1週間</option><option value="month">1か月</option></select></label>
-              <label>履歴チーム<select id="history-team"></select></label>
+              <label>履歴検索チーム<select id="history-team"></select></label>
               <label>勝敗<select id="history-result"><option value="all">勝敗すべて</option><option value="win">勝利のみ</option><option value="loss">敗北のみ</option><option value="draw">引き分けのみ</option></select></label>
               <label>種類<select id="history-kind"><option value="all">すべて表示</option><option value="match">マッチ結果のみ</option><option value="series">試合結果のみ</option></select></label>
               <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
