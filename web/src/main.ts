@@ -35,6 +35,7 @@ interface MatchRecord {
   draws?: number;
   overallWinner?: string;
   notes?: string;
+  sendStatus?: "pending" | "sent" | "failed" | "local-only";
 }
 
 interface Series {
@@ -1030,6 +1031,7 @@ class RecordsController {
       teamAViolations: sum.teamAViolations,
       teamBViolations: sum.teamBViolations,
       notes: `両チーム代表同意済み / ${this.series.teamA} ${sum.teamAWins}勝 / ${this.series.teamB} ${sum.teamBWins}勝 / 引き分け${sum.draws}`,
+      sendStatus: AdminController.settings().sendEnabled ? "pending" : "local-only",
     };
     this.records.unshift(record);
     localStorage.setItem(this.storageKey, JSON.stringify(this.records));
@@ -1069,11 +1071,27 @@ class RecordsController {
       card.className = "history-card";
       const number = record.recordKind === "マッチ" ? `第${record.matchNumber}マッチ` : "試合結果";
       const winner = record.overallWinner || record.winner;
-      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>`;
+      const sendState = record.recordKind === "試合結果" ? this.sendStateLabel(record.sendStatus) : "";
+      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}`;
+      if (record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
+        const retry = document.createElement("button");
+        retry.className = "button history-retry";
+        retry.textContent = "未送信の結果を再送する";
+        retry.addEventListener("click", () => void this.retrySend(record));
+        card.append(retry);
+      }
       host.append(card);
     });
     el("history-status").textContent = `保存済み ${this.records.length}件 / 表示 ${visible.length}件`;
     this.renderStats();
+  }
+
+  private sendStateLabel(status: MatchRecord["sendStatus"]): string {
+    if (status === "sent") return '<p class="sync-status sent">GAS送信済み</p>';
+    if (status === "pending") return '<p class="sync-status pending">GAS送信待ち</p>';
+    if (status === "failed") return '<p class="sync-status failed">GAS未送信</p>';
+    if (status === "local-only") return '<p class="sync-status local">端末保存のみ</p>';
+    return "";
   }
 
   private renderStats(): void {
@@ -1252,24 +1270,47 @@ class RecordsController {
     el("history-status").textContent = "この端末の対戦履歴をすべて削除しました。";
   }
 
+  private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>): void {
+    record.sendStatus = status;
+    const stored = this.records.find((item) => item.recordId === record.recordId);
+    if (stored) stored.sendStatus = status;
+    localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    this.renderHistory();
+  }
+
+  private async retrySend(record: MatchRecord): Promise<void> {
+    this.updateSendStatus(record, "pending");
+    el("history-status").textContent = "未送信の試合結果を再送しています...";
+    await this.sendSeriesResult(record);
+  }
+
   private async sendSeriesResult(record: MatchRecord): Promise<void> {
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
+      this.updateSendStatus(record, "local-only");
       el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
       return;
     }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
-      el("record-status").textContent = "試合結果を保存しました。GAS URLまたはAPIキーを確認してください。";
+      this.updateSendStatus(record, "failed");
+      el("record-status").textContent = "試合結果は保存しました。GAS URLまたはAPIキーを確認し、履歴から再送してください。";
       return;
     }
-    const details = [...(this.series?.records ?? []), record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
+    this.updateSendStatus(record, "pending");
+    const matches = this.records
+      .filter((item) => item.seriesId === record.seriesId && item.recordKind === "マッチ")
+      .sort((a, b) => a.matchNumber - b.matchNumber);
+    const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
     const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "match_records", source: "WRO RoboSports Assist", sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "match_records_detail", detail_rows: details };
     el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
     try {
-      await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(`GAS request failed: ${response.status}`);
+      this.updateSendStatus(record, "sent");
       el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
     } catch {
-      el("record-status").textContent = "試合結果は保存しました。スプレッドシート送信に失敗しました。";
+      this.updateSendStatus(record, "failed");
+      el("record-status").textContent = "試合結果は保存しました。スプレッドシート送信に失敗しました。履歴から再送できます。";
     }
   }
 
@@ -1401,7 +1442,6 @@ class ContentController {
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private scannerControls: { stop: () => void } | null = null;
   private cameraStream: MediaStream | null = null;
   private scanFrame = 0;
   private scannedGasUrl = "";
@@ -1526,24 +1566,44 @@ class AdminController {
 
   private async startFallbackScanner(): Promise<void> {
     const dialog = el<HTMLDialogElement>("qr-dialog");
-    const { BrowserQRCodeReader } = await import("@zxing/browser");
+    const { default: jsQR } = await import("jsqr");
     if (!dialog.open) return;
-    const reader = new BrowserQRCodeReader();
-    const controls = await reader.decodeFromConstraints(
-      { audio: false, video: { facingMode: { ideal: "environment" } } },
-      el<HTMLVideoElement>("qr-video"),
-      (result, _error, activeControls) => {
-        if (!result || this.scannedGasUrl) return;
-        this.scannerControls = activeControls;
-        this.reviewScannedUrl(result.getText());
-      },
-    );
-    if (!dialog.open || this.scannedGasUrl) {
-      controls.stop();
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
+    if (!dialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
       return;
     }
-    this.scannerControls = controls;
+    this.cameraStream = stream;
+    video.srcObject = stream;
+    await video.play();
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Camera canvas is unavailable.");
     el("qr-status").textContent = "QRコードをカメラに写してください。";
+    let lastScan = 0;
+    const scan = (time: number): void => {
+      if (!dialog.open || !this.cameraStream || this.scannedGasUrl) return;
+      if (time - lastScan < 120) {
+        this.scanFrame = requestAnimationFrame(scan);
+        return;
+      }
+      lastScan = time;
+      if (video.videoWidth && video.videoHeight) {
+        const scale = Math.min(1, 720 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+        const result = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: "attemptBoth" });
+        if (result?.data) {
+          this.reviewScannedUrl(result.data);
+          return;
+        }
+      }
+      this.scanFrame = requestAnimationFrame(scan);
+    };
+    this.scanFrame = requestAnimationFrame(scan);
   }
 
   private reviewScannedUrl(value: string): void {
@@ -1586,8 +1646,6 @@ class AdminController {
   }
 
   private stopScanner(): void {
-    this.scannerControls?.stop();
-    this.scannerControls = null;
     cancelAnimationFrame(this.scanFrame);
     this.scanFrame = 0;
     this.cameraStream?.getTracks().forEach((track) => track.stop());

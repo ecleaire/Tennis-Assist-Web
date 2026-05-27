@@ -773,6 +773,35 @@ tr.win td {
   margin-top: 10px;
 }
 
+.sync-status {
+  border-radius: 999px;
+  font-size: 0.9rem;
+  justify-self: start;
+  padding: 5px 12px;
+}
+
+.sync-status.sent {
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.sync-status.pending,
+.sync-status.failed {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.sync-status.local {
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.history-retry {
+  border-color: var(--danger);
+  color: var(--danger);
+  justify-self: start;
+}
+
 .admin-shell {
   margin: 0 auto;
   max-width: 800px;
