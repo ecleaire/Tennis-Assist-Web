@@ -92,6 +92,11 @@ type QrDetector = {
 
 type QrDetectorConstructor = new (options: { formats: string[] }) => QrDetector;
 
+type GasResponse = {
+  ok?: boolean;
+  error?: string;
+};
+
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
 };
@@ -214,6 +219,18 @@ function parseCsv(text: string): string[][] {
   row.push(value);
   if (row.some((cell) => cell.trim())) rows.push(row);
   return rows;
+}
+
+async function ensureGasSuccess(response: Response): Promise<void> {
+  let result: GasResponse = {};
+  try {
+    result = await response.json() as GasResponse;
+  } catch {
+    result = {};
+  }
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || `GAS request failed: ${response.status}`);
+  }
 }
 
 class TimerController {
@@ -1301,11 +1318,11 @@ class RecordsController {
       .filter((item) => item.seriesId === record.seriesId && item.recordKind === "マッチ")
       .sort((a, b) => a.matchNumber - b.matchNumber);
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
-    const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "match_records", source: "WRO RoboSports Assist", sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "match_records_detail", detail_rows: details };
+    const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "試合結果", source: "WRO RoboSports Assist", sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "対戦履歴", detail_rows: details };
     el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
     try {
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-      if (!response.ok) throw new Error(`GAS request failed: ${response.status}`);
+      await ensureGasSuccess(response);
       this.updateSendStatus(record, "sent");
       el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
     } catch {
@@ -1665,8 +1682,9 @@ class AdminController {
     }
     el("gas-status").textContent = "テスト送信中...";
     try {
-      const body = { api_key: settings.apiKey, event: "connection_test", source: "WRO RoboSports Assist", sent_at: timestamp(), payload: { message: "Web app connection test" } };
-      await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: "WRO RoboSports Assist", sent_at: timestamp(), payload: { message: "Web app connection test" } };
+      const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      await ensureGasSuccess(response);
       el("gas-status").textContent = "テスト送信を完了しました。スプレッドシート側も確認してください。";
     } catch {
       el("gas-status").textContent = "テスト送信に失敗しました。URL と公開設定を確認してください。";

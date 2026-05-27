@@ -1,9 +1,11 @@
-const MATCH_SHEET_NAME = 'match_records';
-const DETAIL_SHEET_NAME = 'match_records_detail';
 const TEST_SHEET_NAME = '送信テスト';
+const SERIES_RESULT_SHEET_NAME = '試合結果';
+const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
+const HISTORY_SHEET_NAME = '対戦履歴';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
+const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function doPost(e) {
   // 複数端末から同時送信された時に、ヘッダー確認と追記が割り込まれないようロックします。
@@ -25,7 +27,7 @@ function doPost(e) {
 
     const ss = SpreadsheetApp.openById(spreadsheetId);
     const eventName = String(body.event || '');
-    const isTest = eventName === 'test' || String(body.target_sheet || '') === TEST_SHEET_NAME;
+    const isTest = eventName === 'test' || eventName === 'connection_test' || String(body.target_sheet || '') === TEST_SHEET_NAME;
 
     if (isTest) {
       // 送信テストは本番履歴に混ぜず、専用シートへ追記します。
@@ -40,26 +42,29 @@ function doPost(e) {
     }
 
     const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
-    // match_records: 試合全体の結果を1行で保存する集計向けシートです。
-    const matchSheet = ss.getSheetByName(MATCH_SHEET_NAME) || ss.insertSheet(MATCH_SHEET_NAME);
-    const matchResult = appendSingleRecord(matchSheet, body, eventName, csvColumns);
+    const records = collectRecords(body);
 
-    // match_records_detail: CSVエクスポート相当の1〜3マッチ + 試合結果を保存します。
-    const detailSheetName = String(body.detail_sheet || DETAIL_SHEET_NAME);
-    const detailSheet = ss.getSheetByName(detailSheetName) || ss.insertSheet(detailSheetName);
-    const detailResult = appendDetailRows(detailSheet, body, eventName, csvColumns);
+    const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
+    const matchResultSheet = getOrCreateSheet(ss, MATCH_RESULT_SHEET_NAME);
+    const historySheet = getOrCreateSheet(ss, HISTORY_SHEET_NAME);
+
+    const seriesResult = appendFilteredRows(seriesResultSheet, records, eventName, body, csvColumns, '試合結果');
+    const matchResult = appendFilteredRows(matchResultSheet, records, eventName, body, csvColumns, 'マッチ');
+    const historyResult = appendRows(historySheet, records, eventName, body, csvColumns);
 
     return jsonResponse({
       ok: true,
-      record_id: matchResult.record_id,
-      duplicate: matchResult.duplicate,
       spreadsheet_id: spreadsheetId,
-      sheet_name: matchSheet.getName(),
-      last_row: matchSheet.getLastRow(),
-      detail_sheet_name: detailSheet.getName(),
-      detail_appended: detailResult.appended,
-      detail_duplicates: detailResult.duplicates,
-      detail_last_row: detailSheet.getLastRow()
+      test_sheet_name: TEST_SHEET_NAME,
+      series_result_sheet_name: seriesResultSheet.getName(),
+      series_result_appended: seriesResult.appended,
+      series_result_duplicates: seriesResult.duplicates,
+      match_result_sheet_name: matchResultSheet.getName(),
+      match_result_appended: matchResult.appended,
+      match_result_duplicates: matchResult.duplicates,
+      history_sheet_name: historySheet.getName(),
+      history_appended: historyResult.appended,
+      history_duplicates: historyResult.duplicates
     });
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err), stack: err.stack });
@@ -84,56 +89,75 @@ function appendTestRow(sheet, body, eventName) {
   ]);
 }
 
-function appendSingleRecord(sheet, body, eventName, csvColumns) {
-  const payload = body.payload || {};
-  const recordId = String(body.record_id || payload.record_id || '');
-  const csvRow = Array.isArray(body.csv_row) ? body.csv_row : [];
-  const header = csvColumns.length > 0 ? MATCH_HEADER_PREFIX.concat(csvColumns) : MATCH_HEADER_PREFIX.concat(['payload_json']);
-  ensureExactHeader(sheet, header);
-
-  // record_idが同じ行は再送とみなし、二重追記せず成功扱いで返します。
-  if (recordId && hasRecordId(sheet, recordId, MATCH_HEADER_PREFIX.length)) {
-    return { record_id: recordId, duplicate: true };
-  }
-
-  sheet.appendRow([
-    new Date(),
-    eventName,
-    body.source || '',
-    body.sent_at || '',
-    recordId
-  ].concat(csvRow.length > 0 ? csvRow : [JSON.stringify(payload)]));
-
-  return { record_id: recordId, duplicate: false };
+function getOrCreateSheet(ss, name) {
+  return ss.getSheetByName(name) || ss.insertSheet(name);
 }
 
-function appendDetailRows(sheet, body, eventName, csvColumns) {
+function collectRecords(body) {
+  const records = [];
   const detailRows = Array.isArray(body.detail_rows) ? body.detail_rows : [];
-  if (detailRows.length === 0) {
+
+  detailRows.forEach((detail) => {
+    const csvRow = Array.isArray(detail && detail.csv_row) ? detail.csv_row : [];
+    records.push({
+      record_id: String((detail && detail.record_id) || ''),
+      csv_row: csvRow
+    });
+  });
+
+  const csvRow = Array.isArray(body.csv_row) ? body.csv_row : [];
+  const bodyRecordId = String(body.record_id || (body.payload && (body.payload.record_id || body.payload.recordId)) || '');
+  const alreadyIncluded = records.some((record) => record.record_id && record.record_id === bodyRecordId);
+  if (csvRow.length > 0 && !alreadyIncluded) {
+    records.push({
+      record_id: bodyRecordId,
+      csv_row: csvRow
+    });
+  }
+
+  if (records.length === 0) {
+    records.push({
+      record_id: bodyRecordId,
+      csv_row: [JSON.stringify(body.payload || {})]
+    });
+  }
+
+  return records;
+}
+
+function appendFilteredRows(sheet, records, eventName, body, csvColumns, recordKind) {
+  const filtered = records.filter((record) => getRecordKind(record.csv_row) === recordKind);
+  return appendRows(sheet, filtered, eventName, body, csvColumns);
+}
+
+function getRecordKind(csvRow) {
+  return String((csvRow || [])[RECORD_KIND_INDEX] || '');
+}
+
+function appendRows(sheet, records, eventName, body, csvColumns) {
+  if (!records.length) {
     return { appended: 0, duplicates: 0 };
   }
 
-  const header = MATCH_HEADER_PREFIX.concat(csvColumns);
+  const header = csvColumns.length > 0 ? MATCH_HEADER_PREFIX.concat(csvColumns) : MATCH_HEADER_PREFIX.concat(['payload_json']);
   ensureExactHeader(sheet, header);
 
   let appended = 0;
   let duplicates = 0;
-  detailRows.forEach((detail) => {
-    const recordId = String((detail && detail.record_id) || '');
-    // 詳細シートも各マッチ単位で重複を見ます。
+  records.forEach((record) => {
+    const recordId = String(record.record_id || '');
     if (recordId && hasRecordId(sheet, recordId, MATCH_HEADER_PREFIX.length)) {
       duplicates += 1;
       return;
     }
 
-    const csvRow = Array.isArray(detail.csv_row) ? detail.csv_row : [];
     sheet.appendRow([
       new Date(),
       eventName,
       body.source || '',
       body.sent_at || '',
       recordId
-    ].concat(csvRow));
+    ].concat(record.csv_row && record.csv_row.length > 0 ? record.csv_row : [JSON.stringify(body.payload || {})]));
     appended += 1;
   });
 
