@@ -783,6 +783,18 @@ tr.win td {
   gap: 14px;
 }
 
+.gas-url-row {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto;
+}
+
+.gas-url-row .button {
+  min-height: 50px;
+  white-space: nowrap;
+}
+
 .checkbox {
   align-items: center;
   display: flex;
@@ -889,6 +901,41 @@ tr.win td {
   color: var(--muted);
   font-size: 1.2rem;
   justify-self: end;
+}
+
+.dialog-title-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.dialog-title-row h2 {
+  margin: 0;
+}
+
+.qr-dialog {
+  max-width: min(560px, calc(100vw - 28px));
+}
+
+.qr-video {
+  aspect-ratio: 4 / 3;
+  background: #050a16;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.qr-result {
+  background: #0e1830;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+  padding: 12px;
+}
+
+.qr-hint {
+  font-size: 0.92rem;
 }
 
 .pre-wrap {
@@ -1080,6 +1127,14 @@ body.compact #timer-ten {
   .form-grid,
   .score-pair {
     grid-template-columns: 1fr;
+  }
+
+  .gas-url-row {
+    grid-template-columns: 1fr;
+  }
+
+  .gas-url-row .button {
+    width: 100%;
   }
 
   fieldset {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-assist-web-v14";
+const CACHE_NAME = "tennis-assist-web-v15";
 const CORE = ["./", "./manifest.webmanifest", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
 
 self.addEventListener("install", (event) => {

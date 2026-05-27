@@ -330,7 +330,10 @@
             <button id="admin-unlock" class="button primary">設定を開く</button>
           </div>
           <div id="admin-settings" class="admin-settings hidden">
-            <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <div class="gas-url-row">
+              <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+              <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
+            </div>
             <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
             <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
             <div class="toolbar">
@@ -373,6 +376,23 @@
           <button id="confirm-save" class="button primary" value="default">保存</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="qr-dialog" class="dialog qr-dialog">
+      <article>
+        <div class="dialog-title-row">
+          <h2>GAS URL QRコード読取</h2>
+          <button id="qr-close" class="dialog-close" type="button" aria-label="閉じる">x</button>
+        </div>
+        <p id="qr-status" class="muted">カメラを準備しています...</p>
+        <video id="qr-video" class="qr-video" autoplay muted playsinline></video>
+        <p id="qr-result" class="qr-result hidden"></p>
+        <p class="muted qr-hint">QRコードには GAS Web アプリ URL（/exec）のみを入れてください。API キーは読み取りません。</p>
+        <div class="toolbar">
+          <button id="qr-cancel" class="button" type="button">閉じる</button>
+          <button id="qr-retry" class="button hidden" type="button">もう一度読み取る</button>
+          <button id="qr-apply" class="button primary hidden" type="button">このURLを入力</button>
+        </div>
+      </article>
     </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>

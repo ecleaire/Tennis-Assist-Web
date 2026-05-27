@@ -85,6 +85,12 @@ interface AdminSettings {
   sendEnabled: boolean;
 }
 
+type QrDetector = {
+  detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
+};
+
+type QrDetectorConstructor = new (options: { formats: string[] }) => QrDetector;
+
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
 };
@@ -1395,11 +1401,22 @@ class ContentController {
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
+  private scannerControls: { stop: () => void } | null = null;
+  private cameraStream: MediaStream | null = null;
+  private scanFrame = 0;
+  private scannedGasUrl = "";
 
   constructor() {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
+    el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
+    el<HTMLButtonElement>("qr-close").addEventListener("click", () => this.closeScanner());
+    el<HTMLButtonElement>("qr-cancel").addEventListener("click", () => this.closeScanner());
+    el<HTMLButtonElement>("qr-retry").addEventListener("click", () => void this.startScanner());
+    el<HTMLButtonElement>("qr-apply").addEventListener("click", () => this.applyScannedUrl());
+    el<HTMLDialogElement>("qr-dialog").addEventListener("close", () => this.stopScanner());
+    el<HTMLDialogElement>("qr-dialog").addEventListener("cancel", () => this.stopScanner());
     this.populate();
   }
 
@@ -1441,6 +1458,144 @@ class AdminController {
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     el("gas-status").textContent = "この端末に設定を保存しました。";
+  }
+
+  private async openScanner(): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    this.scannedGasUrl = "";
+    dialog.showModal();
+    await this.startScanner();
+  }
+
+  private async startScanner(): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    if (!dialog.open) return;
+    this.stopScanner();
+    this.scannedGasUrl = "";
+    el("qr-status").textContent = "カメラを起動しています。QRコードを枠内に写してください。";
+    el("qr-result").classList.add("hidden");
+    el("qr-retry").classList.add("hidden");
+    el("qr-apply").classList.add("hidden");
+    try {
+      const BarcodeDetector = (window as Window & { BarcodeDetector?: QrDetectorConstructor }).BarcodeDetector;
+      if (BarcodeDetector) {
+        try {
+          await this.startNativeScanner(BarcodeDetector);
+          return;
+        } catch (error) {
+          this.stopScanner();
+          if (error instanceof DOMException && ["NotAllowedError", "NotFoundError", "NotReadableError"].includes(error.name)) throw error;
+        }
+      }
+      await this.startFallbackScanner();
+    } catch {
+      this.stopScanner();
+      el("qr-status").textContent = "カメラを使用できませんでした。カメラの許可とブラウザ設定を確認してください。";
+      el("qr-retry").classList.remove("hidden");
+    }
+  }
+
+  private async startNativeScanner(BarcodeDetector: QrDetectorConstructor): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
+    if (!dialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.cameraStream = stream;
+    video.srcObject = stream;
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    el("qr-status").textContent = "QRコードをカメラに写してください。";
+    const scan = async (): Promise<void> => {
+      if (!dialog.open || !this.cameraStream || this.scannedGasUrl) return;
+      try {
+        const [result] = await detector.detect(video);
+        if (result?.rawValue) {
+          this.reviewScannedUrl(result.rawValue);
+          return;
+        }
+      } catch {
+        // A frame without a readable QR code should keep the camera scanning.
+      }
+      this.scanFrame = requestAnimationFrame(() => void scan());
+    };
+    this.scanFrame = requestAnimationFrame(() => void scan());
+  }
+
+  private async startFallbackScanner(): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    const { BrowserQRCodeReader } = await import("@zxing/browser");
+    if (!dialog.open) return;
+    const reader = new BrowserQRCodeReader();
+    const controls = await reader.decodeFromConstraints(
+      { audio: false, video: { facingMode: { ideal: "environment" } } },
+      el<HTMLVideoElement>("qr-video"),
+      (result, _error, activeControls) => {
+        if (!result || this.scannedGasUrl) return;
+        this.scannerControls = activeControls;
+        this.reviewScannedUrl(result.getText());
+      },
+    );
+    if (!dialog.open || this.scannedGasUrl) {
+      controls.stop();
+      return;
+    }
+    this.scannerControls = controls;
+    el("qr-status").textContent = "QRコードをカメラに写してください。";
+  }
+
+  private reviewScannedUrl(value: string): void {
+    this.stopScanner();
+    const scanned = value.trim();
+    if (!this.isGasDeploymentUrl(scanned)) {
+      el("qr-status").textContent = "GAS Web アプリ URL（/exec）のQRコードではありません。";
+      el("qr-result").textContent = scanned;
+      el("qr-result").classList.remove("hidden");
+      el("qr-retry").classList.remove("hidden");
+      return;
+    }
+    this.scannedGasUrl = scanned;
+    el("qr-status").textContent = "URLを読み取りました。内容を確認して入力してください。";
+    el("qr-result").textContent = scanned;
+    el("qr-result").classList.remove("hidden");
+    el("qr-retry").classList.remove("hidden");
+    el("qr-apply").classList.remove("hidden");
+  }
+
+  private isGasDeploymentUrl(value: string): boolean {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && url.hostname === "script.google.com" && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  private applyScannedUrl(): void {
+    if (!this.scannedGasUrl) return;
+    el<HTMLInputElement>("gas-url").value = this.scannedGasUrl;
+    el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
+    this.closeScanner();
+  }
+
+  private closeScanner(): void {
+    this.stopScanner();
+    el<HTMLDialogElement>("qr-dialog").close();
+  }
+
+  private stopScanner(): void {
+    this.scannerControls?.stop();
+    this.scannerControls = null;
+    cancelAnimationFrame(this.scanFrame);
+    this.scanFrame = 0;
+    this.cameraStream?.getTracks().forEach((track) => track.stop());
+    this.cameraStream = null;
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = video.srcObject as MediaStream | null;
+    stream?.getTracks().forEach((track) => track.stop());
+    video.srcObject = null;
   }
 
   private async test(): Promise<void> {
