@@ -187,12 +187,30 @@ input:hover {
   font-weight: 700;
 }
 
-body.timer-running .timer-random-control {
+body:not(.timer-ended) .timer-random-control {
   display: none !important;
 }
 
 body:not(.timer-started) .timer-end-action {
   display: none !important;
+}
+
+body.timer-started:not(.timer-ended) #timer-range {
+  display: none;
+}
+
+body.timer-running .timer-top {
+  display: none;
+}
+
+body.timer-running .timer-center {
+  justify-content: flex-start;
+  padding-top: clamp(18px, 5vh, 58px);
+}
+
+body.timer-running .notice,
+body.timer-running .hint.count {
+  display: none;
 }
 
 .muted {
@@ -349,7 +367,7 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: clamp(64px, 10vh, 106px);
+  padding-bottom: clamp(76px, 12vh, 126px);
   position: relative;
   width: 100%;
 }
@@ -669,6 +687,23 @@ fieldset strong {
   font-size: clamp(1rem, 1.7vw, 1.18rem);
   min-height: 54px;
   padding-inline: 22px;
+}
+
+.next-match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sheet-url-row {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.sheet-url-row .button {
+  min-height: 48px;
 }
 
 .table-scroll {
@@ -1474,8 +1509,27 @@ html.phone-portrait body.compact .timer-shell {
 
 html.phone-portrait body.compact .timer-center {
   flex: 0 1 auto;
-  height: min(47vh, 410px);
-  min-height: min(42vh, 350px);
+  height: min(44vh, 390px);
+  min-height: min(38vh, 330px);
+  padding-top: 0;
+}
+
+html.phone-portrait body.compact .timer-face {
+  padding-bottom: clamp(96px, 16vh, 142px);
+  transform: translateY(-2.5vh);
+}
+
+html.phone-portrait body.compact .sub-slot {
+  min-height: clamp(86px, 15vh, 130px);
+}
+
+html.phone-portrait body.compact .digital.sub {
+  font-size: clamp(2.1rem, 12vw, 4rem);
+  margin-top: 0;
+}
+
+html.phone-portrait body.compact .timer-bottom {
+  gap: 12px;
 }
 
 html.phone-portrait body.compact #timer-step {
@@ -1487,7 +1541,11 @@ html.phone-portrait body.compact #timer-ten {
 }
 
 html.phone-portrait body.compact #timer-time {
-  font-size: min(clamp(5rem, 24vw, 12rem), calc((var(--viewport-width) - 40px) / 6.1), calc(var(--viewport-height) * 0.25));
+  font-size: min(clamp(5rem, 24vw, 12rem), calc((var(--viewport-width) - 40px) / 6.1), calc(var(--viewport-height) * 0.23));
+}
+
+html.phone-portrait .sheet-url-row {
+  grid-template-columns: 1fr;
 }
 
 html.phone-portrait .rules-shell {

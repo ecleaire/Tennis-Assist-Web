@@ -2,6 +2,7 @@ import "./styles.css";
 
 type Screen = "dashboard" | "timer" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
+type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 
 interface MatchRecord {
   recordId: string;
@@ -496,6 +497,7 @@ class TimerController {
     const startLabel = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
     document.body.classList.toggle("timer-running", this.running);
     document.body.classList.toggle("timer-started", this.started);
+    document.body.classList.toggle("timer-ended", this.started && this.remaining <= 0);
     this.startButton.textContent = startLabel;
     this.dashboardStartButton.textContent = startLabel;
     this.resetButton.disabled = this.running;
@@ -638,6 +640,11 @@ class BallController {
     el<HTMLButtonElement>("balls-ready").classList.add("hidden");
     this.ready(match);
   }
+
+  resetWorkflow(): void {
+    this.workflowMatch = 0;
+    el<HTMLButtonElement>("balls-ready").classList.add("hidden");
+  }
 }
 
 class RecordsController {
@@ -654,7 +661,7 @@ class RecordsController {
   private completionResetTimer = 0;
   private retryingPendingSends = false;
 
-  constructor(private readonly flow: (event: "start" | "next" | "balls" | "timer" | "finished", match?: number) => void, private readonly qrScanner: QrScanner) {
+  constructor(private readonly flow: (event: FlowEvent, match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
     this.loadTeams();
     this.setupInputs();
@@ -663,6 +670,7 @@ class RecordsController {
     el<HTMLButtonElement>("record-save").addEventListener("click", () => this.confirmSave());
     el<HTMLButtonElement>("confirm-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("next-match").addEventListener("click", () => this.continueToNextMatch());
+    el<HTMLButtonElement>("next-match-bye").addEventListener("click", () => this.beginByeMatch());
     el<HTMLButtonElement>("back-balls").addEventListener("click", () => { if (this.series && !this.isFinished()) this.flow("balls", this.nextMatch()); });
     el<HTMLButtonElement>("back-timer").addEventListener("click", () => { if (this.series && !this.isFinished()) this.flow("timer", this.nextMatch()); });
     el<HTMLButtonElement>("agree-a").addEventListener("click", () => this.requestAgreement("a"));
@@ -680,6 +688,7 @@ class RecordsController {
     el<HTMLButtonElement>("team-reset").addEventListener("click", () => this.resetTeams());
     el<HTMLButtonElement>("team-import").addEventListener("click", () => el<HTMLInputElement>("team-file").click());
     el<HTMLButtonElement>("team-sheet-scan").addEventListener("click", () => void this.importTeamsFromSpreadsheetQr());
+    el<HTMLButtonElement>("team-sheet-load").addEventListener("click", () => void this.importTeamsFromSpreadsheet(el<HTMLInputElement>("team-sheet-url").value));
     el<HTMLInputElement>("team-file").addEventListener("change", (event) => void this.importTeams(event));
     el<HTMLButtonElement>("history-export").addEventListener("click", () => this.exportHistory());
     el<HTMLButtonElement>("history-import").addEventListener("click", () => el<HTMLInputElement>("history-file").click());
@@ -688,15 +697,18 @@ class RecordsController {
     el<HTMLInputElement>("history-file").addEventListener("change", (event) => void this.importHistory(event));
     el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
-    this.resetSeries();
+    this.resetSeries(false);
     this.renderHistory();
     if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
   }
 
   timerFinished(): void {
     if (!this.series || this.isFinished()) return;
+    this.awaitingNextMatch = false;
+    this.setNextMatchPrompt(false);
+    this.updateRecordVisibility();
     el("record-status").textContent = "試合結果を入力して、「このマッチを保存」から確認してください。";
-    el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => el("record-input").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
 
   private setupInputs(): void {
@@ -745,11 +757,12 @@ class RecordsController {
     this.setNextMatchPrompt(false);
     this.resetInput();
     this.renderSeries();
+    this.updateRecordVisibility();
     el("record-status").textContent = "対戦カードを開始しました。ボール配置から進行します。";
     this.flow("start", 1);
   }
 
-  private resetSeries(): void {
+  private resetSeries(notify = true): void {
     this.series = null;
     this.editing = 0;
     this.agreedA = false;
@@ -770,6 +783,8 @@ class RecordsController {
     el("record-status").textContent = "まずは対戦カードを開始してください。";
     this.renderTables();
     this.renderAgreement();
+    this.updateRecordVisibility();
+    if (notify) this.flow("reset");
   }
 
   private resetInput(): void {
@@ -899,24 +914,47 @@ class RecordsController {
       this.awaitingNextMatch = false;
       this.setNextMatchPrompt(false);
       this.renderAgreement();
+      this.updateRecordVisibility();
       el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。次のマッチの準備をしてください。`;
       this.awaitingNextMatch = true;
       this.setNextMatchPrompt(true);
+      this.updateRecordVisibility();
       el("next-match-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 
   private setNextMatchPrompt(visible: boolean): void {
     el("next-match-panel").classList.toggle("hidden", !visible);
+    if (visible) {
+      const match = Math.min(this.nextMatch(), 3);
+      el<HTMLButtonElement>("next-match-bye").textContent = `第${match}マッチを不戦勝にする`;
+    }
   }
 
   private continueToNextMatch(): void {
     if (!this.series || this.isFinished()) return;
     this.awaitingNextMatch = false;
     this.setNextMatchPrompt(false);
+    this.updateRecordVisibility();
     this.flow("next", this.nextMatch());
+  }
+
+  private beginByeMatch(): void {
+    if (!this.series || this.isFinished() || !this.awaitingNextMatch) return;
+    const match = this.nextMatch();
+    if (!window.confirm("本当に不戦勝にしますか？")) return;
+    this.awaitingNextMatch = false;
+    this.setNextMatchPrompt(false);
+    this.editing = 0;
+    this.resetInput();
+    el<HTMLSelectElement>("reason-category").value = prematchCategory;
+    this.refreshEndReasons();
+    this.renderSeries();
+    this.updateRecordVisibility();
+    el("record-status").textContent = `第${match}マッチを不戦勝として入力します。対象チームを選択して保存してください。`;
+    el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   private shouldWarnUnplayedMatch(): boolean {
@@ -939,6 +977,7 @@ class RecordsController {
     this.renderScores();
     this.renderTables();
     this.renderAgreement();
+    this.updateRecordVisibility();
   }
 
   private editRecord(matchNumber: number): void {
@@ -957,6 +996,7 @@ class RecordsController {
     el<HTMLSelectElement>("b-orange").value = String(record.teamBOrange);
     el<HTMLSelectElement>("b-purple").value = String(record.teamBPurple);
     this.renderSeries();
+    this.updateRecordVisibility();
     el("record-status").textContent = `保存すると第${matchNumber}マッチの結果を上書きします。`;
     el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -974,6 +1014,17 @@ class RecordsController {
     });
     el("intermediate-summary").textContent = entries.length ? "現在の中間結果です。各マッチは再入力できます。" : "第1マッチの保存後に中間結果が表示されます。";
     this.renderFinal();
+  }
+
+  private updateRecordVisibility(): void {
+    const hasSeries = Boolean(this.series);
+    const entries = this.series?.records.length ?? 0;
+    const finished = Boolean(this.series && this.isFinished());
+    el("team-management-panel").classList.toggle("hidden", hasSeries);
+    el("history-stats-panel").classList.toggle("hidden", hasSeries);
+    el("record-input").classList.toggle("hidden", !hasSeries || this.awaitingNextMatch || this.finalized);
+    el("intermediate-results").classList.toggle("hidden", !hasSeries || entries === 0);
+    el("final-results").classList.toggle("hidden", !hasSeries || (!finished && !this.finalized));
   }
 
   private summary(): Summary {
@@ -1006,7 +1057,7 @@ class RecordsController {
     const table = el<HTMLTableElement>("final-table");
     table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総橙</th><th>総紫</th><th>違反</th><th>総スコア</th><th>状態</th></tr></thead>";
     if (!this.series?.records.length) {
-      el("final-summary").textContent = "3マッチ終了後、最終結果を確認できます。";
+      el("final-summary").textContent = "3マッチ終了後、最終試合結果を確認できます。";
       el("series-finished").classList.add("hidden");
       this.setCompletionPanel(false);
       return;
@@ -1124,6 +1175,7 @@ class RecordsController {
     this.renderHistory();
     el("record-status").textContent = "試合が終了しました。おつかれさまでした。結果を保存しています。";
     this.renderAgreement();
+    this.updateRecordVisibility();
     this.flow("finished");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     await this.sendSeriesResult(record);
@@ -2038,9 +2090,15 @@ class Application {
     el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
   }
 
-  private handleFlow(event: "start" | "next" | "balls" | "timer" | "finished", match = 0): void {
+  private handleFlow(event: FlowEvent, match = 0): void {
     if (event === "finished") {
       this.clearFlow();
+      return;
+    }
+    if (event === "reset") {
+      this.recordTimerPending = false;
+      this.clearFlow();
+      this.balls.resetWorkflow();
       return;
     }
     if (event === "timer") {
