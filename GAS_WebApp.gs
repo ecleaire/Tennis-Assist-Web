@@ -39,8 +39,10 @@ function doGet(e) {
       .filter((row) => row.some((value) => String(value || '').trim() !== ''));
 
     if (action === 'teams') {
-      const nameIndex = Math.max(0, header.indexOf('チーム名'));
-      const teams = values.slice(1).map((row) => String(row[nameIndex] || '').trim()).filter(Boolean);
+      const hasTeamHeader = header.indexOf('チーム名') >= 0;
+      const nameIndex = hasTeamHeader ? header.indexOf('チーム名') : 0;
+      const teamRows = values.slice(hasTeamHeader ? 1 : 0);
+      const teams = teamRows.map((row) => String(row[nameIndex] || '').trim()).filter(Boolean);
       return jsonResponse({
         ok: true,
         spreadsheet_id: spreadsheetId,

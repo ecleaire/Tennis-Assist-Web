@@ -194,6 +194,10 @@ function historyFingerprint(record: MatchRecord): string {
   ].map((value) => String(value ?? "").trim()).join("|");
 }
 
+function isSheetPreviewRecord(record: MatchRecord): boolean {
+  return record.notes?.includes("スプレッドシート確認用読み込み") ?? false;
+}
+
 function spreadsheetIdFromUrl(value: string): string | null {
   const text = value.trim();
   const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || text.match(/^[a-zA-Z0-9-_]{20,}$/);
@@ -886,7 +890,7 @@ class RecordsController {
       this.series.records.push(record);
       this.records.unshift(record);
     }
-    localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    this.saveStoredRecords();
     this.resetInput();
     this.renderSeries();
     this.renderHistory();
@@ -1115,7 +1119,7 @@ class RecordsController {
       sendStatus: AdminController.settings().sendEnabled ? "pending" : "local-only",
     };
     this.records.unshift(record);
-    localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    this.saveStoredRecords();
     this.renderFinal();
     this.renderHistory();
     el("record-status").textContent = "試合が終了しました。おつかれさまでした。結果を保存しています。";
@@ -1183,7 +1187,9 @@ class RecordsController {
       }
       host.append(card);
     });
-    el("history-status").textContent = `保存済み ${this.records.length}件 / 表示 ${visible.length}件`;
+    const storedCount = this.records.filter((record) => !isSheetPreviewRecord(record)).length;
+    const previewCount = this.records.length - storedCount;
+    el("history-status").textContent = `保存済み ${storedCount}件 / 確認用 ${previewCount}件 / 表示 ${visible.length}件`;
     this.renderStats();
   }
 
@@ -1340,17 +1346,18 @@ class RecordsController {
   }
 
   private exportHistory(): void {
-    if (!this.records.length) {
+    const storedRecords = this.records.filter((record) => !isSheetPreviewRecord(record));
+    if (!storedRecords.length) {
       el("history-status").textContent = "エクスポートできる履歴がありません。";
       return;
     }
-    const text = "\uFEFF" + [csvColumns.map(csvEscape).join(","), ...[...this.records].reverse().map((record) => csvRow(record).map(csvEscape).join(","))].join("\r\n");
+    const text = "\uFEFF" + [csvColumns.map(csvEscape).join(","), ...[...storedRecords].reverse().map((record) => csvRow(record).map(csvEscape).join(","))].join("\r\n");
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
     link.download = `tennis_assist_history_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    el("history-status").textContent = `${this.records.length}件をCSVに保存しました。`;
+    el("history-status").textContent = `${storedRecords.length}件をCSVに保存しました。確認用に読み込んだ履歴は出力していません。`;
   }
 
   private async importHistory(event: Event): Promise<void> {
@@ -1409,7 +1416,7 @@ class RecordsController {
       record.sendStatus = undefined;
     });
     this.records = [...additions.reverse(), ...this.records];
-    if (persist) localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !record.notes?.includes("スプレッドシート確認用読み込み"))));
+    if (persist) this.saveStoredRecords();
     this.renderHistory();
     return { added: additions.length, skipped: imported.length - additions.length };
   }
@@ -1456,8 +1463,9 @@ class RecordsController {
   }
 
   private clearHistory(): void {
-    if (!this.records.length || !window.confirm(`この端末の対戦履歴 ${this.records.length}件をすべて削除しますか？`)) return;
-    this.records = [];
+    const storedCount = this.records.filter((record) => !isSheetPreviewRecord(record)).length;
+    if (!storedCount || !window.confirm(`この端末に保存された対戦履歴 ${storedCount}件をすべて削除しますか？確認用に読み込んだ履歴はページ更新で消えます。`)) return;
+    this.records = this.records.filter(isSheetPreviewRecord);
     localStorage.setItem(this.storageKey, "[]");
     this.renderHistory();
     el("history-status").textContent = "この端末の対戦履歴をすべて削除しました。";
@@ -1467,7 +1475,7 @@ class RecordsController {
     record.sendStatus = status;
     const stored = this.records.find((item) => item.recordId === record.recordId);
     if (stored) stored.sendStatus = status;
-    localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    this.saveStoredRecords();
     this.renderHistory();
   }
 
@@ -1481,7 +1489,7 @@ class RecordsController {
     if (this.retryingPendingSends || !navigator.onLine) return;
     const settings = AdminController.settings();
     if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) return;
-    const pending = this.records.filter((record) => record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
+    const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
     if (!pending.length) return;
     this.retryingPendingSends = true;
     el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
@@ -1509,7 +1517,7 @@ class RecordsController {
     }
     this.updateSendStatus(record, "pending");
     const matches = this.records
-      .filter((item) => item.seriesId === record.seriesId && item.recordKind === "マッチ")
+      .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
       .sort((a, b) => a.matchNumber - b.matchNumber);
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
     const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "試合結果", source: "WRO RoboSports Assist", sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "対戦履歴", detail_rows: details };
@@ -1531,9 +1539,13 @@ class RecordsController {
 
   private nextSeriesNumber(court: string): number {
     const seriesIds = new Set(
-      this.records.filter((record) => record.court === court && record.seriesId).map((record) => record.seriesId),
+      this.records.filter((record) => !isSheetPreviewRecord(record) && record.court === court && record.seriesId).map((record) => record.seriesId),
     );
     return seriesIds.size + 1;
+  }
+
+  private saveStoredRecords(): void {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !isSheetPreviewRecord(record))));
   }
 
   private isFinished(): boolean {
