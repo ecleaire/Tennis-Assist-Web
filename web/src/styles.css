@@ -204,12 +204,11 @@ body.timer-running .timer-top {
 }
 
 body.timer-running .timer-center {
-  justify-content: flex-start;
-  padding-top: clamp(18px, 5vh, 58px);
+  justify-content: center;
+  padding-top: clamp(18px, 5vh, 52px);
 }
 
-body.timer-running .notice,
-body.timer-running .hint.count {
+body.timer-running .notice {
   display: none;
 }
 
@@ -289,7 +288,7 @@ output.digital.dashboard-digital {
 }
 
 .dashboard-timer-controls .button {
-  flex: 1 1 calc(33.333% - 8px);
+  flex: 1 1 calc(50% - 8px);
   min-width: 0;
   padding-inline: 8px;
 }
@@ -297,7 +296,7 @@ output.digital.dashboard-digital {
 .dashboard-timer-tools {
   display: grid;
   gap: 10px;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dashboard-timer-tools select,
@@ -367,7 +366,7 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: clamp(76px, 12vh, 126px);
+  padding-bottom: clamp(92px, 14vh, 148px);
   position: relative;
   width: 100%;
 }
@@ -418,6 +417,7 @@ output.digital.dashboard-digital {
 .hint.count {
   color: var(--danger);
   font-weight: bold;
+  margin-bottom: 6px;
 }
 
 .timer-bottom {
@@ -1148,6 +1148,11 @@ body.balls-compact #screen-balls .court {
   width: min(100%, calc((var(--viewport-height) - 104px) * 1280 / 620));
 }
 
+body.balls-compact .ball {
+  height: clamp(17px, 2.9vw, 38px);
+  width: clamp(17px, 2.9vw, 38px);
+}
+
 body.compact .controls {
   align-items: stretch;
   display: flex;
@@ -1564,7 +1569,7 @@ html.phone-portrait body.compact .timer-center {
 
 html.phone-portrait body.compact .timer-face {
   padding-bottom: clamp(96px, 16vh, 142px);
-  transform: translateY(-2.5vh);
+  transform: translateY(0);
 }
 
 html.phone-portrait body.compact .sub-slot {

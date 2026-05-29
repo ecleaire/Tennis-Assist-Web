@@ -8,8 +8,8 @@
     <link rel="icon" href="./assist_icon_512.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-CXcN-p3d.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BWfAuMlZ.css">
+    <script type="module" crossorigin src="./assets/index-sIDNWiLV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BA_AxFwu.css">
   </head>
   <body>
     <main id="app">
@@ -65,7 +65,6 @@
             <div class="dashboard-timer-controls">
               <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
               <button id="dashboard-timer-end" class="button timer-end-action">終了</button>
-              <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
             </div>
             <div class="dashboard-timer-tools">
               <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
@@ -74,6 +73,7 @@
                 <option value="10">ランダム設定: 10秒単位</option>
                 <option value="manual">手動指定</option>
               </select>
+              <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
               <button id="dashboard-timer-ten" class="button timer-count-control">10カウント</button>
               <button id="dashboard-timer-five" class="button timer-count-control">5カウント</button>
             </div>
@@ -332,7 +332,7 @@
             <select id="news-filter" aria-label="ニュースカテゴリ">
               <option>すべて</option>
               <option>Q&amp;A更新</option>
-              <option>競技情報</option>
+              <option>機能更新</option>
             </select>
           </div>
           <p id="news-status" class="muted"></p>
@@ -342,7 +342,7 @@
 
       <section id="screen-links" class="screen">
         <article class="panel section-card">
-          <p class="eyebrow">OFFICIAL LINKS</p>
+          <p class="eyebrow">RELATED LINKS</p>
           <h2>関連リンク</h2>
           <div id="links-list" class="cards"></div>
         </article>

@@ -293,6 +293,8 @@ class TimerController {
   private manualSeconds = 120;
   private initialReset = true;
   private secret = false;
+  private stateVersion = 0;
+  private autoResetTimer = 0;
 
   constructor(private readonly finished: () => void, private readonly activated: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
@@ -302,10 +304,10 @@ class TimerController {
     this.resetButton.addEventListener("click", () => this.reset());
     el<HTMLButtonElement>("dashboard-timer-reset").addEventListener("click", () => this.reset());
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
-    el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールド カウント"));
-    el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール カウント"));
-    el<HTMLButtonElement>("dashboard-timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールド カウント"));
-    el<HTMLButtonElement>("dashboard-timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール カウント"));
+    el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント"));
+    el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール"));
+    el<HTMLButtonElement>("dashboard-timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント"));
+    el<HTMLButtonElement>("dashboard-timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール"));
     this.step.addEventListener("change", () => {
       this.dashboardStep.value = this.step.value;
       this.chooseStep();
@@ -331,6 +333,10 @@ class TimerController {
     this.reset();
   }
 
+  noteActivity(): void {
+    this.touchTimerState();
+  }
+
   async leaveFullscreen(): Promise<void> {
     try {
       screen.orientation?.unlock?.();
@@ -348,6 +354,7 @@ class TimerController {
   }
 
   private chooseStep(): void {
+    this.touchTimerState();
     if (this.step.value === "manual") {
       el<HTMLDialogElement>("manual-dialog").showModal();
       return;
@@ -364,6 +371,7 @@ class TimerController {
   }
 
   private applyManual(): void {
+    this.touchTimerState();
     const minutes = Number(el<HTMLSelectElement>("manual-minute").value);
     const seconds = Number(el<HTMLSelectElement>("manual-second").value);
     this.manualSeconds = Math.max(1, minutes * 60 + seconds);
@@ -380,6 +388,7 @@ class TimerController {
   }
 
   private reset(): void {
+    this.touchTimerState();
     this.running = false;
     this.started = false;
     this.notifiedFinish = false;
@@ -407,6 +416,7 @@ class TimerController {
 
   private start(): void {
     if (this.remaining <= 0) return;
+    this.touchTimerState();
     this.activated();
     void this.enterFullscreen(true);
     this.running = true;
@@ -418,6 +428,7 @@ class TimerController {
   }
 
   private pause(): void {
+    this.touchTimerState();
     this.running = false;
     this.mode.textContent = "一時停止中";
     this.caption.textContent = "Space / Enter: 再開　F: 全画面";
@@ -426,11 +437,13 @@ class TimerController {
   }
 
   private end(): void {
+    this.touchTimerState();
     this.running = false;
     this.remaining = 0;
     this.mode.textContent = "終了";
     this.notice.textContent = "";
     this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
+    this.scheduleAutoReset();
     this.syncControls();
     this.render();
     this.emitFinish();
@@ -455,9 +468,11 @@ class TimerController {
       if (this.coldUntil > now) this.notice.textContent = "ここからコールドが適応されます";
       else if (this.notice.textContent !== "タイマーを一時停止しています") this.notice.textContent = "";
       if (this.remaining === 0) {
+        this.touchTimerState();
         this.running = false;
         this.mode.textContent = "終了";
         this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
+        this.scheduleAutoReset();
         this.syncControls();
         this.emitFinish();
       }
@@ -507,6 +522,7 @@ class TimerController {
   }
 
   private toggleSubTimer(seconds: number, label: string): void {
+    this.touchTimerState();
     if (this.subRemaining > 0 && this.subCaption === label) {
       this.subRemaining = 0;
       this.subTime.classList.add("hidden");
@@ -568,6 +584,25 @@ class TimerController {
   private setCompact(compact: boolean): void {
     document.body.classList.toggle("compact", compact);
     el<HTMLButtonElement>("timer-fullscreen").textContent = compact ? "全画面解除" : "全画面";
+  }
+
+  private touchTimerState(): void {
+    this.stateVersion += 1;
+    if (this.autoResetTimer) {
+      window.clearTimeout(this.autoResetTimer);
+      this.autoResetTimer = 0;
+    }
+  }
+
+  private scheduleAutoReset(): void {
+    const version = this.stateVersion;
+    if (this.autoResetTimer) window.clearTimeout(this.autoResetTimer);
+    this.autoResetTimer = window.setTimeout(() => {
+      this.autoResetTimer = 0;
+      if (this.stateVersion === version && this.started && !this.running && this.remaining <= 0) {
+        this.reset();
+      }
+    }, 180000);
   }
 }
 
@@ -680,7 +715,7 @@ class RecordsController {
     el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
     el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.completeSeriesReset());
     el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
-    el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderStats());
+    el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderHistory());
     ["history-team", "history-result", "history-kind", "history-sort"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.renderHistory());
     });
@@ -1208,10 +1243,13 @@ class RecordsController {
   private renderHistory(): void {
     const host = el("history");
     host.replaceChildren();
-    const team = el<HTMLSelectElement>("history-team").value;
+    const statsTeam = el<HTMLSelectElement>("stats-team").value;
+    const team = statsTeam !== "チームを選択" ? statsTeam : el<HTMLSelectElement>("history-team").value;
     const result = el<HTMLSelectElement>("history-result").value;
     const kind = el<HTMLSelectElement>("history-kind").value;
+    const since = this.historySince();
     const visible = this.records.filter((record) => {
+      if (new Date(record.timestamp.replace(" ", "T")).getTime() < since) return false;
       if (team !== "すべてのチーム" && record.teamA !== team && record.teamB !== team) return false;
       if (kind === "match" && record.recordKind !== "マッチ") return false;
       if (kind === "series" && record.recordKind !== "試合結果") return false;
@@ -1260,15 +1298,28 @@ class RecordsController {
       host.replaceChildren();
       return;
     }
-    const days = { today: 1, week: 7, month: 31 }[el<HTMLSelectElement>("stats-period").value] ?? 1;
-    const since = Date.now() - days * 86400000;
+    const since = this.historySince();
     const related = this.records.filter((record) => record.recordKind === "マッチ" && (record.teamA === team || record.teamB === team) && new Date(record.timestamp.replace(" ", "T")).getTime() >= since);
     const wins = related.filter((record) => record.winner === team).length;
     const draws = related.filter((record) => record.winner === "引き分け").length;
     const violations = related.filter((record) => record.reasonCategory !== scoringCategory && record.targetTeam === team).length;
+    const teamPurple = related.reduce((sum, record) => sum + (record.teamA === team ? record.teamAPurple : record.teamBPurple), 0);
+    const totalPurple = related.reduce((sum, record) => sum + record.teamAPurple + record.teamBPurple, 0);
     const rate = related.length ? (wins / related.length) * 100 : 0;
-    const stats = [["マッチ数", related.length.toString()], ["勝敗", `${wins}勝 ${related.length - wins - draws}敗 ${draws}分`], ["勝率", `${rate.toFixed(1)}%`], ["違反数", String(violations)]];
+    const purpleRate = totalPurple ? (teamPurple / totalPurple) * 100 : 0;
+    const stats = [["マッチ数", related.length.toString()], ["勝敗", `${wins}勝 ${related.length - wins - draws}敗 ${draws}分`], ["勝率", `${rate.toFixed(1)}%`], ["紫取得率", `${purpleRate.toFixed(1)}%`], ["違反数", String(violations)]];
     host.innerHTML = stats.map(([label, value]) => `<article class="stat"><span class="muted">${label}</span><b>${value}</b></article>`).join("");
+  }
+
+  private historySince(): number {
+    const period = el<HTMLSelectElement>("stats-period").value;
+    const now = new Date();
+    if (period === "today") {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return start.getTime();
+    }
+    const days = { week: 7, month: 31 }[period] ?? 1;
+    return Date.now() - days * 86400000;
   }
 
   private syncTeamHistoryFilter(): void {
@@ -1634,9 +1685,9 @@ class ContentController {
 
   renderLinks(secret: boolean): void {
     const sections = [
-      { title: "WRO", links: [["WRO Japan ホームページ", "https://www.wroj.org/action/2026"], ["WRO 兵庫 ホームページ", "https://wro-hyogo.jp/"], ["WRO 東京 ホームページ", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良 ホームページ", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"]] },
-      { title: "公式資料", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["ルール", "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"], ["英語ルール PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google 翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL 翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
-      { title: "その他", links: [["YouTube まとめ", "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"], ...(secret ? [["旧テニスタイマー", "https://scratch.mit.edu/projects/1013694253"], ["旧 litlink", "https://lit.link/syukugawalink"]] : [])] },
+      { title: "WRO", links: [["WRO Japan ホームページ", "https://www.wroj.org/action/2026"], ["WRO 兵庫 ホームページ", "https://wro-hyogo.jp/"], ["WRO 東京 ホームページ", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良 ホームページ", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"], ["WRO 三重 ホームページ", "https://miraido.net/"], ["WRO 国際 ホームページ", "https://wro-association.org/"]] },
+      { title: "ルール関連", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["ルール", "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"], ["英語ルール PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google 翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL 翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
+      { title: "その他", links: [["YouTube関連動画", "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"], ...(secret ? [["旧テニスタイマー", "https://scratch.mit.edu/projects/1013694253"], ["旧 litlink", "https://lit.link/syukugawalink"]] : [])] },
     ];
     el("links-list").innerHTML = sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("");
   }
@@ -2053,6 +2104,7 @@ class Application {
   }
 
   private show(screen: Screen): void {
+    this.timer.noteActivity();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
     el(`screen-${screen}`).classList.add("active");
