@@ -306,17 +306,22 @@ output.digital.dashboard-digital {
 }
 
 .dashboard-sub-caption {
+  font-size: clamp(1rem, 1.7vw, 1.35rem);
+  font-weight: 800;
+  margin: 0;
   min-height: 0;
 }
 
 .dashboard-sub-slot {
   align-content: start;
   display: grid;
-  min-height: clamp(46px, 6.5vw, 64px);
+  gap: 4px;
+  justify-items: center;
+  min-height: clamp(70px, 8.2vw, 104px);
 }
 
 .dashboard-sub-time {
-  font-size: clamp(1.4rem, 2vw, 2rem) !important;
+  font-size: clamp(2.4rem, 5.2vw, 4.6rem) !important;
   line-height: 1;
   margin: 0;
 }
@@ -366,7 +371,7 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: clamp(92px, 14vh, 148px);
+  padding-bottom: clamp(132px, 20vh, 218px);
   position: relative;
   width: 100%;
 }
@@ -375,9 +380,10 @@ output.digital.dashboard-digital {
   align-content: start;
   bottom: 0;
   display: grid;
+  gap: clamp(6px, 1.1vh, 12px);
   justify-items: center;
   left: 0;
-  min-height: clamp(60px, 9vh, 100px);
+  min-height: clamp(102px, 16vh, 172px);
   position: absolute;
   right: 0;
 }
@@ -403,8 +409,9 @@ output.digital.dashboard-digital {
 
 .digital.sub {
   color: var(--danger);
-  font-size: clamp(2rem, 5vw, 3.8rem);
-  margin-top: 10px;
+  font-size: min(clamp(4.2rem, 11vw, 8.2rem), calc(var(--viewport-height) * 0.18));
+  line-height: 0.95;
+  margin-top: 0;
 }
 
 .hint {
@@ -416,8 +423,10 @@ output.digital.dashboard-digital {
 
 .hint.count {
   color: var(--danger);
+  font-size: min(clamp(1.6rem, 4vw, 3.2rem), calc(var(--viewport-height) * 0.07));
   font-weight: bold;
-  margin-bottom: 6px;
+  line-height: 1.08;
+  margin: 0;
 }
 
 .timer-bottom {
@@ -1568,17 +1577,22 @@ html.phone-portrait body.compact .timer-center {
 }
 
 html.phone-portrait body.compact .timer-face {
-  padding-bottom: clamp(96px, 16vh, 142px);
+  padding-bottom: clamp(132px, 22vh, 190px);
   transform: translateY(0);
 }
 
 html.phone-portrait body.compact .sub-slot {
-  min-height: clamp(86px, 15vh, 130px);
+  gap: 8px;
+  min-height: clamp(124px, 21vh, 178px);
 }
 
 html.phone-portrait body.compact .digital.sub {
-  font-size: clamp(2.1rem, 12vw, 4rem);
+  font-size: min(clamp(4rem, 22vw, 7rem), calc(var(--viewport-height) * 0.18));
   margin-top: 0;
+}
+
+html.phone-portrait body.compact .hint.count {
+  font-size: min(clamp(1.45rem, 7vw, 2.8rem), calc(var(--viewport-height) * 0.065));
 }
 
 html.phone-portrait body.compact .timer-bottom {

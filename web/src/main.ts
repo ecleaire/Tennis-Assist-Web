@@ -403,6 +403,7 @@ class TimerController {
     this.subTime.classList.add("hidden");
     this.dashboardSubTime.classList.add("hidden");
     this.dashboardSubCaption.textContent = "";
+    this.dashboardSubCaption.classList.remove("count");
     this.caption.textContent = "Space / Enter: 開始　F: 全画面";
     this.caption.classList.remove("count");
     this.syncControls();
@@ -483,6 +484,7 @@ class TimerController {
         this.subTime.classList.add("hidden");
         this.dashboardSubTime.classList.add("hidden");
         this.dashboardSubCaption.textContent = "";
+        this.dashboardSubCaption.classList.remove("count");
         this.caption.classList.remove("count");
         this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
       }
@@ -502,7 +504,7 @@ class TimerController {
     this.time.classList.toggle("warning", warning);
     this.progress.classList.toggle("warning", warning);
     if (this.subRemaining > 0) {
-      const formattedSubTime = `00 : ${String(Math.ceil(this.subRemaining)).padStart(2, "0")}`;
+      const formattedSubTime = String(Math.ceil(this.subRemaining));
       this.subTime.textContent = formattedSubTime;
       this.dashboardSubTime.textContent = formattedSubTime;
     }
@@ -528,6 +530,7 @@ class TimerController {
       this.subTime.classList.add("hidden");
       this.dashboardSubTime.classList.add("hidden");
       this.dashboardSubCaption.textContent = "";
+      this.dashboardSubCaption.classList.remove("count");
       this.caption.classList.remove("count");
       this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
       return;
@@ -537,6 +540,7 @@ class TimerController {
     this.subTime.classList.remove("hidden");
     this.dashboardSubTime.classList.remove("hidden");
     this.dashboardSubCaption.textContent = label;
+    this.dashboardSubCaption.classList.add("count");
     this.caption.classList.add("count");
     this.caption.textContent = label;
     this.render();
