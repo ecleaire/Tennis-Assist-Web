@@ -7,6 +7,62 @@ const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送�
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
+function doGet(e) {
+  try {
+    const params = (e && e.parameter) || {};
+    const props = PropertiesService.getScriptProperties();
+    const apiKey = props.getProperty('API_KEY');
+    const defaultSpreadsheetId = props.getProperty('SPREADSHEET_ID');
+
+    if (!apiKey) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
+    if (params.api_key !== apiKey) return jsonResponse({ ok: false, error: 'invalid_api_key' });
+    const action = String(params.action || '');
+    if (action !== 'history' && action !== 'teams') return jsonResponse({ ok: false, error: 'unknown_action' });
+
+    const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
+    if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
+
+    const sheetName = String(params.sheet || (action === 'teams' ? 'チーム一覧' : HISTORY_SHEET_NAME));
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheets()[0] : null);
+    if (!sheet || sheet.getLastRow() < 2) {
+      return jsonResponse({ ok: true, spreadsheet_id: spreadsheetId, sheet_name: sheetName, csv_columns: [], csv_rows: [], teams: [] });
+    }
+
+    const values = sheet.getDataRange().getValues();
+    const header = values[0].map((value) => String(value || ''));
+    const hasPrefix = MATCH_HEADER_PREFIX.every((name, index) => header[index] === name);
+    const startColumn = hasPrefix ? MATCH_HEADER_PREFIX.length : 0;
+    const csvColumns = header.slice(startColumn);
+    const csvRows = values.slice(1)
+      .map((row) => row.slice(startColumn).map((value) => value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : String(value || '')))
+      .filter((row) => row.some((value) => String(value || '').trim() !== ''));
+
+    if (action === 'teams') {
+      const nameIndex = Math.max(0, header.indexOf('チーム名'));
+      const teams = values.slice(1).map((row) => String(row[nameIndex] || '').trim()).filter(Boolean);
+      return jsonResponse({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        sheet_name: sheet.getName(),
+        teams: Array.from(new Set(teams)),
+        row_count: teams.length
+      });
+    }
+
+    return jsonResponse({
+      ok: true,
+      spreadsheet_id: spreadsheetId,
+      sheet_name: sheet.getName(),
+      csv_columns: csvColumns,
+      csv_rows: csvRows,
+      row_count: csvRows.length
+    });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: String(err), stack: err.stack });
+  }
+}
+
 function doPost(e) {
   // 複数端末から同時送信された時に、ヘッダー確認と追記が割り込まれないようロックします。
   const lock = LockService.getScriptLock();

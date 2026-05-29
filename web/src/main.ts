@@ -175,6 +175,31 @@ function recordKey(record: MatchRecord): string {
   return record.competitionId || `${record.recordKind}:${record.seriesId}:${record.court}:${record.seriesNumber}:${record.matchNumber}`;
 }
 
+function historyFingerprint(record: MatchRecord): string {
+  return [
+    record.timestamp,
+    record.recordKind,
+    record.court,
+    record.seriesNumber,
+    record.matchNumber,
+    record.teamA,
+    record.teamB,
+    record.endReason,
+    record.teamAOrange,
+    record.teamAPurple,
+    record.teamBOrange,
+    record.teamBPurple,
+    record.teamAScore,
+    record.teamBScore,
+  ].map((value) => String(value ?? "").trim()).join("|");
+}
+
+function spreadsheetIdFromUrl(value: string): string | null {
+  const text = value.trim();
+  const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || text.match(/^[a-zA-Z0-9-_]{20,}$/);
+  return match?.[1] ?? match?.[0] ?? null;
+}
+
 function csvEscape(value: unknown): string {
   const text = String(value ?? "");
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -625,7 +650,7 @@ class RecordsController {
   private completionResetTimer = 0;
   private retryingPendingSends = false;
 
-  constructor(private readonly flow: (event: "start" | "next" | "balls" | "timer" | "finished", match?: number) => void) {
+  constructor(private readonly flow: (event: "start" | "next" | "balls" | "timer" | "finished", match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
     this.loadTeams();
     this.setupInputs();
@@ -650,9 +675,12 @@ class RecordsController {
     el<HTMLButtonElement>("team-save").addEventListener("click", () => this.saveTeams());
     el<HTMLButtonElement>("team-reset").addEventListener("click", () => this.resetTeams());
     el<HTMLButtonElement>("team-import").addEventListener("click", () => el<HTMLInputElement>("team-file").click());
+    el<HTMLButtonElement>("team-sheet-scan").addEventListener("click", () => void this.importTeamsFromSpreadsheetQr());
     el<HTMLInputElement>("team-file").addEventListener("change", (event) => void this.importTeams(event));
     el<HTMLButtonElement>("history-export").addEventListener("click", () => this.exportHistory());
     el<HTMLButtonElement>("history-import").addEventListener("click", () => el<HTMLInputElement>("history-file").click());
+    el<HTMLButtonElement>("history-sheet-import").addEventListener("click", () => void this.importHistoryFromSpreadsheet());
+    el<HTMLButtonElement>("history-sheet-scan").addEventListener("click", () => void this.importHistoryFromSpreadsheetQr());
     el<HTMLInputElement>("history-file").addEventListener("change", (event) => void this.importHistory(event));
     el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
@@ -1273,6 +1301,44 @@ class RecordsController {
     (event.target as HTMLInputElement).value = "";
   }
 
+  private async importTeamsFromSpreadsheetQr(): Promise<void> {
+    const scanned = await this.qrScanner.scan({
+      title: "チームリストシート QRコード読取",
+      hint: "QRコードには Google スプレッドシートのURL、またはスプレッドシートIDを入れてください。読み込み専用です。",
+      applyLabel: "このシートを読み込む",
+      validator: (value) => Boolean(spreadsheetIdFromUrl(value)),
+      invalidMessage: "Google スプレッドシートURL、またはスプレッドシートIDではありません。",
+    });
+    if (!scanned) return;
+    await this.importTeamsFromSpreadsheet(scanned);
+  }
+
+  private async importTeamsFromSpreadsheet(value?: string): Promise<void> {
+    const source = value ?? window.prompt("チームリストを読み込むスプレッドシートURL、またはIDを入力してください。");
+    const spreadsheetId = source ? spreadsheetIdFromUrl(source) : null;
+    if (!spreadsheetId) {
+      el("team-status").textContent = "スプレッドシートURL、またはIDを確認してください。";
+      return;
+    }
+    const settings = AdminController.settings();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      el("team-status").textContent = "GAS Web アプリ URLとAPIキーを管理者設定で保存してください。";
+      return;
+    }
+    el("team-status").textContent = "スプレッドシートからチームリストを読み込んでいます...";
+    try {
+      const url = `${settings.gasUrl}?action=teams&api_key=${encodeURIComponent(settings.apiKey)}&spreadsheet_id=${encodeURIComponent(spreadsheetId)}`;
+      const response = await fetch(url);
+      const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string };
+      if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
+      const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
+      this.applyTeams(nextTeams);
+      el("team-status").textContent = `${data.sheet_name ?? "スプレッドシート"} から${nextTeams.length}チームを読み込み、この端末の一覧に反映しました。`;
+    } catch {
+      el("team-status").textContent = "チームリストを読み込めませんでした。GASのdoGet更新、URL、APIキー、共有設定を確認してください。";
+    }
+  }
+
   private exportHistory(): void {
     if (!this.records.length) {
       el("history-status").textContent = "エクスポートできる履歴がありません。";
@@ -1291,9 +1357,16 @@ class RecordsController {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const rows = parseCsv((await file.text()).replace(/^\uFEFF/, ""));
+    const imported = this.recordsFromCsvRows(rows);
+    const result = this.mergeImportedRecords(imported, true);
+    el("history-status").textContent = `${file.name} から${result.added}件を追加しました。重複${result.skipped}件はスキップしました。`;
+    (event.target as HTMLInputElement).value = "";
+  }
+
+  private recordsFromCsvRows(rows: string[][]): MatchRecord[] {
     const names = rows.shift() ?? [];
     const at = (row: string[], name: string): string => row[names.indexOf(name)] ?? "";
-    const imported = rows.map((row): MatchRecord => ({
+    return rows.map((row): MatchRecord => ({
       recordId: at(row, "対戦ID") + "_" + at(row, "マッチ番号"),
       timestamp: at(row, "日時"),
       recordKind: at(row, "記録種別") === "試合結果" ? "試合結果" : "マッチ",
@@ -1326,13 +1399,60 @@ class RecordsController {
       teamBViolations: Number(at(row, "チームB違反数")) || 0,
       notes: at(row, "メモ"),
     })).filter((record) => record.teamA || record.teamB);
+  }
+
+  private mergeImportedRecords(imported: MatchRecord[], persist: boolean): { added: number; skipped: number } {
     const keys = new Set(this.records.map(recordKey));
-    const additions = imported.filter((record) => !keys.has(recordKey(record)));
+    const fingerprints = new Set(this.records.map(historyFingerprint));
+    const additions = imported.filter((record) => !keys.has(recordKey(record)) && !fingerprints.has(historyFingerprint(record)));
+    additions.forEach((record) => {
+      record.sendStatus = undefined;
+    });
     this.records = [...additions.reverse(), ...this.records];
-    localStorage.setItem(this.storageKey, JSON.stringify(this.records));
+    if (persist) localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !record.notes?.includes("スプレッドシート確認用読み込み"))));
     this.renderHistory();
-    el("history-status").textContent = `${file.name} から${additions.length}件を追加しました。重複${imported.length - additions.length}件はスキップしました。`;
-    (event.target as HTMLInputElement).value = "";
+    return { added: additions.length, skipped: imported.length - additions.length };
+  }
+
+  private async importHistoryFromSpreadsheetQr(): Promise<void> {
+    const scanned = await this.qrScanner.scan({
+      title: "対戦履歴シート QRコード読取",
+      hint: "QRコードには Google スプレッドシートのURL、またはスプレッドシートIDを入れてください。履歴確認用に読み込みます。",
+      applyLabel: "このシートを読み込む",
+      validator: (value) => Boolean(spreadsheetIdFromUrl(value)),
+      invalidMessage: "Google スプレッドシートURL、またはスプレッドシートIDではありません。",
+    });
+    if (!scanned) return;
+    await this.importHistoryFromSpreadsheet(scanned);
+  }
+
+  private async importHistoryFromSpreadsheet(value?: string): Promise<void> {
+    const source = value ?? window.prompt("対戦履歴を読み込むスプレッドシートURL、またはIDを入力してください。");
+    const spreadsheetId = source ? spreadsheetIdFromUrl(source) : null;
+    if (!spreadsheetId) {
+      el("history-status").textContent = "スプレッドシートURL、またはIDを確認してください。";
+      return;
+    }
+    const settings = AdminController.settings();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      el("history-status").textContent = "GAS Web アプリ URLとAPIキーを管理者設定で保存してください。";
+      return;
+    }
+    el("history-status").textContent = "スプレッドシートから対戦履歴を読み込んでいます...";
+    try {
+      const url = `${settings.gasUrl}?action=history&api_key=${encodeURIComponent(settings.apiKey)}&spreadsheet_id=${encodeURIComponent(spreadsheetId)}`;
+      const response = await fetch(url);
+      const data = await response.json() as { ok?: boolean; error?: string; csv_columns?: string[]; csv_rows?: string[][]; row_count?: number; sheet_name?: string };
+      if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
+      const imported = this.recordsFromCsvRows([[...(data.csv_columns ?? [])], ...(data.csv_rows ?? [])]);
+      imported.forEach((record) => {
+        record.notes = record.notes ? `${record.notes} / スプレッドシート確認用読み込み` : "スプレッドシート確認用読み込み";
+      });
+      const result = this.mergeImportedRecords(imported, false);
+      el("history-status").textContent = `${data.sheet_name ?? "対戦履歴"} から確認用履歴を${result.added}件読み込みました。重複${result.skipped}件はスキップしました。読み込んだ履歴は一時表示のみで、GASへ再送しません。`;
+    } catch {
+      el("history-status").textContent = "対戦履歴を読み込めませんでした。GASのdoGet更新、URL、APIキー、共有設定を確認してください。";
+    }
   }
 
   private clearHistory(): void {
@@ -1530,24 +1650,195 @@ class ContentController {
   }
 }
 
+type QrScanOptions = {
+  title: string;
+  hint: string;
+  applyLabel: string;
+  validator: (value: string) => boolean;
+  invalidMessage: string;
+};
+
+class QrScanner {
+  private cameraStream: MediaStream | null = null;
+  private scanFrame = 0;
+  private scannedValue = "";
+  private resolveScan: ((value: string | null) => void) | null = null;
+  private currentOptions: QrScanOptions | null = null;
+
+  constructor() {
+    el<HTMLButtonElement>("qr-close").addEventListener("click", () => this.close(null));
+    el<HTMLButtonElement>("qr-cancel").addEventListener("click", () => this.close(null));
+    el<HTMLButtonElement>("qr-retry").addEventListener("click", () => void this.startScanner());
+    el<HTMLButtonElement>("qr-apply").addEventListener("click", () => this.close(this.scannedValue || null));
+    el<HTMLDialogElement>("qr-dialog").addEventListener("close", () => this.stopScanner());
+    el<HTMLDialogElement>("qr-dialog").addEventListener("cancel", () => this.stopScanner());
+  }
+
+  async scan(options: QrScanOptions): Promise<string | null> {
+    this.currentOptions = options;
+    this.scannedValue = "";
+    el("qr-title").textContent = options.title;
+    el("qr-hint").textContent = options.hint;
+    el<HTMLButtonElement>("qr-apply").textContent = options.applyLabel;
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    if (!dialog.open) dialog.showModal();
+    const result = new Promise<string | null>((resolve) => {
+      this.resolveScan = resolve;
+    });
+    await this.startScanner();
+    return result;
+  }
+
+  private async startScanner(): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    if (!dialog.open || !this.currentOptions) return;
+    this.stopScanner();
+    this.scannedValue = "";
+    el("qr-status").textContent = "カメラを起動しています。QRコードを枠内に写してください。";
+    el("qr-result").classList.add("hidden");
+    el("qr-retry").classList.add("hidden");
+    el("qr-apply").classList.add("hidden");
+    try {
+      const BarcodeDetector = (window as Window & { BarcodeDetector?: QrDetectorConstructor }).BarcodeDetector;
+      if (BarcodeDetector) {
+        try {
+          await this.startNativeScanner(BarcodeDetector);
+          return;
+        } catch (error) {
+          this.stopScanner();
+          if (error instanceof DOMException && ["NotAllowedError", "NotFoundError", "NotReadableError"].includes(error.name)) throw error;
+        }
+      }
+      await this.startFallbackScanner();
+    } catch {
+      this.stopScanner();
+      el("qr-status").textContent = "カメラを使用できませんでした。カメラの許可とブラウザ設定を確認してください。";
+      el("qr-retry").classList.remove("hidden");
+    }
+  }
+
+  private async startNativeScanner(BarcodeDetector: QrDetectorConstructor): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
+    if (!dialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.cameraStream = stream;
+    video.srcObject = stream;
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    el("qr-status").textContent = "QRコードをカメラに写してください。";
+    const scan = async (): Promise<void> => {
+      if (!dialog.open || !this.cameraStream || this.scannedValue) return;
+      try {
+        const [result] = await detector.detect(video);
+        if (result?.rawValue) {
+          this.reviewScannedValue(result.rawValue);
+          return;
+        }
+      } catch {
+        // Keep scanning.
+      }
+      this.scanFrame = requestAnimationFrame(() => void scan());
+    };
+    this.scanFrame = requestAnimationFrame(() => void scan());
+  }
+
+  private async startFallbackScanner(): Promise<void> {
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    const { default: jsQR } = await import("jsqr");
+    if (!dialog.open) return;
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
+    if (!dialog.open) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.cameraStream = stream;
+    video.srcObject = stream;
+    await video.play();
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Camera canvas is unavailable.");
+    el("qr-status").textContent = "QRコードをカメラに写してください。";
+    let lastScan = 0;
+    const scan = (time: number): void => {
+      if (!dialog.open || !this.cameraStream || this.scannedValue) return;
+      if (time - lastScan < 120) {
+        this.scanFrame = requestAnimationFrame(scan);
+        return;
+      }
+      lastScan = time;
+      if (video.videoWidth && video.videoHeight) {
+        const scale = Math.min(1, 720 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+        const result = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: "attemptBoth" });
+        if (result?.data) {
+          this.reviewScannedValue(result.data);
+          return;
+        }
+      }
+      this.scanFrame = requestAnimationFrame(scan);
+    };
+    this.scanFrame = requestAnimationFrame(scan);
+  }
+
+  private reviewScannedValue(value: string): void {
+    this.stopScanner();
+    const scanned = value.trim();
+    const options = this.currentOptions;
+    if (!options || !options.validator(scanned)) {
+      el("qr-status").textContent = options?.invalidMessage ?? "読み取ったQRコードを使用できません。";
+      el("qr-result").textContent = scanned;
+      el("qr-result").classList.remove("hidden");
+      el("qr-retry").classList.remove("hidden");
+      return;
+    }
+    this.scannedValue = scanned;
+    el("qr-status").textContent = "QRコードを読み取りました。内容を確認して入力してください。";
+    el("qr-result").textContent = scanned;
+    el("qr-result").classList.remove("hidden");
+    el("qr-retry").classList.remove("hidden");
+    el("qr-apply").classList.remove("hidden");
+  }
+
+  private close(value: string | null): void {
+    this.stopScanner();
+    const dialog = el<HTMLDialogElement>("qr-dialog");
+    if (dialog.open) dialog.close();
+    const resolve = this.resolveScan;
+    this.resolveScan = null;
+    this.currentOptions = null;
+    this.scannedValue = "";
+    resolve?.(value);
+  }
+
+  private stopScanner(): void {
+    cancelAnimationFrame(this.scanFrame);
+    this.scanFrame = 0;
+    this.cameraStream?.getTracks().forEach((track) => track.stop());
+    this.cameraStream = null;
+    const video = el<HTMLVideoElement>("qr-video");
+    const stream = video.srcObject as MediaStream | null;
+    stream?.getTracks().forEach((track) => track.stop());
+    video.srcObject = null;
+  }
+}
+
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private cameraStream: MediaStream | null = null;
-  private scanFrame = 0;
-  private scannedGasUrl = "";
 
-  constructor() {
+  constructor(private readonly qrScanner: QrScanner) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
-    el<HTMLButtonElement>("qr-close").addEventListener("click", () => this.closeScanner());
-    el<HTMLButtonElement>("qr-cancel").addEventListener("click", () => this.closeScanner());
-    el<HTMLButtonElement>("qr-retry").addEventListener("click", () => void this.startScanner());
-    el<HTMLButtonElement>("qr-apply").addEventListener("click", () => this.applyScannedUrl());
-    el<HTMLDialogElement>("qr-dialog").addEventListener("close", () => this.stopScanner());
-    el<HTMLDialogElement>("qr-dialog").addEventListener("cancel", () => this.stopScanner());
     this.populate();
   }
 
@@ -1592,127 +1883,16 @@ class AdminController {
   }
 
   private async openScanner(): Promise<void> {
-    const dialog = el<HTMLDialogElement>("qr-dialog");
-    this.scannedGasUrl = "";
-    dialog.showModal();
-    await this.startScanner();
-  }
-
-  private async startScanner(): Promise<void> {
-    const dialog = el<HTMLDialogElement>("qr-dialog");
-    if (!dialog.open) return;
-    this.stopScanner();
-    this.scannedGasUrl = "";
-    el("qr-status").textContent = "カメラを起動しています。QRコードを枠内に写してください。";
-    el("qr-result").classList.add("hidden");
-    el("qr-retry").classList.add("hidden");
-    el("qr-apply").classList.add("hidden");
-    try {
-      const BarcodeDetector = (window as Window & { BarcodeDetector?: QrDetectorConstructor }).BarcodeDetector;
-      if (BarcodeDetector) {
-        try {
-          await this.startNativeScanner(BarcodeDetector);
-          return;
-        } catch (error) {
-          this.stopScanner();
-          if (error instanceof DOMException && ["NotAllowedError", "NotFoundError", "NotReadableError"].includes(error.name)) throw error;
-        }
-      }
-      await this.startFallbackScanner();
-    } catch {
-      this.stopScanner();
-      el("qr-status").textContent = "カメラを使用できませんでした。カメラの許可とブラウザ設定を確認してください。";
-      el("qr-retry").classList.remove("hidden");
-    }
-  }
-
-  private async startNativeScanner(BarcodeDetector: QrDetectorConstructor): Promise<void> {
-    const dialog = el<HTMLDialogElement>("qr-dialog");
-    const video = el<HTMLVideoElement>("qr-video");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
-    if (!dialog.open) {
-      stream.getTracks().forEach((track) => track.stop());
-      return;
-    }
-    this.cameraStream = stream;
-    video.srcObject = stream;
-    await video.play();
-    const detector = new BarcodeDetector({ formats: ["qr_code"] });
-    el("qr-status").textContent = "QRコードをカメラに写してください。";
-    const scan = async (): Promise<void> => {
-      if (!dialog.open || !this.cameraStream || this.scannedGasUrl) return;
-      try {
-        const [result] = await detector.detect(video);
-        if (result?.rawValue) {
-          this.reviewScannedUrl(result.rawValue);
-          return;
-        }
-      } catch {
-        // A frame without a readable QR code should keep the camera scanning.
-      }
-      this.scanFrame = requestAnimationFrame(() => void scan());
-    };
-    this.scanFrame = requestAnimationFrame(() => void scan());
-  }
-
-  private async startFallbackScanner(): Promise<void> {
-    const dialog = el<HTMLDialogElement>("qr-dialog");
-    const { default: jsQR } = await import("jsqr");
-    if (!dialog.open) return;
-    const video = el<HTMLVideoElement>("qr-video");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
-    if (!dialog.open) {
-      stream.getTracks().forEach((track) => track.stop());
-      return;
-    }
-    this.cameraStream = stream;
-    video.srcObject = stream;
-    await video.play();
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("Camera canvas is unavailable.");
-    el("qr-status").textContent = "QRコードをカメラに写してください。";
-    let lastScan = 0;
-    const scan = (time: number): void => {
-      if (!dialog.open || !this.cameraStream || this.scannedGasUrl) return;
-      if (time - lastScan < 120) {
-        this.scanFrame = requestAnimationFrame(scan);
-        return;
-      }
-      lastScan = time;
-      if (video.videoWidth && video.videoHeight) {
-        const scale = Math.min(1, 720 / video.videoWidth);
-        canvas.width = Math.round(video.videoWidth * scale);
-        canvas.height = Math.round(video.videoHeight * scale);
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
-        const result = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: "attemptBoth" });
-        if (result?.data) {
-          this.reviewScannedUrl(result.data);
-          return;
-        }
-      }
-      this.scanFrame = requestAnimationFrame(scan);
-    };
-    this.scanFrame = requestAnimationFrame(scan);
-  }
-
-  private reviewScannedUrl(value: string): void {
-    this.stopScanner();
-    const scanned = value.trim();
-    if (!this.isGasDeploymentUrl(scanned)) {
-      el("qr-status").textContent = "GAS Web アプリ URL（/exec）のQRコードではありません。";
-      el("qr-result").textContent = scanned;
-      el("qr-result").classList.remove("hidden");
-      el("qr-retry").classList.remove("hidden");
-      return;
-    }
-    this.scannedGasUrl = scanned;
-    el("qr-status").textContent = "URLを読み取りました。内容を確認して入力してください。";
-    el("qr-result").textContent = scanned;
-    el("qr-result").classList.remove("hidden");
-    el("qr-retry").classList.remove("hidden");
-    el("qr-apply").classList.remove("hidden");
+    const scanned = await this.qrScanner.scan({
+      title: "GAS URL QRコード読取",
+      hint: "QRコードには GAS Web アプリ URL（/exec）のみを入れてください。API キーは読み取りません。",
+      applyLabel: "このURLを入力",
+      validator: (value) => this.isGasDeploymentUrl(value),
+      invalidMessage: "GAS Web アプリ URL（/exec）のQRコードではありません。",
+    });
+    if (!scanned) return;
+    el<HTMLInputElement>("gas-url").value = scanned;
+    el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
   }
 
   private isGasDeploymentUrl(value: string): boolean {
@@ -1722,29 +1902,6 @@ class AdminController {
     } catch {
       return false;
     }
-  }
-
-  private applyScannedUrl(): void {
-    if (!this.scannedGasUrl) return;
-    el<HTMLInputElement>("gas-url").value = this.scannedGasUrl;
-    el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
-    this.closeScanner();
-  }
-
-  private closeScanner(): void {
-    this.stopScanner();
-    el<HTMLDialogElement>("qr-dialog").close();
-  }
-
-  private stopScanner(): void {
-    cancelAnimationFrame(this.scanFrame);
-    this.scanFrame = 0;
-    this.cameraStream?.getTracks().forEach((track) => track.stop());
-    this.cameraStream = null;
-    const video = el<HTMLVideoElement>("qr-video");
-    const stream = video.srcObject as MediaStream | null;
-    stream?.getTracks().forEach((track) => track.stop());
-    video.srcObject = null;
   }
 
   private async test(): Promise<void> {
@@ -1773,6 +1930,7 @@ class Application {
   private readonly balls: BallController;
   private readonly records: RecordsController;
   private readonly content = new ContentController();
+  private readonly qrScanner = new QrScanner();
   private recordTimerPending = false;
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
@@ -1799,7 +1957,7 @@ class Application {
       this.timer.prepare();
       this.show("timer");
     });
-    this.records = new RecordsController((event, match) => this.handleFlow(event, match));
+    this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
       button.addEventListener("click", () => {
         const screen = button.dataset.screen as Screen;
@@ -1901,7 +2059,7 @@ class Application {
   }
 
   private activateSecret(): void {
-    this.admin ??= new AdminController();
+    this.admin ??= new AdminController(this.qrScanner);
     this.secret = true;
     this.linksClicks = 0;
     document.documentElement.classList.add("secret");

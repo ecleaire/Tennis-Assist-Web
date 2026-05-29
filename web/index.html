@@ -240,6 +240,7 @@
                 <button id="team-save" class="button primary">一覧を保存</button>
                 <button id="team-reset" class="button">初期一覧</button>
                 <button id="team-import" class="button">CSV読込</button>
+                <button id="team-sheet-scan" class="button">QRでシート読込</button>
               </div>
             </div>
             <textarea id="team-editor" rows="6" aria-label="チーム一覧。1行に1チーム"></textarea>
@@ -255,6 +256,8 @@
               <div class="toolbar">
                 <button id="history-export" class="button">CSVエクスポート</button>
                 <button id="history-import" class="button">CSVインポート</button>
+                <button id="history-sheet-import" class="button">シート読込</button>
+                <button id="history-sheet-scan" class="button">QRでシート読込</button>
                 <button id="history-clear" class="button danger">履歴削除</button>
               </div>
             </div>
@@ -384,13 +387,13 @@
     <dialog id="qr-dialog" class="dialog qr-dialog">
       <article>
         <div class="dialog-title-row">
-          <h2>GAS URL QRコード読取</h2>
+          <h2 id="qr-title">GAS URL QRコード読取</h2>
           <button id="qr-close" class="dialog-close" type="button" aria-label="閉じる">x</button>
         </div>
         <p id="qr-status" class="muted">カメラを準備しています...</p>
         <video id="qr-video" class="qr-video" autoplay muted playsinline></video>
         <p id="qr-result" class="qr-result hidden"></p>
-        <p class="muted qr-hint">QRコードには GAS Web アプリ URL（/exec）のみを入れてください。API キーは読み取りません。</p>
+        <p id="qr-hint" class="muted qr-hint">QRコードには GAS Web アプリ URL（/exec）のみを入れてください。API キーは読み取りません。</p>
         <div class="toolbar">
           <button id="qr-cancel" class="button" type="button">閉じる</button>
           <button id="qr-retry" class="button hidden" type="button">もう一度読み取る</button>
