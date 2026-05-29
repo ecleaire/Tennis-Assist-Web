@@ -249,8 +249,8 @@ class TimerController {
   private readonly resetButton = el<HTMLButtonElement>("timer-reset");
   private readonly step = el<HTMLSelectElement>("timer-step");
   private readonly dashboardStep = el<HTMLSelectElement>("dashboard-timer-step");
-  private total = 90;
-  private remaining = 90;
+  private total = 120;
+  private remaining = 120;
   private running = false;
   private started = false;
   private notifiedFinish = false;
@@ -260,7 +260,8 @@ class TimerController {
   private subRemaining = 0;
   private subCaption = "";
   private randomStep: number | "manual" = 5;
-  private manualSeconds = 90;
+  private manualSeconds = 120;
+  private initialReset = true;
   private secret = false;
 
   constructor(private readonly finished: () => void, private readonly activated: () => void) {
@@ -352,7 +353,8 @@ class TimerController {
     this.running = false;
     this.started = false;
     this.notifiedFinish = false;
-    this.total = this.generatedDuration();
+    this.total = this.initialReset ? 120 : this.generatedDuration();
+    this.initialReset = false;
     this.remaining = this.total;
     this.mode.textContent = "試合準備完了";
     this.coldShown = false;
@@ -619,6 +621,9 @@ class RecordsController {
   private agreedB = false;
   private finalized = false;
   private agreementPending: "a" | "b" | null = null;
+  private awaitingNextMatch = false;
+  private completionResetTimer = 0;
+  private retryingPendingSends = false;
 
   constructor(private readonly flow: (event: "start" | "next" | "balls" | "timer" | "finished", match?: number) => void) {
     this.records = this.loadRecords();
@@ -636,6 +641,7 @@ class RecordsController {
     el<HTMLButtonElement>("agreement-accept").addEventListener("click", () => this.acceptAgreement());
     el<HTMLButtonElement>("agreement-cancel").addEventListener("click", () => this.cancelAgreement());
     el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
+    el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.completeSeriesReset());
     el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
     el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderStats());
     ["history-team", "history-result", "history-kind", "history-sort"].forEach((id) => {
@@ -649,8 +655,10 @@ class RecordsController {
     el<HTMLButtonElement>("history-import").addEventListener("click", () => el<HTMLInputElement>("history-file").click());
     el<HTMLInputElement>("history-file").addEventListener("change", (event) => void this.importHistory(event));
     el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.clearHistory());
+    window.addEventListener("online", () => void this.retryPendingSends("online"));
     this.resetSeries();
     this.renderHistory();
+    if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
   }
 
   timerFinished(): void {
@@ -699,6 +707,9 @@ class RecordsController {
     this.agreedB = false;
     this.finalized = false;
     this.agreementPending = null;
+    this.awaitingNextMatch = false;
+    this.clearCompletionResetTimer();
+    this.setCompletionPanel(false);
     this.setNextMatchPrompt(false);
     this.resetInput();
     this.renderSeries();
@@ -713,6 +724,9 @@ class RecordsController {
     this.agreedB = false;
     this.finalized = false;
     this.agreementPending = null;
+    this.awaitingNextMatch = false;
+    this.clearCompletionResetTimer();
+    this.setCompletionPanel(false);
     this.setNextMatchPrompt(false);
     this.resetInput();
     el("series-label").textContent = "対戦カード: 未選択";
@@ -774,15 +788,17 @@ class RecordsController {
       el("record-status").textContent = "違反したチームを選択してください。";
       return null;
     }
-    const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
-    if (orangeTotal !== 8 && orangeTotal !== 9) {
-      el("record-status").textContent = "オレンジボールの合計は8個または9個にしてください。";
-      return null;
-    }
-    const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
-    if (purpleTotal !== 2) {
-      el("record-status").textContent = "紫ボールの合計は必ず2個にしてください。";
-      return null;
+    if (category === scoringCategory) {
+      const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
+      if (orangeTotal !== 8 && orangeTotal !== 9) {
+        el("record-status").textContent = "オレンジボールの合計は8個または9個にしてください。";
+        return null;
+      }
+      const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
+      if (purpleTotal !== 2) {
+        el("record-status").textContent = "紫ボールの合計は必ず2個にしてください。";
+        return null;
+      }
     }
     const matchNumber = this.editing || this.nextMatch();
     const competitionId = `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_${matchNumber}`;
@@ -810,6 +826,13 @@ class RecordsController {
   }
 
   private confirmSave(): void {
+    if (this.shouldWarnUnplayedMatch()) {
+      const accepted = window.confirm("マッチが行われていません。次のマッチへ進む前のため、通常の試合結果として保存してよいですか？");
+      if (!accepted) {
+        el("record-status").textContent = "マッチが行われていません。通常の結果を入力する場合は「次のマッチへ進む」を押してから保存してください。";
+        return;
+      }
+    }
     const record = this.buildRecord();
     if (!record) return;
     el("confirm-detail").textContent =
@@ -841,11 +864,13 @@ class RecordsController {
     this.renderHistory();
     if (this.isFinished()) {
       el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。代表同意後に結果を確定します。`;
+      this.awaitingNextMatch = false;
       this.setNextMatchPrompt(false);
       this.renderAgreement();
       el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。次のマッチの準備をしてください。`;
+      this.awaitingNextMatch = true;
       this.setNextMatchPrompt(true);
       el("next-match-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
@@ -857,8 +882,16 @@ class RecordsController {
 
   private continueToNextMatch(): void {
     if (!this.series || this.isFinished()) return;
+    this.awaitingNextMatch = false;
     this.setNextMatchPrompt(false);
     this.flow("next", this.nextMatch());
+  }
+
+  private shouldWarnUnplayedMatch(): boolean {
+    if (!this.awaitingNextMatch || this.editing || !this.series || this.isFinished()) return false;
+    const category = el<HTMLSelectElement>("reason-category").value as Category;
+    const reason = el<HTMLSelectElement>("end-reason").value;
+    return category !== prematchCategory && !reason.includes("6.32.9");
   }
 
   private renderSeries(): void {
@@ -881,6 +914,8 @@ class RecordsController {
     const record = this.series.records.find((item) => item.matchNumber === matchNumber);
     if (!record) return;
     this.editing = matchNumber;
+    this.awaitingNextMatch = false;
+    this.setNextMatchPrompt(false);
     el<HTMLSelectElement>("reason-category").value = record.reasonCategory;
     this.refreshEndReasons();
     el<HTMLSelectElement>("end-reason").value = record.endReason;
@@ -941,6 +976,7 @@ class RecordsController {
     if (!this.series?.records.length) {
       el("final-summary").textContent = "3マッチ終了後、最終結果を確認できます。";
       el("series-finished").classList.add("hidden");
+      this.setCompletionPanel(false);
       return;
     }
     const matchesBody = matches.createTBody();
@@ -1059,10 +1095,30 @@ class RecordsController {
     this.flow("finished");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     await this.sendSeriesResult(record);
-    const completedStatus = el("record-status").textContent ?? "試合結果を保存しました。";
+    el("completion-status").textContent = `${el("record-status").textContent ?? "試合結果を保存しました。"} 3分後に自動で次の対戦準備へ戻ります。`;
+    this.setCompletionPanel(true);
+    this.clearCompletionResetTimer();
+    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 180000);
+  }
+
+  private setCompletionPanel(visible: boolean): void {
+    el("completion-panel").classList.toggle("hidden", !visible);
+  }
+
+  private clearCompletionResetTimer(): void {
+    if (!this.completionResetTimer) return;
+    window.clearTimeout(this.completionResetTimer);
+    this.completionResetTimer = 0;
+  }
+
+  private completeSeriesReset(): void {
+    const wasCompleted = this.finalized;
+    this.clearCompletionResetTimer();
     this.resetSeries();
-    el("record-status").textContent = `試合が終了しました。おつかれさまでした。${completedStatus} 対戦をリセットし、次の対戦を開始できます。`;
-    el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (wasCompleted) {
+      el("record-status").textContent = "保存済みです。次の対戦を開始できます。";
+    }
+    el("screen-records").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   private renderHistory(): void {
@@ -1299,6 +1355,24 @@ class RecordsController {
     this.updateSendStatus(record, "pending");
     el("history-status").textContent = "未送信の試合結果を再送しています...";
     await this.sendSeriesResult(record);
+  }
+
+  private async retryPendingSends(reason: "startup" | "online"): Promise<void> {
+    if (this.retryingPendingSends || !navigator.onLine) return;
+    const settings = AdminController.settings();
+    if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) return;
+    const pending = this.records.filter((record) => record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
+    if (!pending.length) return;
+    this.retryingPendingSends = true;
+    el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
+    try {
+      for (const record of pending) {
+        await this.sendSeriesResult(record);
+      }
+    } finally {
+      this.retryingPendingSends = false;
+      this.renderHistory();
+    }
   }
 
   private async sendSeriesResult(record: MatchRecord): Promise<void> {

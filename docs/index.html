@@ -8,8 +8,8 @@
     <link rel="icon" href="./assist_icon_512.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-Ce6sn3n_.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Biqy7P57.css">
+    <script type="module" crossorigin src="./assets/index-Bkd8qWAi.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C2pjZkqT.css">
   </head>
   <body>
     <main id="app">
@@ -60,7 +60,7 @@
               </div>
               <button class="button jump" data-target="timer">全画面表示</button>
             </div>
-            <output id="dashboard-time" class="digital dashboard-digital">01 : 30</output>
+            <output id="dashboard-time" class="digital dashboard-digital">02 : 00</output>
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
             <div class="dashboard-timer-controls">
               <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
@@ -94,7 +94,7 @@
           <div class="timer-center">
             <p id="cold-notice" class="notice" aria-live="polite"></p>
             <div class="timer-face">
-              <output id="timer-time" class="digital">01 : 30</output>
+              <output id="timer-time" class="digital">02 : 00</output>
               <div class="sub-slot">
                 <p id="sub-caption" class="hint">Space / Enter: 開始　F: 全画面</p>
                 <output id="sub-time" class="digital sub hidden">00 : 10</output>
@@ -211,6 +211,10 @@
             <h2>最終結果</h2>
             <p id="final-summary" class="muted">3マッチ終了後、最終結果を確認できます。</p>
             <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
+            <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
+              <p id="completion-status">保存・送信後、3分後に自動で次の対戦準備へ戻ります。</p>
+              <button id="completion-reset" class="button primary">保存済み・次の対戦へ</button>
+            </div>
             <div class="table-scroll"><table id="final-matches"></table></div>
             <div class="table-scroll"><table id="final-table"></table></div>
             <div id="agreement" class="agreement hidden">

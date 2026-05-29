@@ -58,6 +58,9 @@ textarea {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {
@@ -551,6 +554,16 @@ label {
   flex: 1 1 190px;
 }
 
+.start-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.start-row label,
+.start-row button {
+  min-width: 0;
+}
+
 .form-grid {
   display: grid;
   gap: 12px;
@@ -639,15 +652,23 @@ fieldset strong {
   border: 1px solid var(--accent);
   border-radius: 15px;
   display: grid;
-  gap: 12px;
+  gap: 16px;
   justify-items: start;
-  padding: 14px 16px;
+  margin-top: 8px;
+  padding: clamp(20px, 3vw, 30px);
 }
 
 .next-match-panel p {
   color: var(--text);
-  font-size: 1.08rem;
+  font-size: clamp(1.28rem, 2.5vw, 1.75rem);
   font-weight: 700;
+  line-height: 1.45;
+}
+
+.next-match-panel .button {
+  font-size: clamp(1rem, 1.7vw, 1.18rem);
+  min-height: 54px;
+  padding-inline: 22px;
 }
 
 .table-scroll {
@@ -730,13 +751,36 @@ tr.win td {
 }
 
 .finished-message {
-  background: #153b2e;
-  border: 1px solid var(--success);
-  border-radius: 13px;
-  color: var(--success);
-  font-size: clamp(1.05rem, 2vw, 1.2rem);
-  font-weight: 700;
-  padding: 14px;
+  background: linear-gradient(135deg, #123a2a, #0f2d45);
+  border: 2px solid var(--success);
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px rgba(103, 224, 138, 0.18), 0 18px 36px rgba(0, 0, 0, 0.22);
+  color: #dfffea;
+  font-size: clamp(1.45rem, 3.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.35;
+  padding: clamp(22px, 3.4vw, 36px);
+}
+
+.completion-panel {
+  align-items: center;
+  background: #0e2339;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.completion-panel p {
+  color: var(--muted);
+  flex: 1 1 320px;
+}
+
+.completion-panel .button {
+  min-height: 52px;
 }
 
 .stats-grid {
@@ -1155,6 +1199,10 @@ body.compact #timer-ten {
 
   .form-grid,
   .score-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .start-row {
     grid-template-columns: 1fr;
   }
 
