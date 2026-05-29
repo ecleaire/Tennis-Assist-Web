@@ -187,7 +187,7 @@ input:hover {
   font-weight: 700;
 }
 
-body:not(.timer-ended) .timer-random-control {
+body.timer-started:not(.timer-ended) .timer-random-control {
   display: none !important;
 }
 
@@ -695,6 +695,34 @@ fieldset strong {
   gap: 10px;
 }
 
+.import-box {
+  background: #0e1830;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.import-box strong {
+  color: var(--text);
+  font-size: 1.02rem;
+}
+
+.import-box p {
+  margin-top: 4px;
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.import-actions .button {
+  flex: 1 1 150px;
+}
+
 .sheet-url-row {
   align-items: end;
   display: grid;
@@ -704,6 +732,13 @@ fieldset strong {
 
 .sheet-url-row .button {
   min-height: 48px;
+}
+
+.status-message {
+  background: #0e1830;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
 }
 
 .table-scroll {
@@ -850,6 +885,13 @@ tr.win td {
 
 .history-card + .history-card {
   margin-top: 10px;
+}
+
+#history {
+  max-height: min(620px, calc(var(--viewport-height) * 0.58));
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-color: var(--accent) #0d1730;
 }
 
 .sync-status {
@@ -1232,6 +1274,10 @@ body.compact #timer-ten {
     flex: 1 1 130px;
   }
 
+  #history {
+    max-height: min(500px, calc(var(--viewport-height) * 0.52));
+  }
+
   .form-grid,
   .score-pair {
     grid-template-columns: 1fr;
@@ -1241,11 +1287,13 @@ body.compact #timer-ten {
     grid-template-columns: 1fr;
   }
 
-  .gas-url-row {
+  .gas-url-row,
+  .sheet-url-row {
     grid-template-columns: 1fr;
   }
 
-  .gas-url-row .button {
+  .gas-url-row .button,
+  .sheet-url-row .button {
     width: 100%;
   }
 

@@ -8,8 +8,8 @@
     <link rel="icon" href="./assist_icon_512.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-DRaKLpN2.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Dwg3lFD7.css">
+    <script type="module" crossorigin src="./assets/index-CXcN-p3d.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BWfAuMlZ.css">
   </head>
   <body>
     <main id="app">
@@ -241,20 +241,28 @@
                 <p class="eyebrow">TEAM MANAGEMENT</p>
                 <h2>チーム一覧</h2>
               </div>
-              <div class="toolbar">
+              <div class="toolbar management-actions">
                 <button id="team-save" class="button primary">一覧を保存</button>
                 <button id="team-reset" class="button">初期一覧</button>
+              </div>
+            </div>
+            <div class="import-box">
+              <div>
+                <strong>チーム一覧の読み込み</strong>
+                <p class="muted">CSV、QR、URL入力のどれでもチーム一覧を読み込めます。</p>
+              </div>
+              <div class="import-actions">
                 <button id="team-import" class="button">CSV読込</button>
                 <button id="team-sheet-scan" class="button">QRでシート読込</button>
               </div>
-            </div>
-            <div class="sheet-url-row">
-              <label>チーム一覧スプレッドシートURL<input id="team-sheet-url" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/..." /></label>
-              <button id="team-sheet-load" class="button">URLから読込</button>
+              <div class="sheet-url-row">
+                <label>スプレッドシートURL<input id="team-sheet-url" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/..." /></label>
+                <button id="team-sheet-load" class="button">URLから読込</button>
+              </div>
             </div>
             <textarea id="team-editor" rows="6" aria-label="チーム一覧。1行に1チーム"></textarea>
             <input id="team-file" class="hidden" type="file" accept=".csv,text/csv" />
-            <p id="team-status" class="muted">この端末だけで使うチーム一覧を編集できます。</p>
+            <p id="team-status" class="muted status-message">この端末だけで使うチーム一覧を編集できます。</p>
           </article>
           <article id="history-stats-panel" class="panel section-card">
             <div class="section-head">
@@ -262,10 +270,16 @@
                 <p class="eyebrow">HISTORY / STATS</p>
                 <h2>履歴と統計</h2>
               </div>
-              <div class="toolbar">
+            </div>
+            <div class="import-box">
+              <div>
+                <strong>履歴の読み込み・出力</strong>
+                <p class="muted">CSVやスプレッドシートから確認用履歴を読み込めます。シート読込はGASへ再送しません。</p>
+              </div>
+              <div class="import-actions">
                 <button id="history-export" class="button">CSVエクスポート</button>
                 <button id="history-import" class="button">CSVインポート</button>
-                <button id="history-sheet-import" class="button">シート読込</button>
+                <button id="history-sheet-import" class="button">URL/IDでシート読込</button>
                 <button id="history-sheet-scan" class="button">QRでシート読込</button>
                 <button id="history-clear" class="button danger">履歴削除</button>
               </div>
@@ -280,7 +294,7 @@
               <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
             </div>
             <div id="stats-cards" class="stats-grid"></div>
-            <p id="history-status" class="muted"></p>
+            <p id="history-status" class="muted status-message"></p>
             <div id="history"></div>
           </article>
         </div>

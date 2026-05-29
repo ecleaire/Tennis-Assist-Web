@@ -1,5 +1,18 @@
-const CACHE_NAME = "tennis-assist-web-v20";
-const CORE = ["./", "./manifest.webmanifest", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
+const CACHE_NAME = "tennis-assist-web-d8af90f19f38";
+const CORE = [
+  "./",
+  "./index.html",
+  "./assets/DSEG7Modern-Bold.woff2",
+  "./assets/index-BWfAuMlZ.css",
+  "./assets/index-CXcN-p3d.js",
+  "./assets/jsQR-BnGm8Ll0.js",
+  "./assets/playfield.jpg",
+  "./assist_icon_512.png",
+  "./data/news.json",
+  "./data/rules_sections.json",
+  "./data/team_list_example.csv",
+  "./manifest.webmanifest"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
@@ -9,30 +22,27 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith("tennis-assist-web-") && key !== CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
-
-    // Tabs can otherwise remain on an old cached app shell after an update.
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    await Promise.all(windows.map((client) => client.navigate(client.url)));
   })());
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).then((response) => {
         if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put("./", response.clone()));
         return response;
-      }).catch(() => caches.match("./")),
+      }).catch(async () => (await caches.match("./")) || caches.match("./index.html")),
     );
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request).then((response) => {
       if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
       return response;
-    })),
+    }).catch(() => cached)),
   );
 });

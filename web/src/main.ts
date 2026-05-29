@@ -2038,6 +2038,12 @@ class Application {
     el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.deactivateSecret());
     this.content.init();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
       window.addEventListener("load", () => {
         void navigator.serviceWorker
           .register(`${import.meta.env.BASE_URL}sw.js`)
