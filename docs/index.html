@@ -8,8 +8,8 @@
     <link rel="icon" href="./assist_icon_512.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-DlkNGrN1.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B9bNO-ii.css">
+    <script type="module" crossorigin src="./assets/index-DHMG662U.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CHlLdb9G.css">
   </head>
   <body>
     <main id="app">
@@ -45,12 +45,12 @@
                 <h2>ボール配置</h2>
               </div>
               <div class="dashboard-actions">
+                <button id="dashboard-balls-fullscreen" class="button">全画面表示</button>
                 <button id="dashboard-random" class="button primary">ランダム生成</button>
                 <button id="dashboard-balls-reset" class="button">初期位置に戻す</button>
               </div>
             </div>
             <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
-            <button id="dashboard-balls-fullscreen" class="button">全画面表示</button>
           </article>
           <article class="panel dashboard-card timer-preview">
             <div class="section-head">
@@ -132,9 +132,9 @@
               </div>
             </div>
             <div class="toolbar">
+              <button id="balls-fullscreen" class="button">全画面表示</button>
               <button id="balls-random" class="button primary">ランダム生成</button>
               <button id="balls-reset" class="button">初期位置へ戻す</button>
-              <button id="balls-fullscreen" class="button">全画面表示</button>
               <button id="balls-ready" class="button accent hidden">配置完了</button>
             </div>
           </div>
@@ -239,30 +239,28 @@
             <div class="section-head">
               <div>
                 <p class="eyebrow">TEAM MANAGEMENT</p>
-                <h2>チーム一覧</h2>
+                <h2>チームリスト</h2>
               </div>
               <div class="toolbar management-actions">
-                <button id="team-save" class="button primary">一覧を保存</button>
+                <button id="team-save" class="button primary">チームリストを端末に保存</button>
                 <button id="team-reset" class="button">初期一覧</button>
               </div>
             </div>
             <div class="import-box">
               <div>
-                <strong>チーム一覧の読み込み</strong>
-                <p class="muted">CSV、QR、URL入力のどれでもチーム一覧を読み込めます。</p>
+                <strong>チームリストの読み込み</strong>
+                <p class="muted">CSV、QR、URL入力のどれでもチームリストを読み込めます。</p>
               </div>
-              <div class="import-actions">
+              <div class="import-actions team-import-actions">
                 <button id="team-import" class="button">CSV読込</button>
                 <button id="team-sheet-scan" class="button">QRでシート読込</button>
-              </div>
-              <div class="sheet-url-row">
-                <label>スプレッドシートURL<input id="team-sheet-url" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/..." /></label>
+                <label class="compact-url-input">スプレッドシートURL<input id="team-sheet-url" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/..." /></label>
                 <button id="team-sheet-load" class="button">URLから読込</button>
               </div>
             </div>
-            <textarea id="team-editor" rows="6" aria-label="チーム一覧。1行に1チーム"></textarea>
+            <textarea id="team-editor" rows="6" aria-label="チームリスト。1行に1チーム"></textarea>
             <input id="team-file" class="hidden" type="file" accept=".csv,text/csv" />
-            <p id="team-status" class="muted status-message">この端末だけで使うチーム一覧を編集できます。</p>
+            <p id="team-status" class="muted status-message">この端末だけで使うチームリストを編集できます。</p>
           </article>
           <article id="history-stats-panel" class="panel section-card">
             <div class="section-head">
@@ -287,7 +285,7 @@
             <input id="history-file" class="hidden" type="file" accept=".csv,text/csv" />
             <div class="filter-row">
               <label>チーム<select id="stats-team"></select></label>
-              <label>集計期間<select id="stats-period"><option value="today">今日</option><option value="week">1週間</option><option value="month">1か月</option></select></label>
+              <label>集計期間<select id="stats-period"><option value="all">すべて</option><option value="today">今日</option><option value="week">1週間</option><option value="month">1か月</option></select></label>
               <label>履歴検索チーム<select id="history-team"></select></label>
               <label>勝敗<select id="history-result"><option value="all">勝敗すべて</option><option value="win">勝利のみ</option><option value="loss">敗北のみ</option><option value="draw">引き分けのみ</option></select></label>
               <label>種類<select id="history-kind"><option value="all">すべて表示</option><option value="match">マッチ結果のみ</option><option value="series">試合結果のみ</option></select></label>
@@ -404,6 +402,16 @@
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="confirm-save" class="button primary" value="default">保存</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="history-clear-dialog" class="dialog">
+      <form method="dialog">
+        <h2>履歴削除の確認</h2>
+        <p id="history-clear-detail" class="pre-wrap"></p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="history-clear-confirm" class="button danger" value="default">削除</button>
         </div>
       </form>
     </dialog>

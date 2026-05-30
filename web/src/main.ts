@@ -734,7 +734,8 @@ class RecordsController {
     el<HTMLButtonElement>("history-sheet-import").addEventListener("click", () => void this.importHistoryFromSpreadsheet());
     el<HTMLButtonElement>("history-sheet-scan").addEventListener("click", () => void this.importHistoryFromSpreadsheetQr());
     el<HTMLInputElement>("history-file").addEventListener("change", (event) => void this.importHistory(event));
-    el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.clearHistory());
+    el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.confirmClearHistory());
+    el<HTMLButtonElement>("history-clear-confirm").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
     this.resetSeries(false);
     this.renderHistory();
@@ -1252,16 +1253,25 @@ class RecordsController {
     const result = el<HTMLSelectElement>("history-result").value;
     const kind = el<HTMLSelectElement>("history-kind").value;
     const since = this.historySince();
-    const visible = this.records.filter((record) => {
+    let usedFallback = false;
+    let visible = this.records.filter((record) => {
       if (new Date(record.timestamp.replace(" ", "T")).getTime() < since) return false;
       if (team !== "すべてのチーム" && record.teamA !== team && record.teamB !== team) return false;
       if (kind === "match" && record.recordKind !== "マッチ") return false;
       if (kind === "series" && record.recordKind !== "試合結果") return false;
       if (result === "all") return true;
-      const judged = team === "すべてのチーム" ? record.overallWinner || record.winner : (record.overallWinner || record.winner) === team ? "win" : (record.overallWinner || record.winner) === "引き分け" ? "draw" : "loss";
-      return team === "すべてのチーム" ? (result === "draw" ? judged === "引き分け" : true) : judged === result;
+      const winner = record.overallWinner || record.winner;
+      if (team === "すべてのチーム") return result === "draw" ? winner === "引き分け" : true;
+      const judged = winner === team ? "win" : winner === "引き分け" ? "draw" : "loss";
+      return judged === result;
     });
     if (el<HTMLSelectElement>("history-sort").value === "old") visible.reverse();
+    if (!visible.length && this.records.length) {
+      usedFallback = true;
+      visible = [...this.records]
+        .sort((a, b) => new Date(b.timestamp.replace(" ", "T")).getTime() - new Date(a.timestamp.replace(" ", "T")).getTime())
+        .slice(0, 6);
+    }
     if (!visible.length) {
       host.innerHTML = '<p class="muted">保存された試合記録はありません。</p>';
     }
@@ -1283,7 +1293,8 @@ class RecordsController {
     });
     const storedCount = this.records.filter((record) => !isSheetPreviewRecord(record)).length;
     const previewCount = this.records.length - storedCount;
-    el("history-status").textContent = `保存済み ${storedCount}件 / 確認用 ${previewCount}件 / 表示 ${visible.length}件`;
+    const suffix = usedFallback ? " / フィルタ該当なしのため最新6件を表示" : "";
+    el("history-status").textContent = `保存済み ${storedCount}件 / 確認用 ${previewCount}件 / 表示 ${visible.length}件${suffix}`;
     this.renderStats();
   }
 
@@ -1317,6 +1328,7 @@ class RecordsController {
 
   private historySince(): number {
     const period = el<HTMLSelectElement>("stats-period").value;
+    if (period === "all") return 0;
     const now = new Date();
     if (period === "today") {
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1569,9 +1581,21 @@ class RecordsController {
     }
   }
 
-  private clearHistory(): void {
+  private confirmClearHistory(): void {
     const storedCount = this.records.filter((record) => !isSheetPreviewRecord(record)).length;
-    if (!storedCount || !window.confirm(`この端末に保存された対戦履歴 ${storedCount}件をすべて削除しますか？確認用に読み込んだ履歴はページ更新で消えます。`)) return;
+    if (!storedCount) {
+      el("history-status").textContent = "削除できる端末保存履歴はありません。";
+      return;
+    }
+    el("history-clear-detail").textContent =
+      `スプレッドシートに送信できていない履歴は、本体履歴から削除すると復元できません。\n\n` +
+      `この端末に保存された対戦履歴 ${storedCount}件 をすべて削除しますか？\n\n` +
+      `確認用に読み込んだ履歴はページ更新で消えます。\n\n` +
+      `本当に削除しますか？`;
+    el<HTMLDialogElement>("history-clear-dialog").showModal();
+  }
+
+  private clearHistory(): void {
     this.records = this.records.filter(isSheetPreviewRecord);
     localStorage.setItem(this.storageKey, "[]");
     this.renderHistory();
@@ -2150,6 +2174,7 @@ class Application {
     this.ballsFullscreen = active;
     document.body.classList.toggle("balls-compact", active);
     el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
+    el<HTMLButtonElement>("dashboard-balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
   }
 
   private handleFlow(event: FlowEvent, match = 0): void {

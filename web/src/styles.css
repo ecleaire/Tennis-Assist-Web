@@ -732,6 +732,25 @@ fieldset strong {
   flex: 1 1 150px;
 }
 
+.team-import-actions {
+  align-items: end;
+  display: grid;
+  grid-template-columns: auto auto minmax(220px, 1fr) auto;
+}
+
+.team-import-actions .button {
+  height: 48px;
+  white-space: nowrap;
+}
+
+.compact-url-input {
+  min-width: 0;
+}
+
+.compact-url-input input {
+  width: 100%;
+}
+
 .sheet-url-row {
   align-items: end;
   display: grid;
@@ -897,7 +916,7 @@ tr.win td {
 }
 
 #history {
-  max-height: min(620px, calc(var(--viewport-height) * 0.58));
+  max-height: min(570px, calc(var(--viewport-height) * 0.56));
   overflow-y: auto;
   padding-right: 6px;
   scrollbar-color: var(--accent) #0d1730;
@@ -1158,8 +1177,8 @@ body.balls-compact #screen-balls .court {
 }
 
 body.balls-compact .ball {
-  height: clamp(17px, 2.9vw, 38px);
-  width: clamp(17px, 2.9vw, 38px);
+  height: clamp(21px, 3.5vw, 46px);
+  width: clamp(21px, 3.5vw, 46px);
 }
 
 body.compact .controls {
@@ -1250,7 +1269,7 @@ body.compact #timer-ten {
   }
 
   .dashboard-timer-tools select {
-    grid-column: span 2;
+    width: 100%;
   }
 
   .timer-center {
@@ -1289,7 +1308,7 @@ body.compact #timer-ten {
   }
 
   #history {
-    max-height: min(500px, calc(var(--viewport-height) * 0.52));
+    max-height: min(460px, calc(var(--viewport-height) * 0.5));
   }
 
   .form-grid,
@@ -1309,6 +1328,28 @@ body.compact #timer-ten {
   .gas-url-row .button,
   .sheet-url-row .button {
     width: 100%;
+  }
+
+  .team-import-actions {
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-import-actions .button {
+    font-size: 0.82rem;
+    min-width: 0;
+    padding-inline: 5px;
+    white-space: normal;
+  }
+
+  .compact-url-input {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  #team-sheet-load {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   fieldset {
@@ -1508,6 +1549,11 @@ html.phone-portrait .app-header {
   display: grid;
   grid-template-columns: minmax(116px, 0.64fr) minmax(214px, 1fr);
   gap: 12px;
+  padding: 11px;
+}
+
+html.phone-portrait #app {
+  gap: 10px;
 }
 
 html.phone-portrait #navigation {
@@ -1537,7 +1583,9 @@ html.phone-portrait .dashboard {
 }
 
 html.phone-portrait .dashboard-card {
+  gap: 10px;
   min-height: unset;
+  padding: 12px;
 }
 
 html.phone-portrait .dashboard-actions {
@@ -1553,11 +1601,56 @@ html.phone-portrait output.digital.dashboard-digital {
 }
 
 html.phone-portrait .dashboard-timer-tools {
+  gap: 8px;
   grid-template-columns: repeat(2, 1fr);
 }
 
 html.phone-portrait .dashboard-timer-tools select {
-  grid-column: span 2;
+  width: 100%;
+}
+
+html.phone-portrait .dashboard-timer-controls {
+  gap: 8px;
+}
+
+html.phone-portrait .dashboard-timer-controls .button,
+html.phone-portrait .dashboard-timer-tools .button,
+html.phone-portrait .dashboard-timer-tools select {
+  min-height: 44px;
+}
+
+html.phone-portrait .dashboard-timer-controls .button {
+  flex-basis: 100%;
+}
+
+html.phone-portrait .dashboard-sub-slot {
+  min-height: 62px;
+}
+
+html.phone-portrait .team-import-actions {
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html.phone-portrait .team-import-actions .button {
+  font-size: 0.82rem;
+  min-width: 0;
+  padding-inline: 5px;
+  white-space: normal;
+}
+
+html.phone-portrait .compact-url-input {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+html.phone-portrait #team-sheet-load {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+html.phone-portrait #history {
+  max-height: min(430px, calc(var(--viewport-height) * 0.48));
 }
 
 html.phone-portrait body.compact .controls {
