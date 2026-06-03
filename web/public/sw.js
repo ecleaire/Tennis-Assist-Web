@@ -1,5 +1,6 @@
-const CACHE_NAME = "tennis-assist-web-v19";
-const CORE = ["./", "./manifest.webmanifest", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
+const CACHE_NAME = "tennis-assist-web-v20";
+const CORE = ["./", "./index.html", "./manifest.webmanifest", "./favicon.svg", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
+const OPTIONAL = ["./data/news.json", "./data/rules_sections.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
@@ -9,12 +10,8 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith("tennis-assist-web-") && key !== CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
-
-    // Tabs can otherwise remain on an old cached app shell after an update.
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    await Promise.all(windows.map((client) => client.navigate(client.url)));
   })());
 });
 
@@ -30,9 +27,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
-      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request).then((response) => {
+      const path = new URL(event.request.url).pathname;
+      if (response.ok && (path.includes("/assets/") || path.includes("/data/") || OPTIONAL.some((asset) => path.endsWith(asset.slice(1))))) {
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+      }
       return response;
-    })),
+    }).catch(() => cached)),
   );
 });

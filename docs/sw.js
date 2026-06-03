@@ -1,17 +1,20 @@
-const CACHE_NAME = "tennis-assist-web-73ea324ff3b7";
+const CACHE_NAME = "tennis-assist-web-41d83d8077f2";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
   "./assets/index-B6g2JVvf.js",
   "./assets/index-CHlLdb9G.css",
-  "./assets/jsQR-BnGm8Ll0.js",
   "./assets/playfield.jpg",
+  "./favicon.svg",
+  "./manifest.webmanifest"
+];
+const OPTIONAL = [
+  "./assets/jsQR-BnGm8Ll0.js",
   "./assist_icon_512.png",
   "./data/news.json",
   "./data/rules_sections.json",
-  "./data/team_list_example.csv",
-  "./manifest.webmanifest"
+  "./data/team_list_example.csv"
 ];
 
 self.addEventListener("install", (event) => {
@@ -41,7 +44,17 @@ self.addEventListener("fetch", (event) => {
   }
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || fetch(event.request).then((response) => {
-      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+      const path = url.pathname.split("/").pop() ?? "";
+      const shouldRuntimeCache = response.ok && (
+        url.pathname.includes("/assets/") ||
+        url.pathname.includes("/data/") ||
+        OPTIONAL.some((asset) => url.pathname.endsWith(asset.slice(1))) ||
+        CORE.some((asset) => url.pathname.endsWith(asset.slice(1))) ||
+        path === "manifest.webmanifest" ||
+        path.endsWith(".png") ||
+        path.endsWith(".svg")
+      );
+      if (shouldRuntimeCache) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
       return response;
     }).catch(() => cached)),
   );
