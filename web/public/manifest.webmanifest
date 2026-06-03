@@ -1,6 +1,6 @@
 {
-  "name": "WRO RoboSports Assist",
-  "short_name": "Tennis Assist",
+  "name": "RoboSports Assist",
+  "short_name": "RoboSports",
   "description": "WRO RoboSports Double Tennis competition assistant",
   "start_url": "./",
   "scope": "./",

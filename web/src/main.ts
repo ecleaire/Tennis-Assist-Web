@@ -192,7 +192,7 @@ function deviceSource(): string {
       navigator.maxTouchPoints > 0 ? "touch-device" :
         "desktop";
   const dpr = Math.round((window.devicePixelRatio || 1) * 100) / 100;
-  return `WRO RoboSports Assist / ${device} / ${width}x${height} css / dpr ${dpr}`;
+  return `RoboSports Assist / ${device} / ${width}x${height} css / dpr ${dpr}`;
 }
 
 function syncViewportMetrics(): void {
@@ -695,7 +695,7 @@ class BallController {
 
   private reset(): void {
     this.draw(this.defaults);
-    el("balls-status").textContent = "ボール配置を調整済みの初期位置へ戻しました。";
+    el("balls-status").textContent = "ボール配置を初期位置に戻しました。";
     if (this.workflowMatch) el("balls-ready").classList.add("hidden");
   }
 
@@ -1811,7 +1811,7 @@ class ContentController {
     const sections = [
       { title: "WRO決勝 国際 ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
       { title: "WRO公認予選会 ホームページ", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
-      { title: "ルール関連", links: [["Japan決勝大会公式ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
+      { title: "ルール関連", links: [["Japan決勝大会ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
       { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
     ];
     el("links-list").innerHTML = sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("");
@@ -2363,7 +2363,7 @@ class Application {
     this.secret = true;
     this.linksClicks = 0;
     document.documentElement.classList.add("secret");
-    el("title").textContent = "WRO RoboSports Assist Master";
+    el("title").textContent = "RoboSports Assist Master";
     el("development-nav").classList.remove("hidden");
     el("admin-exit").classList.remove("hidden");
     this.timer.setSecret(true);
@@ -2373,7 +2373,7 @@ class Application {
   private deactivateSecret(): void {
     this.secret = false;
     document.documentElement.classList.remove("secret");
-    el("title").textContent = "WRO RoboSports Assist";
+    el("title").textContent = "RoboSports Assist";
     el("development-nav").classList.add("hidden");
     el("admin-exit").classList.add("hidden");
     this.timer.setSecret(false);

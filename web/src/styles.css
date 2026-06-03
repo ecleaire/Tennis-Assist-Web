@@ -107,6 +107,8 @@ a {
   gap: 24px;
   justify-content: space-between;
   padding: clamp(14px, 2.2vw, 22px);
+  position: relative;
+  z-index: 30;
 }
 
 .brand {
@@ -135,6 +137,25 @@ a {
 
 .mobile-menu-toggle {
   display: none;
+}
+
+.mobile-menu-toggle .menu-icon {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: inline-flex;
+  font-weight: 900;
+  height: 30px;
+  justify-content: center;
+  line-height: 1;
+  width: 30px;
+}
+
+.mobile-menu-toggle .menu-text {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .secret-navigation {
@@ -169,6 +190,11 @@ input:hover {
   border-color: var(--accent);
 }
 
+#navigation .nav.active {
+  box-shadow: 0 0 0 1px rgba(46, 168, 255, 0.45) inset;
+  font-weight: 800;
+}
+
 .button.accent {
   background: var(--warning);
   border-color: var(--warning);
@@ -197,10 +223,6 @@ body.timer-started:not(.timer-ended) .timer-random-control {
 
 body:not(.timer-started) .timer-end-action {
   display: none !important;
-}
-
-body.timer-started:not(.timer-ended) #timer-range {
-  display: none;
 }
 
 body.timer-running .timer-top {
@@ -334,8 +356,10 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  isolation: isolate;
   min-height: calc(var(--viewport-height) - 142px);
   padding: clamp(15px, 2.4vw, 25px);
+  position: relative;
 }
 
 .timer-top {
@@ -361,6 +385,9 @@ output.digital.dashboard-digital {
   flex-direction: column;
   justify-content: center;
   min-height: 280px;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
 }
 
 .notice {
@@ -437,6 +464,9 @@ output.digital.dashboard-digital {
 .timer-bottom {
   display: grid;
   gap: 16px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 5;
 }
 
 progress {
@@ -475,6 +505,11 @@ progress::-moz-progress-bar {
 .controls .button,
 .controls select {
   flex: 1 1 132px;
+}
+
+#timer-step,
+#dashboard-timer-step {
+  max-width: 190px;
 }
 
 .section-card {
@@ -1046,7 +1081,9 @@ tr.win td {
 }
 
 .rule-links .button {
-  align-content: center;
+  align-items: center;
+  display: flex;
+  justify-content: center;
   text-align: center;
 }
 
@@ -1096,6 +1133,11 @@ tr.win td {
 }
 
 .link-grid .button {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  line-height: 1.25;
+  min-height: 48px;
   text-align: center;
 }
 
@@ -1200,6 +1242,14 @@ body.compact .timer-shell {
   padding: clamp(12px, 2.2vw, 24px);
 }
 
+body.compact .timer-bottom {
+  gap: clamp(8px, 1.4vh, 12px);
+}
+
+body.compact progress {
+  height: 12px;
+}
+
 body.compact #timer-time {
   font-size: min(clamp(5rem, 26vw, 22rem), calc((var(--viewport-width) - 34px) / 6.1), calc(var(--viewport-height) * 0.35));
 }
@@ -1231,18 +1281,19 @@ body.compact .controls {
   align-items: stretch;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 }
 
 body.compact .controls .button,
 body.compact .controls select {
-  flex: 0 1 clamp(118px, 12vw, 190px);
-  min-height: 52px;
+  flex: 0 1 clamp(104px, 10vw, 168px);
+  min-height: 44px;
   min-width: 0;
+  padding: 8px 12px;
 }
 
 body.compact #timer-step {
-  flex-basis: clamp(210px, 22vw, 300px);
+  flex-basis: clamp(128px, 14vw, 180px);
   grid-column: auto;
 }
 
@@ -1259,10 +1310,10 @@ body.compact #timer-ten {
   }
 
   #navigation {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3);
+    background: #172441;
+    border: 1px solid #3e5d98;
+    border-radius: 16px;
+    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(46, 168, 255, 0.12) inset;
     display: none;
     gap: 7px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1271,7 +1322,7 @@ body.compact #timer-ten {
     right: 0;
     top: calc(100% + 8px);
     width: min(360px, calc(100vw - 24px));
-    z-index: 20;
+    z-index: 80;
   }
 
   #navigation .nav {
@@ -1285,11 +1336,15 @@ body.compact #timer-ten {
     border-radius: 13px;
     color: var(--text);
     display: flex;
-    gap: 10px;
-    justify-content: space-between;
-    min-height: 42px;
-    padding: 8px 12px;
+    gap: 8px;
+    justify-content: start;
+    min-height: 44px;
+    padding: 7px 10px;
     width: 100%;
+  }
+
+  .mobile-menu-toggle strong {
+    margin-left: auto;
   }
 
   .header-navigation {
@@ -1301,6 +1356,15 @@ body.compact #timer-ten {
 
   .app-header.mobile-menu-open #navigation {
     display: grid;
+  }
+
+  .app-header.mobile-menu-open::before {
+    background: rgba(3, 8, 20, 0.5);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+    z-index: 70;
   }
 
   .secret-navigation {
@@ -1371,7 +1435,8 @@ body.compact #timer-ten {
   }
 
   #timer-step {
-    grid-column: span 2;
+    grid-column: auto;
+    max-width: none;
   }
 
   .section-head {
@@ -1652,10 +1717,10 @@ html.phone-portrait #app {
 }
 
 html.phone-portrait #navigation {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3);
+  background: #172441;
+  border: 1px solid #3e5d98;
+  border-radius: 16px;
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(46, 168, 255, 0.12) inset;
   display: none;
   gap: 7px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1664,7 +1729,7 @@ html.phone-portrait #navigation {
   right: 0;
   top: calc(100% + 8px);
   width: min(360px, calc(100vw - 24px));
-  z-index: 20;
+  z-index: 80;
 }
 
 html.phone-portrait #navigation .nav {
@@ -1685,15 +1750,28 @@ html.phone-portrait .mobile-menu-toggle {
   border-radius: 13px;
   color: var(--text);
   display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  min-height: 38px;
-  padding: 7px 10px;
+  gap: 7px;
+  justify-content: start;
+  min-height: 42px;
+  padding: 6px 9px;
   width: 100%;
 }
 
 html.phone-portrait .app-header.mobile-menu-open #navigation {
   display: grid;
+}
+
+html.phone-portrait .app-header.mobile-menu-open::before {
+  background: rgba(3, 8, 20, 0.5);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 70;
+}
+
+html.phone-portrait .mobile-menu-toggle strong {
+  margin-left: auto;
 }
 
 html.phone-portrait .brand h1 {
@@ -1795,6 +1873,13 @@ html.phone-portrait #history {
 html.phone-portrait body.compact .controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+html.phone-portrait body.compact .controls .button,
+html.phone-portrait body.compact .controls select {
+  min-height: 42px;
+  padding: 7px 9px;
 }
 
 html.phone-portrait body.compact .timer-shell {
@@ -1828,11 +1913,12 @@ html.phone-portrait body.compact .hint.count {
 }
 
 html.phone-portrait body.compact .timer-bottom {
-  gap: 12px;
+  gap: 9px;
 }
 
 html.phone-portrait body.compact #timer-step {
-  grid-column: span 2;
+  grid-column: auto;
+  max-width: none;
 }
 
 html.phone-portrait body.compact #timer-ten {

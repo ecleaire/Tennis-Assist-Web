@@ -7,20 +7,21 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
-    <title>WRO RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-CF0UoVzs.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-E5E0Blrf.css">
+    <title>RoboSports Assist</title>
+    <script type="module" crossorigin src="./assets/index-NOod0_RF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Dz1eDWyf.css">
   </head>
   <body>
     <main id="app">
       <header id="app-header" class="panel app-header">
         <div class="brand">
           <p class="eyebrow">WRO 2026 / DOUBLE TENNIS</p>
-          <h1 id="title">WRO RoboSports Assist</h1>
+          <h1 id="title">RoboSports Assist</h1>
         </div>
         <div class="header-navigation">
           <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">
-            <span aria-hidden="true">三</span>
+            <span class="menu-icon" aria-hidden="true">三</span>
+            <span class="menu-text">メニュー</span>
             <strong id="current-mode-label">ホーム</strong>
           </button>
           <nav id="navigation" aria-label="機能メニュー">
@@ -72,9 +73,9 @@
             </div>
             <div class="dashboard-timer-tools">
               <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
-                <option value="5">ランダム設定: 5秒単位</option>
-                <option value="1">ランダム設定: 1秒単位</option>
-                <option value="10">ランダム設定: 10秒単位</option>
+                <option value="5">設定: 5秒</option>
+                <option value="1">設定: 1秒</option>
+                <option value="10">設定: 10秒</option>
                 <option value="manual">手動指定</option>
               </select>
               <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
@@ -93,7 +94,6 @@
         <article id="timer-shell" class="panel timer-shell">
           <div class="timer-top">
             <span id="timer-mode" class="pill">試合準備完了</span>
-            <span id="timer-range" class="muted">ランダム範囲: 1:00 - 2:00</span>
           </div>
           <div class="timer-center">
             <p id="cold-notice" class="notice" aria-live="polite"></p>
@@ -113,9 +113,9 @@
               <button id="timer-fullscreen" class="button">全画面</button>
               <button id="timer-reset" class="button timer-random-control">ランダム再生成</button>
               <select id="timer-step" class="timer-random-control" aria-label="タイマー設定">
-                <option value="5">ランダム設定: 5秒単位</option>
-                <option value="1">ランダム設定: 1秒単位</option>
-                <option value="10">ランダム設定: 10秒単位</option>
+                <option value="5">設定: 5秒</option>
+                <option value="1">設定: 1秒</option>
+                <option value="10">設定: 10秒</option>
                 <option value="manual">手動指定</option>
               </select>
               <button id="timer-ten" class="button timer-count-control">10カウント</button>
