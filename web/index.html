@@ -18,8 +18,8 @@
         </div>
         <div class="header-navigation">
           <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">
-            <span class="menu-icon" aria-hidden="true">三</span>
-            <span class="menu-text">メニュー</span>
+            <span class="menu-icon" aria-hidden="true">☰</span>
+            <span class="menu-text">Menu</span>
             <strong id="current-mode-label">ホーム</strong>
           </button>
           <nav id="navigation" aria-label="機能メニュー">
@@ -71,9 +71,9 @@
             </div>
             <div class="dashboard-timer-tools">
               <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
-                <option value="5">設定: 5秒</option>
-                <option value="1">設定: 1秒</option>
-                <option value="10">設定: 10秒</option>
+                <option value="5">抽選間隔: 5秒</option>
+                <option value="1">抽選間隔: 1秒</option>
+                <option value="10">抽選間隔: 10秒</option>
                 <option value="manual">手動指定</option>
               </select>
               <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
@@ -111,9 +111,9 @@
               <button id="timer-fullscreen" class="button">全画面</button>
               <button id="timer-reset" class="button timer-random-control">ランダム再生成</button>
               <select id="timer-step" class="timer-random-control" aria-label="タイマー設定">
-                <option value="5">設定: 5秒</option>
-                <option value="1">設定: 1秒</option>
-                <option value="10">設定: 10秒</option>
+                <option value="5">抽選間隔: 5秒</option>
+                <option value="1">抽選間隔: 1秒</option>
+                <option value="10">抽選間隔: 10秒</option>
                 <option value="manual">手動指定</option>
               </select>
               <button id="timer-ten" class="button timer-count-control">10カウント</button>
@@ -308,7 +308,10 @@
               <p class="eyebrow">RULES VIEWER</p>
               <h2>ルール検索</h2>
             </div>
-            <input id="rule-search" type="search" placeholder="キーワードで検索" />
+            <div class="rule-search-box">
+              <input id="rule-search" type="search" placeholder="キーワードで検索" />
+              <p class="rule-note">このルール表示は「WRO-2026-Japan-RoboSports-Double-Tennis-General-Rules」2026年5月31日 発行 v1.0 をもとにした簡易確認用です。詳細・正式な内容は公式ルールをご確認ください。</p>
+            </div>
           </div>
           <div class="rule-links" aria-label="外部ルール資料">
             <a class="button primary" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing">Japan 決勝大会 公式ルール</a>
@@ -318,6 +321,7 @@
             <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>
           </div>
           <div class="rules-body">
+            <button id="rule-menu-toggle" class="button rule-menu-toggle" type="button" aria-expanded="false" aria-controls="rule-nav">ルール項目を選択</button>
             <nav id="rule-nav" class="rule-nav" aria-label="ルール章"></nav>
             <div id="rule-content" class="rule-content"></div>
           </div>

@@ -1,20 +1,21 @@
 {
-  "document_title": "WRO 2026 RoboSports Double Tennis General Rules",
-  "version_label": "Version: January 15th 2026",
+  "document_title": "WRO-2026-Japan-RoboSports-Double-Tennis-General-Rules",
+  "version_label": "2026年5月31日 発行 v1.0 / 簡易確認用要約",
   "sections": [
     {
       "id": "general_information",
       "title": "1. 基本情報",
       "subtitle": "General information",
       "pages": "3",
-      "summary": "WRO RoboSports は、2台の自律ロボットが協調して対戦する競技です。Double Tennis では戦術、協調制御、画像認識、機構設計、問題解決力が重視されます。",
+      "summary": "WRO RoboSports Double Tennis は、2台の自律ロボットが協調して対戦する競技です。この表示は Japan 決勝大会公式ルールの大会中確認用要約です。",
       "keywords": ["概要", "学習目標", "倫理", "自律", "協調", "カメラ", "戦略"],
       "points": [
         "各試合では2チームが同時に競技し、各チームは同じ自陣側で2台のロボットを動かします。",
         "ロボットは自律動作が前提で、相手の動きに応じて戦術を変える力が求められます。",
         "学習の重点は、反復アルゴリズム、2台間の協調、移動体がある環境での自己位置把握、ボール処理機構、画像処理、チームワークです。",
         "WRO は競技結果だけでなく学びを重視しており、コーチや大人は支援はできても製作やプログラムを代行してはいけません。",
-        "すべての参加者は WRO Guiding Principles と Ethics Code に従い、公平で安全な競技運営に協力する必要があります."
+        "すべての参加者は WRO Guiding Principles と Ethics Code に従い、公平で安全な競技運営に協力する必要があります。",
+        "正式な判定や細部の確認では、必ず Japan 決勝大会公式ルールPDFと当日の審判判断を確認してください。"
       ]
     },
     {
@@ -180,7 +181,7 @@
       "title": "11. 用語集",
       "subtitle": "Glossary",
       "pages": "22",
-      "summary": "ルール文書内で使われる主要用語の定義です。ゲームと試合の違いもここで明確化されています。",
+      "summary": "ルール文書内で使われる主要用語の定義です。ゲームとマッチの違いもここで明確化されています。",
       "keywords": ["用語", "game", "match", "check time", "practice time", "coach"],
       "points": [
         "Check Time は毎ゲーム前に行われるロボットの寸法・仕様確認時間です。",

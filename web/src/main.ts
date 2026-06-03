@@ -1786,9 +1786,18 @@ class ContentController {
   private selectedRule = "";
   private rulesRequested = false;
   private newsRequested = false;
+  private ruleMenuOpen = false;
 
   init(): void {
     el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
+    el<HTMLButtonElement>("rule-menu-toggle").addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.setRuleMenu(!this.ruleMenuOpen);
+    });
+    document.addEventListener("click", (event) => {
+      const target = event.target as Node;
+      if (this.ruleMenuOpen && !el("rule-nav").contains(target) && !el("rule-menu-toggle").contains(target)) this.setRuleMenu(false);
+    });
     el<HTMLSelectElement>("news-filter").addEventListener("change", () => this.renderNews());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => el<HTMLDialogElement>((button as HTMLElement).dataset.close ?? "").close()));
   }
@@ -1809,8 +1818,8 @@ class ContentController {
 
   renderLinks(secret: boolean): void {
     const sections = [
-      { title: "WRO決勝 国際 ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
-      { title: "WRO公認予選会 ホームページ", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
+      { title: "WRO 全国 国際ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
+      { title: "WRO 公認予選会", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
       { title: "ルール関連", links: [["Japan決勝大会ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
       { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
     ];
@@ -1842,9 +1851,17 @@ class ContentController {
         this.selectedRule = section.id;
         this.renderRuleNav();
         this.renderRules();
+        this.setRuleMenu(false);
       });
       nav.append(button);
     });
+    el("rule-menu-toggle").textContent = `ルール項目を選択: ${this.rules.find((section) => section.id === this.selectedRule)?.title ?? ""}`;
+  }
+
+  private setRuleMenu(open: boolean): void {
+    this.ruleMenuOpen = open;
+    el("screen-rules").classList.toggle("rule-menu-open", open);
+    el<HTMLButtonElement>("rule-menu-toggle").setAttribute("aria-expanded", String(open));
   }
 
   private renderRules(): void {
