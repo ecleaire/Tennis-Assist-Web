@@ -56,7 +56,7 @@
                 <p class="eyebrow">MATCH TIMER</p>
                 <h2>タイマー</h2>
               </div>
-              <button class="button jump" data-target="timer">全画面表示</button>
+              <button id="dashboard-timer-fullscreen" class="button">全画面表示</button>
             </div>
             <output id="dashboard-time" class="digital dashboard-digital">02 : 00</output>
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
@@ -126,7 +126,7 @@
               <p class="eyebrow">BALL RANDOMIZER</p>
               <div class="balls-heading">
                 <h2>ボール配置</h2>
-                <p id="balls-status" class="muted balls-status">4列の配置を準備しました。紫ボールは180度対称です。</p>
+                <p id="balls-status" class="muted balls-status" aria-live="polite"></p>
               </div>
             </div>
             <div class="toolbar">
@@ -213,6 +213,7 @@
             <p id="final-summary" class="muted">3マッチ終了後、最終試合結果を確認できます。</p>
             <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
             <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
+              <strong id="completion-badge" class="completion-badge">保存済み</strong>
               <p id="completion-status">保存・送信後、3分後に自動で次の対戦準備へ戻ります。</p>
               <button id="completion-reset" class="button primary">保存済み・次の対戦へ</button>
             </div>
@@ -306,7 +307,8 @@
             <input id="rule-search" type="search" placeholder="キーワードで検索" />
           </div>
           <div class="rule-links" aria-label="外部ルール資料">
-            <a class="button primary" target="_blank" rel="noopener" href="https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS">公式ルール</a>
+            <a class="button primary" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing">Japan 決勝大会 公式ルール</a>
+            <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS">世界大会公式ルール</a>
             <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view">Google翻訳ルール</a>
             <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view">DeepL翻訳ルール</a>
             <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>

@@ -356,6 +356,10 @@ class TimerController {
     this.setCompact(false);
   }
 
+  async enterDisplayFullscreen(): Promise<void> {
+    await this.enterFullscreen(true);
+  }
+
   private chooseStep(): void {
     this.touchTimerState();
     if (this.step.value === "manual") {
@@ -1222,7 +1226,7 @@ class RecordsController {
     this.flow("finished");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     await this.sendSeriesResult(record);
-    el("completion-status").textContent = `${el("record-status").textContent ?? "試合結果を保存しました。"} 3分後に自動で次の対戦準備へ戻ります。`;
+    el("completion-status").textContent = `この結果は保存済みです。${el("record-status").textContent ?? "試合結果を保存しました。"} 3分後に自動で次の対戦準備へ戻ります。`;
     this.setCompletionPanel(true);
     this.clearCompletionResetTimer();
     this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 180000);
@@ -1663,15 +1667,18 @@ class RecordsController {
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
       this.updateSendStatus(record, "local-only");
+      this.updateCompletionState("local-only");
       el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
       return;
     }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       this.updateSendStatus(record, "failed");
+      this.updateCompletionState("failed", "GAS URLまたはAPIキーが未設定です。");
       el("record-status").textContent = "試合結果は保存しました。GAS URLまたはAPIキーを確認し、履歴から再送してください。";
       return;
     }
     this.updateSendStatus(record, "pending");
+    this.updateCompletionState("pending");
     const matches = this.records
       .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
       .sort((a, b) => a.matchNumber - b.matchNumber);
@@ -1682,11 +1689,28 @@ class RecordsController {
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
       this.updateSendStatus(record, "sent");
+      this.updateCompletionState("sent");
       el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
-    } catch {
+    } catch (error) {
       this.updateSendStatus(record, "failed");
+      this.updateCompletionState("failed", error instanceof Error ? error.message : "ネットワークまたはGAS接続エラーです。");
       el("record-status").textContent = "試合結果は保存しました。スプレッドシート送信に失敗しました。履歴から再送できます。";
     }
+  }
+
+  private updateCompletionState(status: NonNullable<MatchRecord["sendStatus"]>, detail = ""): void {
+    const panel = el("completion-panel");
+    const badge = el("completion-badge");
+    panel.classList.remove("sent", "pending", "failed", "local-only");
+    panel.classList.add(status);
+    const labels: Record<NonNullable<MatchRecord["sendStatus"]>, string> = {
+      sent: "保存済み・送信済み",
+      pending: "保存済み・送信待ち",
+      failed: "保存済み・未送信",
+      "local-only": "保存済み",
+    };
+    badge.textContent = labels[status];
+    if (detail) el("completion-status").textContent = `この結果は保存済みです。${detail} 履歴から再送できます。`;
   }
 
   private nextMatch(): number {
@@ -1738,8 +1762,8 @@ class ContentController {
 
   renderLinks(secret: boolean): void {
     const sections = [
-      { title: "WRO", links: [["WRO Japan ホームページ", "https://www.wroj.org/action/2026"], ["WRO 兵庫 ホームページ", "https://wro-hyogo.jp/"], ["WRO 東京 ホームページ", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良 ホームページ", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"], ["WRO 三重 ホームページ", "https://miraido.net/"], ["WRO 国際 ホームページ", "https://wro-association.org/"]] },
-      { title: "ルール関連", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["ルール", "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"], ["英語ルール PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google 翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL 翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
+      { title: "WRO", links: [["WRO Japan", "https://www.wroj.org/action/2026"], ["WRO 兵庫", "https://wro-hyogo.jp/"], ["WRO 東京", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"], ["WRO 三重", "https://miraido.net/"], ["WRO 国際", "https://wro-association.org/"]] },
+      { title: "ルール関連", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["世界大会ルール", "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"], ["英語PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google翻訳", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL翻訳", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
       { title: "その他", links: [["YouTube関連動画", "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"], ...(secret ? [["旧テニスタイマー", "https://scratch.mit.edu/projects/1013694253"], ["旧 litlink", "https://lit.link/syukugawalink"]] : [])] },
     ];
     el("links-list").innerHTML = sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("");
@@ -2142,6 +2166,10 @@ class Application {
       });
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
+    el<HTMLButtonElement>("dashboard-timer-fullscreen").addEventListener("click", () => {
+      this.show("timer");
+      void this.timer.enterDisplayFullscreen();
+    });
     el<HTMLButtonElement>("dashboard-balls-fullscreen").addEventListener("click", () => void this.enterBallsFullscreen());
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
@@ -2178,7 +2206,7 @@ class Application {
     this.show("balls");
     this.setBallsFullscreen(true);
     try {
-      await document.documentElement.requestFullscreen?.();
+      await el("screen-balls").requestFullscreen?.();
     } catch {
       // The in-page fullscreen layout still maximizes the court.
     }

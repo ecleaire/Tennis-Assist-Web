@@ -373,6 +373,7 @@ output.digital.dashboard-digital {
   justify-content: center;
   padding-bottom: clamp(132px, 20vh, 218px);
   position: relative;
+  transform: translateY(clamp(8px, 2vh, 24px));
   width: 100%;
 }
 
@@ -498,6 +499,10 @@ progress::-moz-progress-bar {
 
 .balls-status {
   font-size: 0.94rem;
+}
+
+.balls-status:empty {
+  display: none;
 }
 
 .court {
@@ -831,6 +836,11 @@ tr.win td {
   border-color: var(--success);
   color: var(--success);
   font-weight: 700;
+  position: relative;
+}
+
+.agreement .button.agreed::before {
+  content: "LOCK ";
 }
 
 .agreement-confirm {
@@ -870,6 +880,32 @@ tr.win td {
   gap: 14px;
   justify-content: space-between;
   padding: 16px;
+}
+
+.completion-badge {
+  border-radius: 999px;
+  font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+  font-weight: 900;
+  padding: 10px 16px;
+}
+
+.completion-panel.sent .completion-badge {
+  background: #153b2e;
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.completion-panel.pending .completion-badge,
+.completion-panel.failed .completion-badge {
+  background: #471c25;
+  border: 1px solid var(--danger);
+  color: #ffd9df;
+}
+
+.completion-panel.local-only .completion-badge {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--text);
 }
 
 .completion-panel p {
@@ -996,7 +1032,7 @@ tr.win td {
 .rule-links {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .rule-links .button {
@@ -1213,8 +1249,18 @@ body.compact #timer-ten {
   }
 
   #navigation {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  #navigation .nav {
+    flex: 0 0 auto;
+    min-width: 86px;
   }
 
   .header-navigation {
@@ -1393,7 +1439,12 @@ body.compact #timer-ten {
   }
 
   .link-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .link-grid .button {
+    min-height: 42px;
+    padding: 8px 7px;
   }
 }
 
@@ -1557,8 +1608,18 @@ html.phone-portrait #app {
 }
 
 html.phone-portrait #navigation {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 7px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+html.phone-portrait #navigation .nav {
+  flex: 0 0 auto;
+  min-width: 86px;
 }
 
 html.phone-portrait .header-navigation {
@@ -1573,8 +1634,8 @@ html.phone-portrait .brand h1 {
 
 html.phone-portrait .nav,
 html.phone-portrait #admin-exit {
-  min-height: 42px;
-  padding: 8px 5px;
+  min-height: 38px;
+  padding: 7px 9px;
   text-align: center;
 }
 
@@ -1671,7 +1732,7 @@ html.phone-portrait body.compact .timer-center {
 
 html.phone-portrait body.compact .timer-face {
   padding-bottom: clamp(132px, 22vh, 190px);
-  transform: translateY(0);
+  transform: translateY(clamp(4px, 1.5vh, 14px));
 }
 
 html.phone-portrait body.compact .sub-slot {
@@ -1747,4 +1808,13 @@ html.phone-portrait .rule-nav .button {
 
 html.phone-portrait .rule-content {
   padding: 14px;
+}
+
+html.phone-portrait .link-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .link-grid .button {
+  min-height: 42px;
+  padding: 8px 7px;
 }
