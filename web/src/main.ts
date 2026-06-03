@@ -184,6 +184,17 @@ function timestamp(): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
 }
 
+function deviceSource(): string {
+  const width = Math.round(window.visualViewport?.width ?? window.innerWidth);
+  const height = Math.round(window.visualViewport?.height ?? window.innerHeight);
+  const device =
+    isPhonePortrait() ? "phone-portrait" :
+      navigator.maxTouchPoints > 0 ? "touch-device" :
+        "desktop";
+  const dpr = Math.round((window.devicePixelRatio || 1) * 100) / 100;
+  return `WRO RoboSports Assist / ${device} / ${width}x${height} css / dpr ${dpr}`;
+}
+
 function syncViewportMetrics(): void {
   const viewport = window.visualViewport;
   const width = viewport?.width ?? window.innerWidth;
@@ -1719,7 +1730,7 @@ class RecordsController {
       .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
       .sort((a, b) => a.matchNumber - b.matchNumber);
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
-    const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "試合結果", source: "WRO RoboSports Assist", sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "対戦履歴", detail_rows: details };
+    const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "試合結果", source: deviceSource(), sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "対戦履歴", detail_rows: details };
     el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
     try {
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
@@ -2142,7 +2153,7 @@ class AdminController {
     }
     el("gas-status").textContent = "テスト送信中...";
     try {
-      const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: "WRO RoboSports Assist", sent_at: timestamp(), payload: { message: "Web app connection test" } };
+      const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
       el("gas-status").textContent = "テスト送信を完了しました。チームリストを確認しています...";

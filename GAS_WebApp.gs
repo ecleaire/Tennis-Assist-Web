@@ -210,24 +210,32 @@ function appendRows(sheet, records, eventName, body, csvColumns) {
   const header = csvColumns.length > 0 ? MATCH_HEADER_PREFIX.concat(csvColumns) : MATCH_HEADER_PREFIX.concat(['payload_json']);
   ensureExactHeader(sheet, header);
 
+  const existingIds = readRecordIds(sheet, MATCH_HEADER_PREFIX.length);
+  const rows = [];
   let appended = 0;
   let duplicates = 0;
   records.forEach((record) => {
     const recordId = String(record.record_id || '');
-    if (recordId && hasRecordId(sheet, recordId, MATCH_HEADER_PREFIX.length)) {
+    if (recordId && existingIds.has(recordId)) {
       duplicates += 1;
       return;
     }
 
-    sheet.appendRow([
+    const row = [
       new Date(),
       eventName,
       body.source || '',
       body.sent_at || '',
       recordId
-    ].concat(record.csv_row && record.csv_row.length > 0 ? record.csv_row : [JSON.stringify(body.payload || {})]));
+    ].concat(record.csv_row && record.csv_row.length > 0 ? record.csv_row : [JSON.stringify(body.payload || {})]);
+    rows.push(normalizeRow(row, header.length));
+    if (recordId) existingIds.add(recordId);
     appended += 1;
   });
+
+  if (rows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, header.length).setValues(rows);
+  }
 
   return { appended, duplicates };
 }
@@ -243,12 +251,18 @@ function ensureExactHeader(sheet, header) {
   }
 }
 
-function hasRecordId(sheet, recordId, columnIndex) {
+function normalizeRow(row, width) {
+  const normalized = row.slice(0, width);
+  while (normalized.length < width) normalized.push('');
+  return normalized;
+}
+
+function readRecordIds(sheet, columnIndex) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return false;
+  if (lastRow < 2) return new Set();
 
   const values = sheet.getRange(2, columnIndex, lastRow - 1, 1).getValues();
-  return values.some((row) => String(row[0] || '') === recordId);
+  return new Set(values.map((row) => String(row[0] || '')).filter(Boolean));
 }
 
 function jsonResponse(obj) {
