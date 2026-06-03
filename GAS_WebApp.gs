@@ -2,6 +2,7 @@ const TEST_SHEET_NAME = '送信テスト';
 const SERIES_RESULT_SHEET_NAME = '試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
+const TEAM_LIST_SHEET_NAME = 'チームリスト';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
@@ -22,9 +23,9 @@ function doGet(e) {
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
 
-    const sheetName = String(params.sheet || (action === 'teams' ? 'チーム一覧' : HISTORY_SHEET_NAME));
+    const sheetName = String(params.sheet || params.sheet_name || (action === 'teams' ? TEAM_LIST_SHEET_NAME : HISTORY_SHEET_NAME));
     const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheets()[0] : null);
+    const sheet = ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheetByName('チーム一覧') : null);
     if (!sheet || sheet.getLastRow() < 2) {
       return jsonResponse({ ok: true, spreadsheet_id: spreadsheetId, sheet_name: sheetName, csv_columns: [], csv_rows: [], teams: [] });
     }
@@ -39,10 +40,7 @@ function doGet(e) {
       .filter((row) => row.some((value) => String(value || '').trim() !== ''));
 
     if (action === 'teams') {
-      const hasTeamHeader = header.indexOf('チーム名') >= 0;
-      const nameIndex = hasTeamHeader ? header.indexOf('チーム名') : 0;
-      const teamRows = values.slice(hasTeamHeader ? 1 : 0);
-      const teams = teamRows.map((row) => String(row[nameIndex] || '').trim()).filter(Boolean);
+      const teams = readTeams(values);
       return jsonResponse({
         ok: true,
         spreadsheet_id: spreadsheetId,
@@ -63,6 +61,18 @@ function doGet(e) {
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err), stack: err.stack });
   }
+}
+
+function readTeams(values) {
+  if (!values || values.length < 2) return [];
+
+  const header = values[0].map((value) => String(value || '').trim());
+  const teamNameIndex = header.indexOf('チーム名');
+  const nameIndex = teamNameIndex >= 0 ? teamNameIndex : 1; // チームリスト: A列=チーム数, B列=チーム名, C列=ゼッケン番号
+
+  return Array.from(new Set(values.slice(1)
+    .map((row) => String(row[nameIndex] || '').trim())
+    .filter(Boolean)));
 }
 
 function doPost(e) {

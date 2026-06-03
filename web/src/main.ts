@@ -319,7 +319,10 @@ class TimerController {
     this.setupManualOptions();
     el<HTMLButtonElement>("manual-apply").addEventListener("click", () => this.applyManual());
     document.addEventListener("keydown", (event) => this.onKey(event));
-    document.addEventListener("fullscreenchange", () => this.setCompact(Boolean(document.fullscreenElement)));
+    document.addEventListener("fullscreenchange", () => {
+      const timerFullscreen = document.fullscreenElement === el("timer-shell");
+      if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
+    });
     this.reset();
     requestAnimationFrame((now) => this.frame(now));
   }
@@ -571,7 +574,7 @@ class TimerController {
     this.setCompact(true);
     if (!document.fullscreenElement) {
       try {
-        await document.documentElement.requestFullscreen?.();
+        await el("timer-shell").requestFullscreen?.();
       } catch {
         // Keep the timer in distraction-free view when native fullscreen is unavailable.
       }
@@ -1388,13 +1391,13 @@ class RecordsController {
     }
   }
 
-  private applyTeams(next: string[]): void {
+  private applyTeams(next: string[], persist = true, message?: string): void {
     teams = Array.from(new Set(next.map((team) => team.trim()).filter(Boolean)));
     if (teams.length < 2) {
       el("team-status").textContent = "チームは2件以上入力してください。";
       return;
     }
-    localStorage.setItem(this.teamStorageKey, JSON.stringify(teams));
+    if (persist) localStorage.setItem(this.teamStorageKey, JSON.stringify(teams));
     const currentA = el<HTMLSelectElement>("team-a").value;
     const currentB = el<HTMLSelectElement>("team-b").value;
     options(el<HTMLSelectElement>("team-a"), teams, teams.includes(currentA) ? currentA : teams[0]);
@@ -1402,7 +1405,7 @@ class RecordsController {
     options(el<HTMLSelectElement>("stats-team"), ["チームを選択", ...teams]);
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams]);
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
-    el("team-status").textContent = `${teams.length}チームをこの端末に保存しました。`;
+    el("team-status").textContent = message ?? (persist ? `${teams.length}チームをこの端末に保存しました。` : `${teams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
   }
 
   private saveTeams(): void {
@@ -1422,7 +1425,7 @@ class RecordsController {
     const header = rows[0]?.map((cell) => cell.trim()) ?? [];
     const nameIndex = header.indexOf("チーム名");
     const names = rows.slice(nameIndex >= 0 ? 1 : 0).map((row) => row[nameIndex >= 0 ? nameIndex : row.length - 1]);
-    this.applyTeams(names);
+    this.applyTeams(names, false);
     (event.target as HTMLInputElement).value = "";
   }
 
@@ -1452,16 +1455,38 @@ class RecordsController {
     }
     el("team-status").textContent = "スプレッドシートからチームリストを読み込んでいます...";
     try {
-      const url = `${settings.gasUrl}?action=teams&api_key=${encodeURIComponent(settings.apiKey)}&spreadsheet_id=${encodeURIComponent(spreadsheetId)}`;
-      const response = await fetch(url);
-      const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string };
-      if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
-      const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
-      this.applyTeams(nextTeams);
-      el("team-status").textContent = `${data.sheet_name ?? "スプレッドシート"} から${nextTeams.length}チームを読み込み、この端末の一覧に反映しました。`;
+      await this.importTeamsFromGas({ spreadsheetId });
     } catch {
       el("team-status").textContent = "チームリストを読み込めませんでした。GASのdoGet更新、URL、APIキー、共有設定を確認してください。";
     }
+  }
+
+  async importTeamsFromGasConnection(): Promise<boolean> {
+    try {
+      await this.importTeamsFromGas({});
+      return true;
+    } catch {
+      el("team-status").textContent = "GAS接続はできましたが、チームリストを自動読み込みできませんでした。GASのdoGet更新、SPREADSHEET_ID、チームリストシートを確認してください。";
+      return false;
+    }
+  }
+
+  private async importTeamsFromGas(options: { spreadsheetId?: string }): Promise<void> {
+    const settings = AdminController.settings();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      throw new Error("GAS settings are missing.");
+    }
+    const params = new URLSearchParams({
+      action: "teams",
+      api_key: settings.apiKey,
+      sheet: "チームリスト",
+    });
+    if (options.spreadsheetId) params.set("spreadsheet_id", options.spreadsheetId);
+    const response = await fetch(`${settings.gasUrl}?${params.toString()}`);
+    const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string };
+    if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
+    const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
+    this.applyTeams(nextTeams, false, `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
   }
 
   private exportHistory(): void {
@@ -1977,7 +2002,7 @@ class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
 
-  constructor(private readonly qrScanner: QrScanner) {
+  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<boolean>) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
@@ -2059,7 +2084,15 @@ class AdminController {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: "WRO RoboSports Assist", sent_at: timestamp(), payload: { message: "Web app connection test" } };
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
-      el("gas-status").textContent = "テスト送信を完了しました。スプレッドシート側も確認してください。";
+      el("gas-status").textContent = "テスト送信を完了しました。チームリストを確認しています...";
+      if (this.onConnected) {
+        const loaded = await this.onConnected();
+        el("gas-status").textContent = loaded
+          ? "テスト送信を完了しました。チームリストも読み込みました。保存する場合は試合記録画面の保存ボタンを押してください。"
+          : "テスト送信は完了しました。チームリストの自動読み込みはできませんでした。試合記録画面のメッセージを確認してください。";
+      } else {
+        el("gas-status").textContent = "テスト送信を完了しました。スプレッドシート側も確認してください。";
+      }
     } catch {
       el("gas-status").textContent = "テスト送信に失敗しました。URL と公開設定を確認してください。";
     }
@@ -2216,7 +2249,7 @@ class Application {
   }
 
   private activateSecret(): void {
-    this.admin ??= new AdminController(this.qrScanner);
+    this.admin ??= new AdminController(this.qrScanner, () => this.records.importTeamsFromGasConnection());
     this.secret = true;
     this.linksClicks = 0;
     document.documentElement.classList.add("secret");
