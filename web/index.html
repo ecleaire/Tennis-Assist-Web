@@ -17,6 +17,10 @@
           <h1 id="title">WRO RoboSports Assist</h1>
         </div>
         <div class="header-navigation">
+          <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="navigation">
+            <span aria-hidden="true">三</span>
+            <strong id="current-mode-label">ホーム</strong>
+          </button>
           <nav id="navigation" aria-label="機能メニュー">
             <button class="nav active" data-screen="dashboard">ホーム</button>
             <button class="nav" data-screen="timer">タイマー</button>
@@ -273,11 +277,11 @@
                 <strong>履歴の読み込み・出力</strong>
                 <p class="muted">CSVやスプレッドシートから確認用履歴を読み込めます。シート読込はGASへ再送しません。</p>
               </div>
-              <div class="import-actions">
-                <button id="history-export" class="button">CSVエクスポート</button>
-                <button id="history-import" class="button">CSVインポート</button>
-                <button id="history-sheet-import" class="button">URL/IDでシート読込</button>
-                <button id="history-sheet-scan" class="button">QRでシート読込</button>
+              <div class="import-actions history-import-actions">
+                <button id="history-export" class="button">CSV出力</button>
+                <button id="history-import" class="button">CSV読込</button>
+                <button id="history-sheet-import" class="button">URL読込</button>
+                <button id="history-sheet-scan" class="button">QR読込</button>
                 <button id="history-clear" class="button danger">履歴削除</button>
               </div>
             </div>

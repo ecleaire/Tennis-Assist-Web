@@ -114,6 +114,34 @@ const csvColumns = [
   "引き分け数", "総合勝者", "マッチ勝者", "結果", "終了カテゴリ", "終了理由", "対象チーム", "メモ",
 ] as const;
 
+const LINKS = {
+  japanFinalRule: "https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing",
+  worldRules: "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS",
+  officialQa: "https://wro-association.org/competition/questions-answers/",
+  googleRules: "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing",
+  deeplRules: "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing",
+  wroJapan: "https://www.wroj.org/action/2026",
+  wroInternational: "https://wro-association.org/",
+  wroHyogo: "https://wro-hyogo.jp/",
+  wroTokyo: "https://www.wro-tokyo-competition.net/",
+  wroMie: "https://miraido.net/",
+  wroNara: "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0",
+  youtube: "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y",
+  legacyTimer: "https://scratch.mit.edu/projects/1013694253",
+  legacyLitlink: "https://lit.link/syukugawalink",
+} as const;
+
+const screenLabels: Record<Screen, string> = {
+  dashboard: "ホーム",
+  timer: "タイマー",
+  balls: "ボール配置",
+  records: "試合記録",
+  rules: "ルール",
+  news: "ニュース",
+  links: "リンク",
+  development: "開発中",
+};
+
 const scoringCategory: Category = "【終了・その時点で採点】（通常の試合停止）";
 const prematchCategory: Category = "【違反・自動敗北 / 失格】試合前・競技全般";
 const inmatchCategory: Category = "【違反・自動敗北 / 失格】試合中の違反";
@@ -321,6 +349,13 @@ class TimerController {
     document.addEventListener("keydown", (event) => this.onKey(event));
     document.addEventListener("fullscreenchange", () => {
       const timerFullscreen = document.fullscreenElement === el("timer-shell");
+      if (!document.fullscreenElement) {
+        try {
+          screen.orientation?.unlock?.();
+        } catch {
+          // Orientation locking is optional and browser dependent.
+        }
+      }
       if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
     });
     this.reset();
@@ -567,7 +602,7 @@ class TimerController {
 
   private async toggleFullscreen(): Promise<void> {
     if (!document.fullscreenElement && !document.body.classList.contains("compact")) {
-      await this.enterFullscreen();
+      await this.enterFullscreen(true);
     } else {
       await this.leaveFullscreen();
     }
@@ -588,6 +623,7 @@ class TimerController {
         await (screen.orientation as LockableScreenOrientation | undefined)?.lock?.("landscape");
       } catch {
         // Android browsers that deny orientation lock still keep the focused timer view.
+        this.caption.textContent = "見やすくするには端末を横向きにしてください。";
       }
     }
   }
@@ -1762,9 +1798,10 @@ class ContentController {
 
   renderLinks(secret: boolean): void {
     const sections = [
-      { title: "WRO", links: [["WRO Japan", "https://www.wroj.org/action/2026"], ["WRO 兵庫", "https://wro-hyogo.jp/"], ["WRO 東京", "https://www.wro-tokyo-competition.net/"], ["WRO 奈良", "https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0"], ["WRO 三重", "https://miraido.net/"], ["WRO 国際", "https://wro-association.org/"]] },
-      { title: "ルール関連", links: [["Q&A", "https://wro-association.org/competition/questions-answers/"], ["世界大会ルール", "https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS"], ["英語PDF", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf"], ["Google翻訳", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing"], ["DeepL翻訳", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing"]] },
-      { title: "その他", links: [["YouTube関連動画", "https://youtube.com/playlist?list=PL5-Hc8xo0J3mKylDKfNnTaFIZ6hqDSZnh&si=ynhNr2ROkDVN0j4Y"], ...(secret ? [["旧テニスタイマー", "https://scratch.mit.edu/projects/1013694253"], ["旧 litlink", "https://lit.link/syukugawalink"]] : [])] },
+      { title: "WRO決勝 国際 ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
+      { title: "WRO公認予選会 ホームページ", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
+      { title: "ルール関連", links: [["Japan決勝大会公式ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
+      { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
     ];
     el("links-list").innerHTML = sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("");
   }
@@ -2134,6 +2171,7 @@ class Application {
   private recordTimerPending = false;
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
+  private mobileMenuOpen = false;
 
   constructor() {
     syncViewportMetrics();
@@ -2163,7 +2201,16 @@ class Application {
         const screen = button.dataset.screen as Screen;
         if (screen === "links") this.visitLinks();
         else this.show(screen);
+        this.closeMobileMenu();
       });
+    });
+    el<HTMLButtonElement>("mobile-menu-toggle").addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.setMobileMenu(!this.mobileMenuOpen);
+    });
+    document.addEventListener("click", (event) => {
+      const target = event.target as Node;
+      if (this.mobileMenuOpen && !el("app-header").contains(target)) this.closeMobileMenu();
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
     el<HTMLButtonElement>("dashboard-timer-fullscreen").addEventListener("click", () => {
@@ -2198,17 +2245,36 @@ class Application {
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
     el(`screen-${screen}`).classList.add("active");
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => button.classList.toggle("active", button.dataset.screen === screen));
+    el("current-mode-label").textContent = screenLabels[screen];
     this.content.open(screen, this.secret);
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
+  private setMobileMenu(open: boolean): void {
+    this.mobileMenuOpen = open;
+    el("app-header").classList.toggle("mobile-menu-open", open);
+    el<HTMLButtonElement>("mobile-menu-toggle").setAttribute("aria-expanded", String(open));
+  }
+
+  private closeMobileMenu(): void {
+    if (this.mobileMenuOpen) this.setMobileMenu(false);
+  }
+
   private async enterBallsFullscreen(): Promise<void> {
+    const shouldRotate = isPhonePortrait();
     this.show("balls");
     this.setBallsFullscreen(true);
     try {
       await el("screen-balls").requestFullscreen?.();
     } catch {
       // The in-page fullscreen layout still maximizes the court.
+    }
+    if (shouldRotate) {
+      try {
+        await (screen.orientation as LockableScreenOrientation | undefined)?.lock?.("landscape");
+      } catch {
+        el("balls-status").textContent = "見やすくするには端末を横向きにしてください。";
+      }
     }
   }
 
@@ -2221,6 +2287,11 @@ class Application {
   }
 
   private async leaveBallsFullscreen(): Promise<void> {
+    try {
+      screen.orientation?.unlock?.();
+    } catch {
+      // Orientation locking is optional and browser dependent.
+    }
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen?.();

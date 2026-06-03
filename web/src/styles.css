@@ -133,6 +133,10 @@ a {
   gap: 9px;
 }
 
+.mobile-menu-toggle {
+  display: none;
+}
+
 .secret-navigation {
   display: flex;
   gap: 8px;
@@ -737,6 +741,12 @@ fieldset strong {
   flex: 1 1 150px;
 }
 
+.history-import-actions .button {
+  flex: 1 1 112px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
 .team-import-actions {
   align-items: end;
   display: grid;
@@ -1249,24 +1259,48 @@ body.compact #timer-ten {
   }
 
   #navigation {
-    display: flex;
-    flex-wrap: nowrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3);
+    display: none;
     gap: 7px;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: thin;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: min(360px, calc(100vw - 24px));
+    z-index: 20;
   }
 
   #navigation .nav {
-    flex: 0 0 auto;
-    min-width: 86px;
+    min-width: 0;
+  }
+
+  .mobile-menu-toggle {
+    align-items: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    color: var(--text);
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 8px 12px;
+    width: 100%;
   }
 
   .header-navigation {
     grid-column: 2;
     grid-row: 1;
+    position: relative;
     width: 100%;
+  }
+
+  .app-header.mobile-menu-open #navigation {
+    display: grid;
   }
 
   .secret-navigation {
@@ -1379,6 +1413,16 @@ body.compact #timer-ten {
   .team-import-actions {
     gap: 8px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .history-import-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .history-import-actions .button {
+    min-width: 0;
+    padding-inline: 6px;
   }
 
   .team-import-actions .button {
@@ -1608,24 +1652,48 @@ html.phone-portrait #app {
 }
 
 html.phone-portrait #navigation {
-  display: flex;
-  flex-wrap: nowrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3);
+  display: none;
   gap: 7px;
-  justify-content: flex-start;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(360px, calc(100vw - 24px));
+  z-index: 20;
 }
 
 html.phone-portrait #navigation .nav {
-  flex: 0 0 auto;
-  min-width: 86px;
+  min-width: 0;
 }
 
 html.phone-portrait .header-navigation {
   grid-column: 2;
   grid-row: 1;
+  position: relative;
   width: 100%;
+}
+
+html.phone-portrait .mobile-menu-toggle {
+  align-items: center;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  color: var(--text);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 7px 10px;
+  width: 100%;
+}
+
+html.phone-portrait .app-header.mobile-menu-open #navigation {
+  display: grid;
 }
 
 html.phone-portrait .brand h1 {
@@ -1691,6 +1759,16 @@ html.phone-portrait .dashboard-sub-slot {
 html.phone-portrait .team-import-actions {
   gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html.phone-portrait .history-import-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .history-import-actions .button {
+  min-width: 0;
+  padding-inline: 6px;
 }
 
 html.phone-portrait .team-import-actions .button {
