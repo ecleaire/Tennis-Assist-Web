@@ -457,7 +457,7 @@ class TimerController {
     this.dashboardSubTime.classList.add("hidden");
     this.dashboardSubCaption.textContent = "";
     this.dashboardSubCaption.classList.remove("count");
-    this.caption.textContent = "Space / Enter: 開始　F: 全画面";
+    this.caption.textContent = "";
     this.caption.classList.remove("count");
     this.syncControls();
     this.render();
@@ -485,7 +485,7 @@ class TimerController {
     this.touchTimerState();
     this.running = false;
     this.mode.textContent = "一時停止中";
-    this.caption.textContent = "Space / Enter: 再開　F: 全画面";
+    this.caption.textContent = "";
     this.notice.textContent = "タイマーを一時停止しています";
     this.syncControls();
   }
@@ -539,7 +539,7 @@ class TimerController {
         this.dashboardSubCaption.textContent = "";
         this.dashboardSubCaption.classList.remove("count");
         this.caption.classList.remove("count");
-        this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
+        this.caption.textContent = "";
       }
     }
     this.render();
@@ -585,7 +585,7 @@ class TimerController {
       this.dashboardSubCaption.textContent = "";
       this.dashboardSubCaption.classList.remove("count");
       this.caption.classList.remove("count");
-      this.caption.textContent = this.running ? "" : "Space / Enter: 開始　F: 全画面";
+      this.caption.textContent = "";
       return;
     }
     this.subRemaining = seconds;
