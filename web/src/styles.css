@@ -1294,7 +1294,7 @@ body.compact .timer-face {
 }
 
 body.compact .sub-slot {
-  bottom: clamp(10px, 2.4vh, 28px);
+  bottom: clamp(-46px, -4vh, -18px);
 }
 
 body.balls-compact #screen-balls .section-card {
