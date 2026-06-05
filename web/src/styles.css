@@ -411,9 +411,9 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: clamp(158px, 23vh, 250px);
+  padding-bottom: clamp(192px, 27vh, 292px);
   position: relative;
-  transform: translateY(clamp(2px, 1.2vh, 16px));
+  transform: translateY(clamp(-12px, -1vh, -4px));
   width: 100%;
 }
 
@@ -421,12 +421,13 @@ output.digital.dashboard-digital {
   align-content: start;
   bottom: 0;
   display: grid;
-  gap: clamp(12px, 1.8vh, 24px);
+  gap: clamp(14px, 2.2vh, 30px);
   justify-items: center;
   left: 0;
-  min-height: clamp(118px, 18vh, 194px);
+  min-height: clamp(142px, 21vh, 226px);
   position: absolute;
   right: 0;
+  transform: translateY(clamp(20px, 3vh, 36px));
 }
 
 .digital {
@@ -450,7 +451,7 @@ output.digital.dashboard-digital {
 
 .digital.sub {
   color: var(--danger);
-  font-size: min(clamp(4.8rem, 13vw, 10.5rem), calc(var(--viewport-height) * 0.2));
+  font-size: min(clamp(4.2rem, 11vw, 8.8rem), calc(var(--viewport-height) * 0.17));
   line-height: 0.95;
   margin-top: 0;
 }
@@ -1392,6 +1393,7 @@ body.compact .timer-face {
 
 body.compact .sub-slot {
   bottom: clamp(-46px, -4vh, -18px);
+  transform: none;
 }
 
 body.balls-compact #screen-balls .section-card {
