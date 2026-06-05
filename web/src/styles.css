@@ -411,9 +411,9 @@ output.digital.dashboard-digital {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: clamp(132px, 20vh, 218px);
+  padding-bottom: clamp(158px, 23vh, 250px);
   position: relative;
-  transform: translateY(clamp(8px, 2vh, 24px));
+  transform: translateY(clamp(2px, 1.2vh, 16px));
   width: 100%;
 }
 
@@ -421,10 +421,10 @@ output.digital.dashboard-digital {
   align-content: start;
   bottom: 0;
   display: grid;
-  gap: clamp(6px, 1.1vh, 12px);
+  gap: clamp(12px, 1.8vh, 24px);
   justify-items: center;
   left: 0;
-  min-height: clamp(102px, 16vh, 172px);
+  min-height: clamp(118px, 18vh, 194px);
   position: absolute;
   right: 0;
 }
@@ -492,7 +492,7 @@ output.digital.dashboard-digital {
 .referee-center {
   align-content: center;
   display: grid;
-  gap: clamp(14px, 2.4vw, 34px);
+  gap: clamp(22px, 3.4vw, 52px);
   justify-items: center;
   min-height: clamp(240px, 48vh, 560px);
 }
@@ -1467,7 +1467,7 @@ body.compact #timer-five {
   }
 
   .referee-center {
-    gap: clamp(8px, 2.2vh, 18px);
+    gap: clamp(12px, 3vh, 24px);
     min-height: clamp(46px, 18vh, 78px);
   }
 
@@ -2231,7 +2231,7 @@ html.phone-portrait .referee-head {
 }
 
 html.phone-portrait .referee-center {
-  gap: clamp(16px, 4vh, 34px);
+  gap: clamp(22px, 5vh, 48px);
   min-height: min(42vh, 360px);
 }
 
@@ -2259,7 +2259,7 @@ html.phone-portrait body.referee-compact .referee-shell {
 }
 
 html.phone-portrait body.referee-compact .referee-center {
-  gap: clamp(18px, 4vh, 38px);
+  gap: clamp(24px, 5vh, 52px);
   min-height: min(45vh, 390px);
 }
 
