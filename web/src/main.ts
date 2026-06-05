@@ -1,6 +1,6 @@
 import "./styles.css";
 
-type Screen = "dashboard" | "timer" | "balls" | "records" | "rules" | "news" | "links" | "development";
+type Screen = "dashboard" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 
@@ -134,6 +134,7 @@ const LINKS = {
 const screenLabels: Record<Screen, string> = {
   dashboard: "ホーム",
   timer: "タイマー",
+  referee: "審判タイマー",
   balls: "ボール配置",
   records: "試合記録",
   rules: "ルール",
@@ -663,6 +664,130 @@ class TimerController {
         this.reset();
       }
     }, 180000);
+  }
+}
+
+class RefereeTimerController {
+  private readonly shell = el<HTMLElement>("referee-shell");
+  private readonly label = el<HTMLElement>("referee-label");
+  private readonly time = el<HTMLOutputElement>("referee-time");
+  private readonly progress = el<HTMLProgressElement>("referee-progress");
+  private readonly toggleButton = el<HTMLButtonElement>("referee-toggle");
+  private readonly fullscreenButton = el<HTMLButtonElement>("referee-fullscreen");
+  private total = 10;
+  private remaining = 10;
+  private running = false;
+  private lastFrame = performance.now();
+  private activeLabel = "10カウント / 5カウントを選択";
+
+  constructor() {
+    el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
+    el<HTMLButtonElement>("referee-five").addEventListener("click", () => this.start(5, "オーバーボール"));
+    this.toggleButton.addEventListener("click", () => this.toggle());
+    el<HTMLButtonElement>("referee-reset").addEventListener("click", () => this.reset());
+    this.fullscreenButton.addEventListener("click", () => void this.toggleFullscreen());
+    document.addEventListener("fullscreenchange", () => {
+      const active = document.fullscreenElement === this.shell;
+      if (!document.fullscreenElement) {
+        try {
+          screen.orientation?.unlock?.();
+        } catch {
+          // Orientation locking is optional and browser dependent.
+        }
+      }
+      this.setCompact(active);
+    });
+    this.render();
+    requestAnimationFrame((now) => this.frame(now));
+  }
+
+  async leaveFullscreen(): Promise<void> {
+    try {
+      screen.orientation?.unlock?.();
+    } catch {
+      // Orientation locking is optional and browser dependent.
+    }
+    if (document.fullscreenElement === this.shell) {
+      try {
+        await document.exitFullscreen?.();
+      } catch {
+        // The in-page layout can still be restored.
+      }
+    }
+    this.setCompact(false);
+  }
+
+  private start(seconds: 10 | 5, label: string): void {
+    this.total = seconds;
+    this.remaining = seconds;
+    this.activeLabel = label;
+    this.running = true;
+    this.lastFrame = performance.now();
+    this.render();
+  }
+
+  private toggle(): void {
+    if (this.remaining <= 0) return;
+    this.running = !this.running;
+    this.lastFrame = performance.now();
+    this.render();
+  }
+
+  private reset(): void {
+    this.total = 10;
+    this.remaining = 10;
+    this.running = false;
+    this.activeLabel = "10カウント / 5カウントを選択";
+    this.render();
+  }
+
+  private frame(now: number): void {
+    const delta = Math.max(0, now - this.lastFrame) / 1000;
+    this.lastFrame = now;
+    if (this.running) {
+      this.remaining = Math.max(0, this.remaining - delta);
+      if (this.remaining <= 0) this.running = false;
+      this.render();
+    }
+    requestAnimationFrame((next) => this.frame(next));
+  }
+
+  private render(): void {
+    const whole = Math.ceil(this.remaining);
+    this.label.textContent = this.remaining <= 0 && this.activeLabel !== "10カウント / 5カウントを選択" ? `${this.activeLabel} 終了` : this.activeLabel;
+    this.time.textContent = String(whole).padStart(2, "0");
+    this.progress.max = this.total;
+    this.progress.value = this.remaining;
+    this.progress.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
+    this.time.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
+    const waiting = this.activeLabel === "10カウント / 5カウントを選択";
+    this.toggleButton.textContent = waiting || this.running ? "一時停止" : "再開";
+    this.toggleButton.disabled = this.remaining <= 0 || waiting;
+  }
+
+  private async toggleFullscreen(): Promise<void> {
+    if (document.fullscreenElement === this.shell || document.body.classList.contains("referee-compact")) {
+      await this.leaveFullscreen();
+      return;
+    }
+    this.setCompact(true);
+    try {
+      await this.shell.requestFullscreen?.();
+    } catch {
+      // Keep the focused referee count view when native fullscreen is unavailable.
+    }
+    if (isPhonePortrait()) {
+      try {
+        await (screen.orientation as LockableScreenOrientation | undefined)?.lock?.("landscape");
+      } catch {
+        this.label.textContent = "見やすくするには端末を横向きにしてください";
+      }
+    }
+  }
+
+  private setCompact(active: boolean): void {
+    document.body.classList.toggle("referee-compact", active);
+    this.fullscreenButton.textContent = active ? "全画面解除" : "全画面表示";
   }
 }
 
@@ -2194,6 +2319,7 @@ class Application {
   private linksClicks = 0;
   private secret = false;
   private readonly timer: TimerController;
+  private readonly refereeTimer: RefereeTimerController;
   private readonly balls: BallController;
   private readonly records: RecordsController;
   private readonly content = new ContentController();
@@ -2219,6 +2345,7 @@ class Application {
       },
       () => this.show("timer"),
     );
+    this.refereeTimer = new RefereeTimerController();
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
       this.recordTimerPending = true;
@@ -2271,6 +2398,7 @@ class Application {
 
   private show(screen: Screen): void {
     this.timer.noteActivity();
+    if (screen !== "referee") void this.refereeTimer.leaveFullscreen();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
     el(`screen-${screen}`).classList.add("active");

@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-DCUn5E2T.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C3377tmr.css">
+    <script type="module" crossorigin src="./assets/index-DBhOt_Vv.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-pmnvATd2.css">
   </head>
   <body>
     <main id="app">
@@ -27,6 +27,7 @@
           <nav id="navigation" aria-label="機能メニュー">
             <button class="nav active" data-screen="dashboard">ホーム</button>
             <button class="nav" data-screen="timer">タイマー</button>
+            <button class="nav" data-screen="referee">審判タイマー</button>
             <button class="nav" data-screen="balls">ボール配置</button>
             <button class="nav" data-screen="records">試合記録</button>
             <button class="nav" data-screen="rules">ルール</button>
@@ -120,6 +121,31 @@
               </select>
               <button id="timer-ten" class="button timer-count-control">10カウント</button>
               <button id="timer-five" class="button timer-count-control">5カウント</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="screen-referee" class="screen">
+        <article id="referee-shell" class="panel referee-shell">
+          <div class="section-head referee-head">
+            <div>
+              <p class="eyebrow">REFEREE COUNT</p>
+              <h2>審判用タイマー</h2>
+            </div>
+            <button id="referee-fullscreen" class="button">全画面表示</button>
+          </div>
+          <div class="referee-center" aria-live="polite">
+            <p id="referee-label" class="referee-label">10カウント / 5カウントを選択</p>
+            <output id="referee-time" class="digital referee-time">10</output>
+          </div>
+          <div class="referee-bottom">
+            <progress id="referee-progress" max="10" value="10"></progress>
+            <div class="controls referee-controls">
+              <button id="referee-ten" class="button danger">10カウント</button>
+              <button id="referee-five" class="button danger">5カウント</button>
+              <button id="referee-toggle" class="button">一時停止</button>
+              <button id="referee-reset" class="button">リセット</button>
             </div>
           </div>
         </article>

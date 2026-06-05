@@ -478,6 +478,102 @@ output.digital.dashboard-digital {
   z-index: 5;
 }
 
+.referee-shell {
+  display: grid;
+  gap: clamp(16px, 3vw, 28px);
+  min-height: calc(var(--viewport-height) - 142px);
+  padding: clamp(16px, 2.6vw, 28px);
+}
+
+.referee-head {
+  align-self: start;
+}
+
+.referee-center {
+  align-content: center;
+  display: grid;
+  justify-items: center;
+  min-height: clamp(240px, 48vh, 560px);
+}
+
+.referee-label {
+  color: var(--danger);
+  font-size: clamp(1.7rem, 4.3vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+  text-align: center;
+}
+
+.referee-time {
+  color: #f7fbff;
+  font-size: min(clamp(8rem, 30vw, 28rem), calc(var(--viewport-height) * 0.48));
+  line-height: 1;
+}
+
+.referee-time.warning {
+  color: var(--danger);
+}
+
+.referee-bottom {
+  display: grid;
+  gap: 12px;
+}
+
+.referee-controls .button {
+  flex: 1 1 150px;
+  min-height: 50px;
+}
+
+.referee-controls .button.danger {
+  background: #b83242;
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 800;
+}
+
+body.referee-compact {
+  padding: 0;
+}
+
+body.referee-compact #app {
+  width: 100%;
+}
+
+body.referee-compact .app-header,
+body.referee-compact .flow-status {
+  display: none;
+}
+
+body.referee-compact .referee-shell {
+  border: 0;
+  border-radius: 0;
+  gap: clamp(10px, 2vh, 20px);
+  height: var(--viewport-height);
+  min-height: var(--viewport-height);
+  padding: clamp(12px, 2vw, 24px);
+}
+
+body.referee-compact .referee-center {
+  min-height: 0;
+}
+
+body.referee-compact .referee-time {
+  font-size: min(clamp(9rem, 34vw, 32rem), calc(var(--viewport-height) * 0.52));
+}
+
+body.referee-compact .referee-controls {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+body.referee-compact .referee-controls .button {
+  min-height: 48px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
 progress {
   appearance: none;
   height: 16px;
@@ -1348,6 +1444,49 @@ body.compact #timer-five {
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
+  .referee-shell {
+    gap: 7px;
+    min-height: unset;
+    padding: clamp(8px, 1.4vw, 12px);
+  }
+
+  .referee-head {
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .referee-head > div {
+    display: none;
+  }
+
+  .referee-head .button {
+    min-height: 34px;
+    padding: 5px 10px;
+  }
+
+  .referee-center {
+    min-height: clamp(46px, 18vh, 78px);
+  }
+
+  .referee-label {
+    font-size: clamp(0.98rem, 2.7vw, 1.45rem);
+  }
+
+  .referee-time {
+    font-size: min(clamp(3.8rem, 13vw, 7.5rem), calc(var(--viewport-height) * 0.22));
+  }
+
+  .referee-bottom {
+    gap: 6px;
+  }
+
+  .referee-controls .button {
+    font-size: clamp(0.82rem, 1.9vw, 1rem);
+    min-height: 31px;
+    padding: 4px 8px;
+  }
+
   body.compact .timer-shell {
     gap: 6px;
     padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 22px);
@@ -1418,6 +1557,28 @@ body.compact #timer-five {
     flex-basis: clamp(142px, 17vw, 204px);
     font-size: clamp(0.78rem, 1.85vw, 0.98rem);
     white-space: nowrap;
+  }
+
+  body.referee-compact .referee-shell {
+    gap: 8px;
+    padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 22px);
+  }
+
+  body.referee-compact .referee-label {
+    font-size: clamp(1.35rem, 4vw, 2.6rem);
+  }
+
+  body.referee-compact .referee-time {
+    font-size: min(clamp(7rem, 24vw, 18rem), calc(var(--viewport-height) * 0.48));
+  }
+
+  body.referee-compact .referee-bottom {
+    gap: 8px;
+  }
+
+  body.referee-compact .referee-controls .button {
+    font-size: clamp(0.82rem, 2vw, 1rem);
+    min-height: 42px;
   }
 }
 
@@ -2054,6 +2215,52 @@ html.phone-portrait .dashboard-timer-controls .button {
 
 html.phone-portrait .dashboard-sub-slot {
   min-height: 62px;
+}
+
+html.phone-portrait .referee-shell {
+  gap: 14px;
+  min-height: calc(var(--viewport-height) - 120px);
+  padding: 14px;
+}
+
+html.phone-portrait .referee-head {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+html.phone-portrait .referee-center {
+  min-height: min(42vh, 360px);
+}
+
+html.phone-portrait .referee-label {
+  font-size: clamp(1.55rem, 7vw, 2.8rem);
+}
+
+html.phone-portrait .referee-time {
+  font-size: min(clamp(7rem, 38vw, 13rem), calc(var(--viewport-height) * 0.34));
+}
+
+html.phone-portrait .referee-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .referee-controls .button {
+  min-height: 48px;
+  padding: 8px 9px;
+  white-space: nowrap;
+}
+
+html.phone-portrait body.referee-compact .referee-shell {
+  gap: 10px;
+}
+
+html.phone-portrait body.referee-compact .referee-center {
+  min-height: min(45vh, 390px);
+}
+
+html.phone-portrait body.referee-compact .referee-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 html.phone-portrait .team-import-actions {
