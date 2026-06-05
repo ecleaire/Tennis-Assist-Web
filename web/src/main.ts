@@ -369,6 +369,8 @@ class TimerController {
       }
       if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
     });
+    this.step.value = String(this.randomStep);
+    this.dashboardStep.value = String(this.randomStep);
     this.reset();
     requestAnimationFrame((now) => this.frame(now));
   }
