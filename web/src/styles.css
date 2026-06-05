@@ -492,6 +492,7 @@ output.digital.dashboard-digital {
 .referee-center {
   align-content: center;
   display: grid;
+  gap: clamp(14px, 2.4vw, 34px);
   justify-items: center;
   min-height: clamp(240px, 48vh, 560px);
 }
@@ -506,8 +507,8 @@ output.digital.dashboard-digital {
 }
 
 .referee-time {
-  color: #f7fbff;
-  font-size: min(clamp(8rem, 30vw, 28rem), calc(var(--viewport-height) * 0.48));
+  color: var(--danger);
+  font-size: min(clamp(7rem, 26vw, 24rem), calc(var(--viewport-height) * 0.42));
   line-height: 1;
 }
 
@@ -559,13 +560,13 @@ body.referee-compact .referee-center {
 }
 
 body.referee-compact .referee-time {
-  font-size: min(clamp(9rem, 34vw, 32rem), calc(var(--viewport-height) * 0.52));
+  font-size: min(clamp(8rem, 30vw, 28rem), calc(var(--viewport-height) * 0.46));
 }
 
 body.referee-compact .referee-controls {
   align-items: stretch;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 body.referee-compact .referee-controls .button {
@@ -1466,6 +1467,7 @@ body.compact #timer-five {
   }
 
   .referee-center {
+    gap: clamp(8px, 2.2vh, 18px);
     min-height: clamp(46px, 18vh, 78px);
   }
 
@@ -1474,7 +1476,7 @@ body.compact #timer-five {
   }
 
   .referee-time {
-    font-size: min(clamp(3.8rem, 13vw, 7.5rem), calc(var(--viewport-height) * 0.22));
+    font-size: min(clamp(3.3rem, 11vw, 6.5rem), calc(var(--viewport-height) * 0.19));
   }
 
   .referee-bottom {
@@ -1569,7 +1571,7 @@ body.compact #timer-five {
   }
 
   body.referee-compact .referee-time {
-    font-size: min(clamp(7rem, 24vw, 18rem), calc(var(--viewport-height) * 0.48));
+    font-size: min(clamp(6rem, 21vw, 15rem), calc(var(--viewport-height) * 0.42));
   }
 
   body.referee-compact .referee-bottom {
@@ -2229,6 +2231,7 @@ html.phone-portrait .referee-head {
 }
 
 html.phone-portrait .referee-center {
+  gap: clamp(16px, 4vh, 34px);
   min-height: min(42vh, 360px);
 }
 
@@ -2237,7 +2240,7 @@ html.phone-portrait .referee-label {
 }
 
 html.phone-portrait .referee-time {
-  font-size: min(clamp(7rem, 38vw, 13rem), calc(var(--viewport-height) * 0.34));
+  font-size: min(clamp(6.2rem, 33vw, 11.5rem), calc(var(--viewport-height) * 0.3));
 }
 
 html.phone-portrait .referee-controls {
@@ -2256,6 +2259,7 @@ html.phone-portrait body.referee-compact .referee-shell {
 }
 
 html.phone-portrait body.referee-compact .referee-center {
+  gap: clamp(18px, 4vh, 38px);
   min-height: min(45vh, 390px);
 }
 

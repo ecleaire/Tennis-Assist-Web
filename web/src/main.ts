@@ -672,7 +672,6 @@ class RefereeTimerController {
   private readonly label = el<HTMLElement>("referee-label");
   private readonly time = el<HTMLOutputElement>("referee-time");
   private readonly progress = el<HTMLProgressElement>("referee-progress");
-  private readonly toggleButton = el<HTMLButtonElement>("referee-toggle");
   private readonly fullscreenButton = el<HTMLButtonElement>("referee-fullscreen");
   private total = 10;
   private remaining = 10;
@@ -683,18 +682,10 @@ class RefereeTimerController {
   constructor() {
     el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
     el<HTMLButtonElement>("referee-five").addEventListener("click", () => this.start(5, "オーバーボール"));
-    this.toggleButton.addEventListener("click", () => this.toggle());
     el<HTMLButtonElement>("referee-reset").addEventListener("click", () => this.reset());
     this.fullscreenButton.addEventListener("click", () => void this.toggleFullscreen());
     document.addEventListener("fullscreenchange", () => {
       const active = document.fullscreenElement === this.shell;
-      if (!document.fullscreenElement) {
-        try {
-          screen.orientation?.unlock?.();
-        } catch {
-          // Orientation locking is optional and browser dependent.
-        }
-      }
       this.setCompact(active);
     });
     this.render();
@@ -702,11 +693,6 @@ class RefereeTimerController {
   }
 
   async leaveFullscreen(): Promise<void> {
-    try {
-      screen.orientation?.unlock?.();
-    } catch {
-      // Orientation locking is optional and browser dependent.
-    }
     if (document.fullscreenElement === this.shell) {
       try {
         await document.exitFullscreen?.();
@@ -722,13 +708,6 @@ class RefereeTimerController {
     this.remaining = seconds;
     this.activeLabel = label;
     this.running = true;
-    this.lastFrame = performance.now();
-    this.render();
-  }
-
-  private toggle(): void {
-    if (this.remaining <= 0) return;
-    this.running = !this.running;
     this.lastFrame = performance.now();
     this.render();
   }
@@ -760,9 +739,6 @@ class RefereeTimerController {
     this.progress.value = this.remaining;
     this.progress.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
     this.time.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
-    const waiting = this.activeLabel === "10カウント / 5カウントを選択";
-    this.toggleButton.textContent = waiting || this.running ? "一時停止" : "再開";
-    this.toggleButton.disabled = this.remaining <= 0 || waiting;
   }
 
   private async toggleFullscreen(): Promise<void> {
@@ -775,13 +751,6 @@ class RefereeTimerController {
       await this.shell.requestFullscreen?.();
     } catch {
       // Keep the focused referee count view when native fullscreen is unavailable.
-    }
-    if (isPhonePortrait()) {
-      try {
-        await (screen.orientation as LockableScreenOrientation | undefined)?.lock?.("landscape");
-      } catch {
-        this.label.textContent = "見やすくするには端末を横向きにしてください";
-      }
     }
   }
 
