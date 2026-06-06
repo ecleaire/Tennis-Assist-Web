@@ -1446,6 +1446,47 @@ body.compact #timer-five {
   white-space: nowrap;
 }
 
+@media (min-width: 980px) and (min-height: 560px) and (orientation: landscape) {
+  body.compact .controls {
+    display: grid;
+    grid-template-columns: minmax(112px, 0.62fr) minmax(126px, 0.7fr) minmax(182px, 1fr) minmax(194px, 1.06fr) minmax(124px, 0.68fr) minmax(124px, 0.68fr);
+  }
+
+  body.compact .controls .button,
+  body.compact .controls select {
+    font-size: clamp(0.82rem, 1.45vw, 1rem);
+    padding-left: 8px;
+    padding-right: 8px;
+    width: 100%;
+  }
+
+  body.compact #timer-start {
+    grid-column: 1;
+  }
+
+  body.compact #timer-fullscreen {
+    grid-column: 2;
+  }
+
+  body.compact #timer-reset {
+    grid-column: 3;
+  }
+
+  body.compact #timer-step {
+    flex-basis: auto;
+    grid-column: 4;
+  }
+
+  body.compact #timer-ten {
+    grid-column: 5;
+    margin-left: 0;
+  }
+
+  body.compact #timer-five {
+    grid-column: 6;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 560px) {
   .referee-shell {
     gap: 7px;
@@ -1542,7 +1583,7 @@ body.compact #timer-five {
   body.compact .controls .button,
   body.compact .controls select {
     flex-basis: clamp(92px, 11vw, 154px);
-    font-size: clamp(0.8rem, 2.1vw, 1rem);
+    font-size: clamp(0.76rem, 1.95vw, 0.96rem);
     min-height: 40px;
     padding: 7px 10px;
   }
@@ -1554,6 +1595,10 @@ body.compact #timer-five {
 
   body.compact #timer-step {
     flex-basis: clamp(132px, 17vw, 190px);
+  }
+
+  body.compact #timer-reset {
+    flex-basis: clamp(124px, 16vw, 172px);
   }
 
   body.compact #timer-ten,
