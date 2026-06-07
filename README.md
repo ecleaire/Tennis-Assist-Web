@@ -13,7 +13,7 @@ Godot Web 版から HTML / CSS / TypeScript ベースへ移植し、スマート
 
 https://ecleaire.github.io/Tennis-Assist-Web/
 
-GitHub Pages で公開しています。`docs/` ディレクトリのビルド成果物が公開対象です。
+GitHub Pages で公開しています。
 
 ## 主な機能
 
