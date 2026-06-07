@@ -1674,8 +1674,8 @@ body.compact #timer-five {
   .app-header {
     align-items: start;
     display: grid;
-    grid-template-columns: minmax(116px, 0.64fr) minmax(214px, 1fr);
-    gap: 12px;
+    grid-template-columns: minmax(0, 0.74fr) minmax(0, 1fr);
+    gap: 10px;
   }
 
   #navigation {
@@ -1719,8 +1719,13 @@ body.compact #timer-five {
   .header-navigation {
     grid-column: 2;
     grid-row: 1;
+    min-width: 0;
     position: relative;
     width: 100%;
+  }
+
+  .brand {
+    min-width: 0;
   }
 
   .app-header.mobile-menu-open #navigation {
@@ -2057,6 +2062,30 @@ body.compact #timer-five {
   #navigation {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    position: static;
+    right: auto;
+    top: auto;
+    width: 100%;
+    z-index: auto;
+  }
+
+  .header-navigation {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    position: static;
+  }
+
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  .app-header.mobile-menu-open::before {
+    content: none;
   }
 
   .dashboard {
@@ -2122,8 +2151,8 @@ body.compact #timer-five {
 html.phone-portrait .app-header {
   align-items: start;
   display: grid;
-  grid-template-columns: minmax(116px, 0.64fr) minmax(214px, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 0.74fr) minmax(0, 1fr);
+  gap: 10px;
   padding: 11px;
 }
 
@@ -2154,8 +2183,13 @@ html.phone-portrait #navigation .nav {
 html.phone-portrait .header-navigation {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
   position: relative;
   width: 100%;
+}
+
+html.phone-portrait .brand {
+  min-width: 0;
 }
 
 html.phone-portrait .mobile-menu-toggle {
@@ -2191,6 +2225,7 @@ html.phone-portrait .mobile-menu-toggle strong {
 
 html.phone-portrait .brand h1 {
   font-size: clamp(1.05rem, 3.6vw, 1.25rem);
+  overflow-wrap: anywhere;
 }
 
 html.phone-portrait .nav,
