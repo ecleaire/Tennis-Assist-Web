@@ -85,7 +85,10 @@ interface AdminSettings {
   gasUrl: string;
   apiKey: string;
   sendEnabled: boolean;
+  accentMode: "standard" | "admin";
 }
+
+type AdminMode = "standard" | "hyogo";
 
 type QrDetector = {
   detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
@@ -96,7 +99,10 @@ type QrDetectorConstructor = new (options: { formats: string[] }) => QrDetector;
 type GasResponse = {
   ok?: boolean;
   error?: string;
+  message?: string;
 };
+
+type BallLayout = ReadonlyArray<readonly [string, number, number]>;
 
 type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
@@ -177,6 +183,15 @@ function rangeOptions(select: HTMLSelectElement, max: number, selected: number):
 
 function escapeText(text: string): string {
   return text.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] ?? character));
+}
+
+function linkifyText(text: string): string {
+  const escaped = escapeText(text);
+  return escaped.replace(/https?:\/\/[^\s<]+/g, (url) => {
+    const cleanUrl = url.replace(/[。、，．)）\]]+$/, "");
+    const suffix = url.slice(cleanUrl.length);
+    return `<a class="text-link" href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${suffix}`;
+  });
 }
 
 function timestamp(): string {
@@ -299,7 +314,10 @@ async function ensureGasSuccess(response: Response): Promise<void> {
     result = {};
   }
   if (!response.ok || result.ok === false) {
-    throw new Error(result.error || `GAS request failed: ${response.status}`);
+    if (result.error === "lock_busy") {
+      throw new Error(result.message || "同時送信が集中しています。少し待ってから履歴で再送してください。");
+    }
+    throw new Error(result.message || result.error || `GAS request failed: ${response.status}`);
   }
 }
 
@@ -333,6 +351,7 @@ class TimerController {
   private manualSeconds = 120;
   private initialReset = true;
   private secret = false;
+  private hyogo = false;
   private stateVersion = 0;
   private autoResetTimer = 0;
 
@@ -379,6 +398,16 @@ class TimerController {
   setSecret(active: boolean): void {
     this.secret = active;
     this.setupManualOptions();
+  }
+
+  setHyogoMode(active: boolean): void {
+    this.hyogo = active;
+    if (active) {
+      this.randomStep = 5;
+      this.step.value = "5";
+      this.dashboardStep.value = "5";
+    }
+    if (!this.running && !this.started) this.reset();
   }
 
   prepare(): void {
@@ -438,6 +467,10 @@ class TimerController {
   }
 
   private generatedDuration(): number {
+    if (this.hyogo) {
+      const candidates = [90, 95, 100, 105, 110, 115, 120];
+      return candidates[Math.floor(Math.random() * candidates.length)] ?? 120;
+    }
     if (this.randomStep === "manual") return this.manualSeconds;
     const count = Math.floor((120 - 60) / this.randomStep) + 1;
     return 60 + Math.floor(Math.random() * count) * this.randomStep;
@@ -769,6 +802,8 @@ class BallController {
   private readonly court = el<HTMLElement>("court");
   private readonly dashboardCourt = el<HTMLElement>("dashboard-court");
   private workflowMatch = 0;
+  private hyogo = false;
+  private seriesOrangeSide: number[] | null = null;
   private readonly leftRows = [19.35, 40.15, 68.54, 89.51];
   private readonly rightRows = [10.16, 31.45, 59.68, 80.65];
   private readonly leftSlots = [22.03, 28.35];
@@ -788,8 +823,14 @@ class BallController {
     this.draw(this.defaults);
   }
 
+  setHyogoMode(active: boolean): void {
+    this.hyogo = active;
+    if (!active) this.seriesOrangeSide = null;
+  }
+
   beginWorkflow(match: number): void {
     this.workflowMatch = match;
+    if (!this.hyogo || match === 1 || !this.seriesOrangeSide) this.seriesOrangeSide = null;
     this.randomize();
     el<HTMLButtonElement>("balls-ready").classList.remove("hidden");
   }
@@ -801,7 +842,10 @@ class BallController {
   }
 
   private randomize(): void {
-    const side = this.leftRows.map(() => Math.round(Math.random()));
+    const side = this.hyogo && this.workflowMatch
+      ? this.seriesOrangeSide ?? this.leftRows.map(() => Math.round(Math.random()))
+      : this.leftRows.map(() => Math.round(Math.random()));
+    if (this.hyogo && this.workflowMatch && !this.seriesOrangeSide) this.seriesOrangeSide = side;
     const purpleRow = Math.floor(Math.random() * 4);
     const generated: Array<readonly [string, number, number]> = [];
     this.leftRows.forEach((row, index) => {
@@ -812,10 +856,10 @@ class BallController {
     generated.push(["purple", this.rightSlots[side[purpleRow]], this.rightRows[3 - purpleRow]]);
     generated.push(["orange", 50.08, 49.99]);
     this.draw(generated);
-    el("balls-status").textContent = "ボール配置を生成しました。";
+    el("balls-status").textContent = this.hyogo && this.workflowMatch ? "ボール配置を生成しました。" : "ボール配置を生成しました。";
   }
 
-  private draw(layout: ReadonlyArray<readonly [string, number, number]>): void {
+  private draw(layout: BallLayout): void {
     [this.court, this.dashboardCourt].forEach((court) => {
       if (!court.children.length) layout.forEach(() => court.append(document.createElement("span")));
       layout.forEach(([color, x, y], index) => {
@@ -837,6 +881,7 @@ class BallController {
 
   resetWorkflow(): void {
     this.workflowMatch = 0;
+    this.seriesOrangeSide = null;
     el<HTMLButtonElement>("balls-ready").classList.add("hidden");
   }
 }
@@ -2003,7 +2048,7 @@ class ContentController {
     if (!item) return;
     el("news-detail-title").textContent = item.title;
     el("news-detail-meta").textContent = `${item.category} | ${item.date}`;
-    el("news-detail-content").textContent = item.content;
+    el("news-detail-content").innerHTML = linkifyText(item.content);
     el<HTMLDialogElement>("news-dialog").showModal();
   }
 }
@@ -2191,21 +2236,25 @@ class QrScanner {
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo"]);
+  private mode: AdminMode = "standard";
 
-  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<boolean>) {
+  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<boolean>, private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
+    el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     this.populate();
   }
 
   static settings(): AdminSettings {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "{}") as Partial<AdminSettings>;
-      return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled) };
+      const accentMode = parsed.accentMode === "admin" ? "admin" : "standard";
+      return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled), accentMode };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: false };
+      return { gasUrl: "", apiKey: "", sendEnabled: false, accentMode: "standard" };
     }
   }
 
@@ -2214,6 +2263,7 @@ class AdminController {
     el<HTMLInputElement>("gas-url").value = settings.gasUrl;
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
     el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
+    el<HTMLSelectElement>("venue-color").value = settings.accentMode;
   }
 
   private async unlock(): Promise<void> {
@@ -2221,12 +2271,15 @@ class AdminController {
     const encoded = new TextEncoder().encode(password);
     const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", encoded));
     const digest = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-    if (digest !== AdminController.gateHash && !["rsam", "gas", "wrorsam"].includes(password)) {
+    if (digest !== AdminController.gateHash && !AdminController.plainPasswords.has(password)) {
       el("gas-status").textContent = "パスワードを確認してください。";
       return;
     }
+    this.mode = password === "HYOGO" || password === "hyogo" ? "hyogo" : "standard";
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
+    el("venue-color-setting").classList.toggle("hidden", this.mode !== "hyogo");
+    this.onModeChanged?.(this.mode, AdminController.settings());
     el("gas-status").textContent = "管理者設定を表示しました。";
   }
 
@@ -2235,9 +2288,27 @@ class AdminController {
       gasUrl: el<HTMLInputElement>("gas-url").value.trim(),
       apiKey: el<HTMLInputElement>("gas-key").value,
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
+      accentMode: el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard",
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    this.onModeChanged?.(this.mode, settings);
     el("gas-status").textContent = "この端末に設定を保存しました。";
+  }
+
+  private applyColor(): void {
+    const settings = AdminController.settings();
+    settings.accentMode = el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard";
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    this.onModeChanged?.(this.mode, settings);
+  }
+
+  lock(): void {
+    this.mode = "standard";
+    el<HTMLInputElement>("admin-password").value = "";
+    el("admin-settings").classList.add("hidden");
+    el("admin-gate").classList.remove("hidden");
+    el("venue-color-setting").classList.add("hidden");
+    el("gas-status").textContent = "";
   }
 
   private async openScanner(): Promise<void> {
@@ -2292,6 +2363,7 @@ class AdminController {
 class Application {
   private linksClicks = 0;
   private secret = false;
+  private hyogo = false;
   private readonly timer: TimerController;
   private readonly refereeTimer: RefereeTimerController;
   private readonly balls: BallController;
@@ -2353,7 +2425,9 @@ class Application {
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement && this.ballsFullscreen) this.setBallsFullscreen(false);
     });
-    el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.deactivateSecret());
+    el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.confirmDeactivateSecret());
+    el<HTMLButtonElement>("admin-exit-confirm").addEventListener("click", () => this.deactivateSecret());
+    el<HTMLButtonElement>("admin-exit-cancel").addEventListener("click", () => el<HTMLDialogElement>("admin-exit-dialog").close());
     this.content.init();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       let refreshing = false;
@@ -2480,24 +2554,51 @@ class Application {
   }
 
   private activateSecret(): void {
-    this.admin ??= new AdminController(this.qrScanner, () => this.records.importTeamsFromGasConnection());
+    this.admin ??= new AdminController(
+      this.qrScanner,
+      () => this.records.importTeamsFromGasConnection(),
+      (mode, settings) => this.applyAdminMode(mode, settings),
+    );
     this.secret = true;
     this.linksClicks = 0;
     document.documentElement.classList.add("secret");
-    el("title").textContent = "RoboSports Assist Master";
+    this.updateTitle();
     el("development-nav").classList.remove("hidden");
     el("admin-exit").classList.remove("hidden");
     this.timer.setSecret(true);
     this.content.renderLinks(true);
   }
 
+  private confirmDeactivateSecret(): void {
+    el<HTMLDialogElement>("admin-exit-dialog").showModal();
+  }
+
+  private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
+    this.hyogo = mode === "hyogo";
+    document.documentElement.classList.toggle("venue-standard-accent", this.hyogo && settings.accentMode === "standard");
+    document.documentElement.classList.toggle("venue-admin-accent", this.hyogo && settings.accentMode === "admin");
+    this.timer.setHyogoMode(this.hyogo);
+    this.balls.setHyogoMode(this.hyogo);
+    this.updateTitle();
+  }
+
+  private updateTitle(): void {
+    el("title").textContent = this.hyogo ? "RoboSports Assist HYOGO" : this.secret ? "RoboSports Assist Master" : "RoboSports Assist";
+  }
+
   private deactivateSecret(): void {
     this.secret = false;
+    this.hyogo = false;
     document.documentElement.classList.remove("secret");
-    el("title").textContent = "RoboSports Assist";
+    document.documentElement.classList.remove("venue-standard-accent");
+    document.documentElement.classList.remove("venue-admin-accent");
+    this.updateTitle();
     el("development-nav").classList.add("hidden");
     el("admin-exit").classList.add("hidden");
     this.timer.setSecret(false);
+    this.timer.setHyogoMode(false);
+    this.balls.setHyogoMode(false);
+    this.admin?.lock();
     this.content.renderLinks(false);
     this.show("dashboard");
   }

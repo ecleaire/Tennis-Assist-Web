@@ -90,8 +90,14 @@ function doPost(e) {
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
     if (body.api_key !== apiKey) return jsonResponse({ ok: false, error: 'invalid_api_key' });
 
-    lock.waitLock(10000);
-    locked = true;
+    locked = lock.tryLock(15000);
+    if (!locked) {
+      return jsonResponse({
+        ok: false,
+        error: 'lock_busy',
+        message: '同時送信が集中しているため、書き込みできませんでした。アプリの履歴から再送してください。'
+      });
+    }
 
     const ss = SpreadsheetApp.openById(spreadsheetId);
     const eventName = String(body.event || '');
