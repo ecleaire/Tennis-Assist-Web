@@ -389,6 +389,168 @@ output.digital.dashboard-digital {
   margin: 0;
 }
 
+.operation-shell {
+  min-height: calc(var(--viewport-height) - 118px);
+}
+
+.operation-step {
+  display: none;
+  min-height: calc(var(--viewport-height) - 118px);
+  padding: clamp(18px, 3vw, 34px);
+}
+
+.operation-step.active {
+  display: grid;
+}
+
+.operation-home,
+.operation-between,
+.operation-finished {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.operation-prepare {
+  border-radius: 16px;
+  font-size: clamp(2rem, 6vw, 4.4rem);
+  font-weight: 900;
+  min-height: clamp(112px, 18vw, 190px);
+  padding-inline: clamp(34px, 8vw, 92px);
+}
+
+.operation-team {
+  align-content: center;
+  gap: clamp(20px, 4vw, 44px);
+}
+
+.operation-team-grid {
+  display: grid;
+  gap: clamp(18px, 4vw, 42px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operation-team-grid label {
+  display: grid;
+  gap: 12px;
+  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  font-weight: 800;
+}
+
+.operation-team-grid select {
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  min-height: clamp(58px, 7vw, 78px);
+}
+
+.operation-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.operation-actions.end {
+  justify-content: flex-end;
+}
+
+.operation-actions .button,
+#operation-team-ok {
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  font-weight: 900;
+  min-height: 58px;
+  min-width: min(180px, 100%);
+}
+
+.operation-draw {
+  background: #071126;
+  border-color: #4f8dff;
+  border-radius: 18px;
+  box-shadow: 0 0 0 2px rgba(79, 141, 255, 0.1) inset;
+}
+
+.operation-draw-layout {
+  display: grid;
+  gap: clamp(18px, 3vw, 36px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.36fr);
+}
+
+.operation-draw-main {
+  align-content: start;
+  display: grid;
+  gap: clamp(18px, 3vw, 34px);
+}
+
+.operation-match-title {
+  font-size: clamp(2.2rem, 5.5vw, 4.8rem);
+  font-weight: 900;
+}
+
+.operation-court-panel {
+  border: 4px solid #4f8dff;
+  border-radius: 22px;
+  padding: 10px clamp(10px, 1.5vw, 18px) clamp(12px, 2vw, 18px);
+}
+
+.operation-court-panel > p {
+  font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.operation-court-panel .dashboard-court {
+  aspect-ratio: 1280 / 620;
+  max-height: min(52vh, 560px);
+  width: 100%;
+}
+
+.operation-draw-side {
+  align-content: start;
+  display: grid;
+  gap: clamp(18px, 3vw, 34px);
+}
+
+.operation-draw-side .dashboard-digital {
+  border: 4px solid #4f8dff;
+  border-radius: 16px;
+  font-size: min(clamp(3rem, 8vw, 7rem), calc((var(--viewport-width) - 34px) / 4.5));
+  line-height: 1;
+  padding: clamp(14px, 2.2vw, 28px);
+  text-align: center;
+}
+
+.operation-numbered {
+  background: #0d3a44;
+  border: 4px solid #19f43c;
+  border-radius: 14px;
+  font-size: clamp(1.05rem, 2vw, 1.55rem);
+  font-weight: 900;
+  justify-content: flex-start;
+  min-height: clamp(70px, 9vw, 92px);
+  padding-inline: clamp(16px, 3vw, 28px);
+  text-align: left;
+}
+
+.operation-between h2,
+.operation-finished h2 {
+  font-size: clamp(1.8rem, 4.4vw, 4.2rem);
+  font-weight: 900;
+  margin-bottom: clamp(22px, 4vw, 44px);
+}
+
+#operation-next-match,
+#operation-home-return {
+  font-size: clamp(1.2rem, 2.6vw, 2rem);
+  font-weight: 900;
+  min-height: 70px;
+  min-width: min(360px, 100%);
+}
+
+.operation-result-message {
+  font-size: clamp(1.15rem, 2.4vw, 2rem);
+  font-weight: 800;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  max-width: 980px;
+}
+
 .timer-shell {
   display: flex;
   flex-direction: column;
@@ -1671,6 +1833,32 @@ body.compact #timer-five {
 }
 
 @media (max-width: 760px) {
+  .operation-step {
+    min-height: calc(var(--viewport-height) - 122px);
+    padding: 14px;
+  }
+
+  .operation-team-grid,
+  .operation-draw-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-match-title {
+    font-size: clamp(1.8rem, 9vw, 3rem);
+  }
+
+  .operation-draw-side {
+    gap: 12px;
+  }
+
+  .operation-numbered {
+    min-height: 58px;
+  }
+
+  .operation-court-panel {
+    border-width: 3px;
+  }
+
   .app-header {
     align-items: start;
     display: grid;

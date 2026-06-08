@@ -414,6 +414,10 @@ class TimerController {
     this.reset();
   }
 
+  displayText(): string {
+    return this.time.textContent || "02 : 00";
+  }
+
   noteActivity(): void {
     this.touchTimerState();
   }
@@ -819,7 +823,7 @@ class BallController {
     el<HTMLButtonElement>("dashboard-random").addEventListener("click", () => this.randomize());
     el<HTMLButtonElement>("balls-reset").addEventListener("click", () => this.reset());
     el<HTMLButtonElement>("dashboard-balls-reset").addEventListener("click", () => this.reset());
-    el<HTMLButtonElement>("balls-ready").addEventListener("click", () => this.complete());
+    el<HTMLButtonElement>("balls-ready").addEventListener("click", () => this.completeWorkflow());
     this.draw(this.defaults);
   }
 
@@ -841,7 +845,7 @@ class BallController {
     if (this.workflowMatch) el("balls-ready").classList.add("hidden");
   }
 
-  private randomize(): void {
+  randomize(): void {
     const side = this.hyogo && this.workflowMatch
       ? this.seriesOrangeSide ?? this.leftRows.map(() => Math.round(Math.random()))
       : this.leftRows.map(() => Math.round(Math.random()));
@@ -871,7 +875,7 @@ class BallController {
     });
   }
 
-  private complete(): void {
+  completeWorkflow(): void {
     if (!this.workflowMatch) return;
     const match = this.workflowMatch;
     this.workflowMatch = 0;
@@ -940,6 +944,42 @@ class RecordsController {
     this.resetSeries(false);
     this.renderHistory();
     if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
+  }
+
+  teamOptions(): string[] {
+    return [...teams];
+  }
+
+  currentMatchNumber(): number {
+    return Math.min(this.editing || this.nextMatch(), 3);
+  }
+
+  currentSeriesLabel(): string {
+    if (!this.series) return "対戦カード未選択";
+    return `${this.series.teamA} vs ${this.series.teamB}`;
+  }
+
+  completionMessage(): string {
+    if (!this.series) return "ただいまの試合結果を保存しました。";
+    const sum = this.summary();
+    const side = this.overallWinner(sum);
+    const result = side === "draw" ? "引き分け" : `${side === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
+    return `ただいまの試合結果は ${this.series.teamA} VS ${this.series.teamB} で ${result} となります。`;
+  }
+
+  startSeriesForOperation(teamA: string, teamB: string): boolean {
+    el<HTMLSelectElement>("team-a").value = teamA;
+    el<HTMLSelectElement>("team-b").value = teamB;
+    this.startSeries();
+    return Boolean(this.series);
+  }
+
+  continueForOperation(): void {
+    this.continueToNextMatch();
+  }
+
+  resetForOperation(): void {
+    this.completeSeriesReset();
   }
 
   timerFinished(): void {
@@ -1149,6 +1189,7 @@ class RecordsController {
     this.resetInput();
     this.renderSeries();
     this.renderHistory();
+    const savedMatch = record.matchNumber;
     if (this.isFinished()) {
       el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。代表同意後に結果を確定します。`;
       this.awaitingNextMatch = false;
@@ -1163,6 +1204,7 @@ class RecordsController {
       this.updateRecordVisibility();
       el("next-match-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
+    document.dispatchEvent(new CustomEvent("series-match-saved", { detail: { match: savedMatch, finished: this.isFinished() } }));
   }
 
   private setNextMatchPrompt(visible: boolean): void {
@@ -1422,7 +1464,8 @@ class RecordsController {
     el("completion-status").textContent = `この結果は保存済みです。${el("record-status").textContent ?? "試合結果を保存しました。"} 3分後に自動で次の対戦準備へ戻ります。`;
     this.setCompletionPanel(true);
     this.clearCompletionResetTimer();
-    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 180000);
+    document.dispatchEvent(new CustomEvent("series-finalized", { detail: { message: this.completionMessage() } }));
+    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 60000);
   }
 
   private setCompletionPanel(visible: boolean): void {
@@ -2374,6 +2417,9 @@ class Application {
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
   private mobileMenuOpen = false;
+  private operationActive = false;
+  private operationMatch = 1;
+  private operationHomeTimer = 0;
 
   constructor() {
     syncViewportMetrics();
@@ -2399,6 +2445,7 @@ class Application {
       this.show("timer");
     });
     this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
+    this.setupOperationFlow();
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
       button.addEventListener("click", () => {
         const screen = button.dataset.screen as Screen;
@@ -2454,6 +2501,101 @@ class Application {
     el("current-mode-label").textContent = screenLabels[screen];
     this.content.open(screen, this.secret);
     window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  private setupOperationFlow(): void {
+    this.syncOperationTeams();
+    el<HTMLButtonElement>("operation-prepare").addEventListener("click", () => {
+      this.operationActive = true;
+      this.clearOperationHomeTimer();
+      this.syncOperationTeams();
+      this.show("dashboard");
+      this.showOperationStep("team");
+    });
+    el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
+    el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => this.balls.randomize());
+    el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
+      this.timer.prepare();
+      el("dashboard-time").textContent = this.timer.displayText();
+    });
+    el<HTMLButtonElement>("operation-ready").addEventListener("click", () => {
+      this.clearOperationHomeTimer();
+      this.balls.completeWorkflow();
+    });
+    el<HTMLButtonElement>("operation-next-match").addEventListener("click", () => {
+      this.clearOperationHomeTimer();
+      this.records.continueForOperation();
+    });
+    el<HTMLButtonElement>("operation-home-return").addEventListener("click", () => this.returnOperationHome(true));
+    document.addEventListener("series-match-saved", (event) => {
+      const detail = (event as CustomEvent<{ match: number; finished: boolean }>).detail;
+      if (!this.operationActive || detail.finished) return;
+      this.operationMatch = Math.min(detail.match + 1, 3);
+      this.show("dashboard");
+      this.showOperationStep("between");
+      el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
+      this.scheduleOperationHomeReturn();
+    });
+    document.addEventListener("series-finalized", (event) => {
+      if (!this.operationActive) return;
+      const detail = (event as CustomEvent<{ message: string }>).detail;
+      this.show("dashboard");
+      this.showOperationStep("finished");
+      el("operation-result-message").textContent = detail.message;
+      this.scheduleOperationHomeReturn();
+    });
+  }
+
+  private syncOperationTeams(): void {
+    const values = this.records.teamOptions();
+    options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
+    options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
+  }
+
+  private startOperationSeries(): void {
+    const teamA = el<HTMLSelectElement>("operation-team-a").value;
+    const teamB = el<HTMLSelectElement>("operation-team-b").value;
+    if (teamA === teamB) {
+      el("operation-team-status").textContent = "左右で別のチームを選択してください。";
+      return;
+    }
+    el("operation-team-status").textContent = "";
+    this.operationActive = true;
+    this.operationMatch = 1;
+    this.clearOperationHomeTimer();
+    this.records.startSeriesForOperation(teamA, teamB);
+  }
+
+  private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {
+    document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
+    el(`operation-${step}`).classList.add("active");
+    if (step === "draw") {
+      el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
+      el("dashboard-time").textContent = this.timer.displayText();
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  private scheduleOperationHomeReturn(): void {
+    this.clearOperationHomeTimer();
+    this.operationHomeTimer = window.setTimeout(() => this.returnOperationHome(false), 60000);
+  }
+
+  private clearOperationHomeTimer(): void {
+    if (!this.operationHomeTimer) return;
+    window.clearTimeout(this.operationHomeTimer);
+    this.operationHomeTimer = 0;
+  }
+
+  private returnOperationHome(resetSeries: boolean): void {
+    this.clearOperationHomeTimer();
+    this.operationActive = false;
+    this.operationMatch = 1;
+    if (resetSeries) this.records.resetForOperation();
+    this.clearFlow();
+    this.balls.resetWorkflow();
+    this.show("dashboard");
+    this.showOperationStep("home");
   }
 
   private setMobileMenu(open: boolean): void {
@@ -2530,6 +2672,15 @@ class Application {
       this.setFlow(match, "タイマー確認中");
       this.recordTimerPending = true;
       this.show("timer");
+      return;
+    }
+    if (this.operationActive && (event === "start" || event === "next")) {
+      this.operationMatch = match || this.records.currentMatchNumber();
+      this.setFlow(this.operationMatch, "抽選準備中");
+      this.balls.beginWorkflow(this.operationMatch);
+      this.timer.prepare();
+      this.show("dashboard");
+      this.showOperationStep("draw");
       return;
     }
     this.setFlow(match, "ボール配置中");

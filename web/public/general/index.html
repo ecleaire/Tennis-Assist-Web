@@ -8,6 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist</title>
+    <script type="module" crossorigin src="./assets/index-Bb2aOyO5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BVcIfDfQ.css">
   </head>
   <body>
     <main id="app">
@@ -41,78 +43,51 @@
       <div id="flow-status" class="panel flow-status hidden" aria-live="polite"></div>
 
       <section id="screen-dashboard" class="screen active">
-        <div class="operation-shell">
-          <article id="operation-home" class="panel operation-step operation-home active">
-            <button id="operation-prepare" class="button primary operation-prepare">試合準備</button>
-          </article>
-
-          <article id="operation-team" class="panel operation-step operation-team">
+        <div class="dashboard">
+          <article class="panel dashboard-card">
             <div class="section-head">
               <div>
-                <p class="eyebrow">MATCH SETUP</p>
-                <h2>チーム選択</h2>
+                <p class="eyebrow">BALL RANDOMIZER</p>
+                <h2>ボール配置</h2>
+              </div>
+              <div class="dashboard-actions">
+                <button id="dashboard-balls-fullscreen" class="button">全画面表示</button>
+                <button id="dashboard-random" class="button primary">ランダム生成</button>
+                <button id="dashboard-balls-reset" class="button">初期位置に戻す</button>
               </div>
             </div>
-            <div class="operation-team-grid">
-              <label>左側チーム名<select id="operation-team-a"></select></label>
-              <label>右側チーム名<select id="operation-team-b"></select></label>
-            </div>
-            <div class="operation-actions end">
-              <button id="operation-team-ok" class="button primary">OK</button>
-            </div>
-            <p id="operation-team-status" class="muted"></p>
+            <div id="dashboard-court" class="court dashboard-court" aria-label="ホーム画面のボール配置"></div>
           </article>
-
-          <article id="operation-draw" class="panel operation-step operation-draw">
-            <div class="operation-draw-layout">
-              <div class="operation-draw-main">
-                <h2 id="operation-match-title" class="operation-match-title">【第1マッチ抽選】</h2>
-                <div class="operation-court-panel">
-                  <p>ボール配置</p>
-                  <div id="dashboard-court" class="court dashboard-court" aria-label="大会運営画面のボール配置"></div>
-                </div>
+          <article class="panel dashboard-card timer-preview">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">MATCH TIMER</p>
+                <h2>タイマー</h2>
               </div>
-              <aside class="operation-draw-side">
-                <output id="dashboard-time" class="digital dashboard-digital">02 : 00</output>
-                <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置ランダム</button>
-                <button id="operation-time-random" class="button primary operation-numbered">② 試合時間ランダム</button>
-                <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
-              </aside>
+              <button id="dashboard-timer-fullscreen" class="button">全画面表示</button>
             </div>
-          </article>
-
-          <article id="operation-between" class="panel operation-step operation-between">
-            <h2>選手の皆さんはコートチェンジをお願いします</h2>
-            <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
-          </article>
-
-          <article id="operation-finished" class="panel operation-step operation-finished">
-            <h2>試合が終了しました。</h2>
-            <p id="operation-result-message" class="operation-result-message">ただいまの試合結果を保存しました。</p>
-            <p>お疲れさまでした。</p>
-            <button id="operation-home-return" class="button primary">ホーム画面に戻る</button>
-          </article>
-
-          <div class="legacy-dashboard-controls hidden" aria-hidden="true">
-            <button id="dashboard-balls-fullscreen" class="button">全画面表示</button>
-            <button id="dashboard-random" class="button primary">ランダム生成</button>
-            <button id="dashboard-balls-reset" class="button">初期位置に戻す</button>
+            <output id="dashboard-time" class="digital dashboard-digital">02 : 00</output>
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
-            <button id="dashboard-timer-fullscreen" class="button">全画面表示</button>
-            <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
-            <button id="dashboard-timer-end" class="button timer-end-action">終了</button>
-            <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
-              <option value="1">ランダム間隔: 1秒</option>
-              <option value="5">ランダム間隔: 5秒</option>
-              <option value="10">ランダム間隔: 10秒</option>
-              <option value="manual">手動指定</option>
-            </select>
-            <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
-            <button id="dashboard-timer-ten" class="button timer-count-control">10カウント</button>
-            <button id="dashboard-timer-five" class="button timer-count-control">5カウント</button>
-            <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
-            <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
-          </div>
+            <div class="dashboard-timer-controls">
+              <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
+              <button id="dashboard-timer-end" class="button timer-end-action">終了</button>
+            </div>
+            <div class="dashboard-timer-tools">
+              <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
+                <option value="1">ランダム間隔: 1秒</option>
+                <option value="5">ランダム間隔: 5秒</option>
+                <option value="10">ランダム間隔: 10秒</option>
+                <option value="manual">手動指定</option>
+              </select>
+              <button id="dashboard-timer-reset" class="button timer-random-control">ランダム再生成</button>
+              <button id="dashboard-timer-ten" class="button timer-count-control">10カウント</button>
+              <button id="dashboard-timer-five" class="button timer-count-control">5カウント</button>
+            </div>
+            <div class="dashboard-sub-slot">
+              <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
+              <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -511,6 +486,5 @@
         </div>
       </article>
     </dialog>
-    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
