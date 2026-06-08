@@ -545,19 +545,25 @@ output.digital.dashboard-digital {
 
 .operation-back {
   font-size: 0.9rem;
+  font-weight: 800;
   justify-self: start;
-  min-height: 38px;
-  padding: 7px 12px;
+  min-height: 40px;
+  min-width: 152px;
+  padding: 7px 13px;
 }
 
+.operation-team > .operation-back,
 .operation-draw > .operation-back,
-.operation-between > .operation-back {
+.operation-between > .operation-back,
+.timer-shell > .operation-back,
+#record-input > .toolbar .operation-back {
   left: clamp(14px, 2vw, 24px);
   position: absolute;
   top: clamp(14px, 2vw, 24px);
   z-index: 2;
 }
 
+.operation-team > .section-head,
 .operation-draw-layout,
 .operation-between h2 {
   margin-top: 38px;
@@ -609,6 +615,39 @@ output.digital.dashboard-digital {
   min-height: calc(var(--viewport-height) - 142px);
   padding: clamp(15px, 2.4vw, 25px);
   position: relative;
+}
+
+body.operation-timer-active .timer-top,
+body.operation-timer-active #timer-mode,
+body.operation-timer-active #timer-reset,
+body.operation-timer-active #timer-step {
+  display: none !important;
+}
+
+body.operation-timer-active .operation-timer-only {
+  display: block !important;
+}
+
+body.operation-timer-active .timer-center {
+  min-height: min(330px, calc(var(--viewport-height) * 0.46));
+}
+
+body.operation-timer-active .timer-face {
+  padding-bottom: clamp(128px, 19vh, 208px);
+  transform: translateY(clamp(-28px, -3vh, -10px));
+}
+
+body.operation-timer-active .timer-bottom {
+  transform: translateY(clamp(-26px, -2.6vh, -8px));
+}
+
+body.operation-timer-active.compact .timer-face {
+  padding-bottom: clamp(118px, 18vh, 190px);
+  transform: translateY(clamp(-18px, -2vh, -6px));
+}
+
+body.operation-timer-active.compact .controls {
+  grid-template-columns: repeat(4, minmax(112px, 1fr));
 }
 
 .timer-top {
@@ -1024,6 +1063,11 @@ label {
 
 #record-input {
   gap: clamp(16px, 2vw, 22px);
+  position: relative;
+}
+
+body.operation-record-focus #record-input {
+  padding-top: clamp(66px, 7vw, 78px);
 }
 
 #record-input .form-grid select {

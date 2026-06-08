@@ -2452,6 +2452,7 @@ class Application {
           this.recordTimerPending = false;
           void this.timer.leaveFullscreen();
           this.clearFlow();
+          this.setOperationTimerActive(false);
           this.setOperationRecordFocus(this.operationActive);
           this.show("records");
           this.records.timerFinished();
@@ -2541,12 +2542,14 @@ class Application {
     el<HTMLButtonElement>("operation-record-back").addEventListener("click", () => this.goOperationBack());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
+      this.setOperationDrawButtonsLocked(true, false);
       this.setOperationDrawStage(2);
     });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
       this.timer.setDashboardOverride(null);
       this.timer.prepare();
       el("dashboard-time").textContent = this.timer.displayText();
+      this.setOperationDrawButtonsLocked(true, true);
       this.setOperationDrawStage(3);
     });
     el<HTMLButtonElement>("operation-ready").addEventListener("click", () => {
@@ -2620,6 +2623,8 @@ class Application {
     document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
     el(`operation-${step}`).classList.add("active");
     if (step === "draw") {
+      this.setOperationTimerActive(false);
+      this.setOperationDrawButtonsLocked(false, false);
       this.setOperationDrawStage(1);
       el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
       this.timer.setDashboardOverride("00 : 00");
@@ -2636,6 +2641,11 @@ class Application {
     ].forEach(([id, buttonStage]) => {
       el<HTMLButtonElement>(id as string).classList.toggle("next-action", buttonStage === stage);
     });
+  }
+
+  private setOperationDrawButtonsLocked(ballLocked: boolean, timeLocked: boolean): void {
+    el<HTMLButtonElement>("operation-ball-random").disabled = ballLocked;
+    el<HTMLButtonElement>("operation-time-random").disabled = timeLocked;
   }
 
   private scheduleOperationHomeReturn(delay = 60000): void {
@@ -2661,6 +2671,10 @@ class Application {
     document.body.classList.toggle("operation-navigation-locked", active);
   }
 
+  private setOperationTimerActive(active: boolean): void {
+    document.body.classList.toggle("operation-timer-active", active);
+  }
+
   private startOperationTimer(): void {
     this.clearOperationHomeTimer();
     this.timer.setDashboardOverride(null);
@@ -2668,12 +2682,15 @@ class Application {
     this.setFlow(this.operationMatch, "タイマー待機中");
     this.recordTimerPending = true;
     this.show("timer");
+    this.setOperationTimerActive(true);
+    void this.timer.enterDisplayFullscreen();
   }
 
   private goOperationBack(): void {
     this.clearOperationHomeTimer();
     if (document.body.classList.contains("operation-record-focus")) {
       this.setOperationRecordFocus(false);
+      this.setOperationTimerActive(true);
       this.show("timer");
       return;
     }
@@ -2686,6 +2703,7 @@ class Application {
     if (el("screen-timer").classList.contains("active")) {
       void this.timer.leaveFullscreen();
       this.recordTimerPending = false;
+      this.setOperationTimerActive(false);
       this.show("dashboard");
       this.showOperationStep("draw");
       return;
@@ -2711,6 +2729,8 @@ class Application {
     this.setOperationRecordFocus(false);
     this.setOperationFinalReview(false);
     this.setOperationNavigationLocked(false);
+    this.setOperationTimerActive(false);
+    this.setOperationDrawButtonsLocked(false, false);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
     this.balls.resetWorkflow();
