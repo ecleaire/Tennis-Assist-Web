@@ -2431,6 +2431,7 @@ class Application {
           this.recordTimerPending = false;
           void this.timer.leaveFullscreen();
           this.clearFlow();
+          this.setOperationRecordFocus(this.operationActive);
           this.show("records");
           this.records.timerFinished();
         }
@@ -2529,6 +2530,7 @@ class Application {
     el<HTMLButtonElement>("operation-home-return").addEventListener("click", () => this.returnOperationHome(true));
     document.addEventListener("series-match-saved", (event) => {
       const detail = (event as CustomEvent<{ match: number; finished: boolean }>).detail;
+      this.setOperationRecordFocus(false);
       if (!this.operationActive || detail.finished) return;
       this.operationMatch = Math.min(detail.match + 1, 3);
       this.show("dashboard");
@@ -2538,6 +2540,7 @@ class Application {
     });
     document.addEventListener("series-finalized", (event) => {
       if (!this.operationActive) return;
+      this.setOperationRecordFocus(false);
       const detail = (event as CustomEvent<{ message: string }>).detail;
       this.show("dashboard");
       this.showOperationStep("finished");
@@ -2567,6 +2570,7 @@ class Application {
   }
 
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {
+    if (step !== "finished") this.setOperationRecordFocus(false);
     document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
     el(`operation-${step}`).classList.add("active");
     if (step === "draw") {
@@ -2587,10 +2591,15 @@ class Application {
     this.operationHomeTimer = 0;
   }
 
+  private setOperationRecordFocus(active: boolean): void {
+    document.body.classList.toggle("operation-record-focus", active);
+  }
+
   private returnOperationHome(resetSeries: boolean): void {
     this.clearOperationHomeTimer();
     this.operationActive = false;
     this.operationMatch = 1;
+    this.setOperationRecordFocus(false);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
     this.balls.resetWorkflow();

@@ -882,6 +882,18 @@ progress::-moz-progress-bar {
   gap: 14px;
 }
 
+body.operation-record-focus #screen-records .records-layout {
+  grid-template-columns: 1fr;
+}
+
+body.operation-record-focus #screen-records .records-layout > article:not(#record-input) {
+  display: none;
+}
+
+body.operation-record-focus #record-input {
+  min-height: calc(var(--viewport-height) - 142px);
+}
+
 .form-row {
   align-items: end;
   display: flex;
