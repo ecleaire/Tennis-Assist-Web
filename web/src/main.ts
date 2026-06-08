@@ -354,6 +354,7 @@ class TimerController {
   private hyogo = false;
   private stateVersion = 0;
   private autoResetTimer = 0;
+  private dashboardOverride: string | null = null;
 
   constructor(private readonly finished: () => void, private readonly activated: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
@@ -416,6 +417,11 @@ class TimerController {
 
   displayText(): string {
     return this.time.textContent || "02 : 00";
+  }
+
+  setDashboardOverride(value: string | null): void {
+    this.dashboardOverride = value;
+    this.render();
   }
 
   noteActivity(): void {
@@ -590,7 +596,7 @@ class TimerController {
     const whole = Math.ceil(this.remaining);
     const formatted = `${String(Math.floor(whole / 60)).padStart(2, "0")} : ${String(whole % 60).padStart(2, "0")}`;
     this.time.textContent = formatted;
-    this.dashboardTime.textContent = formatted;
+    this.dashboardTime.textContent = this.dashboardOverride ?? formatted;
     this.dashboardMode.textContent = this.mode.textContent;
     this.progress.value = this.total ? (this.remaining / this.total) * 100 : 0;
     const warning = this.remaining <= 10;
@@ -967,6 +973,18 @@ class RecordsController {
     return `ただいまの試合結果は ${this.series.teamA} VS ${this.series.teamB} で ${result} となります。`;
   }
 
+  completionMessageLines(): { lead: string; winner: string } {
+    if (!this.series) return { lead: "ただいまの試合結果を保存しました。", winner: "" };
+    const sum = this.summary();
+    const side = this.overallWinner(sum);
+    const score = `${sum.teamAWins} VS ${sum.teamBWins}`;
+    if (side === "draw") return { lead: `ただいまの試合結果は ${score} で`, winner: "引き分け となります。" };
+    return {
+      lead: `ただいまの試合結果は ${score} で`,
+      winner: `${side === "a" ? this.series.teamA : this.series.teamB}チームの勝利 となります。`,
+    };
+  }
+
   startSeriesForOperation(teamA: string, teamB: string): boolean {
     el<HTMLSelectElement>("team-a").value = teamA;
     el<HTMLSelectElement>("team-b").value = teamB;
@@ -1281,6 +1299,7 @@ class RecordsController {
     this.updateRecordVisibility();
     el("record-status").textContent = `保存すると第${matchNumber}マッチの結果を上書きします。`;
     el("record-input").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.dispatchEvent(new CustomEvent("series-match-edit", { detail: { match: matchNumber } }));
   }
 
   private renderTables(): void {
@@ -1335,7 +1354,7 @@ class RecordsController {
 
   private renderFinal(): void {
     const matches = el<HTMLTableElement>("final-matches");
-    matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th></tr></thead>";
+    matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th><th></th></tr></thead>";
     const table = el<HTMLTableElement>("final-table");
     table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総橙</th><th>総紫</th><th>違反</th><th>総スコア</th><th>状態</th></tr></thead>";
     if (!this.series?.records.length) {
@@ -1348,7 +1367,8 @@ class RecordsController {
     this.series.records.forEach((record) => {
       const row = matchesBody.insertRow();
       row.className = "win";
-      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td>${record.teamAOrange} / ${record.teamAPurple} / ${record.teamAScore}</td><td>${record.teamBOrange} / ${record.teamBPurple} / ${record.teamBScore}</td><td>勝者: ${escapeText(record.winner)}</td>`;
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td>${record.teamAOrange} / ${record.teamAPurple} / ${record.teamAScore}</td><td>${record.teamBOrange} / ${record.teamBPurple} / ${record.teamBScore}</td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
+      row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
     const sum = this.summary();
     const winner = this.overallWinner(sum);
@@ -1364,7 +1384,7 @@ class RecordsController {
     add(this.series.teamA, "a");
     add(this.series.teamB, "b");
     el("final-summary").textContent = this.isFinished()
-      ? winner === "draw" ? "総合結果: 引き分け" : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち`
+      ? winner === "draw" ? "総合結果: 引き分け。誤入力の場合、各マッチは再入力できます。" : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち。誤入力の場合、各マッチは再入力できます。`
       : `途中集計: 勝利マッチ数 ${sum.teamAWins} - ${sum.teamBWins} / 引き分け ${sum.draws}`;
     el("series-finished").classList.toggle("hidden", !this.finalized);
   }
@@ -1461,11 +1481,11 @@ class RecordsController {
     this.flow("finished");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     await this.sendSeriesResult(record);
-    el("completion-status").textContent = `この結果は保存済みです。${el("record-status").textContent ?? "試合結果を保存しました。"} 3分後に自動で次の対戦準備へ戻ります。`;
+    el("completion-status").textContent = `この結果は保存済みです。${el("record-status").textContent ?? "試合結果を保存しました。"} 2分後に自動で次の対戦準備へ戻ります。`;
     this.setCompletionPanel(true);
     this.clearCompletionResetTimer();
-    document.dispatchEvent(new CustomEvent("series-finalized", { detail: { message: this.completionMessage() } }));
-    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 60000);
+    document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
+    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
   }
 
   private setCompletionPanel(visible: boolean): void {
@@ -2420,6 +2440,7 @@ class Application {
   private operationActive = false;
   private operationMatch = 1;
   private operationHomeTimer = 0;
+  private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
 
   constructor() {
     syncViewportMetrics();
@@ -2508,21 +2529,30 @@ class Application {
     this.syncOperationTeams();
     el<HTMLButtonElement>("operation-prepare").addEventListener("click", () => {
       this.operationActive = true;
+      this.setOperationNavigationLocked(true);
       this.clearOperationHomeTimer();
       this.syncOperationTeams();
       this.show("dashboard");
       this.showOperationStep("team");
     });
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
-    el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => this.balls.randomize());
+    document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.goOperationBack()));
+    el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.goOperationBack());
+    el<HTMLButtonElement>("operation-record-back").addEventListener("click", () => this.goOperationBack());
+    el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
+      this.balls.randomize();
+      this.setOperationDrawStage(2);
+    });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
+      this.timer.setDashboardOverride(null);
       this.timer.prepare();
       el("dashboard-time").textContent = this.timer.displayText();
+      this.setOperationDrawStage(3);
     });
     el<HTMLButtonElement>("operation-ready").addEventListener("click", () => {
-      this.clearOperationHomeTimer();
-      this.balls.completeWorkflow();
+      el<HTMLDialogElement>("operation-ready-dialog").showModal();
     });
+    el<HTMLButtonElement>("operation-ready-confirm").addEventListener("click", () => this.startOperationTimer());
     el<HTMLButtonElement>("operation-next-match").addEventListener("click", () => {
       this.clearOperationHomeTimer();
       this.records.continueForOperation();
@@ -2531,7 +2561,12 @@ class Application {
     document.addEventListener("series-match-saved", (event) => {
       const detail = (event as CustomEvent<{ match: number; finished: boolean }>).detail;
       this.setOperationRecordFocus(false);
-      if (!this.operationActive || detail.finished) return;
+      if (!this.operationActive) return;
+      if (detail.finished) {
+        this.setOperationFinalReview(true);
+        this.show("records");
+        return;
+      }
       this.operationMatch = Math.min(detail.match + 1, 3);
       this.show("dashboard");
       this.showOperationStep("between");
@@ -2541,11 +2576,20 @@ class Application {
     document.addEventListener("series-finalized", (event) => {
       if (!this.operationActive) return;
       this.setOperationRecordFocus(false);
-      const detail = (event as CustomEvent<{ message: string }>).detail;
+      this.setOperationFinalReview(false);
+      const detail = (event as CustomEvent<{ lead: string; winner: string }>).detail;
+      this.setOperationNavigationLocked(false);
       this.show("dashboard");
       this.showOperationStep("finished");
-      el("operation-result-message").textContent = detail.message;
-      this.scheduleOperationHomeReturn();
+      el("operation-result-line-a").textContent = detail.lead;
+      el("operation-result-line-b").textContent = detail.winner;
+      this.scheduleOperationHomeReturn(120000);
+    });
+    document.addEventListener("series-match-edit", () => {
+      if (!this.operationActive) return;
+      this.setOperationFinalReview(false);
+      this.setOperationRecordFocus(true);
+      this.show("records");
     });
   }
 
@@ -2571,18 +2615,32 @@ class Application {
 
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {
     if (step !== "finished") this.setOperationRecordFocus(false);
+    if (step !== "finished") this.setOperationFinalReview(false);
+    this.operationStep = step;
     document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
     el(`operation-${step}`).classList.add("active");
     if (step === "draw") {
+      this.setOperationDrawStage(1);
       el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
-      el("dashboard-time").textContent = this.timer.displayText();
+      this.timer.setDashboardOverride("00 : 00");
+      el("dashboard-time").textContent = "00 : 00";
     }
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
-  private scheduleOperationHomeReturn(): void {
+  private setOperationDrawStage(stage: 1 | 2 | 3): void {
+    [
+      ["operation-ball-random", 1],
+      ["operation-time-random", 2],
+      ["operation-ready", 3],
+    ].forEach(([id, buttonStage]) => {
+      el<HTMLButtonElement>(id as string).classList.toggle("next-action", buttonStage === stage);
+    });
+  }
+
+  private scheduleOperationHomeReturn(delay = 60000): void {
     this.clearOperationHomeTimer();
-    this.operationHomeTimer = window.setTimeout(() => this.returnOperationHome(false), 60000);
+    this.operationHomeTimer = window.setTimeout(() => this.returnOperationHome(false), delay);
   }
 
   private clearOperationHomeTimer(): void {
@@ -2595,14 +2653,68 @@ class Application {
     document.body.classList.toggle("operation-record-focus", active);
   }
 
+  private setOperationFinalReview(active: boolean): void {
+    document.body.classList.toggle("operation-final-review", active);
+  }
+
+  private setOperationNavigationLocked(active: boolean): void {
+    document.body.classList.toggle("operation-navigation-locked", active);
+  }
+
+  private startOperationTimer(): void {
+    this.clearOperationHomeTimer();
+    this.timer.setDashboardOverride(null);
+    this.setOperationDrawStage(3);
+    this.setFlow(this.operationMatch, "タイマー待機中");
+    this.recordTimerPending = true;
+    this.show("timer");
+  }
+
+  private goOperationBack(): void {
+    this.clearOperationHomeTimer();
+    if (document.body.classList.contains("operation-record-focus")) {
+      this.setOperationRecordFocus(false);
+      this.show("timer");
+      return;
+    }
+    if (document.body.classList.contains("operation-final-review")) {
+      this.setOperationFinalReview(false);
+      this.setOperationRecordFocus(true);
+      this.show("records");
+      return;
+    }
+    if (el("screen-timer").classList.contains("active")) {
+      void this.timer.leaveFullscreen();
+      this.recordTimerPending = false;
+      this.show("dashboard");
+      this.showOperationStep("draw");
+      return;
+    }
+    if (this.operationStep === "between") {
+      this.show("records");
+      return;
+    }
+    if (this.operationStep === "draw") {
+      this.records.resetForOperation();
+      this.showOperationStep("team");
+      return;
+    }
+    if (this.operationStep === "team") {
+      this.returnOperationHome(true);
+    }
+  }
+
   private returnOperationHome(resetSeries: boolean): void {
     this.clearOperationHomeTimer();
     this.operationActive = false;
     this.operationMatch = 1;
     this.setOperationRecordFocus(false);
+    this.setOperationFinalReview(false);
+    this.setOperationNavigationLocked(false);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
     this.balls.resetWorkflow();
+    this.timer.setDashboardOverride(null);
     this.show("dashboard");
     this.showOperationStep("home");
   }

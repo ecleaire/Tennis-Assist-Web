@@ -216,6 +216,13 @@ input:hover {
   font-weight: 800;
 }
 
+body.operation-navigation-locked #navigation .nav[data-screen="timer"],
+body.operation-navigation-locked #navigation .nav[data-screen="balls"],
+body.operation-navigation-locked #navigation .nav[data-screen="news"],
+body.operation-navigation-locked #navigation .nav[data-screen="links"] {
+  display: none;
+}
+
 .button.accent {
   background: var(--warning);
   border-color: var(--warning);
@@ -397,6 +404,7 @@ output.digital.dashboard-digital {
   display: none;
   min-height: calc(var(--viewport-height) - 118px);
   padding: clamp(18px, 3vw, 34px);
+  position: relative;
 }
 
 .operation-step.active {
@@ -528,6 +536,33 @@ output.digital.dashboard-digital {
   text-align: left;
 }
 
+.operation-numbered.next-action {
+  background: #1d7046;
+  border-color: #78ff4d;
+  box-shadow: 0 0 0 4px rgba(120, 255, 77, 0.18), 0 0 28px rgba(120, 255, 77, 0.35);
+  transform: translateY(-1px);
+}
+
+.operation-back {
+  font-size: 0.9rem;
+  justify-self: start;
+  min-height: 38px;
+  padding: 7px 12px;
+}
+
+.operation-draw > .operation-back,
+.operation-between > .operation-back {
+  left: clamp(14px, 2vw, 24px);
+  position: absolute;
+  top: clamp(14px, 2vw, 24px);
+  z-index: 2;
+}
+
+.operation-draw-layout,
+.operation-between h2 {
+  margin-top: 38px;
+}
+
 .operation-between h2,
 .operation-finished h2 {
   font-size: clamp(1.8rem, 4.4vw, 4.2rem);
@@ -544,11 +579,26 @@ output.digital.dashboard-digital {
 }
 
 .operation-result-message {
-  font-size: clamp(1.15rem, 2.4vw, 2rem);
+  font-size: clamp(1.55rem, 3.4vw, 3rem);
   font-weight: 800;
   line-height: 1.7;
   margin-bottom: 12px;
   max-width: 980px;
+}
+
+.operation-result-winner {
+  color: var(--accent);
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1.35;
+  margin-bottom: 20px;
+  max-width: 1080px;
+}
+
+.operation-thanks {
+  font-size: clamp(1.7rem, 4vw, 3.4rem);
+  font-weight: 900;
+  margin-bottom: clamp(22px, 4vw, 42px);
 }
 
 .timer-shell {
@@ -891,6 +941,28 @@ body.operation-record-focus #screen-records .records-layout > article:not(#recor
 }
 
 body.operation-record-focus #record-input {
+  min-height: calc(var(--viewport-height) - 142px);
+}
+
+body.operation-record-focus #back-balls,
+body.operation-record-focus #back-timer {
+  display: none;
+}
+
+body:not(.operation-record-focus) .operation-record-only,
+body:not(.operation-navigation-locked) .operation-timer-only {
+  display: none;
+}
+
+body.operation-final-review #screen-records .records-layout {
+  grid-template-columns: 1fr;
+}
+
+body.operation-final-review #screen-records .records-layout > article:not(#final-results) {
+  display: none;
+}
+
+body.operation-final-review #final-results {
   min-height: calc(var(--viewport-height) - 142px);
 }
 

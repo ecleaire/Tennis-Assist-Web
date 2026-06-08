@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-kjMyqSi4.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DXGEFt21.css">
+    <script type="module" crossorigin src="./assets/index-6iOjxqFO.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CRGto7cc.css">
   </head>
   <body>
     <main id="app">
@@ -45,10 +45,11 @@
       <section id="screen-dashboard" class="screen active">
         <div class="operation-shell">
           <article id="operation-home" class="panel operation-step operation-home active">
-            <button id="operation-prepare" class="button primary operation-prepare">試合準備</button>
+            <button id="operation-prepare" class="button primary operation-prepare">試合開始</button>
           </article>
 
           <article id="operation-team" class="panel operation-step operation-team">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <div class="section-head">
               <div>
                 <p class="eyebrow">MATCH SETUP</p>
@@ -66,6 +67,7 @@
           </article>
 
           <article id="operation-draw" class="panel operation-step operation-draw">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <div class="operation-draw-layout">
               <div class="operation-draw-main">
                 <h2 id="operation-match-title" class="operation-match-title">【第1マッチ抽選】</h2>
@@ -75,7 +77,7 @@
                 </div>
               </div>
               <aside class="operation-draw-side">
-                <output id="dashboard-time" class="digital dashboard-digital">02 : 00</output>
+                <output id="dashboard-time" class="digital dashboard-digital">00 : 00</output>
                 <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置ランダム</button>
                 <button id="operation-time-random" class="button primary operation-numbered">② 試合時間ランダム</button>
                 <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
@@ -84,14 +86,16 @@
           </article>
 
           <article id="operation-between" class="panel operation-step operation-between">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <h2>選手の皆さんはコートチェンジをお願いします</h2>
             <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
           </article>
 
           <article id="operation-finished" class="panel operation-step operation-finished">
             <h2>試合が終了しました。</h2>
-            <p id="operation-result-message" class="operation-result-message">ただいまの試合結果を保存しました。</p>
-            <p>お疲れさまでした。</p>
+            <p id="operation-result-line-a" class="operation-result-message">ただいまの試合結果を保存しました。</p>
+            <p id="operation-result-line-b" class="operation-result-winner"></p>
+            <p class="operation-thanks">お疲れ様でした</p>
             <button id="operation-home-return" class="button primary">ホーム画面に戻る</button>
           </article>
 
@@ -120,6 +124,7 @@
 
       <section id="screen-timer" class="screen">
         <article id="timer-shell" class="panel timer-shell">
+          <button id="operation-timer-back" class="button operation-back operation-timer-only" type="button">前の画面に戻る</button>
           <div class="timer-top">
             <span id="timer-mode" class="pill">試合準備完了</span>
           </div>
@@ -255,6 +260,7 @@
             <p id="winner-preview" class="winner-preview">結果を入力してください。</p>
             <div class="toolbar">
               <button id="record-save" class="button primary">このマッチを保存</button>
+              <button id="operation-record-back" class="button operation-record-only" type="button">前の画面に戻る</button>
               <button id="back-balls" class="button">配置へ戻る</button>
               <button id="back-timer" class="button">タイマーへ戻る</button>
             </div>
@@ -473,6 +479,16 @@
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="confirm-save" class="button primary" value="default">保存</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="operation-ready-dialog" class="dialog">
+      <form method="dialog">
+        <h2>試合を開始しますか？</h2>
+        <p class="pre-wrap">ボール配置と試合時間を確認してください。</p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
         </div>
       </form>
     </dialog>
