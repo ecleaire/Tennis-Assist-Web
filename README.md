@@ -9,9 +9,15 @@ WRO RoboSports Double Tennis の試合準備、タイマー進行、ボール配
 
 Godot Web 版から HTML / CSS / TypeScript ベースへ移植し、iPad、タブレット、スマートフォン、PC で素早く開けることを重視しています。大会運営、練習、試合記録の補助ツールとして利用できます。
 
-# 公開 URL
+# 大会 審判用 公開 URL
 
 # https://ecleaire.github.io/Tennis-Assist-Web/
+
+# 
+
+# 選手 練習用 公開 URL
+
+# https://ecleaire.github.io/Tennis-Assist-Web/general/
 
 GitHub Pages で公開しています。
 
