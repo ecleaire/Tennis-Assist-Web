@@ -595,6 +595,18 @@ output.digital.dashboard-digital {
   margin-bottom: clamp(22px, 4vw, 44px);
 }
 
+.operation-ended-match {
+  color: var(--accent);
+  font-size: clamp(1.35rem, 3vw, 2.8rem);
+  font-weight: 900;
+  margin-bottom: clamp(14px, 2.5vw, 28px);
+  margin-top: 38px;
+}
+
+.operation-ended-match + h2 {
+  margin-top: 0;
+}
+
 #operation-next-match,
 #operation-home-return {
   font-size: clamp(1.2rem, 2.6vw, 2rem);

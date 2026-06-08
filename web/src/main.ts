@@ -2575,8 +2575,9 @@ class Application {
       this.operationMatch = Math.min(detail.match + 1, 3);
       this.show("dashboard");
       this.showOperationStep("between");
+      el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
+      el("operation-between-message").textContent = `選手の皆さんはコートチェンジと第${this.operationMatch}マッチの準備をお願いします`;
       el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
-      this.scheduleOperationHomeReturn();
     });
     document.addEventListener("series-finalized", (event) => {
       if (!this.operationActive) return;
