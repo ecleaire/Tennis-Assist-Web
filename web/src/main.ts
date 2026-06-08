@@ -152,6 +152,7 @@ const screenLabels: Record<Screen, string> = {
 const scoringCategory: Category = "【終了・その時点で採点】（通常の試合停止）";
 const prematchCategory: Category = "【違反・自動敗北 / 失格】試合前・競技全般";
 const inmatchCategory: Category = "【違反・自動敗北 / 失格】試合中の違反";
+const courtOptions = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`);
 const reasons: Record<Category, string[]> = {
   [scoringCategory]: [
     "時間切れでの終了(6.32.1)", "コールドルールの成立(6.32.4)", "偶発的な接触(6.28)",
@@ -985,9 +986,10 @@ class RecordsController {
     };
   }
 
-  startSeriesForOperation(teamA: string, teamB: string): boolean {
+  startSeriesForOperation(teamA: string, teamB: string, court: string): boolean {
     el<HTMLSelectElement>("team-a").value = teamA;
     el<HTMLSelectElement>("team-b").value = teamB;
+    el<HTMLSelectElement>("court-select").value = court;
     this.startSeries();
     return Boolean(this.series);
   }
@@ -1014,7 +1016,7 @@ class RecordsController {
     options(el<HTMLSelectElement>("team-b"), teams, teams[1]);
     options(el<HTMLSelectElement>("stats-team"), ["チームを選択", ...teams], "チームを選択");
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams], "すべてのチーム");
-    options(el<HTMLSelectElement>("court-select"), Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`), "Aコート");
+    options(el<HTMLSelectElement>("court-select"), courtOptions, "Aコート");
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
     options(el<HTMLSelectElement>("reason-category"), Object.keys(reasons), scoringCategory);
     rangeOptions(el<HTMLSelectElement>("a-orange"), 9, 0);
@@ -2598,11 +2600,13 @@ class Application {
 
   private syncOperationTeams(): void {
     const values = this.records.teamOptions();
+    options(el<HTMLSelectElement>("operation-court"), courtOptions, el<HTMLSelectElement>("court-select").value || "Aコート");
     options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
     options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
   }
 
   private startOperationSeries(): void {
+    const court = el<HTMLSelectElement>("operation-court").value;
     const teamA = el<HTMLSelectElement>("operation-team-a").value;
     const teamB = el<HTMLSelectElement>("operation-team-b").value;
     if (teamA === teamB) {
@@ -2613,7 +2617,7 @@ class Application {
     this.operationActive = true;
     this.operationMatch = 1;
     this.clearOperationHomeTimer();
-    this.records.startSeriesForOperation(teamA, teamB);
+    this.records.startSeriesForOperation(teamA, teamB, court);
   }
 
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {

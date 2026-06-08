@@ -438,6 +438,25 @@ output.digital.dashboard-digital {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.operation-court-row {
+  display: grid;
+  justify-items: center;
+}
+
+.operation-court-row label {
+  display: grid;
+  gap: 12px;
+  font-size: clamp(1.08rem, 2vw, 1.5rem);
+  font-weight: 800;
+  width: min(420px, 100%);
+}
+
+.operation-court-row select {
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  min-height: clamp(58px, 7vw, 78px);
+  width: 100%;
+}
+
 .operation-team-grid label {
   display: grid;
   gap: 12px;
@@ -626,6 +645,10 @@ body.operation-timer-active #timer-step {
 
 body.operation-timer-active .operation-timer-only {
   display: block !important;
+}
+
+body.operation-timer-active.timer-running .operation-timer-only {
+  display: none !important;
 }
 
 body.operation-timer-active .timer-center {
