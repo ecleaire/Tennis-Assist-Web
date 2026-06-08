@@ -1,0 +1,18 @@
+{
+  "name": "RoboSports Assist",
+  "short_name": "RoboSports",
+  "description": "WRO RoboSports Double Tennis competition assistant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#081126",
+  "theme_color": "#081126",
+  "icons": [
+    {
+      "src": "./assist_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
