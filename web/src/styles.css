@@ -1389,9 +1389,10 @@ tr.win td {
 }
 
 .agreement {
-  background: #0e1830;
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20, 70, 92, 0.5), rgba(14, 24, 48, 0.98));
+  border: 2px solid var(--accent);
   border-radius: 15px;
+  box-shadow: 0 0 0 2px rgba(49, 166, 255, 0.12) inset, 0 18px 38px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -1400,7 +1401,8 @@ tr.win td {
 
 .agreement p {
   flex-basis: 100%;
-  font-size: clamp(1.02rem, 1.8vw, 1.22rem);
+  color: var(--text);
+  font-size: clamp(1.12rem, 2vw, 1.42rem);
   font-weight: 800;
 }
 

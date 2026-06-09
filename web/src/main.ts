@@ -3,6 +3,7 @@ import "./styles.css";
 type Screen = "dashboard" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
+type MatchType = "練習試合" | "公式試合";
 
 interface MatchRecord {
   recordId: string;
@@ -13,7 +14,7 @@ interface MatchRecord {
   court: string;
   competitionId: string;
   matchNumber: number;
-  matchType: "練習試合";
+  matchType: MatchType;
   teamA: string;
   teamB: string;
   result: "勝ち" | "負け" | "引き分け";
@@ -86,7 +87,14 @@ interface AdminSettings {
   apiKey: string;
   sendEnabled: boolean;
   accentMode: "standard" | "admin";
+  matchType: MatchType;
 }
+
+type TeamImportResult = {
+  status: "loaded" | "default" | "failed";
+  message: string;
+  count: number;
+};
 
 type AdminMode = "standard" | "hyogo";
 
@@ -108,11 +116,13 @@ type LockableScreenOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
 };
 
-let teams = [
+const defaultTeams = [
   "ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL",
   "INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA",
   "QUEBEC", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "YANKEE", "ZULU",
-];
+] as const;
+
+let teams: string[] = [...defaultTeams];
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
@@ -1126,7 +1136,7 @@ class RecordsController {
     const score = this.scoreData();
     el("a-score").textContent = `得点 ${score.teamAScore}`;
     el("b-score").textContent = `得点 ${score.teamBScore}`;
-    el("winner-preview").textContent = `${score.teamAScore} - ${score.teamBScore} / 勝者: ${score.winner}`;
+    el("winner-preview").textContent = `${score.teamAScore} VS ${score.teamBScore} / 勝者: ${score.winner}`;
   }
 
   private buildRecord(): MatchRecord | null {
@@ -1136,17 +1146,15 @@ class RecordsController {
       el("record-status").textContent = "違反したチームを選択してください。";
       return null;
     }
-    if (category === scoringCategory) {
-      const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
-      if (orangeTotal !== 8 && orangeTotal !== 9) {
-        el("record-status").textContent = "オレンジボールの合計は8個または9個にしてください。";
-        return null;
-      }
-      const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
-      if (purpleTotal !== 2) {
-        el("record-status").textContent = "紫ボールの合計は必ず2個にしてください。";
-        return null;
-      }
+    const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
+    if (orangeTotal !== 8 && orangeTotal !== 9) {
+      el("record-status").textContent = "オレンジボールの合計は、終了理由に関係なく8個または9個にしてください。";
+      return null;
+    }
+    const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
+    if (purpleTotal !== 2) {
+      el("record-status").textContent = "紫ボールの合計は、終了理由に関係なく必ず2個にしてください。";
+      return null;
     }
     const matchNumber = this.editing || this.nextMatch();
     const competitionId = `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_${matchNumber}`;
@@ -1159,7 +1167,7 @@ class RecordsController {
       court: this.series.court,
       competitionId,
       matchNumber,
-      matchType: "練習試合",
+      matchType: AdminController.settings().matchType,
       teamA: this.series.teamA,
       teamB: this.series.teamB,
       reasonCategory: category,
@@ -1450,7 +1458,7 @@ class RecordsController {
       court: this.series.court,
       competitionId: `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_RESULT`,
       matchNumber: 0,
-      matchType: "練習試合",
+      matchType: AdminController.settings().matchType,
       teamA: this.series.teamA,
       teamB: this.series.teamB,
       teamAWins: sum.teamAWins,
@@ -1650,7 +1658,7 @@ class RecordsController {
         court: record.court ?? "Aコート",
         competitionId: record.competitionId ?? "",
         matchNumber: record.matchNumber ?? 1,
-        matchType: "練習試合",
+        matchType: record.matchType === "公式試合" ? "公式試合" : "練習試合",
         teamA: record.teamA ?? "",
         teamB: record.teamB ?? "",
         result: record.result ?? "引き分け",
@@ -1703,7 +1711,7 @@ class RecordsController {
 
   private resetTeams(): void {
     localStorage.removeItem(this.teamStorageKey);
-    teams = ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "YANKEE", "ZULU"];
+    teams = [...defaultTeams];
     this.applyTeams(teams);
   }
 
@@ -1750,17 +1758,17 @@ class RecordsController {
     }
   }
 
-  async importTeamsFromGasConnection(): Promise<boolean> {
+  async importTeamsFromGasConnection(): Promise<TeamImportResult> {
     try {
-      await this.importTeamsFromGas({});
-      return true;
+      return await this.importTeamsFromGas({});
     } catch {
-      el("team-status").textContent = "GAS接続はできましたが、チームリストを自動読み込みできませんでした。GASのdoGet更新、SPREADSHEET_ID、チームリストシートを確認してください。";
-      return false;
+      const result = { status: "failed", message: "チームリストの読み込みに失敗しました。GASのdoGet更新、SPREADSHEET_ID、チームリストシートを確認してください。", count: 0 } satisfies TeamImportResult;
+      el("team-status").textContent = result.message;
+      return result;
     }
   }
 
-  private async importTeamsFromGas(options: { spreadsheetId?: string }): Promise<void> {
+  private async importTeamsFromGas(options: { spreadsheetId?: string }): Promise<TeamImportResult> {
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       throw new Error("GAS settings are missing.");
@@ -1775,7 +1783,14 @@ class RecordsController {
     const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string };
     if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
     const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
-    this.applyTeams(nextTeams, false, `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
+    if (nextTeams.length < 2) {
+      const message = "チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。";
+      this.applyTeams([...defaultTeams], false, message);
+      return { status: "default", message, count: defaultTeams.length };
+    }
+    const message = `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`;
+    this.applyTeams(nextTeams, false, message);
+    return { status: "loaded", message, count: nextTeams.length };
   }
 
   private exportHistory(): void {
@@ -1810,7 +1825,7 @@ class RecordsController {
       recordId: at(row, "対戦ID") + "_" + at(row, "マッチ番号"),
       timestamp: at(row, "日時"),
       recordKind: at(row, "記録種別") === "試合結果" ? "試合結果" : "マッチ",
-      matchType: "練習試合",
+      matchType: at(row, "種別") === "公式試合" ? "公式試合" : "練習試合",
       seriesId: at(row, "対戦ID"),
       court: at(row, "コート") || "Aコート",
       seriesNumber: Number(at(row, "試合番号")) || 1,
@@ -2337,12 +2352,14 @@ class AdminController {
   private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo"]);
   private mode: AdminMode = "standard";
 
-  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<boolean>, private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void) {
+  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<TeamImportResult>, private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
+    el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
+    el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
     this.populate();
   }
 
@@ -2350,9 +2367,10 @@ class AdminController {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "{}") as Partial<AdminSettings>;
       const accentMode = parsed.accentMode === "admin" ? "admin" : "standard";
-      return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled), accentMode };
+      const matchType = parsed.matchType === "公式試合" ? "公式試合" : "練習試合";
+      return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled), accentMode, matchType };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: false, accentMode: "standard" };
+      return { gasUrl: "", apiKey: "", sendEnabled: false, accentMode: "standard", matchType: "練習試合" };
     }
   }
 
@@ -2362,6 +2380,7 @@ class AdminController {
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
     el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
     el<HTMLSelectElement>("venue-color").value = settings.accentMode;
+    el<HTMLSelectElement>("match-type").value = settings.matchType;
   }
 
   private async unlock(): Promise<void> {
@@ -2376,7 +2395,7 @@ class AdminController {
     this.mode = password === "HYOGO" || password === "hyogo" ? "hyogo" : "standard";
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
-    el("venue-color-setting").classList.toggle("hidden", this.mode !== "hyogo");
+    el("venue-color-setting").classList.remove("hidden");
     this.onModeChanged?.(this.mode, AdminController.settings());
     el("gas-status").textContent = "管理者設定を表示しました。";
   }
@@ -2387,6 +2406,7 @@ class AdminController {
       apiKey: el<HTMLInputElement>("gas-key").value,
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
       accentMode: el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard",
+      matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
@@ -2446,15 +2466,34 @@ class AdminController {
       el("gas-status").textContent = "テスト送信を完了しました。チームリストを確認しています...";
       if (this.onConnected) {
         const loaded = await this.onConnected();
-        el("gas-status").textContent = loaded
-          ? "テスト送信を完了しました。チームリストも読み込みました。保存する場合は試合記録画面の保存ボタンを押してください。"
-          : "テスト送信は完了しました。チームリストの自動読み込みはできませんでした。試合記録画面のメッセージを確認してください。";
+        el("gas-status").textContent = this.teamImportGasStatusMessage("テスト送信を完了しました。試合記録の同期確認も成功しました。", loaded);
       } else {
         el("gas-status").textContent = "テスト送信を完了しました。スプレッドシート側も確認してください。";
       }
     } catch {
-      el("gas-status").textContent = "テスト送信に失敗しました。URL と公開設定を確認してください。";
+      el("gas-status").textContent = "テスト送信に失敗しました。試合記録は同期できていません。チームリストの読み込みは実行していません。URL と公開設定を確認してください。";
     }
+  }
+
+  private async loadTeamList(): Promise<void> {
+    const settings = AdminController.settings();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      el("gas-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。試合記録の同期は実行していません。";
+      return;
+    }
+    if (!this.onConnected) {
+      el("gas-status").textContent = "チームリスト読み込み機能を初期化できていません。試合記録の同期は実行していません。";
+      return;
+    }
+    el("gas-status").textContent = "チームリストを読み込んでいます...";
+    const result = await this.onConnected();
+    el("gas-status").textContent = this.teamImportGasStatusMessage("チームリスト読み込みを実行しました。試合記録の同期は実行していません。", result);
+  }
+
+  private teamImportGasStatusMessage(prefix: string, result: TeamImportResult): string {
+    if (result.status === "loaded") return `${prefix} チームリストも読み込みました。${result.count}チームを反映しています。`;
+    if (result.status === "default") return `${prefix} ${result.message}`;
+    return `${prefix} ${result.message}`;
   }
 }
 
@@ -2905,8 +2944,8 @@ class Application {
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
     this.hyogo = mode === "hyogo";
-    document.documentElement.classList.toggle("venue-standard-accent", this.hyogo && settings.accentMode === "standard");
-    document.documentElement.classList.toggle("venue-admin-accent", this.hyogo && settings.accentMode === "admin");
+    document.documentElement.classList.toggle("venue-standard-accent", settings.accentMode === "standard");
+    document.documentElement.classList.toggle("venue-admin-accent", settings.accentMode === "admin");
     this.timer.setHyogoMode(this.hyogo);
     this.balls.setHyogoMode(this.hyogo);
     this.updateTitle();

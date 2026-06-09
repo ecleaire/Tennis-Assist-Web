@@ -443,6 +443,12 @@
             </div>
             <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
             <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+            <label>試合種別
+              <select id="match-type">
+                <option value="練習試合">練習試合</option>
+                <option value="公式試合">公式試合</option>
+              </select>
+            </label>
             <div id="venue-color-setting" class="venue-color-setting hidden">
               <label>表示カラー
                 <select id="venue-color">
@@ -454,6 +460,7 @@
             <div class="toolbar">
               <button id="gas-save" class="button primary">設定を保存</button>
               <button id="gas-test" class="button">テスト送信</button>
+              <button id="gas-team-load" class="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>
           </div>
