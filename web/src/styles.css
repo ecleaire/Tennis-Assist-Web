@@ -428,8 +428,12 @@ output.digital.dashboard-digital {
 }
 
 .operation-team {
-  align-content: center;
-  gap: clamp(20px, 4vw, 44px);
+  align-content: start;
+  gap: clamp(18px, 2.4vw, 30px);
+  margin-inline: auto;
+  max-width: 1180px;
+  min-height: 0;
+  width: 100%;
 }
 
 .operation-team-grid {
@@ -440,7 +444,7 @@ output.digital.dashboard-digital {
 
 .operation-court-row {
   display: grid;
-  justify-items: center;
+  justify-items: start;
 }
 
 .operation-court-row label {
@@ -448,7 +452,7 @@ output.digital.dashboard-digital {
   gap: 12px;
   font-size: clamp(1.08rem, 2vw, 1.5rem);
   font-weight: 800;
-  width: min(420px, 100%);
+  width: min(460px, 100%);
 }
 
 .operation-court-row select {
@@ -476,6 +480,7 @@ output.digital.dashboard-digital {
 
 .operation-actions.end {
   justify-content: flex-end;
+  margin-top: clamp(4px, 1vw, 12px);
 }
 
 .operation-actions .button,
@@ -588,6 +593,10 @@ output.digital.dashboard-digital {
   margin-top: 38px;
 }
 
+.operation-team > .section-head {
+  margin-top: 48px;
+}
+
 .operation-between h2,
 .operation-finished h2 {
   font-size: clamp(1.8rem, 4.4vw, 4.2rem);
@@ -651,7 +660,8 @@ output.digital.dashboard-digital {
 body.operation-timer-active .timer-top,
 body.operation-timer-active #timer-mode,
 body.operation-timer-active #timer-reset,
-body.operation-timer-active #timer-step {
+body.operation-timer-active #timer-step,
+body.operation-timer-active #timer-fullscreen {
   display: none !important;
 }
 
@@ -660,6 +670,10 @@ body.operation-timer-active .operation-timer-only {
 }
 
 body.operation-timer-active.timer-running .operation-timer-only {
+  display: none !important;
+}
+
+body.operation-timer-active.compact .operation-timer-only {
   display: none !important;
 }
 
@@ -683,6 +697,24 @@ body.operation-timer-active.compact .timer-face {
 
 body.operation-timer-active.compact .controls {
   grid-template-columns: repeat(4, minmax(112px, 1fr));
+}
+
+body.operation-timer-active .controls {
+  align-items: stretch;
+  display: grid;
+  gap: clamp(8px, 1.4vw, 12px);
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+}
+
+body.operation-timer-active #timer-ten,
+body.operation-timer-active #timer-five {
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+  font-weight: 900;
+  min-height: clamp(64px, 8vh, 82px);
+}
+
+body.operation-timer-active #timer-ten {
+  margin-left: 0;
 }
 
 .timer-top {
@@ -1092,8 +1124,8 @@ label {
 
 .form-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(14px, 2vw, 22px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 #record-input {
@@ -1101,12 +1133,21 @@ label {
   position: relative;
 }
 
+body.operation-record-focus #record-input .section-head h2 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+body.operation-record-focus #match-teams {
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+}
+
 body.operation-record-focus #record-input {
   padding-top: clamp(66px, 7vw, 78px);
 }
 
 #record-input .form-grid select {
-  min-height: 54px;
+  font-size: clamp(1rem, 1.7vw, 1.22rem);
+  min-height: 64px;
 }
 
 .wide select {
@@ -1115,7 +1156,7 @@ body.operation-record-focus #record-input {
 
 .score-pair {
   display: grid;
-  gap: 12px;
+  gap: clamp(14px, 2vw, 22px);
   grid-template-columns: repeat(2, 1fr);
 }
 
@@ -1124,39 +1165,42 @@ fieldset {
   border: 1px solid var(--border);
   border-radius: 15px;
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(92px, 1fr)) auto;
+  gap: clamp(12px, 1.6vw, 18px);
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
   margin: 0;
-  padding: 15px;
+  padding: clamp(16px, 2vw, 22px);
 }
 
 fieldset legend {
   color: var(--text);
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: clamp(1.18rem, 2vw, 1.55rem);
+  font-weight: 900;
   padding: 0 6px;
 }
 
 fieldset strong {
-  align-self: end;
+  align-self: center;
   color: var(--accent);
-  font-size: 1.08rem;
-  padding: 16px 7px;
+  font-size: clamp(1.22rem, 2.4vw, 1.7rem);
+  grid-column: 1 / -1;
+  justify-self: end;
+  padding: 2px 4px;
   white-space: nowrap;
 }
 
 .ball-count {
   color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: clamp(1.12rem, 2vw, 1.45rem);
+  font-weight: 900;
 }
 
 .ball-count select {
-  font-size: 1.2rem;
-  font-weight: 700;
-  min-height: 60px;
-  min-width: 90px;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: 900;
+  min-height: clamp(66px, 8vw, 86px);
+  min-width: 120px;
   text-align: center;
+  width: 100%;
 }
 
 .orange-count {
@@ -1169,8 +1213,17 @@ fieldset strong {
 
 .winner-preview {
   color: var(--success);
-  font-size: 1.12rem;
-  font-weight: 700;
+  background: rgba(103, 224, 138, 0.08);
+  border: 1px solid rgba(103, 224, 138, 0.38);
+  border-radius: 12px;
+  font-size: clamp(1.22rem, 2.4vw, 1.8rem);
+  font-weight: 900;
+  padding: 12px 14px;
+}
+
+body.operation-record-focus #record-status {
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  line-height: 1.55;
 }
 
 .status-line {
@@ -1328,24 +1381,40 @@ tr.win td {
   border-radius: 15px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: clamp(16px, 2vw, 22px);
 }
 
 .agreement p {
   flex-basis: 100%;
+  font-size: clamp(1.02rem, 1.8vw, 1.22rem);
+  font-weight: 800;
+}
+
+.agreement .button {
+  background: #1b2a48;
+  border-color: #6a7da8;
+  color: #d8e6ff;
+  flex: 1 1 240px;
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  font-weight: 900;
+  min-height: 72px;
 }
 
 .agreement .button.agreed {
   background: #153b2e;
   border-color: var(--success);
   color: var(--success);
-  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(103, 224, 138, 0.15) inset;
   position: relative;
 }
 
 .agreement .button.agreed::before {
-  content: "LOCK ";
+  content: "確認済み / ";
+}
+
+.agreement .button:not(.agreed)::before {
+  content: "未同意 / ";
 }
 
 .agreement-confirm {
@@ -2006,6 +2075,14 @@ body.compact #timer-five {
     grid-template-columns: 1fr;
   }
 
+  .operation-actions.end {
+    justify-content: stretch;
+  }
+
+  #operation-team-ok {
+    width: 100%;
+  }
+
   .operation-match-title {
     font-size: clamp(1.8rem, 9vw, 3rem);
   }
@@ -2495,6 +2572,42 @@ body.compact #timer-five {
   body.balls-compact #screen-balls .court {
     max-height: calc(var(--viewport-height) - 126px);
     width: min(100%, calc((var(--viewport-height) - 126px) * 1280 / 620));
+  }
+}
+
+body.operation-timer-active.compact .controls,
+body.operation-timer-active .controls {
+  display: grid;
+  gap: clamp(8px, 1.4vw, 12px);
+  grid-template-columns: repeat(4, minmax(112px, 1fr));
+}
+
+body.operation-timer-active.compact .controls .button,
+body.operation-timer-active .controls .button {
+  min-height: clamp(64px, 8vh, 82px);
+  width: 100%;
+}
+
+body.operation-timer-active.compact #timer-start,
+body.operation-timer-active.compact #timer-end,
+body.operation-timer-active.compact #timer-ten,
+body.operation-timer-active.compact #timer-five {
+  grid-column: auto;
+}
+
+body.operation-timer-active.compact #timer-ten,
+body.operation-timer-active #timer-ten {
+  margin-left: 0;
+}
+
+@media (max-width: 760px) {
+  body.operation-timer-active.compact .controls,
+  body.operation-timer-active .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  fieldset {
+    grid-template-columns: 1fr;
   }
 }
 

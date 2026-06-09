@@ -1125,7 +1125,7 @@ class RecordsController {
     const score = this.scoreData();
     el("a-score").textContent = `得点 ${score.teamAScore}`;
     el("b-score").textContent = `得点 ${score.teamBScore}`;
-    el("winner-preview").textContent = `勝者: ${score.winner}`;
+    el("winner-preview").textContent = `${score.teamAScore} - ${score.teamBScore} / 勝者: ${score.winner}`;
   }
 
   private buildRecord(): MatchRecord | null {
@@ -1325,8 +1325,8 @@ class RecordsController {
     const finished = Boolean(this.series && this.isFinished());
     el("team-management-panel").classList.toggle("hidden", hasSeries);
     el("history-stats-panel").classList.toggle("hidden", hasSeries);
-    el("record-input").classList.toggle("hidden", !hasSeries || this.awaitingNextMatch || this.finalized);
-    el("intermediate-results").classList.toggle("hidden", !hasSeries || entries === 0);
+    el("record-input").classList.toggle("hidden", !hasSeries || this.awaitingNextMatch || this.finalized || (finished && !this.editing));
+    el("intermediate-results").classList.toggle("hidden", !hasSeries || entries === 0 || finished);
     el("final-results").classList.toggle("hidden", !hasSeries || (!finished && !this.finalized));
   }
 
@@ -2576,7 +2576,7 @@ class Application {
       this.show("dashboard");
       this.showOperationStep("between");
       el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
-      el("operation-between-message").textContent = `選手の皆さんはコートチェンジと第${this.operationMatch}マッチの準備をお願いします`;
+      el("operation-between-message").textContent = `選手の皆さんはコートチェンジと、第${this.operationMatch}マッチの準備をお願いします。`;
       el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
     });
     document.addEventListener("series-finalized", (event) => {
