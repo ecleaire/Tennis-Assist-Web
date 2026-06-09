@@ -1208,48 +1208,7 @@ fieldset strong {
 }
 
 .ball-count select {
-  display: none;
-}
-
-.ball-stepper {
-  align-items: stretch;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: clamp(58px, 18%, 76px) minmax(92px, 1fr) clamp(58px, 18%, 76px);
-  width: 100%;
-}
-
-.ball-step,
-.ball-step-value {
-  align-items: center;
-  background: #1a2b4f;
-  border: 1px solid #3e5d98;
-  border-radius: 12px;
-  color: var(--text);
-  display: flex;
   font-size: clamp(1.45rem, 3vw, 2.15rem);
-  font-weight: 900;
-  grid-column: auto;
-  justify-self: stretch;
-  justify-content: center;
-  min-height: clamp(66px, 8vw, 86px);
-  padding: 0;
-}
-
-.ball-step {
-  cursor: pointer;
-}
-
-.orange-count .ball-step-value {
-  color: var(--warning);
-}
-
-.purple-count .ball-step-value {
-  color: #ef7dff;
-}
-
-select.ball-select-legacy {
-  font-size: clamp(1.35rem, 3vw, 2rem);
   font-weight: 900;
   min-height: clamp(66px, 8vw, 86px);
   min-width: 120px;
@@ -1577,6 +1536,61 @@ tr.win td {
 
 .history-card + .history-card {
   margin-top: 10px;
+}
+
+.sync-alert-panel {
+  background: rgba(184, 50, 66, 0.12);
+  border: 2px solid rgba(255, 95, 112, 0.78);
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  padding: clamp(16px, 2.4vw, 22px);
+}
+
+.sync-alert-panel strong {
+  color: #ffd9df;
+  font-size: clamp(1.18rem, 2.2vw, 1.55rem);
+}
+
+.sync-alert-panel p {
+  color: #ffd9df;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.sync-alert-list {
+  display: grid;
+  gap: 8px;
+}
+
+.sync-alert-item {
+  align-items: center;
+  background: rgba(7, 17, 38, 0.72);
+  border: 1px solid rgba(255, 95, 112, 0.35);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 10px 12px;
+}
+
+.sync-alert-item strong {
+  background: #471c25;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  color: #ffd9df;
+  font-size: 0.92rem;
+  padding: 5px 10px;
+}
+
+.sync-alert-item span {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.sync-alert-item small {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 #history {
@@ -2732,6 +2746,11 @@ body.operation-timer-active #timer-ten {
   fieldset strong {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .sync-alert-item {
+    align-items: start;
+    grid-template-columns: 1fr;
   }
 }
 

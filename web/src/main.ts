@@ -946,6 +946,7 @@ class RecordsController {
     el<HTMLButtonElement>("history-sheet-scan").addEventListener("click", () => void this.importHistoryFromSpreadsheetQr());
     el<HTMLInputElement>("history-file").addEventListener("change", (event) => void this.importHistory(event));
     el<HTMLButtonElement>("history-clear").addEventListener("click", () => this.confirmClearHistory());
+    el<HTMLButtonElement>("history-retry-all").addEventListener("click", () => void this.retryPendingSends("manual"));
     el<HTMLButtonElement>("history-clear-confirm").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
     this.resetSeries(false);
@@ -1023,39 +1024,9 @@ class RecordsController {
     rangeOptions(el<HTMLSelectElement>("b-orange"), 9, 0);
     rangeOptions(el<HTMLSelectElement>("a-purple"), 2, 0);
     rangeOptions(el<HTMLSelectElement>("b-purple"), 2, 0);
-    this.setupBallSteppers();
     this.refreshEndReasons();
     ["reason-category", "end-reason", "target-team", "a-orange", "b-orange", "a-purple", "b-purple"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.inputChanged(id));
-    });
-  }
-
-  private setupBallSteppers(): void {
-    ["a-orange", "a-purple", "b-orange", "b-purple"].forEach((id) => {
-      const select = el<HTMLSelectElement>(id);
-      const label = select.closest<HTMLLabelElement>("label");
-      if (!label || label.querySelector(".ball-stepper")) return;
-      const stepper = document.createElement("span");
-      stepper.className = "ball-stepper";
-      stepper.innerHTML = `<button class="ball-step" type="button" data-step="-1" aria-label="減らす">-</button><strong class="ball-step-value">${select.value}</strong><button class="ball-step" type="button" data-step="1" aria-label="増やす">+</button>`;
-      label.append(stepper);
-      stepper.querySelectorAll<HTMLButtonElement>(".ball-step").forEach((button) => {
-        button.addEventListener("click", () => {
-          const values = Array.from(select.options).map((option) => Number(option.value));
-          const next = Math.max(Math.min(Number(select.value) + Number(button.dataset.step), Math.max(...values)), Math.min(...values));
-          select.value = String(next);
-          select.dispatchEvent(new Event("change", { bubbles: true }));
-        });
-      });
-    });
-    this.syncBallSteppers();
-  }
-
-  private syncBallSteppers(): void {
-    ["a-orange", "a-purple", "b-orange", "b-purple"].forEach((id) => {
-      const select = el<HTMLSelectElement>(id);
-      const output = select.closest<HTMLLabelElement>("label")?.querySelector<HTMLElement>(".ball-step-value");
-      if (output) output.textContent = select.value;
     });
   }
 
@@ -1156,7 +1127,6 @@ class RecordsController {
     el("a-score").textContent = `得点 ${score.teamAScore}`;
     el("b-score").textContent = `得点 ${score.teamBScore}`;
     el("winner-preview").textContent = `${score.teamAScore} - ${score.teamBScore} / 勝者: ${score.winner}`;
-    this.syncBallSteppers();
   }
 
   private buildRecord(): MatchRecord | null {
@@ -1595,7 +1565,29 @@ class RecordsController {
     const previewCount = this.records.length - storedCount;
     const suffix = usedFallback ? " / フィルタ該当なしのため最新6件を表示" : "";
     el("history-status").textContent = `保存済み ${storedCount}件 / 確認用 ${previewCount}件 / 表示 ${visible.length}件${suffix}`;
+    this.renderSyncAlert();
     this.renderStats();
+  }
+
+  private renderSyncAlert(): void {
+    const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "pending");
+    const failed = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "failed");
+    const targets = [...pending, ...failed];
+    const panel = el("sync-alert-panel");
+    const list = el("sync-alert-list");
+    panel.classList.toggle("hidden", !targets.length);
+    if (!targets.length) {
+      list.replaceChildren();
+      return;
+    }
+    el("sync-alert-summary").textContent = `未送信 ${pending.length}件 / 送信失敗 ${failed.length}件。GAS設定と通信状態を確認して一斉再送信できます。`;
+    el<HTMLButtonElement>("history-retry-all").disabled = this.retryingPendingSends;
+    list.replaceChildren(...targets.map((record) => {
+      const item = document.createElement("article");
+      item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
+      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合</small>`;
+      return item;
+    }));
   }
 
   private sendStateLabel(status: MatchRecord["sendStatus"]): string {
@@ -1938,14 +1930,18 @@ class RecordsController {
     await this.sendSeriesResult(record);
   }
 
-  private async retryPendingSends(reason: "startup" | "online"): Promise<void> {
+  private async retryPendingSends(reason: "startup" | "online" | "manual"): Promise<void> {
     if (this.retryingPendingSends || !navigator.onLine) return;
     const settings = AdminController.settings();
-    if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) return;
+    if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      if (reason === "manual") el("history-status").textContent = "GAS送信設定が未設定またはOFFです。管理者設定のGAS URL、APIキー、送信ONを確認してください。";
+      return;
+    }
     const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
     if (!pending.length) return;
     this.retryingPendingSends = true;
-    el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
+    this.renderSyncAlert();
+    el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : reason === "manual" ? `未送信・送信失敗 ${pending.length}件を一斉再送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
     try {
       for (const record of pending) {
         await this.sendSeriesResult(record);

@@ -207,7 +207,7 @@
 
       <section id="screen-records" class="screen">
         <div class="records-layout">
-          <article class="panel section-card">
+          <article class="panel section-card hidden" aria-hidden="true">
             <div class="section-head">
               <div>
                 <p class="eyebrow">MATCH FLOW</p>
@@ -357,6 +357,14 @@
               <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
             </div>
             <div id="stats-cards" class="stats-grid"></div>
+            <div id="sync-alert-panel" class="sync-alert-panel hidden" aria-live="polite">
+              <div>
+                <strong id="sync-alert-title">未送信の試合結果があります</strong>
+                <p id="sync-alert-summary"></p>
+              </div>
+              <button id="history-retry-all" class="button danger">一斉再送信</button>
+              <div id="sync-alert-list" class="sync-alert-list"></div>
+            </div>
             <p id="history-status" class="muted status-message"></p>
             <div id="history"></div>
           </article>
