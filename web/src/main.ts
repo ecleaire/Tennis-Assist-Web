@@ -1023,9 +1023,39 @@ class RecordsController {
     rangeOptions(el<HTMLSelectElement>("b-orange"), 9, 0);
     rangeOptions(el<HTMLSelectElement>("a-purple"), 2, 0);
     rangeOptions(el<HTMLSelectElement>("b-purple"), 2, 0);
+    this.setupBallSteppers();
     this.refreshEndReasons();
     ["reason-category", "end-reason", "target-team", "a-orange", "b-orange", "a-purple", "b-purple"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.inputChanged(id));
+    });
+  }
+
+  private setupBallSteppers(): void {
+    ["a-orange", "a-purple", "b-orange", "b-purple"].forEach((id) => {
+      const select = el<HTMLSelectElement>(id);
+      const label = select.closest<HTMLLabelElement>("label");
+      if (!label || label.querySelector(".ball-stepper")) return;
+      const stepper = document.createElement("span");
+      stepper.className = "ball-stepper";
+      stepper.innerHTML = `<button class="ball-step" type="button" data-step="-1" aria-label="減らす">-</button><strong class="ball-step-value">${select.value}</strong><button class="ball-step" type="button" data-step="1" aria-label="増やす">+</button>`;
+      label.append(stepper);
+      stepper.querySelectorAll<HTMLButtonElement>(".ball-step").forEach((button) => {
+        button.addEventListener("click", () => {
+          const values = Array.from(select.options).map((option) => Number(option.value));
+          const next = Math.max(Math.min(Number(select.value) + Number(button.dataset.step), Math.max(...values)), Math.min(...values));
+          select.value = String(next);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+      });
+    });
+    this.syncBallSteppers();
+  }
+
+  private syncBallSteppers(): void {
+    ["a-orange", "a-purple", "b-orange", "b-purple"].forEach((id) => {
+      const select = el<HTMLSelectElement>(id);
+      const output = select.closest<HTMLLabelElement>("label")?.querySelector<HTMLElement>(".ball-step-value");
+      if (output) output.textContent = select.value;
     });
   }
 
@@ -1126,6 +1156,7 @@ class RecordsController {
     el("a-score").textContent = `得点 ${score.teamAScore}`;
     el("b-score").textContent = `得点 ${score.teamBScore}`;
     el("winner-preview").textContent = `${score.teamAScore} - ${score.teamBScore} / 勝者: ${score.winner}`;
+    this.syncBallSteppers();
   }
 
   private buildRecord(): MatchRecord | null {
@@ -1182,10 +1213,11 @@ class RecordsController {
     }
     const record = this.buildRecord();
     if (!record) return;
-    el("confirm-detail").textContent =
-      `第${record.matchNumber}マッチ\n${record.teamA} vs ${record.teamB}\n終了理由: ${record.endReason}\n勝者: ${record.winner}\n` +
-      `${record.teamA}: オレンジ${record.teamAOrange} / 紫${record.teamAPurple} / 得点${record.teamAScore}\n` +
-      `${record.teamB}: オレンジ${record.teamBOrange} / 紫${record.teamBPurple} / 得点${record.teamBScore}`;
+    el("confirm-detail").innerHTML =
+      `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
+      `<p class="confirm-reason"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></p>` +
+      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small>オレンジ${record.teamAOrange} / 紫${record.teamAPurple}</small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small>オレンジ${record.teamBOrange} / 紫${record.teamBPurple}</small></p></div>` +
+      `<p class="confirm-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></p>`;
     el<HTMLDialogElement>("confirm-dialog").showModal();
   }
 
@@ -1480,14 +1512,17 @@ class RecordsController {
     el("record-status").textContent = "試合が終了しました。おつかれさまでした。結果を保存しています。";
     this.renderAgreement();
     this.updateRecordVisibility();
-    this.flow("finished");
-    el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
-    await this.sendSeriesResult(record);
-    el("completion-status").textContent = `この結果は保存済みです。${el("record-status").textContent ?? "試合結果を保存しました。"} 2分後に自動で次の対戦準備へ戻ります。`;
     this.setCompletionPanel(true);
-    this.clearCompletionResetTimer();
-    document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
-    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
+    this.updateCompletionState(record.sendStatus ?? "pending", "送信状態を確認しています。");
+    el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
+    const sendStatus = await this.sendSeriesResult(record);
+    this.setCompletionPanel(true);
+    if (sendStatus === "sent") {
+      el("completion-status").textContent = "この結果は保存済みで、スプレッドシートへ送信済みです。終了画面へ移動します。";
+      this.clearCompletionResetTimer();
+      document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
+      this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
+    }
   }
 
   private setCompletionPanel(visible: boolean): void {
@@ -1921,19 +1956,19 @@ class RecordsController {
     }
   }
 
-  private async sendSeriesResult(record: MatchRecord): Promise<void> {
+  private async sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
       this.updateSendStatus(record, "local-only");
-      this.updateCompletionState("local-only");
+      this.updateCompletionState("local-only", "スプレッドシート送信はOFFです。端末内に保存しました。");
       el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
-      return;
+      return "local-only";
     }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       this.updateSendStatus(record, "failed");
       this.updateCompletionState("failed", "GAS URLまたはAPIキーが未設定です。");
       el("record-status").textContent = "試合結果は保存しました。GAS URLまたはAPIキーを確認し、履歴から再送してください。";
-      return;
+      return "failed";
     }
     this.updateSendStatus(record, "pending");
     this.updateCompletionState("pending");
@@ -1947,12 +1982,14 @@ class RecordsController {
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
       this.updateSendStatus(record, "sent");
-      this.updateCompletionState("sent");
+      this.updateCompletionState("sent", "スプレッドシートへ送信できました。");
       el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
+      return "sent";
     } catch (error) {
       this.updateSendStatus(record, "failed");
       this.updateCompletionState("failed", error instanceof Error ? error.message : "ネットワークまたはGAS接続エラーです。");
       el("record-status").textContent = "試合結果は保存しました。スプレッドシート送信に失敗しました。履歴から再送できます。";
+      return "failed";
     }
   }
 
@@ -2576,7 +2613,7 @@ class Application {
       this.show("dashboard");
       this.showOperationStep("between");
       el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
-      el("operation-between-message").textContent = `選手の皆さんはコートチェンジと、第${this.operationMatch}マッチの準備をお願いします。`;
+      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span>`;
       el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
     });
     document.addEventListener("series-finalized", (event) => {

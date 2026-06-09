@@ -244,7 +244,13 @@ body.operation-navigation-locked #navigation .nav[data-screen="links"] {
   font-weight: 700;
 }
 
-.timer-end-action,
+.timer-end-action {
+  background: #164b82;
+  border-color: var(--accent);
+  color: #eef7ff;
+  font-weight: 700;
+}
+
 .timer-count-control {
   background: #b83242;
   border-color: var(--danger);
@@ -429,9 +435,9 @@ output.digital.dashboard-digital {
 
 .operation-team {
   align-content: start;
-  gap: clamp(18px, 2.4vw, 30px);
+  gap: clamp(22px, 3vw, 38px);
   margin-inline: auto;
-  max-width: 1180px;
+  max-width: 1320px;
   min-height: 0;
   width: 100%;
 }
@@ -450,27 +456,27 @@ output.digital.dashboard-digital {
 .operation-court-row label {
   display: grid;
   gap: 12px;
-  font-size: clamp(1.08rem, 2vw, 1.5rem);
+  font-size: clamp(1.25rem, 2.2vw, 1.7rem);
   font-weight: 800;
-  width: min(460px, 100%);
+  width: min(520px, 100%);
 }
 
 .operation-court-row select {
-  font-size: clamp(1.05rem, 2vw, 1.45rem);
-  min-height: clamp(58px, 7vw, 78px);
+  font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+  min-height: clamp(68px, 7.6vw, 88px);
   width: 100%;
 }
 
 .operation-team-grid label {
   display: grid;
   gap: 12px;
-  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  font-size: clamp(1.25rem, 2.4vw, 1.8rem);
   font-weight: 800;
 }
 
 .operation-team-grid select {
-  font-size: clamp(1.05rem, 2vw, 1.45rem);
-  min-height: clamp(58px, 7vw, 78px);
+  font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+  min-height: clamp(68px, 7.6vw, 88px);
 }
 
 .operation-actions {
@@ -485,10 +491,10 @@ output.digital.dashboard-digital {
 
 .operation-actions .button,
 #operation-team-ok {
-  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  font-size: clamp(1.2rem, 2.2vw, 1.7rem);
   font-weight: 900;
-  min-height: 58px;
-  min-width: min(180px, 100%);
+  min-height: 68px;
+  min-width: min(220px, 100%);
 }
 
 .operation-draw {
@@ -614,6 +620,10 @@ output.digital.dashboard-digital {
 
 .operation-ended-match + h2 {
   margin-top: 0;
+}
+
+.operation-between-line {
+  display: block;
 }
 
 #operation-next-match,
@@ -1190,11 +1200,55 @@ fieldset strong {
 
 .ball-count {
   color: var(--text);
+  display: grid;
   font-size: clamp(1.12rem, 2vw, 1.45rem);
   font-weight: 900;
+  gap: 8px;
+  min-width: 0;
 }
 
 .ball-count select {
+  display: none;
+}
+
+.ball-stepper {
+  align-items: stretch;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: clamp(58px, 18%, 76px) minmax(92px, 1fr) clamp(58px, 18%, 76px);
+  width: 100%;
+}
+
+.ball-step,
+.ball-step-value {
+  align-items: center;
+  background: #1a2b4f;
+  border: 1px solid #3e5d98;
+  border-radius: 12px;
+  color: var(--text);
+  display: flex;
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+  font-weight: 900;
+  grid-column: auto;
+  justify-self: stretch;
+  justify-content: center;
+  min-height: clamp(66px, 8vw, 86px);
+  padding: 0;
+}
+
+.ball-step {
+  cursor: pointer;
+}
+
+.orange-count .ball-step-value {
+  color: var(--warning);
+}
+
+.purple-count .ball-step-value {
+  color: #ef7dff;
+}
+
+select.ball-select-legacy {
   font-size: clamp(1.35rem, 3vw, 2rem);
   font-weight: 900;
   min-height: clamp(66px, 8vw, 86px);
@@ -1391,7 +1445,7 @@ tr.win td {
   font-weight: 800;
 }
 
-.agreement .button {
+.agreement > .button {
   background: #1b2a48;
   border-color: #6a7da8;
   color: #d8e6ff;
@@ -1401,7 +1455,7 @@ tr.win td {
   min-height: 72px;
 }
 
-.agreement .button.agreed {
+.agreement > .button.agreed {
   background: #153b2e;
   border-color: var(--success);
   color: var(--success);
@@ -1409,12 +1463,8 @@ tr.win td {
   position: relative;
 }
 
-.agreement .button.agreed::before {
+.agreement > .button.agreed::before {
   content: "確認済み / ";
-}
-
-.agreement .button:not(.agreed)::before {
-  content: "未同意 / ";
 }
 
 .agreement-confirm {
@@ -1430,6 +1480,10 @@ tr.win td {
 
 .agreement-confirm .toolbar {
   margin-top: 4px;
+}
+
+#agreement-cancel {
+  display: none;
 }
 
 .finished-message {
@@ -1768,6 +1822,70 @@ tr.win td {
 .pre-wrap {
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+.confirm-detail {
+  display: grid;
+  gap: 14px;
+  min-width: min(620px, calc(100vw - 64px));
+}
+
+.confirm-match {
+  color: var(--muted);
+  font-size: clamp(1.08rem, 2vw, 1.35rem);
+  font-weight: 800;
+}
+
+.confirm-reason,
+.confirm-winner,
+.confirm-score-grid p {
+  background: rgba(46, 168, 255, 0.08);
+  border: 1px solid rgba(46, 168, 255, 0.32);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 14px 16px;
+}
+
+.confirm-reason span,
+.confirm-winner span,
+.confirm-score-grid span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.confirm-reason strong,
+.confirm-winner strong {
+  color: var(--text);
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+}
+
+.confirm-winner {
+  background: rgba(103, 224, 138, 0.1);
+  border-color: rgba(103, 224, 138, 0.42);
+}
+
+.confirm-winner strong {
+  color: var(--success);
+}
+
+.confirm-score-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.confirm-score-grid strong {
+  color: var(--accent);
+  font-size: clamp(1.55rem, 3.2vw, 2.3rem);
+}
+
+.confirm-score-grid small {
+  color: var(--muted);
+  font-size: clamp(0.95rem, 1.7vw, 1.1rem);
+  font-weight: 700;
 }
 
 .compact body,
@@ -2608,6 +2726,12 @@ body.operation-timer-active #timer-ten {
 
   fieldset {
     grid-template-columns: 1fr;
+  }
+
+  fieldset .ball-count,
+  fieldset strong {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 }
 

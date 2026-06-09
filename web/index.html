@@ -89,7 +89,7 @@
           <article id="operation-between" class="panel operation-step operation-between">
             <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <p id="operation-ended-match" class="operation-ended-match">第1マッチが終了しました</p>
-            <h2 id="operation-between-message">選手の皆さんはコートチェンジと、第2マッチの準備をお願いします。</h2>
+            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span></h2>
             <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
           </article>
 
@@ -477,7 +477,7 @@
     <dialog id="confirm-dialog" class="dialog">
       <form method="dialog">
         <h2>結果の確認</h2>
-        <p id="confirm-detail" class="pre-wrap"></p>
+        <div id="confirm-detail" class="confirm-detail"></div>
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="confirm-save" class="button primary" value="default">保存</button>
