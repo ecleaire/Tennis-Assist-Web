@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-web-251eb35f9c49";
+const CACHE_NAME = "tennis-assist-web-40c0e16e16f6";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
-  "./assets/index-CVEKxruM.js",
   "./assets/index-CjNMhKBz.css",
+  "./assets/index-DFm1QL0n.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -17,7 +17,7 @@ const OPTIONAL = [
   "./data/team_list_example.csv",
   "./general/assets/DSEG7Modern-Bold.woff2",
   "./general/assets/index-CjNMhKBz.css",
-  "./general/assets/index-CVEKxruM.js",
+  "./general/assets/index-DFm1QL0n.js",
   "./general/assets/jsQR-BnGm8Ll0.js",
   "./general/assets/playfield.jpg",
   "./general/assist_icon_512.png",
@@ -34,7 +34,6 @@ self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
   self.skipWaiting();
 });
-
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();

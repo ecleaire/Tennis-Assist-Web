@@ -938,7 +938,7 @@ class RecordsController {
     el<HTMLButtonElement>("agreement-accept").addEventListener("click", () => this.acceptAgreement());
     el<HTMLButtonElement>("agreement-cancel").addEventListener("click", () => this.cancelAgreement());
     el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
-    el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.completeSeriesReset());
+    el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.returnHomeAfterCompletion());
     el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
     el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderHistory());
     ["history-team", "history-result", "history-kind", "history-sort"].forEach((id) => {
@@ -1011,6 +1011,12 @@ class RecordsController {
 
   resetForOperation(): void {
     this.completeSeriesReset();
+  }
+
+  returnHomeAfterCompletion(): void {
+    this.clearCompletionResetTimer();
+    this.completeSeriesReset();
+    document.dispatchEvent(new CustomEvent("series-home-requested"));
   }
 
   timerFinished(): void {
@@ -1360,8 +1366,20 @@ class RecordsController {
 
   private overallWinner(sum: Summary): "a" | "b" | "draw" {
     if (sum.teamAWins !== sum.teamBWins) return sum.teamAWins > sum.teamBWins ? "a" : "b";
-    if (sum.teamAScore !== sum.teamBScore) return sum.teamAScore < sum.teamBScore ? "a" : "b";
     return "draw";
+  }
+
+  private drawDecisionNote(sum: Summary): string {
+    if (!this.series) return "";
+    if (sum.teamAViolations !== sum.teamBViolations) {
+      const side = sum.teamAViolations < sum.teamBViolations ? this.series.teamA : this.series.teamB;
+      return `決着が必要な場合の参考: 違反数が少ない ${side} が優先候補です。`;
+    }
+    if (sum.teamAScore !== sum.teamBScore) {
+      const side = sum.teamAScore > sum.teamBScore ? this.series.teamA : this.series.teamB;
+      return `決着が必要な場合の参考: 相手コートへ送り込んだボールの総スコアが高い ${side} が優先候補です。`;
+    }
+    return "決着が必要な場合の参考: 違反数・総スコアも同じため、追加マッチで確認してください。";
   }
 
   private renderFinal(): void {
@@ -1396,7 +1414,7 @@ class RecordsController {
     add(this.series.teamA, "a");
     add(this.series.teamB, "b");
     el("final-summary").textContent = this.isFinished()
-      ? winner === "draw" ? "総合結果: 引き分け。誤入力の場合、各マッチは再入力できます。" : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち。誤入力の場合、各マッチは再入力できます。`
+      ? winner === "draw" ? `総合結果: 引き分け。${this.drawDecisionNote(sum)} 誤入力の場合、各マッチは再入力できます。` : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち。誤入力の場合、各マッチは再入力できます。`
       : `途中集計: 勝利マッチ数 ${sum.teamAWins} - ${sum.teamBWins} / 引き分け ${sum.draws}`;
     el("series-finished").classList.toggle("hidden", !this.finalized);
   }
@@ -2011,12 +2029,18 @@ class RecordsController {
     panel.classList.add(status);
     const labels: Record<NonNullable<MatchRecord["sendStatus"]>, string> = {
       sent: "保存済み・送信済み",
-      pending: "保存済み・送信待ち",
-      failed: "保存済み・未送信",
-      "local-only": "保存済み",
+      pending: "端末内に保存済み・送信待ち",
+      failed: "端末内に保存済み・未送信",
+      "local-only": "端末内に保存済み",
     };
     badge.textContent = labels[status];
-    if (detail) el("completion-status").textContent = `この結果は保存済みです。${detail} 履歴から再送できます。`;
+    if (status === "failed") {
+      el("completion-status").textContent = "この結果は端末内に保存済みですが、送信できていません。1度ホームへ戻って「対戦履歴」から再送信してください。";
+    } else if (status === "pending") {
+      el("completion-status").textContent = "この結果は端末内に保存済みです。送信待ちのため、必要に応じてホームへ戻って「対戦履歴」から再送信してください。";
+    } else if (detail) {
+      el("completion-status").textContent = `この結果は端末内に保存済みです。${detail}`;
+    }
   }
 
   private nextMatch(): number {
@@ -2662,6 +2686,9 @@ class Application {
       el("operation-result-line-a").textContent = detail.lead;
       el("operation-result-line-b").textContent = detail.winner;
       this.scheduleOperationHomeReturn(120000);
+    });
+    document.addEventListener("series-home-requested", () => {
+      if (this.operationActive) this.returnOperationHome(false);
     });
     document.addEventListener("series-match-edit", () => {
       if (!this.operationActive) return;
