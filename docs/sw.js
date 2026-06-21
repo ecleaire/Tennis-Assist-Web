@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-web-65576297afd2";
+const CACHE_NAME = "tennis-assist-web-8a92e3b92918";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
+  "./assets/index-CSr4-tbq.js",
   "./assets/index-CjNMhKBz.css",
-  "./assets/index-DtGOxJt2.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -17,7 +17,7 @@ const OPTIONAL = [
   "./data/team_list_example.csv",
   "./general/assets/DSEG7Modern-Bold.woff2",
   "./general/assets/index-CjNMhKBz.css",
-  "./general/assets/index-DtGOxJt2.js",
+  "./general/assets/index-CSr4-tbq.js",
   "./general/assets/jsQR-BnGm8Ll0.js",
   "./general/assets/playfield.jpg",
   "./general/assist_icon_512.png",

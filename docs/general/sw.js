@@ -4,7 +4,7 @@ const CORE = [
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
   "./assets/index-CjNMhKBz.css",
-  "./assets/index-DtGOxJt2.js",
+  "./assets/index-CSr4-tbq.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"

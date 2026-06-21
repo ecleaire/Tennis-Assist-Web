@@ -345,6 +345,7 @@ class TimerAudioCueController {
   playThirtySeconds(): void {
     this.beep(880, 0.14, "sine", 0.18);
     window.setTimeout(() => this.beep(1175, 0.18, "sine", 0.16), 170);
+    window.setTimeout(() => this.speak("30秒経過"), 360);
   }
 
   playFinish(): void {
@@ -355,12 +356,16 @@ class TimerAudioCueController {
 
   speakCountdown(value: number): void {
     if (value < 1 || value > 10) return;
+    this.speak(String(value), true);
+  }
+
+  private speak(text: string, fallbackBeep = false): void {
     if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
-      this.beep(1200, 0.08, "sine", 0.12);
+      if (fallbackBeep) this.beep(1200, 0.08, "sine", 0.12);
       return;
     }
     try {
-      const utterance = new SpeechSynthesisUtterance(String(value));
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "ja-JP";
       utterance.rate = 1.05;
       utterance.pitch = 1;
@@ -369,7 +374,7 @@ class TimerAudioCueController {
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
     } catch {
-      this.beep(1200, 0.08, "sine", 0.12);
+      if (fallbackBeep) this.beep(1200, 0.08, "sine", 0.12);
     }
   }
 
