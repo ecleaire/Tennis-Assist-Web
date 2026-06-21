@@ -4,7 +4,7 @@ const CORE = [
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
   "./assets/index-CjNMhKBz.css",
-  "./assets/index-DFm1QL0n.js",
+  "./assets/index-DtGOxJt2.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -21,6 +21,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
   self.skipWaiting();
 });
+
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();

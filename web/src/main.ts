@@ -332,6 +332,83 @@ async function ensureGasSuccess(response: Response): Promise<void> {
   }
 }
 
+class TimerAudioCueController {
+  private context: AudioContext | null = null;
+  private voice: SpeechSynthesisVoice | null = null;
+
+  prepare(): void {
+    const context = this.audioContext();
+    if (context?.state === "suspended") void context.resume();
+    this.pickVoice();
+  }
+
+  playThirtySeconds(): void {
+    this.beep(880, 0.14, "sine", 0.18);
+    window.setTimeout(() => this.beep(1175, 0.18, "sine", 0.16), 170);
+  }
+
+  playFinish(): void {
+    this.beep(784, 0.16, "square", 0.16);
+    window.setTimeout(() => this.beep(588, 0.18, "square", 0.14), 190);
+    window.setTimeout(() => this.beep(392, 0.32, "square", 0.13), 410);
+  }
+
+  speakCountdown(value: number): void {
+    if (value < 1 || value > 10) return;
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      this.beep(1200, 0.08, "sine", 0.12);
+      return;
+    }
+    try {
+      const utterance = new SpeechSynthesisUtterance(String(value));
+      utterance.lang = "ja-JP";
+      utterance.rate = 1.05;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      if (this.voice) utterance.voice = this.voice;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      this.beep(1200, 0.08, "sine", 0.12);
+    }
+  }
+
+  private audioContext(): AudioContext | null {
+    if (this.context) return this.context;
+    const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    try {
+      this.context = new AudioContextCtor();
+    } catch {
+      this.context = null;
+    }
+    return this.context;
+  }
+
+  private pickVoice(): void {
+    if (!("speechSynthesis" in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    this.voice = voices.find((candidate) => candidate.lang.toLowerCase().startsWith("ja")) ?? voices[0] ?? null;
+  }
+
+  private beep(frequency: number, duration: number, type: OscillatorType, volume: number): void {
+    const context = this.audioContext();
+    if (!context) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.02);
+  }
+}
+
 class TimerController {
   private readonly mode = el<HTMLElement>("timer-mode");
   private readonly time = el<HTMLOutputElement>("timer-time");
@@ -366,6 +443,10 @@ class TimerController {
   private stateVersion = 0;
   private autoResetTimer = 0;
   private dashboardOverride: string | null = null;
+  private readonly audioCues = new TimerAudioCueController();
+  private thirtyCuePlayed = false;
+  private finishCuePlayed = false;
+  private readonly announcedCountdown = new Set<number>();
 
   constructor(private readonly finished: () => void, private readonly activated: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
@@ -502,6 +583,9 @@ class TimerController {
     this.running = false;
     this.started = false;
     this.notifiedFinish = false;
+    this.thirtyCuePlayed = false;
+    this.finishCuePlayed = false;
+    this.announcedCountdown.clear();
     this.total = this.initialReset ? 120 : this.generatedDuration();
     this.initialReset = false;
     this.remaining = this.total;
@@ -528,6 +612,7 @@ class TimerController {
   private start(): void {
     if (this.remaining <= 0) return;
     this.touchTimerState();
+    this.audioCues.prepare();
     this.activated();
     void this.enterFullscreen(true);
     this.running = true;
@@ -554,6 +639,7 @@ class TimerController {
     this.mode.textContent = "終了";
     this.notice.textContent = "";
     this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
+    this.playFinishCue();
     this.scheduleAutoReset();
     this.syncControls();
     this.render();
@@ -575,7 +661,9 @@ class TimerController {
       if (!this.coldShown && this.total - this.remaining >= 30) {
         this.coldShown = true;
         this.coldUntil = now + 10000;
+        this.playThirtySecondCue();
       }
+      this.playCountdownCue();
       if (this.coldUntil > now) this.notice.textContent = "ここからコールドが適応されます";
       else if (this.notice.textContent !== "タイマーを一時停止しています") this.notice.textContent = "";
       if (this.remaining === 0) {
@@ -583,6 +671,7 @@ class TimerController {
         this.running = false;
         this.mode.textContent = "終了";
         this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
+        this.playFinishCue();
         this.scheduleAutoReset();
         this.syncControls();
         this.emitFinish();
@@ -618,6 +707,26 @@ class TimerController {
       this.subTime.textContent = formattedSubTime;
       this.dashboardSubTime.textContent = formattedSubTime;
     }
+  }
+
+  private playThirtySecondCue(): void {
+    if (this.thirtyCuePlayed) return;
+    this.thirtyCuePlayed = true;
+    this.audioCues.playThirtySeconds();
+  }
+
+  private playCountdownCue(): void {
+    if (!this.started || this.remaining <= 0 || this.remaining > 10) return;
+    const whole = Math.ceil(this.remaining);
+    if (whole < 1 || whole > 10 || this.announcedCountdown.has(whole)) return;
+    this.announcedCountdown.add(whole);
+    this.audioCues.speakCountdown(whole);
+  }
+
+  private playFinishCue(): void {
+    if (this.finishCuePlayed) return;
+    this.finishCuePlayed = true;
+    this.audioCues.playFinish();
   }
 
   private syncControls(): void {
