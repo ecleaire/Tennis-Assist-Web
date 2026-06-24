@@ -1,6 +1,6 @@
 import "./styles.css";
 
-type Screen = "dashboard" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
+type Screen = "dashboard" | "operation" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 type MatchType = "練習試合" | "公式試合";
@@ -149,6 +149,7 @@ const LINKS = {
 
 const screenLabels: Record<Screen, string> = {
   dashboard: "ホーム",
+  operation: "試合運営",
   timer: "タイマー",
   referee: "審判タイマー",
   balls: "ボール配置",
@@ -187,6 +188,20 @@ function el<T extends HTMLElement>(id: string): T {
   if (!found) throw new Error(`Missing element: ${id}`);
   elementCache.set(id, found);
   return found as T;
+}
+
+function els<T extends HTMLElement>(id: string): T[] {
+  return Array.from(document.querySelectorAll<T>(`[id="${id}"]`));
+}
+
+function setText(elements: HTMLElement[], text: string | null): void {
+  elements.forEach((element) => {
+    element.textContent = text;
+  });
+}
+
+function toggleClass(elements: HTMLElement[], className: string, force?: boolean): void {
+  elements.forEach((element) => element.classList.toggle(className, force));
 }
 
 function options(select: HTMLSelectElement, values: readonly string[], selected = values[0]): void {
@@ -435,15 +450,15 @@ class TimerController {
   private readonly notice = el<HTMLElement>("cold-notice");
   private readonly caption = el<HTMLElement>("sub-caption");
   private readonly subTime = el<HTMLOutputElement>("sub-time");
-  private readonly dashboardTime = el<HTMLOutputElement>("dashboard-time");
-  private readonly dashboardMode = el<HTMLElement>("dashboard-mode");
-  private readonly dashboardSubCaption = el<HTMLElement>("dashboard-sub-caption");
-  private readonly dashboardSubTime = el<HTMLOutputElement>("dashboard-sub-time");
+  private readonly dashboardTimes = els<HTMLOutputElement>("dashboard-time");
+  private readonly dashboardModes = els<HTMLElement>("dashboard-mode");
+  private readonly dashboardSubCaptions = els<HTMLElement>("dashboard-sub-caption");
+  private readonly dashboardSubTimes = els<HTMLOutputElement>("dashboard-sub-time");
   private readonly startButton = el<HTMLButtonElement>("timer-start");
-  private readonly dashboardStartButton = el<HTMLButtonElement>("dashboard-timer-start");
+  private readonly dashboardStartButtons = els<HTMLButtonElement>("dashboard-timer-start");
   private readonly resetButton = el<HTMLButtonElement>("timer-reset");
   private readonly step = el<HTMLSelectElement>("timer-step");
-  private readonly dashboardStep = el<HTMLSelectElement>("dashboard-timer-step");
+  private readonly dashboardSteps = els<HTMLSelectElement>("dashboard-timer-step");
   private total = 120;
   private remaining = 120;
   private running = false;
@@ -469,24 +484,25 @@ class TimerController {
 
   constructor(private readonly finished: () => void, private readonly activated: () => void) {
     this.startButton.addEventListener("click", () => this.toggle());
-    this.dashboardStartButton.addEventListener("click", () => this.toggle());
+    this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => this.toggle()));
     el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.end());
-    el<HTMLButtonElement>("dashboard-timer-end").addEventListener("click", () => this.end());
+    els<HTMLButtonElement>("dashboard-timer-end").forEach((button) => button.addEventListener("click", () => this.end()));
     this.resetButton.addEventListener("click", () => this.reset());
-    el<HTMLButtonElement>("dashboard-timer-reset").addEventListener("click", () => this.reset());
+    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => button.addEventListener("click", () => this.reset()));
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
     el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント"));
     el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール"));
-    el<HTMLButtonElement>("dashboard-timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント"));
-    el<HTMLButtonElement>("dashboard-timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール"));
+    els<HTMLButtonElement>("dashboard-timer-ten").forEach((button) => button.addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント")));
+    els<HTMLButtonElement>("dashboard-timer-five").forEach((button) => button.addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール")));
     this.step.addEventListener("change", () => {
-      this.dashboardStep.value = this.step.value;
+      this.dashboardSteps.forEach((step) => { step.value = this.step.value; });
       this.chooseStep();
     });
-    this.dashboardStep.addEventListener("change", () => {
-      this.step.value = this.dashboardStep.value;
+    this.dashboardSteps.forEach((step) => step.addEventListener("change", () => {
+      this.step.value = step.value;
+      this.dashboardSteps.forEach((other) => { other.value = step.value; });
       this.chooseStep();
-    });
+    }));
     this.setupManualOptions();
     el<HTMLButtonElement>("manual-apply").addEventListener("click", () => this.applyManual());
     document.addEventListener("keydown", (event) => this.onKey(event));
@@ -502,7 +518,7 @@ class TimerController {
       if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
     });
     this.step.value = String(this.randomStep);
-    this.dashboardStep.value = String(this.randomStep);
+    this.dashboardSteps.forEach((step) => { step.value = String(this.randomStep); });
     this.reset();
     requestAnimationFrame((now) => this.frame(now));
   }
@@ -517,7 +533,7 @@ class TimerController {
     if (active) {
       this.randomStep = 5;
       this.step.value = "5";
-      this.dashboardStep.value = "5";
+      this.dashboardSteps.forEach((step) => { step.value = "5"; });
     }
     if (!this.running && !this.started) this.reset();
   }
@@ -583,7 +599,7 @@ class TimerController {
     this.manualSeconds = Math.max(1, minutes * 60 + seconds);
     this.randomStep = "manual";
     this.step.value = "manual";
-    this.dashboardStep.value = "manual";
+    this.dashboardSteps.forEach((step) => { step.value = "manual"; });
     this.reset();
   }
 
@@ -614,9 +630,9 @@ class TimerController {
     this.notice.textContent = "";
     this.subRemaining = 0;
     this.subTime.classList.add("hidden");
-    this.dashboardSubTime.classList.add("hidden");
-    this.dashboardSubCaption.textContent = "";
-    this.dashboardSubCaption.classList.remove("count");
+    toggleClass(this.dashboardSubTimes, "hidden", true);
+    setText(this.dashboardSubCaptions, "");
+    toggleClass(this.dashboardSubCaptions, "count", false);
     this.caption.textContent = "";
     this.caption.classList.remove("count");
     this.syncControls();
@@ -700,9 +716,9 @@ class TimerController {
       this.subRemaining = Math.max(0, this.subRemaining - delta);
       if (this.subRemaining === 0) {
         this.subTime.classList.add("hidden");
-        this.dashboardSubTime.classList.add("hidden");
-        this.dashboardSubCaption.textContent = "";
-        this.dashboardSubCaption.classList.remove("count");
+        toggleClass(this.dashboardSubTimes, "hidden", true);
+        setText(this.dashboardSubCaptions, "");
+        toggleClass(this.dashboardSubCaptions, "count", false);
         this.caption.classList.remove("count");
         this.caption.textContent = "";
       }
@@ -715,8 +731,8 @@ class TimerController {
     const whole = Math.ceil(this.remaining);
     const formatted = `${String(Math.floor(whole / 60)).padStart(2, "0")} : ${String(whole % 60).padStart(2, "0")}`;
     this.time.textContent = formatted;
-    this.dashboardTime.textContent = this.dashboardOverride ?? formatted;
-    this.dashboardMode.textContent = this.mode.textContent;
+    setText(this.dashboardTimes, this.dashboardOverride ?? formatted);
+    setText(this.dashboardModes, this.mode.textContent);
     this.progress.value = this.total ? (this.remaining / this.total) * 100 : 0;
     const warning = this.remaining <= 10;
     this.time.classList.toggle("warning", warning);
@@ -724,7 +740,7 @@ class TimerController {
     if (this.subRemaining > 0) {
       const formattedSubTime = String(Math.ceil(this.subRemaining));
       this.subTime.textContent = formattedSubTime;
-      this.dashboardSubTime.textContent = formattedSubTime;
+      setText(this.dashboardSubTimes, formattedSubTime);
     }
   }
 
@@ -754,11 +770,11 @@ class TimerController {
     document.body.classList.toggle("timer-started", this.started);
     document.body.classList.toggle("timer-ended", this.started && this.remaining <= 0);
     this.startButton.textContent = startLabel;
-    this.dashboardStartButton.textContent = startLabel;
+    setText(this.dashboardStartButtons, startLabel);
     this.resetButton.disabled = this.running;
-    el<HTMLButtonElement>("dashboard-timer-reset").disabled = this.running;
+    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => { button.disabled = this.running; });
     this.step.disabled = this.running;
-    this.dashboardStep.disabled = this.running;
+    this.dashboardSteps.forEach((step) => { step.disabled = this.running; });
   }
 
   private toggleSubTimer(seconds: number, label: string): void {
@@ -766,9 +782,9 @@ class TimerController {
     if (this.subRemaining > 0 && this.subCaption === label) {
       this.subRemaining = 0;
       this.subTime.classList.add("hidden");
-      this.dashboardSubTime.classList.add("hidden");
-      this.dashboardSubCaption.textContent = "";
-      this.dashboardSubCaption.classList.remove("count");
+      toggleClass(this.dashboardSubTimes, "hidden", true);
+      setText(this.dashboardSubCaptions, "");
+      toggleClass(this.dashboardSubCaptions, "count", false);
       this.caption.classList.remove("count");
       this.caption.textContent = "";
       return;
@@ -776,9 +792,9 @@ class TimerController {
     this.subRemaining = seconds;
     this.subCaption = label;
     this.subTime.classList.remove("hidden");
-    this.dashboardSubTime.classList.remove("hidden");
-    this.dashboardSubCaption.textContent = label;
-    this.dashboardSubCaption.classList.add("count");
+    toggleClass(this.dashboardSubTimes, "hidden", false);
+    setText(this.dashboardSubCaptions, label);
+    toggleClass(this.dashboardSubCaptions, "count", true);
     this.caption.classList.add("count");
     this.caption.textContent = label;
     this.render();
@@ -949,7 +965,7 @@ class RefereeTimerController {
 
 class BallController {
   private readonly court = el<HTMLElement>("court");
-  private readonly dashboardCourt = el<HTMLElement>("dashboard-court");
+  private readonly dashboardCourts = els<HTMLElement>("dashboard-court");
   private workflowMatch = 0;
   private hyogo = false;
   private seriesOrangeSide: number[] | null = null;
@@ -965,9 +981,9 @@ class BallController {
 
   constructor(private readonly ready: (match: number) => void) {
     el<HTMLButtonElement>("balls-random").addEventListener("click", () => this.randomize());
-    el<HTMLButtonElement>("dashboard-random").addEventListener("click", () => this.randomize());
+    els<HTMLButtonElement>("dashboard-random").forEach((button) => button.addEventListener("click", () => this.randomize()));
     el<HTMLButtonElement>("balls-reset").addEventListener("click", () => this.reset());
-    el<HTMLButtonElement>("dashboard-balls-reset").addEventListener("click", () => this.reset());
+    els<HTMLButtonElement>("dashboard-balls-reset").forEach((button) => button.addEventListener("click", () => this.reset()));
     el<HTMLButtonElement>("balls-ready").addEventListener("click", () => this.completeWorkflow());
     this.draw(this.defaults);
   }
@@ -1009,7 +1025,7 @@ class BallController {
   }
 
   private draw(layout: BallLayout): void {
-    [this.court, this.dashboardCourt].forEach((court) => {
+    [this.court, ...this.dashboardCourts].forEach((court) => {
       if (!court.children.length) layout.forEach(() => court.append(document.createElement("span")));
       layout.forEach(([color, x, y], index) => {
         const ball = court.children[index] as HTMLElement;
@@ -2712,11 +2728,11 @@ class Application {
       if (this.mobileMenuOpen && !el("app-header").contains(target)) this.closeMobileMenu();
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
-    el<HTMLButtonElement>("dashboard-timer-fullscreen").addEventListener("click", () => {
+    els<HTMLButtonElement>("dashboard-timer-fullscreen").forEach((button) => button.addEventListener("click", () => {
       this.show("timer");
       void this.timer.enterDisplayFullscreen();
-    });
-    el<HTMLButtonElement>("dashboard-balls-fullscreen").addEventListener("click", () => void this.enterBallsFullscreen());
+    }));
+    els<HTMLButtonElement>("dashboard-balls-fullscreen").forEach((button) => button.addEventListener("click", () => void this.enterBallsFullscreen()));
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement && this.ballsFullscreen) this.setBallsFullscreen(false);
@@ -2752,6 +2768,10 @@ class Application {
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
+  private operationScreen(): Screen {
+    return document.getElementById("screen-operation") ? "operation" : "dashboard";
+  }
+
   private setupOperationFlow(): void {
     this.syncOperationTeams();
     el<HTMLButtonElement>("operation-prepare").addEventListener("click", () => {
@@ -2759,7 +2779,7 @@ class Application {
       this.setOperationNavigationLocked(true);
       this.clearOperationHomeTimer();
       this.syncOperationTeams();
-      this.show("dashboard");
+      this.show(this.operationScreen());
       this.showOperationStep("team");
     });
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
@@ -2774,7 +2794,7 @@ class Application {
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
       this.timer.setDashboardOverride(null);
       this.timer.prepare();
-      el("dashboard-time").textContent = this.timer.displayText();
+      setText(els("dashboard-time"), this.timer.displayText());
       this.setOperationDrawButtonsLocked(true, true);
       this.setOperationDrawStage(3);
     });
@@ -2797,7 +2817,7 @@ class Application {
         return;
       }
       this.operationMatch = Math.min(detail.match + 1, 3);
-      this.show("dashboard");
+      this.show(this.operationScreen());
       this.showOperationStep("between");
       el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
       el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span>`;
@@ -2809,7 +2829,7 @@ class Application {
       this.setOperationFinalReview(false);
       const detail = (event as CustomEvent<{ lead: string; winner: string }>).detail;
       this.setOperationNavigationLocked(false);
-      this.show("dashboard");
+      this.show(this.operationScreen());
       this.showOperationStep("finished");
       el("operation-result-line-a").textContent = detail.lead;
       el("operation-result-line-b").textContent = detail.winner;
@@ -2860,7 +2880,7 @@ class Application {
       this.setOperationDrawStage(1);
       el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
       this.timer.setDashboardOverride("00 : 00");
-      el("dashboard-time").textContent = "00 : 00";
+      setText(els("dashboard-time"), "00 : 00");
     }
     window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -2936,7 +2956,7 @@ class Application {
       void this.timer.leaveFullscreen();
       this.recordTimerPending = false;
       this.setOperationTimerActive(false);
-      this.show("dashboard");
+      this.show(this.operationScreen());
       this.showOperationStep("draw");
       return;
     }
@@ -2967,7 +2987,7 @@ class Application {
     this.clearFlow();
     this.balls.resetWorkflow();
     this.timer.setDashboardOverride(null);
-    this.show("dashboard");
+    this.show(this.operationScreen());
     this.showOperationStep("home");
   }
 
@@ -3027,7 +3047,7 @@ class Application {
     this.ballsFullscreen = active;
     document.body.classList.toggle("balls-compact", active);
     el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
-    el<HTMLButtonElement>("dashboard-balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
+    setText(els<HTMLButtonElement>("dashboard-balls-fullscreen"), active ? "全画面解除" : "全画面表示");
   }
 
   private handleFlow(event: FlowEvent, match = 0): void {
@@ -3052,7 +3072,7 @@ class Application {
       this.setFlow(this.operationMatch, "抽選準備中");
       this.balls.beginWorkflow(this.operationMatch);
       this.timer.prepare();
-      this.show("dashboard");
+      this.show(this.operationScreen());
       this.showOperationStep("draw");
       return;
     }

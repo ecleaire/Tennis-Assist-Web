@@ -26,6 +26,7 @@
           </button>
           <nav id="navigation" aria-label="機能メニュー">
             <button class="nav active" data-screen="dashboard">ホーム</button>
+            <button class="nav" data-screen="operation">試合運営</button>
             <button class="nav" data-screen="timer">タイマー</button>
             <button class="nav" data-screen="referee">審判タイマー</button>
             <button class="nav" data-screen="balls">ボール配置</button>
@@ -44,29 +45,6 @@
 
       <section id="screen-dashboard" class="screen active">
         <div class="dashboard">
-          <div class="hidden" aria-hidden="true">
-            <button id="operation-prepare" type="button">試合開始</button>
-            <select id="operation-court"></select>
-            <select id="operation-team-a"></select>
-            <select id="operation-team-b"></select>
-            <button id="operation-team-ok" type="button">OK</button>
-            <p id="operation-team-status"></p>
-            <button id="operation-ball-random" type="button">① ボール配置ランダム</button>
-            <button id="operation-time-random" type="button">② 試合時間ランダム</button>
-            <button id="operation-ready" type="button">③ 準備完了</button>
-            <button id="operation-next-match" type="button">次のマッチへ進む</button>
-            <button id="operation-home-return" type="button">ホーム画面に戻る</button>
-            <p id="operation-ended-match"></p>
-            <p id="operation-between-message"></p>
-            <p id="operation-result-line-a"></p>
-            <p id="operation-result-line-b"></p>
-            <h2 id="operation-match-title">【第1マッチ抽選】</h2>
-            <article id="operation-home" class="operation-step"></article>
-            <article id="operation-team" class="operation-step"></article>
-            <article id="operation-draw" class="operation-step"></article>
-            <article id="operation-between" class="operation-step"></article>
-            <article id="operation-finished" class="operation-step"></article>
-          </div>
           <article class="panel dashboard-card">
             <div class="section-head">
               <div>
@@ -110,6 +88,69 @@
               <p id="dashboard-sub-caption" class="hint dashboard-sub-caption"></p>
               <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
             </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="screen-operation" class="screen">
+        <div class="operation-shell">
+          <article id="operation-home" class="panel operation-step operation-home active">
+            <button id="operation-prepare" class="button primary operation-prepare">試合開始</button>
+          </article>
+
+          <article id="operation-team" class="panel operation-step operation-team">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">MATCH SETUP</p>
+                <h2>チーム選択</h2>
+              </div>
+            </div>
+            <div class="operation-court-row">
+              <label>コート選択<select id="operation-court"></select></label>
+            </div>
+            <div class="operation-team-grid">
+              <label>左側チーム名<select id="operation-team-a"></select></label>
+              <label>右側チーム名<select id="operation-team-b"></select></label>
+            </div>
+            <div class="operation-actions end">
+              <button id="operation-team-ok" class="button primary">OK</button>
+            </div>
+            <p id="operation-team-status" class="muted"></p>
+          </article>
+
+          <article id="operation-draw" class="panel operation-step operation-draw">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <div class="operation-draw-layout">
+              <div class="operation-draw-main">
+                <h2 id="operation-match-title" class="operation-match-title">【第1マッチ抽選】</h2>
+                <div class="operation-court-panel">
+                  <p>ボール配置</p>
+                  <div id="dashboard-court" class="court dashboard-court" aria-label="大会運営画面のボール配置"></div>
+                </div>
+              </div>
+              <aside class="operation-draw-side">
+                <output id="dashboard-time" class="digital dashboard-digital">00 : 00</output>
+                <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置ランダム</button>
+                <button id="operation-time-random" class="button primary operation-numbered">② 試合時間ランダム</button>
+                <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
+              </aside>
+            </div>
+          </article>
+
+          <article id="operation-between" class="panel operation-step operation-between">
+            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <p id="operation-ended-match" class="operation-ended-match">第1マッチが終了しました</p>
+            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span></h2>
+            <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
+          </article>
+
+          <article id="operation-finished" class="panel operation-step operation-finished">
+            <h2>試合が終了しました。</h2>
+            <p id="operation-result-line-a" class="operation-result-message">ただいまの試合結果を保存しました。</p>
+            <p id="operation-result-line-b" class="operation-result-winner"></p>
+            <p class="operation-thanks">お疲れ様でした</p>
+            <button id="operation-home-return" class="button primary">試合運営画面に戻る</button>
           </article>
         </div>
       </section>
@@ -347,15 +388,15 @@
               <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
             </div>
             <div id="stats-cards" class="stats-grid"></div>
-            <p id="history-status" class="muted status-message"></p>
             <div id="sync-alert-panel" class="sync-alert-panel hidden" aria-live="polite">
               <div>
-                <strong id="sync-alert-title">未送信データがあります</strong>
+                <strong id="sync-alert-title">未送信の試合結果があります</strong>
                 <p id="sync-alert-summary"></p>
               </div>
-              <button id="history-retry-all" class="button primary">未送信を一斉再送信</button>
+              <button id="history-retry-all" class="button danger">一斉再送信</button>
               <div id="sync-alert-list" class="sync-alert-list"></div>
             </div>
+            <p id="history-status" class="muted status-message"></p>
             <div id="history"></div>
           </article>
         </div>
@@ -471,16 +512,6 @@
         </div>
       </form>
     </dialog>
-    <dialog id="operation-ready-dialog" class="dialog">
-      <form method="dialog">
-        <h2>試合を開始しますか？</h2>
-        <p class="muted">ボール配置と試合時間を確認してから開始してください。</p>
-        <div class="toolbar">
-          <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
-          <button class="button" value="cancel">戻る</button>
-        </div>
-      </form>
-    </dialog>
     <dialog id="news-dialog" class="dialog detail-dialog">
       <article>
         <button class="dialog-close" data-close="news-dialog" aria-label="閉じる">x</button>
@@ -492,10 +523,20 @@
     <dialog id="confirm-dialog" class="dialog">
       <form method="dialog">
         <h2>結果の確認</h2>
-        <p id="confirm-detail" class="pre-wrap"></p>
+        <div id="confirm-detail" class="confirm-detail"></div>
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="confirm-save" class="button primary" value="default">保存</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="operation-ready-dialog" class="dialog">
+      <form method="dialog">
+        <h2>試合を開始しますか？</h2>
+        <p class="pre-wrap">ボール配置と試合時間を確認してください。</p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
         </div>
       </form>
     </dialog>
