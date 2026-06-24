@@ -2743,6 +2743,21 @@ class Application {
     this.content.init();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       let refreshing = false;
+      const activateWaitingWorker = (registration: ServiceWorkerRegistration): void => {
+        registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+      };
+      const watchRegistration = (registration: ServiceWorkerRegistration): void => {
+        activateWaitingWorker(registration);
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          worker?.addEventListener("statechange", () => {
+            if (worker.state === "installed") activateWaitingWorker(registration);
+          });
+        });
+      };
+      const updateServiceWorker = (): void => {
+        void navigator.serviceWorker.getRegistration().then((registration) => registration?.update());
+      };
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
         refreshing = true;
@@ -2751,7 +2766,14 @@ class Application {
       window.addEventListener("load", () => {
         void navigator.serviceWorker
           .register(`${import.meta.env.BASE_URL}sw.js`)
-          .then((registration) => registration.update());
+          .then((registration) => {
+            watchRegistration(registration);
+            return registration.update();
+          });
+      });
+      window.addEventListener("online", updateServiceWorker);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") updateServiceWorker();
       });
     }
   }
