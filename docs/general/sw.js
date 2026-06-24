@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-web-fbfba34ea947";
+const CACHE_NAME = "tennis-assist-general-863d3a906a66";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
+  "./assets/index-CMX6oAqv.js",
   "./assets/index-CjNMhKBz.css",
-  "./assets/index-CSr4-tbq.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -25,7 +25,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith("tennis-assist-web-") && key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith("tennis-assist-general-") && key !== CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });

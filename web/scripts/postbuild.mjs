@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 
 await writeFile(new URL("../../docs/.nojekyll", import.meta.url), "\n");
 
@@ -21,13 +21,14 @@ const corePatterns = [
   /^assets\/playfield\.jpg$/,
 ];
 
-async function listFiles(directory, prefix = "") {
+async function listFiles(root, directory = root, prefix = "", options = {}) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
     const relative = `${prefix}${entry.name}`;
+    if (options.exclude?.some((pattern) => pattern.test(relative))) continue;
     if (entry.isDirectory()) {
-      files.push(...await listFiles(new URL(`${relative}/`, docsRoot), `${relative}/`));
+      files.push(...await listFiles(root, new URL(`${relative}/`, root), `${relative}/`, options));
       continue;
     }
     if (!entry.isFile() || relative === "sw.js") continue;
@@ -37,20 +38,49 @@ async function listFiles(directory, prefix = "") {
   return files.sort();
 }
 
-const files = await listFiles(docsRoot);
-const hash = createHash("sha256");
-for (const file of files) {
-  const info = await stat(new URL(file, docsRoot));
-  hash.update(`${file}:${info.size}:`);
-  hash.update(await readFile(new URL(file, docsRoot)));
+async function firstAsset(pattern) {
+  const assets = await readdir(new URL("assets/", docsRoot));
+  const match = assets.find((file) => pattern.test(file));
+  if (!match) throw new Error(`Missing built asset matching ${pattern}`);
+  return match;
 }
 
-const cacheName = `tennis-assist-web-${hash.digest("hex").slice(0, 12)}`;
-const coreFiles = files.filter((file) => corePatterns.some((pattern) => pattern.test(file)));
-const optionalFiles = files.filter((file) => !coreFiles.includes(file));
-const core = Array.from(new Set(["./", "./index.html", ...coreFiles.map((file) => `./${file}`)]));
-const optional = optionalFiles.map((file) => `./${file}`);
-const sw = `const CACHE_NAME = ${JSON.stringify(cacheName)};
+async function syncGeneralAssets() {
+  const generalRoot = new URL("general/", docsRoot);
+  const generalAssets = new URL("assets/", generalRoot);
+  await rm(generalAssets, { recursive: true, force: true });
+  await mkdir(generalAssets, { recursive: true });
+  for (const file of await readdir(new URL("assets/", docsRoot))) {
+    await cp(new URL(`assets/${file}`, docsRoot), new URL(`assets/${file}`, generalRoot));
+  }
+
+  const scriptFile = await firstAsset(/^index-[\w-]+\.js$/);
+  const cssFile = await firstAsset(/^index-[\w-]+\.css$/);
+  const indexUrl = new URL("index.html", generalRoot);
+  const index = await readFile(indexUrl, "utf8");
+  await writeFile(
+    indexUrl,
+    index
+      .replace(/\.\/assets\/index-[\w-]+\.js/g, `./assets/${scriptFile}`)
+      .replace(/\.\/assets\/index-[\w-]+\.css/g, `./assets/${cssFile}`),
+  );
+}
+
+async function writeServiceWorker(root, cachePrefix, exclude = []) {
+  const files = await listFiles(root, root, "", { exclude });
+  const hash = createHash("sha256");
+  for (const file of files) {
+    const info = await stat(new URL(file, root));
+    hash.update(`${file}:${info.size}:`);
+    hash.update(await readFile(new URL(file, root)));
+  }
+
+  const cacheName = `${cachePrefix}-${hash.digest("hex").slice(0, 12)}`;
+  const coreFiles = files.filter((file) => corePatterns.some((pattern) => pattern.test(file)));
+  const optionalFiles = files.filter((file) => !coreFiles.includes(file));
+  const core = Array.from(new Set(["./", "./index.html", ...coreFiles.map((file) => `./${file}`)]));
+  const optional = optionalFiles.map((file) => `./${file}`);
+  const sw = `const CACHE_NAME = ${JSON.stringify(cacheName)};
 const CORE = ${JSON.stringify(core, null, 2)};
 const OPTIONAL = ${JSON.stringify(optional, null, 2)};
 
@@ -62,7 +92,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith("tennis-assist-web-") && key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith(${JSON.stringify(`${cachePrefix}-`)}) && key !== CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });
@@ -98,4 +128,9 @@ self.addEventListener("fetch", (event) => {
 });
 `;
 
-await writeFile(new URL("../../docs/sw.js", import.meta.url), sw);
+  await writeFile(new URL("sw.js", root), sw);
+}
+
+await syncGeneralAssets();
+await writeServiceWorker(docsRoot, "tennis-assist-web", [/^general\//]);
+await writeServiceWorker(new URL("general/", docsRoot), "tennis-assist-general");

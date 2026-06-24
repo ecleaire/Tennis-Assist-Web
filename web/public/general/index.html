@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-Bb2aOyO5.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BVcIfDfQ.css">
+    <script type="module" crossorigin src="./assets/index-CSr4-tbq.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CjNMhKBz.css">
   </head>
   <body>
     <main id="app">
@@ -44,6 +44,29 @@
 
       <section id="screen-dashboard" class="screen active">
         <div class="dashboard">
+          <div class="hidden" aria-hidden="true">
+            <button id="operation-prepare" type="button">試合開始</button>
+            <select id="operation-court"></select>
+            <select id="operation-team-a"></select>
+            <select id="operation-team-b"></select>
+            <button id="operation-team-ok" type="button">OK</button>
+            <p id="operation-team-status"></p>
+            <button id="operation-ball-random" type="button">① ボール配置ランダム</button>
+            <button id="operation-time-random" type="button">② 試合時間ランダム</button>
+            <button id="operation-ready" type="button">③ 準備完了</button>
+            <button id="operation-next-match" type="button">次のマッチへ進む</button>
+            <button id="operation-home-return" type="button">ホーム画面に戻る</button>
+            <p id="operation-ended-match"></p>
+            <p id="operation-between-message"></p>
+            <p id="operation-result-line-a"></p>
+            <p id="operation-result-line-b"></p>
+            <h2 id="operation-match-title">【第1マッチ抽選】</h2>
+            <article id="operation-home" class="operation-step"></article>
+            <article id="operation-team" class="operation-step"></article>
+            <article id="operation-draw" class="operation-step"></article>
+            <article id="operation-between" class="operation-step"></article>
+            <article id="operation-finished" class="operation-step"></article>
+          </div>
           <article class="panel dashboard-card">
             <div class="section-head">
               <div>
@@ -93,6 +116,7 @@
 
       <section id="screen-timer" class="screen">
         <article id="timer-shell" class="panel timer-shell">
+          <button id="operation-timer-back" class="button operation-back operation-timer-only hidden" type="button">前の画面に戻る</button>
           <div class="timer-top">
             <span id="timer-mode" class="pill">試合準備完了</span>
           </div>
@@ -228,6 +252,7 @@
             <p id="winner-preview" class="winner-preview">結果を入力してください。</p>
             <div class="toolbar">
               <button id="record-save" class="button primary">このマッチを保存</button>
+              <button id="operation-record-back" class="button operation-back operation-record-only hidden" type="button">前の画面に戻る</button>
               <button id="back-balls" class="button">配置へ戻る</button>
               <button id="back-timer" class="button">タイマーへ戻る</button>
             </div>
@@ -246,7 +271,7 @@
             <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
               <strong id="completion-badge" class="completion-badge">保存済み</strong>
               <p id="completion-status">保存・送信後、3分後に自動で次の対戦準備へ戻ります。</p>
-              <button id="completion-reset" class="button primary">保存済み・次の対戦へ</button>
+              <button id="completion-reset" class="button primary">ホームへ戻る</button>
             </div>
             <div class="table-scroll"><table id="final-matches"></table></div>
             <div class="table-scroll"><table id="final-table"></table></div>
@@ -323,6 +348,14 @@
             </div>
             <div id="stats-cards" class="stats-grid"></div>
             <p id="history-status" class="muted status-message"></p>
+            <div id="sync-alert-panel" class="sync-alert-panel hidden" aria-live="polite">
+              <div>
+                <strong id="sync-alert-title">未送信データがあります</strong>
+                <p id="sync-alert-summary"></p>
+              </div>
+              <button id="history-retry-all" class="button primary">未送信を一斉再送信</button>
+              <div id="sync-alert-list" class="sync-alert-list"></div>
+            </div>
             <div id="history"></div>
           </article>
         </div>
@@ -408,9 +441,16 @@
                 </select>
               </label>
             </div>
+            <label>試合種別
+              <select id="match-type">
+                <option value="練習試合">練習試合</option>
+                <option value="公式試合">公式試合</option>
+              </select>
+            </label>
             <div class="toolbar">
               <button id="gas-save" class="button primary">設定を保存</button>
               <button id="gas-test" class="button">テスト送信</button>
+              <button id="gas-team-load" class="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>
           </div>
@@ -428,6 +468,16 @@
         <div class="toolbar">
           <button class="button" value="cancel">キャンセル</button>
           <button id="manual-apply" class="button primary" value="default">適用</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="operation-ready-dialog" class="dialog">
+      <form method="dialog">
+        <h2>試合を開始しますか？</h2>
+        <p class="muted">ボール配置と試合時間を確認してから開始してください。</p>
+        <div class="toolbar">
+          <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
+          <button class="button" value="cancel">戻る</button>
         </div>
       </form>
     </dialog>

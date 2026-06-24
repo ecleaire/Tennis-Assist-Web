@@ -3,8 +3,8 @@ const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
-  "./assets/index-BVcIfDfQ.css",
-  "./assets/index-Bb2aOyO5.js",
+  "./assets/index-CjNMhKBz.css",
+  "./assets/index-CSr4-tbq.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"

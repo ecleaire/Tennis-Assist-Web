@@ -178,9 +178,14 @@ const reasons: Record<Category, string[]> = {
   ],
 };
 
+const elementCache = new Map<string, HTMLElement>();
+
 function el<T extends HTMLElement>(id: string): T {
+  const cached = elementCache.get(id);
+  if (cached?.isConnected) return cached as T;
   const found = document.getElementById(id);
   if (!found) throw new Error(`Missing element: ${id}`);
+  elementCache.set(id, found);
   return found as T;
 }
 
@@ -232,6 +237,15 @@ function syncViewportMetrics(): void {
     /Android.+Mobile|iPhone|iPod/i.test(navigator.userAgent) ||
     (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) <= 600);
   document.documentElement.classList.toggle("phone-portrait", mobilePhone && height > width);
+}
+
+let viewportSyncFrame = 0;
+function scheduleViewportMetricsSync(): void {
+  if (viewportSyncFrame) return;
+  viewportSyncFrame = window.requestAnimationFrame(() => {
+    viewportSyncFrame = 0;
+    syncViewportMetrics();
+  });
 }
 
 function isPhonePortrait(): boolean {
@@ -2656,8 +2670,8 @@ class Application {
 
   constructor() {
     syncViewportMetrics();
-    window.addEventListener("resize", syncViewportMetrics);
-    window.visualViewport?.addEventListener("resize", syncViewportMetrics);
+    window.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
+    window.visualViewport?.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     this.timer = new TimerController(
       () => {
         if (this.recordTimerPending) {

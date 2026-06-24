@@ -1,9 +1,9 @@
-const CACHE_NAME = "tennis-assist-web-8a92e3b92918";
+const CACHE_NAME = "tennis-assist-web-8483861eadb7";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
-  "./assets/index-CSr4-tbq.js",
+  "./assets/index-CMX6oAqv.js",
   "./assets/index-CjNMhKBz.css",
   "./assets/playfield.jpg",
   "./favicon.svg",
@@ -14,20 +14,7 @@ const OPTIONAL = [
   "./assist_icon_512.png",
   "./data/news.json",
   "./data/rules_sections.json",
-  "./data/team_list_example.csv",
-  "./general/assets/DSEG7Modern-Bold.woff2",
-  "./general/assets/index-CjNMhKBz.css",
-  "./general/assets/index-CSr4-tbq.js",
-  "./general/assets/jsQR-BnGm8Ll0.js",
-  "./general/assets/playfield.jpg",
-  "./general/assist_icon_512.png",
-  "./general/data/news.json",
-  "./general/data/rules_sections.json",
-  "./general/data/team_list_example.csv",
-  "./general/favicon.svg",
-  "./general/index.html",
-  "./general/manifest.webmanifest",
-  "./general/sw.js"
+  "./data/team_list_example.csv"
 ];
 
 self.addEventListener("install", (event) => {
