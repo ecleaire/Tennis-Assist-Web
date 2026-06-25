@@ -2517,7 +2517,7 @@ class QrScanner {
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo"]);
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo", "mie", "MIE", "mie_judge"]);
   private mode: AdminMode = "standard";
 
   constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<TeamImportResult>, private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void) {
