@@ -1349,14 +1349,34 @@ class RecordsController {
     else options(el<HTMLSelectElement>("target-team"), ["対象チーム未選択"]);
   }
 
+  private inputMatchNumber(): number {
+    return Math.min(this.editing || this.nextMatch(), 3);
+  }
+
+  private resultSidesSwapped(matchNumber = this.inputMatchNumber()): boolean {
+    return matchNumber === 2;
+  }
+
+  private resultInputCounts(matchNumber = this.inputMatchNumber()): Pick<MatchRecord, "teamAOrange" | "teamAPurple" | "teamBOrange" | "teamBPurple"> {
+    const leftOrange = Number(el<HTMLSelectElement>("a-orange").value);
+    const leftPurple = Number(el<HTMLSelectElement>("a-purple").value);
+    const rightOrange = Number(el<HTMLSelectElement>("b-orange").value);
+    const rightPurple = Number(el<HTMLSelectElement>("b-purple").value);
+    if (this.resultSidesSwapped(matchNumber)) {
+      return { teamAOrange: rightOrange, teamAPurple: rightPurple, teamBOrange: leftOrange, teamBPurple: leftPurple };
+    }
+    return { teamAOrange: leftOrange, teamAPurple: leftPurple, teamBOrange: rightOrange, teamBPurple: rightPurple };
+  }
+
   private scoreData(): Pick<MatchRecord, "teamAScore" | "teamBScore" | "winner" | "result" | "targetTeam"> {
     const teamA = this.series?.teamA ?? "チームA";
     const teamB = this.series?.teamB ?? "チームB";
     const category = el<HTMLSelectElement>("reason-category").value as Category;
     const violation = category !== scoringCategory;
     const targetTeam = el<HTMLSelectElement>("target-team").value;
-    let teamAScore = Number(el<HTMLSelectElement>("a-orange").value) - Number(el<HTMLSelectElement>("a-purple").value) * 2;
-    let teamBScore = Number(el<HTMLSelectElement>("b-orange").value) - Number(el<HTMLSelectElement>("b-purple").value) * 2;
+    const counts = this.resultInputCounts();
+    let teamAScore = counts.teamAOrange - counts.teamAPurple * 2;
+    let teamBScore = counts.teamBOrange - counts.teamBPurple * 2;
     if (violation && targetTeam === teamA) [teamAScore, teamBScore] = [9, -4];
     if (violation && targetTeam === teamB) [teamAScore, teamBScore] = [-4, 9];
     const result = teamAScore < teamBScore ? "勝ち" : teamBScore < teamAScore ? "負け" : "引き分け";
@@ -1366,9 +1386,12 @@ class RecordsController {
 
   private renderScores(): void {
     const score = this.scoreData();
-    el("a-score").textContent = `得点 ${score.teamAScore}`;
-    el("b-score").textContent = `得点 ${score.teamBScore}`;
-    el("winner-preview").textContent = `${score.teamAScore} VS ${score.teamBScore} / 勝者: ${score.winner}`;
+    const swapped = this.resultSidesSwapped();
+    const leftScore = swapped ? score.teamBScore : score.teamAScore;
+    const rightScore = swapped ? score.teamAScore : score.teamBScore;
+    el("a-score").textContent = `得点 ${leftScore}`;
+    el("b-score").textContent = `得点 ${rightScore}`;
+    el("winner-preview").textContent = `${leftScore} VS ${rightScore} / 勝者: ${score.winner}`;
   }
 
   private buildRecord(): MatchRecord | null {
@@ -1388,7 +1411,8 @@ class RecordsController {
       el("record-status").textContent = "紫ボールの合計は、終了理由に関係なく必ず2個にしてください。";
       return null;
     }
-    const matchNumber = this.editing || this.nextMatch();
+    const matchNumber = this.inputMatchNumber();
+    const counts = this.resultInputCounts(matchNumber);
     const competitionId = `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_${matchNumber}`;
     return {
       recordId: `${this.series.id}_match_${matchNumber}`,
@@ -1404,10 +1428,7 @@ class RecordsController {
       teamB: this.series.teamB,
       reasonCategory: category,
       endReason: el<HTMLSelectElement>("end-reason").value,
-      teamAOrange: Number(el<HTMLSelectElement>("a-orange").value),
-      teamAPurple: Number(el<HTMLSelectElement>("a-purple").value),
-      teamBOrange: Number(el<HTMLSelectElement>("b-orange").value),
-      teamBPurple: Number(el<HTMLSelectElement>("b-purple").value),
+      ...counts,
       notes: "シリーズ進行記録",
       ...this.scoreData(),
     };
@@ -1510,13 +1531,16 @@ class RecordsController {
 
   private renderSeries(): void {
     if (!this.series) return;
-    const number = Math.min(this.editing || this.nextMatch(), 3);
+    const number = this.inputMatchNumber();
+    const swapped = this.resultSidesSwapped(number);
+    const leftTeam = swapped ? this.series.teamB : this.series.teamA;
+    const rightTeam = swapped ? this.series.teamA : this.series.teamB;
     el("series-label").textContent = `対戦カード: ${this.series.teamA} vs ${this.series.teamB} / ${this.series.court} 第${this.series.seriesNumber}試合`;
     el("match-progress").textContent = `進行状況: 第${number}マッチ / 全3マッチ`;
     el("match-title").textContent = `第${number}マッチ リザルト入力`;
-    el("match-teams").textContent = `${this.series.teamA} vs ${this.series.teamB}`;
-    el("a-name").textContent = this.series.teamA;
-    el("b-name").textContent = this.series.teamB;
+    el("match-teams").textContent = `${leftTeam} vs ${rightTeam}`;
+    el("a-name").textContent = leftTeam;
+    el("b-name").textContent = rightTeam;
     this.refreshEndReasons();
     this.renderScores();
     this.renderTables();
@@ -1535,10 +1559,17 @@ class RecordsController {
     this.refreshEndReasons();
     el<HTMLSelectElement>("end-reason").value = record.endReason;
     el<HTMLSelectElement>("target-team").value = record.targetTeam;
-    el<HTMLSelectElement>("a-orange").value = String(record.teamAOrange);
-    el<HTMLSelectElement>("a-purple").value = String(record.teamAPurple);
-    el<HTMLSelectElement>("b-orange").value = String(record.teamBOrange);
-    el<HTMLSelectElement>("b-purple").value = String(record.teamBPurple);
+    if (this.resultSidesSwapped(matchNumber)) {
+      el<HTMLSelectElement>("a-orange").value = String(record.teamBOrange);
+      el<HTMLSelectElement>("a-purple").value = String(record.teamBPurple);
+      el<HTMLSelectElement>("b-orange").value = String(record.teamAOrange);
+      el<HTMLSelectElement>("b-purple").value = String(record.teamAPurple);
+    } else {
+      el<HTMLSelectElement>("a-orange").value = String(record.teamAOrange);
+      el<HTMLSelectElement>("a-purple").value = String(record.teamAPurple);
+      el<HTMLSelectElement>("b-orange").value = String(record.teamBOrange);
+      el<HTMLSelectElement>("b-purple").value = String(record.teamBPurple);
+    }
     this.renderSeries();
     this.updateRecordVisibility();
     el("record-status").textContent = `保存すると第${matchNumber}マッチの結果を上書きします。`;
