@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist 大会用</title>
-    <script type="module" crossorigin src="./assets/index-CQtOmqX8.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CcNv4GwC.css">
+    <script type="module" crossorigin src="./assets/index-DmxnfjR2.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-QbushJS1.css">
   </head>
   <body>
     <main id="app">
@@ -35,7 +35,7 @@
             <button class="nav" data-screen="links">リンク</button>
           </nav>
           <div class="secret-navigation">
-            <button id="development-nav" class="nav hidden" data-screen="development">開発中</button>
+            <button id="development-nav" class="nav hidden" data-screen="development">管理</button>
             <button id="admin-exit" class="button admin-exit-button hidden">管理者表示を終了</button>
           </div>
         </div>
@@ -46,6 +46,7 @@
         <div class="operation-shell">
           <article id="operation-home" class="panel operation-step operation-home active">
             <button id="operation-prepare" class="button primary operation-prepare">試合開始</button>
+            <div id="home-sync-alert" class="home-sync-alert hidden" aria-live="polite"></div>
           </article>
 
           <article id="operation-team" class="panel operation-step operation-team">
@@ -431,7 +432,7 @@
         <article class="panel section-card admin-shell">
           <div>
             <p class="eyebrow">ADMIN SETTINGS</p>
-            <h2>開発用 / スプレッドシート送信</h2>
+            <h2>管理メニュー / スプレッドシート送信</h2>
           </div>
           <p class="muted">この画面のパスワードは表示制御用です。API キーの検証は Google Apps Script 側で行ってください。</p>
           <div id="admin-gate" class="form-row">

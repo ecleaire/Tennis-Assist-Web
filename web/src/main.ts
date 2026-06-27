@@ -157,7 +157,7 @@ const screenLabels: Record<Screen, string> = {
   rules: "ルール",
   news: "ニュース",
   links: "リンク",
-  development: "開発中",
+  development: "管理",
 };
 
 const scoringCategory: Category = "【終了・その時点で採点】（通常の試合停止）";
@@ -534,7 +534,7 @@ class TimerController {
   private coldUntil = 0;
   private subRemaining = 0;
   private subCaption = "";
-  private randomStep: number | "manual" = 5;
+  private randomStep: number | "manual" | "tokyo" = 5;
   private manualSeconds = 120;
   private initialReset = true;
   private secret = false;
@@ -548,7 +548,7 @@ class TimerController {
   private finishCuePlayed = false;
 
   constructor(
-    private readonly finished: () => void,
+    private readonly finished: (naturalEnd?: boolean) => void,
     private readonly activated: () => void,
     private readonly displayFullscreenExited: () => void = () => {},
   ) {
@@ -607,8 +607,56 @@ class TimerController {
     if (!this.running && !this.started) this.reset();
   }
 
+  setTokyoClockModeAvailable(active: boolean): void {
+    const sync = (select: HTMLSelectElement): void => {
+      const existing = select.querySelector<HTMLOptionElement>('option[value="tokyo"]');
+      if (active && !existing) {
+        const option = document.createElement("option");
+        option.value = "tokyo";
+        option.textContent = "東京現在時刻表示";
+        select.append(option);
+      }
+      if (!active && existing) existing.remove();
+      if (!active && select.value === "tokyo") select.value = "5";
+    };
+    sync(this.step);
+    this.dashboardSteps.forEach(sync);
+    if (!active && this.randomStep === "tokyo") {
+      this.randomStep = 5;
+      this.reset();
+    }
+  }
+
   prepare(): void {
     this.reset();
+  }
+
+  resetDefault(): void {
+    this.touchTimerState();
+    this.running = false;
+    this.started = false;
+    this.notifiedFinish = false;
+    this.endAt = 0;
+    this.audioCues.stopScheduled();
+    this.thirtyCuePlayed = false;
+    this.countdownCuePlayed = false;
+    this.finishCuePlayed = false;
+    this.total = 120;
+    this.remaining = 120;
+    this.mode.textContent = "試合準備完了";
+    this.coldShown = false;
+    this.coldUntil = 0;
+    this.notice.textContent = "";
+    this.subRemaining = 0;
+    this.subTime.classList.add("hidden");
+    toggleClass(this.dashboardSubTimes, "hidden", true);
+    setText(this.dashboardSubCaptions, "");
+    toggleClass(this.dashboardSubCaptions, "count", false);
+    this.caption.textContent = "";
+    this.caption.classList.remove("count");
+    this.dashboardOverride = null;
+    this.syncControls();
+    this.render();
   }
 
   displayText(): string {
@@ -651,6 +699,19 @@ class TimerController {
       el<HTMLDialogElement>("manual-dialog").showModal();
       return;
     }
+    if (this.step.value === "tokyo") {
+      this.randomStep = "tokyo";
+      this.running = false;
+      this.started = false;
+      this.notifiedFinish = false;
+      this.endAt = 0;
+      this.audioCues.stopScheduled();
+      this.mode.textContent = "東京現在時刻";
+      this.dashboardSteps.forEach((step) => { step.value = "tokyo"; });
+      this.syncControls();
+      this.render();
+      return;
+    }
     this.randomStep = Number(this.step.value);
     this.reset();
   }
@@ -674,6 +735,7 @@ class TimerController {
   }
 
   private generatedDuration(): number {
+    if (this.randomStep === "tokyo") return 120;
     if (this.hyogo) {
       const candidates = [90, 95, 100, 105, 110, 115, 120];
       return candidates[Math.floor(Math.random() * candidates.length)] ?? 120;
@@ -693,6 +755,14 @@ class TimerController {
     this.thirtyCuePlayed = false;
     this.countdownCuePlayed = false;
     this.finishCuePlayed = false;
+    if (this.randomStep === "tokyo") {
+      this.total = 120;
+      this.remaining = 120;
+      this.mode.textContent = "東京現在時刻";
+      this.syncControls();
+      this.render();
+      return;
+    }
     this.total = this.initialReset ? 120 : this.generatedDuration();
     this.initialReset = false;
     this.remaining = this.total;
@@ -712,6 +782,7 @@ class TimerController {
   }
 
   private async toggle(): Promise<void> {
+    if (this.randomStep === "tokyo") return;
     if (this.running) this.pause();
     else await this.start();
   }
@@ -757,13 +828,13 @@ class TimerController {
     this.scheduleAutoReset();
     this.syncControls();
     this.render();
-    this.emitFinish(true);
+    this.emitFinish(true, false);
   }
 
-  private emitFinish(force = false): void {
+  private emitFinish(force = false, naturalEnd = false): void {
     if (this.started && (force || !this.notifiedFinish)) {
       this.notifiedFinish = true;
-      this.finished();
+      this.finished(naturalEnd);
     }
   }
 
@@ -789,7 +860,7 @@ class TimerController {
         this.playFinishCue();
         this.scheduleAutoReset();
         this.syncControls();
-        this.emitFinish();
+        this.emitFinish(false, true);
       }
     }
     if (this.subRemaining > 0) {
@@ -808,6 +879,24 @@ class TimerController {
   }
 
   private render(): void {
+    if (this.randomStep === "tokyo") {
+      const parts = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).formatToParts(new Date());
+      const value = (type: string): string => parts.find((part) => part.type === type)?.value ?? "00";
+      const formattedClock = `${value("hour")} : ${value("minute")} : ${value("second")}`;
+      this.time.textContent = formattedClock;
+      setText(this.dashboardTimes, this.dashboardOverride ?? formattedClock);
+      setText(this.dashboardModes, this.mode.textContent);
+      this.progress.value = 100;
+      this.time.classList.remove("warning");
+      this.progress.classList.remove("warning");
+      return;
+    }
     const whole = Math.ceil(this.remaining);
     const formatted = `${String(Math.floor(whole / 60)).padStart(2, "0")} : ${String(whole % 60).padStart(2, "0")}`;
     this.time.textContent = formatted;
@@ -847,14 +936,17 @@ class TimerController {
   }
 
   private syncControls(): void {
-    const startLabel = this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
+    const clockMode = this.randomStep === "tokyo";
+    const startLabel = clockMode ? "時計表示中" : this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
     document.body.classList.toggle("timer-running", this.running);
     document.body.classList.toggle("timer-started", this.started);
     document.body.classList.toggle("timer-ended", this.started && this.remaining <= 0);
     this.startButton.textContent = startLabel;
     setText(this.dashboardStartButtons, startLabel);
-    this.resetButton.disabled = this.running;
-    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => { button.disabled = this.running; });
+    this.startButton.disabled = clockMode;
+    this.dashboardStartButtons.forEach((button) => { button.disabled = clockMode; });
+    this.resetButton.disabled = this.running || clockMode;
+    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => { button.disabled = this.running || clockMode; });
     this.step.disabled = this.running;
     this.dashboardSteps.forEach((step) => { step.disabled = this.running; });
   }
@@ -2313,6 +2405,7 @@ class RecordsController {
 
   private saveStoredRecords(): void {
     localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !isSheetPreviewRecord(record))));
+    document.dispatchEvent(new CustomEvent("records-storage-updated"));
   }
 
   private isFinished(): boolean {
@@ -2691,6 +2784,7 @@ class AdminController {
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
+    document.dispatchEvent(new CustomEvent("admin-settings-updated"));
     el("gas-status").textContent = "この端末に設定を保存しました。";
   }
 
@@ -2699,6 +2793,7 @@ class AdminController {
     settings.accentMode = el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard";
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
+    document.dispatchEvent(new CustomEvent("admin-settings-updated"));
   }
 
   lock(): void {
@@ -2796,6 +2891,7 @@ class Application {
   private operationActive = false;
   private operationMatch = 1;
   private operationHomeTimer = 0;
+  private operationTimerFinishDelay = 0;
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
 
   constructor() {
@@ -2803,7 +2899,7 @@ class Application {
     window.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     window.visualViewport?.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     this.timer = new TimerController(
-      () => this.handleTimerFinished(),
+      (naturalEnd) => this.handleTimerFinished(Boolean(naturalEnd)),
       () => this.show("timer"),
       () => this.restoreFullscreenReturn("timer"),
     );
@@ -3005,12 +3101,18 @@ class Application {
     document.addEventListener("series-home-requested", () => {
       if (this.operationActive) this.returnOperationHome(false);
     });
+    document.addEventListener("records-storage-updated", () => this.updateHomeSyncAlert());
+    document.addEventListener("admin-settings-updated", () => this.updateHomeSyncAlert());
+    window.addEventListener("storage", (event) => {
+      if (event.key === "tennis-assist-records-v1" || event.key === "tennis-assist-admin-v1") this.updateHomeSyncAlert();
+    });
     document.addEventListener("series-match-edit", () => {
       if (!this.operationActive) return;
       this.setOperationFinalReview(false);
       this.setOperationRecordFocus(true);
       this.show("records");
     });
+    this.updateHomeSyncAlert();
   }
 
   private syncOperationTeams(): void {
@@ -3049,7 +3151,32 @@ class Application {
       this.timer.setDashboardOverride("00 : 00");
       setText(els("dashboard-time"), "00 : 00");
     }
+    if (step === "home") this.updateHomeSyncAlert();
     window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  private updateHomeSyncAlert(): void {
+    const panel = document.getElementById("home-sync-alert");
+    if (!panel) return;
+    let records: MatchRecord[] = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem("tennis-assist-records-v1") ?? "[]") as unknown;
+      records = Array.isArray(parsed) ? parsed as MatchRecord[] : [];
+    } catch {
+      records = [];
+    }
+    const pending = records.filter((record) => record.recordKind === "試合結果" && record.sendStatus === "pending").length;
+    const failed = records.filter((record) => record.recordKind === "試合結果" && record.sendStatus === "failed").length;
+    const unsent = pending + failed;
+    const settings = AdminController.settings();
+    const configured = settings.sendEnabled && settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey);
+    panel.classList.toggle("hidden", unsent === 0 && configured);
+    const gasText = configured ? "GAS接続設定: 有効" : "GAS接続設定: 未設定または送信OFF";
+    if (!unsent) {
+      panel.innerHTML = `<strong>${gasText}</strong><span>未送信の対戦結果はありません。</span>`;
+      return;
+    }
+    panel.innerHTML = `<strong>${gasText}</strong><span>対戦結果が未送信です。未送信 ${pending}件 / 送信失敗 ${failed}件。試合記録の「対戦履歴と統計」から再送信してください。</span>`;
   }
 
   private setOperationDrawStage(stage: 1 | 2 | 3): void {
@@ -3078,6 +3205,12 @@ class Application {
     this.operationHomeTimer = 0;
   }
 
+  private clearOperationTimerFinishDelay(): void {
+    if (!this.operationTimerFinishDelay) return;
+    window.clearTimeout(this.operationTimerFinishDelay);
+    this.operationTimerFinishDelay = 0;
+  }
+
   private setOperationRecordFocus(active: boolean): void {
     document.body.classList.toggle("operation-record-focus", active);
   }
@@ -3100,6 +3233,7 @@ class Application {
 
   private startOperationTimer(): void {
     this.clearOperationHomeTimer();
+    this.clearOperationTimerFinishDelay();
     this.timer.setDashboardOverride(null);
     this.setOperationDrawStage(3);
     this.setFlow(this.operationMatch, "タイマー待機中");
@@ -3120,9 +3254,22 @@ class Application {
     this.show("records");
   }
 
-  private handleTimerFinished(): void {
+  private handleTimerFinished(naturalEnd = false): void {
     const operationTimerActive = this.operationActive && el("screen-timer").classList.contains("active");
     if (!this.recordTimerPending && !operationTimerActive) return;
+    if (naturalEnd && operationTimerActive) {
+      if (this.operationTimerFinishDelay) return;
+      this.operationTimerFinishDelay = window.setTimeout(() => {
+        this.operationTimerFinishDelay = 0;
+        this.completeTimerFinished();
+      }, 1000);
+      return;
+    }
+    this.clearOperationTimerFinishDelay();
+    this.completeTimerFinished();
+  }
+
+  private completeTimerFinished(): void {
     this.recordTimerPending = false;
     void this.timer.leaveFullscreen();
     this.clearFlow();
@@ -3142,6 +3289,7 @@ class Application {
 
   private goOperationBack(): void {
     this.clearOperationHomeTimer();
+    this.clearOperationTimerFinishDelay();
     if (document.body.classList.contains("operation-record-focus")) {
       this.setOperationRecordFocus(false);
       this.setOperationTimerActive(true);
@@ -3180,6 +3328,7 @@ class Application {
 
   private returnOperationHome(resetSeries: boolean): void {
     this.clearOperationHomeTimer();
+    this.clearOperationTimerFinishDelay();
     this.operationActive = false;
     this.operationMatch = 1;
     this.setOperationRecordFocus(false);
@@ -3191,7 +3340,7 @@ class Application {
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
     this.balls.resetWorkflow();
-    this.timer.setDashboardOverride(null);
+    this.timer.resetDefault();
     this.show(this.operationScreen());
     this.showOperationStep("home");
   }
@@ -3328,8 +3477,10 @@ class Application {
     document.documentElement.classList.toggle("venue-standard-accent", settings.accentMode === "standard");
     document.documentElement.classList.toggle("venue-admin-accent", settings.accentMode === "admin");
     this.timer.setHyogoMode(this.hyogo);
+    this.timer.setTokyoClockModeAvailable(this.isPublicVersion());
     this.balls.setHyogoMode(this.hyogo);
     this.updateTitle();
+    this.updateHomeSyncAlert();
   }
 
   private updateTitle(): void {
@@ -3347,6 +3498,7 @@ class Application {
     el("admin-exit").classList.add("hidden");
     this.timer.setSecret(false);
     this.timer.setHyogoMode(false);
+    this.timer.setTokyoClockModeAvailable(false);
     this.balls.setHyogoMode(false);
     this.admin?.lock();
     this.content.renderLinks(false);
