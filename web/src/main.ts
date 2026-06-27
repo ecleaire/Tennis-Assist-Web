@@ -2989,6 +2989,7 @@ class Application {
 
   private show(screen: Screen): void {
     this.timer.noteActivity();
+    if (screen !== "timer") void this.timer.leaveFullscreen();
     if (screen !== "referee") void this.refereeTimer.leaveFullscreen();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
@@ -3256,7 +3257,14 @@ class Application {
 
   private handleTimerFinished(naturalEnd = false): void {
     const operationTimerActive = this.operationActive && el("screen-timer").classList.contains("active");
-    if (!this.recordTimerPending && !operationTimerActive) return;
+    if (!this.recordTimerPending && !operationTimerActive) {
+      if (naturalEnd) {
+        window.setTimeout(() => {
+          void this.timer.leaveFullscreen();
+        }, 1000);
+      }
+      return;
+    }
     if (naturalEnd && operationTimerActive) {
       if (this.operationTimerFinishDelay) return;
       this.operationTimerFinishDelay = window.setTimeout(() => {
@@ -3484,7 +3492,11 @@ class Application {
   }
 
   private updateTitle(): void {
-    el("title").textContent = this.hyogo ? "RoboSports Assist HYOGO" : this.secret ? "RoboSports Assist Master" : "RoboSports Assist";
+    const suffix = this.isPublicVersion() ? "general" : "大会用";
+    const base = this.hyogo ? "RoboSports Assist HYOGO" : "RoboSports Assist";
+    const title = `${base} ${suffix}`;
+    el("title").textContent = title;
+    document.title = title;
   }
 
   private deactivateSecret(): void {

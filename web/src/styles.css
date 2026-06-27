@@ -3390,19 +3390,19 @@ html.phone-portrait .link-grid .button {
   padding: 8px 7px;
 }
 
-body.compact.timer-started:not(.operation-timer-active) #timer-fullscreen,
-body.compact.timer-started:not(.operation-timer-active) #timer-reset,
-body.compact.timer-started:not(.operation-timer-active) #timer-step {
+body.compact.timer-running:not(.operation-timer-active) #timer-fullscreen,
+body.compact.timer-running:not(.operation-timer-active) #timer-reset,
+body.compact.timer-running:not(.operation-timer-active) #timer-step {
   display: none !important;
 }
 
-body.compact.timer-started:not(.operation-timer-active) .controls {
+body.compact.timer-running:not(.operation-timer-active) .controls {
   display: grid;
   gap: clamp(10px, 1.5vw, 14px);
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-body.compact.timer-started:not(.operation-timer-active) .controls .button {
+body.compact.timer-running:not(.operation-timer-active) .controls .button {
   font-size: clamp(1.05rem, 1.9vw, 1.45rem);
   font-weight: 900;
   min-height: clamp(64px, 8.4vh, 92px);
@@ -3410,21 +3410,21 @@ body.compact.timer-started:not(.operation-timer-active) .controls .button {
   width: 100%;
 }
 
-body.compact.timer-started:not(.operation-timer-active) #timer-start,
-body.compact.timer-started:not(.operation-timer-active) #timer-end,
-body.compact.timer-started:not(.operation-timer-active) #timer-ten,
-body.compact.timer-started:not(.operation-timer-active) #timer-five {
+body.compact.timer-running:not(.operation-timer-active) #timer-start,
+body.compact.timer-running:not(.operation-timer-active) #timer-end,
+body.compact.timer-running:not(.operation-timer-active) #timer-ten,
+body.compact.timer-running:not(.operation-timer-active) #timer-five {
   grid-column: auto;
   margin-left: 0;
 }
 
-body.compact.timer-started:not(.operation-timer-active) #timer-ten,
-body.compact.timer-started:not(.operation-timer-active) #timer-five {
+body.compact.timer-running:not(.operation-timer-active) #timer-ten,
+body.compact.timer-running:not(.operation-timer-active) #timer-five {
   font-size: clamp(1.22rem, 2.3vw, 1.75rem);
 }
 
 @media (max-width: 760px) {
-  body.compact.timer-started:not(.operation-timer-active) .controls {
+  body.compact.timer-running:not(.operation-timer-active) .controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
