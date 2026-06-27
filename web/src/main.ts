@@ -757,11 +757,11 @@ class TimerController {
     this.scheduleAutoReset();
     this.syncControls();
     this.render();
-    this.emitFinish();
+    this.emitFinish(true);
   }
 
-  private emitFinish(): void {
-    if (this.started && !this.notifiedFinish) {
+  private emitFinish(force = false): void {
+    if (this.started && (force || !this.notifiedFinish)) {
       this.notifiedFinish = true;
       this.finished();
     }
@@ -1425,9 +1425,9 @@ class RecordsController {
     if (!record) return;
     el("confirm-detail").innerHTML =
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
-      `<p class="confirm-reason"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></p>` +
-      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small>オレンジ${record.teamAOrange} / 紫${record.teamAPurple}</small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small>オレンジ${record.teamBOrange} / 紫${record.teamBPurple}</small></p></div>` +
-      `<p class="confirm-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></p>`;
+      `<p class="confirm-reason"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
+      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small>オレンジ ${record.teamAOrange}個 / 紫 ${record.teamAPurple}個</small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small>オレンジ ${record.teamBOrange}個 / 紫 ${record.teamBPurple}個</small></p></div>` +
+      `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
     el<HTMLDialogElement>("confirm-dialog").showModal();
   }
 
@@ -2772,18 +2772,7 @@ class Application {
     window.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     window.visualViewport?.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     this.timer = new TimerController(
-      () => {
-        if (this.recordTimerPending) {
-          this.recordTimerPending = false;
-          void this.timer.leaveFullscreen();
-          this.clearFlow();
-          this.setOperationTimerActive(false);
-          this.setOperationTimerReturnable(false);
-          this.setOperationRecordFocus(this.operationActive);
-          this.show("records");
-          this.records.timerFinished();
-        }
-      },
+      () => this.handleTimerFinished(),
       () => this.show("timer"),
       () => this.restoreFullscreenReturn("timer"),
     );
@@ -2931,9 +2920,8 @@ class Application {
     });
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
     document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.goOperationBack()));
-    el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.goOperationBack());
+    el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.confirmOperationTimerBack());
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
-    el<HTMLButtonElement>("operation-record-back").addEventListener("click", () => this.goOperationBack());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
       this.setOperationDrawButtonsLocked(true, false);
@@ -3099,6 +3087,26 @@ class Application {
     this.setOperationTimerActive(false);
     this.setOperationRecordFocus(true);
     this.show("records");
+  }
+
+  private handleTimerFinished(): void {
+    const operationTimerActive = this.operationActive && el("screen-timer").classList.contains("active");
+    if (!this.recordTimerPending && !operationTimerActive) return;
+    this.recordTimerPending = false;
+    void this.timer.leaveFullscreen();
+    this.clearFlow();
+    this.setOperationTimerActive(false);
+    this.setOperationTimerReturnable(false);
+    this.setOperationRecordFocus(this.operationActive);
+    this.show("records");
+    this.records.timerFinished();
+  }
+
+  private confirmOperationTimerBack(): void {
+    if (!el("screen-timer").classList.contains("active")) return;
+    const ok = window.confirm("マッチ抽選へ戻りますか？\n\nタイマー画面を離れて、現在のマッチ抽選画面に戻ります。");
+    if (!ok) return;
+    this.goOperationBack();
   }
 
   private goOperationBack(): void {
