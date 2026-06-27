@@ -11,13 +11,13 @@ Godot Web 版から HTML / CSS / TypeScript ベースへ移植し、iPad、タ�
 
 ## 公開 URL
 
-### 大会 審判用
+# 大会 審判用
 
-https://ecleaire.github.io/Tennis-Assist-Web/
+# https://ecleaire.github.io/Tennis-Assist-Web/
 
-### 選手 練習用 / general
+# 選手 練習用 / general
 
-https://ecleaire.github.io/Tennis-Assist-Web/general/
+# https://ecleaire.github.io/Tennis-Assist-Web/general/
 
 GitHub Pages で公開しています。
 
@@ -208,7 +208,26 @@ npm run preview
 
 
 ## ライセンス / クレジット
+### 使用素材
+ #### 本アプリでは、以下の素晴らしい素材を利用しています。公開してくださっている制作者の皆さまに心より感謝いたします。
+ 
+- DSEG（7セグメントフォント）  
+　タイマー表示に使用しています。  
+　公式サイト: https://www.keshikan.net/fonts.html  
+　GitHub: https://github.com/keshikan/DSEG  
+- 効果音ラボ（システム音声・効果音）  
+　案内音声やシステム効果音の一部に使用しています。  
+　公式サイト: https://soundeffect-lab.info/  
+ 
+- WRO、RoboSports、競技ルールに関する正式な情報は WRO 公式サイトを参照してください。  
+ 
+- 開発支援: OpenAI ChatGPT / Codex  
+---
 
-- 7セグ表示には DSEG フォントを使用しています。ライセンスは `assets/fonts/fonts-DSEG_v046/DSEG-LICENSE.txt` を確認してください。
-- WRO、RoboSports、競技ルールに関する正式な情報は WRO 公式サイトを参照してください。
-- 開発支援: OpenAI ChatGPT / Codex
+# Thank you
+
+最後まで README をご覧いただき、ありがとうございます。  
+このプロジェクトが RoboSports Double Tennis に関わる選手・審判・大会運営の皆さまのお役に立てれば幸いです。  
+バグ報告や改善提案はもちろん、「こんな機能があると便利」といったアイデアも歓迎しています。  
+
+皆さまからのフィードバックをもとに、これからも継続して改善・開発を進めていきます。  
