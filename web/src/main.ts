@@ -163,6 +163,7 @@ const screenLabels: Record<Screen, string> = {
 const scoringCategory: Category = "【終了・その時点で採点】（通常の試合停止）";
 const prematchCategory: Category = "【違反・自動敗北 / 失格】試合前・競技全般";
 const inmatchCategory: Category = "【違反・自動敗北 / 失格】試合中の違反";
+const countdownAudioLeadSeconds = 0.8;
 const courtOptions = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`);
 const reasons: Record<Category, string[]> = {
   [scoringCategory]: [
@@ -381,13 +382,11 @@ class TimerAudioCueController {
   }
 
   playFinish(): void {
-    this.beep(784, 0.16, "square", 0.16);
-    window.setTimeout(() => this.beep(588, 0.18, "square", 0.14), 190);
-    window.setTimeout(() => this.beep(392, 0.32, "square", 0.13), 410);
+    // Finish sound is intentionally disabled for match operation.
   }
 
   playCountdown(remaining = 10): void {
-    const offset = Math.max(0, Math.min(9.9, 10 - remaining));
+    const offset = this.countdownOffset(remaining);
     if (!this.playBuffer(this.countdownBuffer, offset)) this.beep(1200, 0.08, "sine", 0.12);
   }
 
@@ -398,12 +397,11 @@ class TimerAudioCueController {
     const elapsed = total - remaining;
     const now = context.currentTime;
     if (elapsed < 30 && remaining > 0) this.scheduleBuffer(this.thirtyBuffer, now + Math.max(0, 30 - elapsed));
-    if (remaining > 10) {
-      this.scheduleBuffer(this.countdownBuffer, now + (remaining - 10));
+    if (remaining > 10 + countdownAudioLeadSeconds) {
+      this.scheduleBuffer(this.countdownBuffer, now + (remaining - 10 - countdownAudioLeadSeconds));
     } else {
-      this.scheduleBuffer(this.countdownBuffer, now, Math.max(0, Math.min(9.9, 10 - remaining)));
+      this.scheduleBuffer(this.countdownBuffer, now, this.countdownOffset(remaining));
     }
-    this.scheduleFinish(now + remaining);
     this.scheduled = this.scheduledSources.length > 0;
     return this.scheduled;
   }
@@ -487,35 +485,8 @@ class TimerAudioCueController {
     this.scheduledSources.push(source);
   }
 
-  private scheduleFinish(when: number): void {
-    const context = this.audioContext();
-    if (!context) return;
-    for (const [delay, frequency, duration] of [[0, 784, 0.16], [0.19, 588, 0.18], [0.41, 392, 0.32]] as const) {
-      this.scheduleBeep(when + delay, frequency, duration, "square", 0.14);
-    }
-  }
-
-  private scheduleBeep(when: number, frequency: number, duration: number, type: OscillatorType, volume: number): void {
-    const context = this.audioContext();
-    if (!context) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = Math.max(context.currentTime, when);
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.addEventListener("ended", () => {
-      const index = this.scheduledSources.indexOf(oscillator);
-      if (index >= 0) this.scheduledSources.splice(index, 1);
-      if (this.scheduledSources.length === 0) this.scheduled = false;
-    }, { once: true });
-    oscillator.start(start);
-    oscillator.stop(start + duration + 0.03);
-    this.scheduledSources.push(oscillator);
+  private countdownOffset(remaining: number): number {
+    return Math.max(0, Math.min(9.9, 10 + countdownAudioLeadSeconds - remaining));
   }
 
   private beep(frequency: number, duration: number, type: OscillatorType, volume: number): void {
@@ -2807,6 +2778,7 @@ class Application {
           void this.timer.leaveFullscreen();
           this.clearFlow();
           this.setOperationTimerActive(false);
+          this.setOperationTimerReturnable(false);
           this.setOperationRecordFocus(this.operationActive);
           this.show("records");
           this.records.timerFinished();
@@ -2960,6 +2932,7 @@ class Application {
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
     document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.goOperationBack()));
     el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.goOperationBack());
+    el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
     el<HTMLButtonElement>("operation-record-back").addEventListener("click", () => this.goOperationBack());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
@@ -3102,15 +3075,30 @@ class Application {
     document.body.classList.toggle("operation-timer-active", active);
   }
 
+  private setOperationTimerReturnable(active: boolean): void {
+    document.body.classList.toggle("operation-timer-returnable", active);
+  }
+
   private startOperationTimer(): void {
     this.clearOperationHomeTimer();
     this.timer.setDashboardOverride(null);
     this.setOperationDrawStage(3);
     this.setFlow(this.operationMatch, "タイマー待機中");
     this.recordTimerPending = true;
+    this.setOperationTimerReturnable(false);
     this.show("timer");
     this.setOperationTimerActive(true);
     void this.timer.enterDisplayFullscreen();
+  }
+
+  private returnOperationRecordInput(): void {
+    if (!this.operationActive) return;
+    this.clearOperationHomeTimer();
+    void this.timer.leaveFullscreen();
+    this.setOperationTimerReturnable(false);
+    this.setOperationTimerActive(false);
+    this.setOperationRecordFocus(true);
+    this.show("records");
   }
 
   private goOperationBack(): void {
@@ -3118,6 +3106,7 @@ class Application {
     if (document.body.classList.contains("operation-record-focus")) {
       this.setOperationRecordFocus(false);
       this.setOperationTimerActive(true);
+      this.setOperationTimerReturnable(true);
       this.show("timer");
       return;
     }
@@ -3131,6 +3120,7 @@ class Application {
       void this.timer.leaveFullscreen();
       this.recordTimerPending = false;
       this.setOperationTimerActive(false);
+      this.setOperationTimerReturnable(false);
       this.show(this.operationScreen());
       this.showOperationStep("draw");
       return;
@@ -3157,6 +3147,7 @@ class Application {
     this.setOperationFinalReview(false);
     this.setOperationNavigationLocked(false);
     this.setOperationTimerActive(false);
+    this.setOperationTimerReturnable(false);
     this.setOperationDrawButtonsLocked(false, false);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();

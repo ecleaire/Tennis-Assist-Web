@@ -593,6 +593,14 @@ output.digital.dashboard-digital {
   z-index: 2;
 }
 
+.timer-shell > .operation-timer-return {
+  left: calc(clamp(14px, 2vw, 24px) + 164px);
+}
+
+body:not(.operation-timer-returnable) #operation-timer-return {
+  display: none !important;
+}
+
 .operation-team > .section-head,
 .operation-draw-layout,
 .operation-between h2 {
