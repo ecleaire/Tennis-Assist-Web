@@ -44,6 +44,20 @@
   --success: #67e08a;
 }
 
+:root.venue-light-accent {
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --surface-alt: #eef4fb;
+  --border: #c9d7ea;
+  --accent: #1477c9;
+  --accent-soft: #dceeff;
+  --text: #101828;
+  --muted: #52657f;
+  --success: #16864a;
+  --warning: #c66a00;
+  --danger: #c82e44;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -3427,4 +3441,98 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   body.compact.timer-running:not(.operation-timer-active) .controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+:root.venue-light-accent body,
+:root.venue-light-accent .screen,
+:root.venue-light-accent .app-header,
+:root.venue-light-accent .admin-shell,
+:root.venue-light-accent .modal,
+:root.venue-light-accent dialog {
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root.venue-light-accent body {
+  background: var(--bg);
+}
+
+:root.venue-light-accent .screen,
+:root.venue-light-accent .app-header,
+:root.venue-light-accent .card,
+:root.venue-light-accent .panel,
+:root.venue-light-accent .venue-color-setting,
+:root.venue-light-accent .result-confirm-card,
+:root.venue-light-accent .consent-panel,
+:root.venue-light-accent .history-card,
+:root.venue-light-accent .news-card,
+:root.venue-light-accent .rule-card,
+:root.venue-light-accent fieldset {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+}
+
+:root.venue-light-accent .nav,
+:root.venue-light-accent .button,
+:root.venue-light-accent select,
+:root.venue-light-accent input,
+:root.venue-light-accent textarea {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+:root.venue-light-accent .button.primary,
+:root.venue-light-accent .nav.active,
+:root.venue-light-accent .button.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+:root.venue-light-accent .button.warning {
+  color: #111827;
+}
+
+:root.venue-light-accent .timer-shell,
+:root.venue-light-accent .timer-card,
+:root.venue-light-accent .timer-panel {
+  background: var(--surface);
+}
+
+:root.venue-light-accent .timer-display,
+:root.venue-light-accent .timer-preview {
+  background: #102033;
+  color: #f8fbff;
+}
+
+:root.venue-light-accent .muted,
+:root.venue-light-accent .small,
+:root.venue-light-accent .status-text {
+  color: var(--muted);
+}
+
+:root.venue-light-accent .operation-draw-shell,
+:root.venue-light-accent .operation-intermission,
+:root.venue-light-accent .operation-finished,
+:root.venue-light-accent .result-input-panel,
+:root.venue-light-accent .final-result-panel {
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root.venue-light-accent .home-sync-alert,
+:root.venue-light-accent .sync-status,
+:root.venue-light-accent .result-summary,
+:root.venue-light-accent .match-result-line {
+  background: #eef7ff;
+  border-color: #8dc5f2;
+  color: var(--text);
+}
+
+:root.venue-light-accent .table-row,
+:root.venue-light-accent .result-row {
+  background: #f1f6fc;
+  color: var(--text);
 }

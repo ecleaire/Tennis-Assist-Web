@@ -86,7 +86,7 @@ interface AdminSettings {
   gasUrl: string;
   apiKey: string;
   sendEnabled: boolean;
-  accentMode: "standard" | "admin";
+  accentMode: "standard" | "admin" | "light";
   matchType: MatchType;
 }
 
@@ -96,7 +96,7 @@ type TeamImportResult = {
   count: number;
 };
 
-type AdminMode = "standard" | "hyogo";
+type AdminMode = "standard" | "hyogo" | "rsam";
 
 type QrDetector = {
   detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
@@ -2737,10 +2737,20 @@ class AdminController {
     this.populate();
   }
 
+  private static isPublicVersion(): boolean {
+    return location.pathname.includes("/general/");
+  }
+
+  private static normalizeAccentMode(value: unknown, allowLight = this.isPublicVersion()): AdminSettings["accentMode"] {
+    if (value === "admin") return "admin";
+    if (value === "light" && allowLight) return "light";
+    return "standard";
+  }
+
   static settings(): AdminSettings {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "{}") as Partial<AdminSettings>;
-      const accentMode = parsed.accentMode === "admin" ? "admin" : "standard";
+      const accentMode = this.normalizeAccentMode(parsed.accentMode);
       const matchType = parsed.matchType === "公式試合" ? "公式試合" : "練習試合";
       return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled), accentMode, matchType };
     } catch {
@@ -2753,8 +2763,19 @@ class AdminController {
     el<HTMLInputElement>("gas-url").value = settings.gasUrl;
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
     el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
-    el<HTMLSelectElement>("venue-color").value = settings.accentMode;
+    const colorSelect = el<HTMLSelectElement>("venue-color");
+    colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
+  }
+
+  private updateColorOptions(): void {
+    const colorSelect = el<HTMLSelectElement>("venue-color");
+    const lightOption = Array.from(colorSelect.options).find((option) => option.value === "light");
+    if (!lightOption) return;
+    const allowLight = AdminController.isPublicVersion() && this.mode === "rsam";
+    lightOption.hidden = !allowLight;
+    lightOption.disabled = !allowLight;
+    if (!allowLight && colorSelect.value === "light") colorSelect.value = "standard";
   }
 
   private async unlock(): Promise<void> {
@@ -2766,10 +2787,11 @@ class AdminController {
       el("gas-status").textContent = "パスワードを確認してください。";
       return;
     }
-    this.mode = password === "HYOGO" || password === "hyogo" ? "hyogo" : "standard";
+    this.mode = password === "HYOGO" || password === "hyogo" ? "hyogo" : password === "rsam" ? "rsam" : "standard";
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
+    this.updateColorOptions();
     this.onModeChanged?.(this.mode, AdminController.settings());
     el("gas-status").textContent = "管理者設定を表示しました。";
   }
@@ -2779,7 +2801,7 @@ class AdminController {
       gasUrl: el<HTMLInputElement>("gas-url").value.trim(),
       apiKey: el<HTMLInputElement>("gas-key").value,
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
-      accentMode: el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard",
+      accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.isPublicVersion()),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
@@ -2790,7 +2812,7 @@ class AdminController {
 
   private applyColor(): void {
     const settings = AdminController.settings();
-    settings.accentMode = el<HTMLSelectElement>("venue-color").value === "admin" ? "admin" : "standard";
+    settings.accentMode = AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.isPublicVersion());
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
@@ -2802,6 +2824,7 @@ class AdminController {
     el("admin-settings").classList.add("hidden");
     el("admin-gate").classList.remove("hidden");
     el("venue-color-setting").classList.add("hidden");
+    this.updateColorOptions();
     el("gas-status").textContent = "";
   }
 
@@ -3482,8 +3505,11 @@ class Application {
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
     this.hyogo = mode === "hyogo";
-    document.documentElement.classList.toggle("venue-standard-accent", settings.accentMode === "standard");
-    document.documentElement.classList.toggle("venue-admin-accent", settings.accentMode === "admin");
+    const lightAllowed = this.isPublicVersion() && mode === "rsam";
+    const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
+    document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
+    document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");
+    document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.isPublicVersion());
     this.balls.setHyogoMode(this.hyogo);
@@ -3505,6 +3531,7 @@ class Application {
     document.documentElement.classList.remove("secret");
     document.documentElement.classList.remove("venue-standard-accent");
     document.documentElement.classList.remove("venue-admin-accent");
+    document.documentElement.classList.remove("venue-light-accent");
     this.updateTitle();
     el("development-nav").classList.add("hidden");
     el("admin-exit").classList.add("hidden");
