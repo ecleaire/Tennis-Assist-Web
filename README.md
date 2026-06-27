@@ -5,21 +5,43 @@
 ![PWA](https://img.shields.io/badge/PWA-Supported-8A2BE2)
 ![Offline](https://img.shields.io/badge/Offline-Supported-orange)
 
-WRO RoboSports Double Tennis の試合準備、タイマー進行、ボール配置、試合記録、履歴確認を支援する軽量 Web アプリです。
+WRO RoboSports Double Tennis の試合準備、タイマー進行、ボール配置、試合記録、対戦履歴確認を支援する軽量 Web アプリです。
 
 Godot Web 版から HTML / CSS / TypeScript ベースへ移植し、iPad、タブレット、スマートフォン、PC で素早く開けることを重視しています。大会運営、練習、試合記録の補助ツールとして利用できます。
 
-# 大会 審判用 公開 URL
+## 公開 URL
 
-# https://ecleaire.github.io/Tennis-Assist-Web/
+### 大会 審判用
 
-# 
+https://ecleaire.github.io/Tennis-Assist-Web/
 
-# 選手 練習用 公開 URL
+### 選手 練習用 / general
 
-# https://ecleaire.github.io/Tennis-Assist-Web/general/
+https://ecleaire.github.io/Tennis-Assist-Web/general/
 
 GitHub Pages で公開しています。
+
+## バージョンの違い
+
+### RoboSports Assist 大会用
+
+大会当日の審判・運営で使うことを想定した版です。
+
+- ホーム画面は「試合開始」から始まる大会運営フロー
+- チーム選択、コート選択、ボール配置抽選、試合時間抽選、タイマー、リザルト入力、最終確認、代表同意、結果確定までを順番に進行
+- 試合中は不要なモード移動を抑制し、記録と送信の流れを優先
+- ニュース画面は非表示
+- タイトル表示は `RoboSports Assist 大会用`
+
+### RoboSports Assist general
+
+練習、確認、選手利用、通常の補助用途を想定した汎用版です。
+
+- ホーム画面にタイマーとボール配置を表示
+- タイマー、審判タイマー、ボール配置、試合記録、ルール、ニュース、リンクを個別に利用可能
+- 大会用と同じ試合運営フローを「試合運営」モードとして利用可能
+- ニュース画面を表示
+- タイトル表示は `RoboSports Assist general`
 
 ## 主な機能
 
@@ -56,7 +78,7 @@ GitHub Pages で公開しています。
 - 代表同意、試合結果確定、試合終了表示に対応
 - 保存済み、未送信、送信済みの状態表示
 
-### 履歴 / 統計
+### 対戦履歴 / 統計
 
 - 端末内に対戦履歴を保存
 - 最新履歴を一覧表示
@@ -64,6 +86,7 @@ GitHub Pages で公開しています。
 - CSV インポート / エクスポートに対応
 - スプレッドシートからの一時読み込みに対応
 - 同じ履歴の重複読み込みを抑制
+- 未送信、送信失敗の履歴を強調表示し、一斉再送信に対応
 
 ### GAS / スプレッドシート連携
 
@@ -71,6 +94,7 @@ GitHub Pages で公開しています。
 - 送信テスト、試合結果、マッチ結果、対戦履歴を用途別シートへ送信
 - 送信できなかった履歴は端末に保持し、オンライン復帰後の再送に対応
 - GAS 接続時にスプレッドシートの「チームリスト」シートからチーム情報を読み込み可能
+- 同時書き込み対策として GAS 側で LockService を使用
 
 ### QR / URL 読み込み
 
@@ -90,6 +114,7 @@ GitHub Pages で公開しています。
 
 - 公式 Q&A 更新やアプリ機能更新などの情報を表示
 - カテゴリ別に確認可能
+- general 版で利用可能
 
 ### リンクモード
 
@@ -174,6 +199,7 @@ GitHub Pages で公開しています。
 ## 開発環境
 
 ```bash
+cd web
 npm install
 npm run dev
 npm run build
