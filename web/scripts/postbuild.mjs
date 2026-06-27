@@ -10,7 +10,7 @@ for (const file of ["../../docs/data/rules_sections.json", "../../docs/data/news
 }
 
 const docsRoot = new URL("../../docs/", import.meta.url);
-const cacheableExtensions = new Set([".html", ".webmanifest", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".woff2", ".js", ".css", ".json", ".csv"]);
+const cacheableExtensions = new Set([".html", ".webmanifest", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".woff2", ".js", ".css", ".json", ".csv", ".aac", ".mp3"]);
 const corePatterns = [
   /^index\.html$/,
   /^manifest\.webmanifest$/,

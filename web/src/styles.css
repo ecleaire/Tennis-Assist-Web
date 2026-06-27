@@ -2209,6 +2209,35 @@ body.compact #timer-five {
     grid-template-columns: 1fr;
   }
 
+  .operation-draw-main,
+  .operation-draw-side {
+    display: contents;
+  }
+
+  .operation-match-title {
+    order: 1;
+  }
+
+  .operation-court-panel {
+    order: 2;
+  }
+
+  .operation-draw-side .dashboard-digital {
+    order: 3;
+  }
+
+  #operation-ball-random {
+    order: 4;
+  }
+
+  #operation-time-random {
+    order: 5;
+  }
+
+  #operation-ready {
+    order: 6;
+  }
+
   .operation-actions.end {
     justify-content: stretch;
   }
@@ -2930,6 +2959,35 @@ html.phone-portrait #dashboard-timer-fullscreen {
 }
 
 html.phone-portrait .dashboard-sub-slot {
+  order: 6;
+}
+
+html.phone-portrait .operation-draw-main,
+html.phone-portrait .operation-draw-side {
+  display: contents;
+}
+
+html.phone-portrait .operation-match-title {
+  order: 1;
+}
+
+html.phone-portrait .operation-court-panel {
+  order: 2;
+}
+
+html.phone-portrait .operation-draw-side #dashboard-time {
+  order: 3;
+}
+
+html.phone-portrait #operation-ball-random {
+  order: 4;
+}
+
+html.phone-portrait #operation-time-random {
+  order: 5;
+}
+
+html.phone-portrait #operation-ready {
   order: 6;
 }
 
