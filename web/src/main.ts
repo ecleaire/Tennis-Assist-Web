@@ -2718,6 +2718,7 @@ class Application {
     });
     this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
     this.setupOperationFlow();
+    this.applyVariantVisibility();
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
       button.addEventListener("click", () => {
         const screen = button.dataset.screen as Screen;
@@ -2822,6 +2823,18 @@ class Application {
     }
     this.fullscreenReturnScreen = null;
     this.show(returnScreen);
+  }
+
+  private isPublicVersion(): boolean {
+    return window.location.pathname.split("/").filter(Boolean).includes("general");
+  }
+
+  private applyVariantVisibility(): void {
+    const showNews = this.isPublicVersion();
+    document.querySelectorAll<HTMLElement>('[data-screen="news"], #screen-news, #news-dialog').forEach((element) => {
+      element.classList.toggle("hidden", !showNews);
+      element.toggleAttribute("hidden", !showNews);
+    });
   }
 
   private operationScreen(): Screen {
