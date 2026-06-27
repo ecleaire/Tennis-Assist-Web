@@ -482,7 +482,11 @@ class TimerController {
   private finishCuePlayed = false;
   private readonly announcedCountdown = new Set<number>();
 
-  constructor(private readonly finished: () => void, private readonly activated: () => void) {
+  constructor(
+    private readonly finished: () => void,
+    private readonly activated: () => void,
+    private readonly displayFullscreenExited: () => void = () => {},
+  ) {
     this.startButton.addEventListener("click", () => this.toggle());
     this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => this.toggle()));
     el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.end());
@@ -569,6 +573,7 @@ class TimerController {
       }
     }
     this.setCompact(false);
+    this.displayFullscreenExited();
   }
 
   async enterDisplayFullscreen(): Promise<void> {
@@ -2678,6 +2683,7 @@ class Application {
   private recordTimerPending = false;
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
+  private fullscreenReturnScreen: Screen | null = null;
   private mobileMenuOpen = false;
   private operationActive = false;
   private operationMatch = 1;
@@ -2701,6 +2707,7 @@ class Application {
         }
       },
       () => this.show("timer"),
+      () => this.restoreFullscreenReturn("timer"),
     );
     this.refereeTimer = new RefereeTimerController();
     this.balls = new BallController((match) => {
@@ -2729,13 +2736,20 @@ class Application {
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
     els<HTMLButtonElement>("dashboard-timer-fullscreen").forEach((button) => button.addEventListener("click", () => {
+      this.beginDashboardFullscreen();
       this.show("timer");
       void this.timer.enterDisplayFullscreen();
     }));
-    els<HTMLButtonElement>("dashboard-balls-fullscreen").forEach((button) => button.addEventListener("click", () => void this.enterBallsFullscreen()));
+    els<HTMLButtonElement>("dashboard-balls-fullscreen").forEach((button) => button.addEventListener("click", () => {
+      this.beginDashboardFullscreen();
+      void this.enterBallsFullscreen();
+    }));
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
-      if (!document.fullscreenElement && this.ballsFullscreen) this.setBallsFullscreen(false);
+      if (!document.fullscreenElement) {
+        if (this.ballsFullscreen) this.setBallsFullscreen(false);
+        this.restoreFullscreenReturn();
+      }
     });
     el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.confirmDeactivateSecret());
     el<HTMLButtonElement>("admin-exit-confirm").addEventListener("click", () => this.deactivateSecret());
@@ -2788,6 +2802,26 @@ class Application {
     el("current-mode-label").textContent = screenLabels[screen];
     this.content.open(screen, this.secret);
     window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  private currentScreen(): Screen {
+    const activeId = document.querySelector<HTMLElement>(".screen.active")?.id.replace(/^screen-/, "");
+    return activeId && activeId in screenLabels ? activeId as Screen : "dashboard";
+  }
+
+  private beginDashboardFullscreen(): void {
+    this.fullscreenReturnScreen = this.currentScreen() === "dashboard" ? "dashboard" : null;
+  }
+
+  private restoreFullscreenReturn(activeFullscreenScreen?: Screen): void {
+    const returnScreen = this.fullscreenReturnScreen;
+    if (!returnScreen) return;
+    if (activeFullscreenScreen && this.currentScreen() !== activeFullscreenScreen) {
+      this.fullscreenReturnScreen = null;
+      return;
+    }
+    this.fullscreenReturnScreen = null;
+    this.show(returnScreen);
   }
 
   private operationScreen(): Screen {
@@ -3063,6 +3097,7 @@ class Application {
       }
     }
     this.setBallsFullscreen(false);
+    this.restoreFullscreenReturn("balls");
   }
 
   private setBallsFullscreen(active: boolean): void {
