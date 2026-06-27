@@ -163,7 +163,7 @@ const screenLabels: Record<Screen, string> = {
 const scoringCategory: Category = "【終了・その時点で採点】（通常の試合停止）";
 const prematchCategory: Category = "【違反・自動敗北 / 失格】試合前・競技全般";
 const inmatchCategory: Category = "【違反・自動敗北 / 失格】試合中の違反";
-const countdownAudioLeadSeconds = 0.8;
+const countdownAudioStartRemainingSeconds = 9.95;
 const courtOptions = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`);
 const reasons: Record<Category, string[]> = {
   [scoringCategory]: [
@@ -397,8 +397,8 @@ class TimerAudioCueController {
     const elapsed = total - remaining;
     const now = context.currentTime;
     if (elapsed < 30 && remaining > 0) this.scheduleBuffer(this.thirtyBuffer, now + Math.max(0, 30 - elapsed));
-    if (remaining > 10 + countdownAudioLeadSeconds) {
-      this.scheduleBuffer(this.countdownBuffer, now + (remaining - 10 - countdownAudioLeadSeconds));
+    if (remaining > countdownAudioStartRemainingSeconds) {
+      this.scheduleBuffer(this.countdownBuffer, now + (remaining - countdownAudioStartRemainingSeconds));
     } else {
       this.scheduleBuffer(this.countdownBuffer, now, this.countdownOffset(remaining));
     }
@@ -486,7 +486,7 @@ class TimerAudioCueController {
   }
 
   private countdownOffset(remaining: number): number {
-    return Math.max(0, Math.min(9.9, 10 + countdownAudioLeadSeconds - remaining));
+    return Math.max(0, Math.min(9.9, countdownAudioStartRemainingSeconds - remaining));
   }
 
   private beep(frequency: number, duration: number, type: OscillatorType, volume: number): void {
