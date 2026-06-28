@@ -204,9 +204,10 @@ a {
 select,
 input,
 textarea {
-  background: var(--surface-alt);
+  background: #172441;
   border: 1px solid var(--border);
   border-radius: 13px;
+  color: #dcecff;
   min-height: 45px;
   padding: 10px 15px;
   transition: border-color 160ms ease, background 160ms ease;
@@ -216,18 +217,31 @@ textarea {
 .nav:hover,
 select:hover,
 input:hover {
+  background: #1c2d52;
   border-color: var(--accent);
 }
 
-.button.primary,
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.16) inset, 0 10px 24px rgba(46, 168, 255, 0.14);
+  color: #041525;
+  font-weight: 900;
+}
+
 .nav.active {
   background: var(--accent-soft);
   border-color: var(--accent);
+  color: var(--text);
 }
 
 #navigation .nav.active {
   box-shadow: 0 0 0 1px rgba(46, 168, 255, 0.45) inset;
   font-weight: 800;
+}
+
+.button.primary:hover {
+  background: #56bdff;
 }
 
 body.operation-navigation-locked #navigation .nav[data-screen="timer"],
@@ -1203,6 +1217,48 @@ label {
   position: relative;
 }
 
+#record-input .form-grid,
+#record-input .score-pair,
+#record-input .toolbar {
+  background: rgba(46, 168, 255, 0.045);
+  border: 1px solid rgba(46, 168, 255, 0.22);
+  border-radius: 16px;
+  padding: clamp(16px, 2vw, 22px);
+  position: relative;
+}
+
+#record-input .form-grid::before,
+#record-input .score-pair::before,
+#record-input .toolbar::before {
+  align-self: center;
+  background: var(--accent);
+  border-radius: 999px;
+  color: #041525;
+  content: "";
+  font-size: clamp(0.9rem, 1.5vw, 1.04rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  padding: 6px 12px;
+}
+
+#record-input .form-grid::before {
+  content: "1 終了条件";
+  grid-column: 1 / -1;
+}
+
+#record-input .score-pair::before {
+  content: "2 得点入力";
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+#record-input .toolbar::before {
+  content: "3 保存";
+  flex: 0 0 100%;
+  width: max-content;
+}
+
 body.operation-record-focus #record-input .section-head h2 {
   font-size: clamp(1.75rem, 3vw, 2.5rem);
 }
@@ -1238,6 +1294,10 @@ body.operation-record-focus #record-input {
   display: grid;
   gap: clamp(14px, 2vw, 22px);
   grid-template-columns: repeat(2, 1fr);
+}
+
+#record-input .score-pair {
+  align-items: stretch;
 }
 
 fieldset {
@@ -1309,6 +1369,14 @@ fieldset strong {
   font-weight: 900;
   min-height: clamp(64px, 8vw, 86px);
   padding-inline: clamp(22px, 4vw, 36px);
+}
+
+#record-input #back-balls,
+#record-input #back-timer {
+  background: transparent;
+  border-color: #405d8c;
+  color: var(--muted);
+  flex-grow: 0.6;
 }
 
 body.operation-record-focus #record-status {
