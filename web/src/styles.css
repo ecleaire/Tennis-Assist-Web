@@ -3478,9 +3478,18 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent select,
 :root.venue-light-accent input,
 :root.venue-light-accent textarea {
-  background: var(--surface-alt);
-  border-color: var(--border);
+  background: #ffffff;
+  border-color: #9db4d3;
   color: var(--text);
+  font-weight: 800;
+}
+
+:root.venue-light-accent .nav:hover,
+:root.venue-light-accent .button:hover,
+:root.venue-light-accent select:hover,
+:root.venue-light-accent input:hover {
+  background: #eef7ff;
+  border-color: var(--accent);
 }
 
 :root.venue-light-accent .button.primary,
@@ -3488,6 +3497,31 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .button.accent {
   background: var(--accent);
   border-color: var(--accent);
+  color: #fff;
+}
+
+:root.venue-light-accent #navigation .nav.active {
+  box-shadow: 0 0 0 2px rgba(20, 119, 201, 0.18) inset;
+}
+
+:root.venue-light-accent .admin-exit-button,
+:root.venue-light-accent .timer-end-action {
+  background: #e6f2ff;
+  border-color: #1477c9;
+  color: #0b4f8a;
+}
+
+:root.venue-light-accent .timer-start-action {
+  background: #157347;
+  border-color: #0f6a3f;
+  color: #fff;
+}
+
+:root.venue-light-accent .timer-count-control,
+:root.venue-light-accent .button.danger,
+:root.venue-light-accent .referee-controls .button.danger {
+  background: #c82e44;
+  border-color: #a71930;
   color: #fff;
 }
 
@@ -3503,8 +3537,29 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
 :root.venue-light-accent .timer-display,
 :root.venue-light-accent .timer-preview {
-  background: #102033;
-  color: #f8fbff;
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root.venue-light-accent .digital {
+  color: #111827;
+}
+
+:root.venue-light-accent .digital.warning,
+:root.venue-light-accent .digital.sub,
+:root.venue-light-accent .hint.count,
+:root.venue-light-accent .referee-label,
+:root.venue-light-accent .referee-time,
+:root.venue-light-accent .referee-time.warning {
+  color: var(--danger);
+}
+
+:root.venue-light-accent progress::-webkit-progress-bar {
+  background: #e5edf7;
+}
+
+:root.venue-light-accent progress::-moz-progress-bar {
+  background: var(--accent);
 }
 
 :root.venue-light-accent .muted,
@@ -3517,8 +3572,19 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .operation-intermission,
 :root.venue-light-accent .operation-finished,
 :root.venue-light-accent .result-input-panel,
-:root.venue-light-accent .final-result-panel {
+:root.venue-light-accent .final-result-panel,
+:root.venue-light-accent #record-input,
+:root.venue-light-accent fieldset,
+:root.venue-light-accent .import-box,
+:root.venue-light-accent .stat,
+:root.venue-light-accent .history-card,
+:root.venue-light-accent .news-card,
+:root.venue-light-accent .link-section,
+:root.venue-light-accent .rule-content,
+:root.venue-light-accent .qr-result,
+:root.venue-light-accent .next-match-panel {
   background: var(--surface);
+  border-color: var(--border);
   color: var(--text);
 }
 
@@ -3532,7 +3598,53 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .table-row,
-:root.venue-light-accent .result-row {
+:root.venue-light-accent .result-row,
+:root.venue-light-accent .sync-alert-item {
   background: #f1f6fc;
   color: var(--text);
+}
+
+:root.venue-light-accent .winner-preview,
+:root.venue-light-accent .confirm-winner {
+  background: #e9f8ef;
+  border-color: #87d4a4;
+}
+
+:root.venue-light-accent .sync-alert-panel {
+  background: #fff1f3;
+  border-color: #e36a7a;
+}
+
+:root.venue-light-accent .sync-alert-panel strong,
+:root.venue-light-accent .sync-alert-panel p {
+  color: #8f1728;
+}
+
+:root.venue-light-accent .sync-alert-item strong {
+  background: #ffe1e6;
+  border-color: #d13f55;
+  color: #8f1728;
+}
+
+:root.venue-light-accent .orange-count {
+  color: #a94f00;
+}
+
+:root.venue-light-accent .purple-count {
+  color: #8c36b0;
+}
+
+:root.venue-light-accent fieldset strong,
+:root.venue-light-accent .status-line,
+:root.venue-light-accent .flow-status,
+:root.venue-light-accent .text-link {
+  color: var(--accent);
+}
+
+:root.venue-light-accent #history {
+  scrollbar-color: var(--accent) #e5edf7;
+}
+
+:root.venue-light-accent .dialog::backdrop {
+  background: rgba(15, 23, 42, 0.58);
 }

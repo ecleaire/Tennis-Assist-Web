@@ -2988,7 +2988,7 @@ class Application {
         });
       };
       const updateServiceWorker = (): void => {
-        void navigator.serviceWorker.getRegistration().then((registration) => registration?.update());
+        void navigator.serviceWorker.getRegistration().then((registration) => registration?.update()).catch(() => undefined);
       };
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
@@ -3001,7 +3001,8 @@ class Application {
           .then((registration) => {
             watchRegistration(registration);
             return registration.update();
-          });
+          })
+          .catch(() => undefined);
       });
       window.addEventListener("online", updateServiceWorker);
       document.addEventListener("visibilitychange", () => {
