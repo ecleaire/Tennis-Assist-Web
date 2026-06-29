@@ -3108,7 +3108,7 @@ class Application {
       this.show(this.operationScreen());
       this.showOperationStep("between");
       el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
-      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span>`;
+      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span><span class="operation-between-note">ボタンを一度押したらスタートできる状態にしてください。</span>`;
       el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
     });
     document.addEventListener("series-finalized", (event) => {
