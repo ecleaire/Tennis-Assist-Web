@@ -222,11 +222,11 @@ input:hover {
 }
 
 .button.primary {
-  background: var(--accent);
+  background: #1b4f82;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.16) inset, 0 10px 24px rgba(46, 168, 255, 0.14);
-  color: #041525;
-  font-weight: 900;
+  box-shadow: 0 0 0 1px rgba(46, 168, 255, 0.16) inset;
+  color: #eef8ff;
+  font-weight: 800;
 }
 
 .nav.active {
@@ -241,6 +241,42 @@ input:hover {
 }
 
 .button.primary:hover {
+  background: #245f9c;
+}
+
+#operation-team-ok,
+#operation-next-match,
+#operation-home-return,
+#series-start,
+#next-match,
+#record-save,
+#completion-reset,
+#finalize,
+#agreement-accept,
+#confirm-save,
+#operation-ready-confirm,
+#gas-save,
+#team-save {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.18) inset, 0 14px 30px rgba(46, 168, 255, 0.16);
+  color: #041525;
+  font-weight: 900;
+}
+
+#operation-team-ok:hover,
+#operation-next-match:hover,
+#operation-home-return:hover,
+#series-start:hover,
+#next-match:hover,
+#record-save:hover,
+#completion-reset:hover,
+#finalize:hover,
+#agreement-accept:hover,
+#confirm-save:hover,
+#operation-ready-confirm:hover,
+#gas-save:hover,
+#team-save:hover {
   background: #56bdff;
 }
 
@@ -462,10 +498,10 @@ output.digital.dashboard-digital {
 }
 
 .home-sync-alert {
-  background: rgba(255, 178, 74, 0.16);
-  border: 1px solid rgba(255, 178, 74, 0.58);
-  border-radius: 8px;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(135deg, rgba(255, 178, 74, 0.22), rgba(184, 50, 66, 0.18));
+  border: 2px solid rgba(255, 178, 74, 0.76);
+  border-radius: 14px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 178, 74, 0.2) inset;
   color: var(--text);
   display: grid;
   gap: 8px;
@@ -473,12 +509,15 @@ output.digital.dashboard-digital {
   margin-top: clamp(18px, 3vw, 30px);
   max-width: min(760px, 100%);
   padding: clamp(16px, 2.6vw, 24px);
+  position: sticky;
+  top: max(12px, env(safe-area-inset-top));
   text-align: left;
+  z-index: 12;
 }
 
 .home-sync-alert strong {
   color: #ffd38f;
-  font-size: clamp(1.02rem, 1.8vw, 1.28rem);
+  font-size: clamp(1.14rem, 2vw, 1.42rem);
 }
 
 .home-sync-alert span {
@@ -1223,6 +1262,7 @@ label {
   background: rgba(46, 168, 255, 0.045);
   border: 1px solid rgba(46, 168, 255, 0.22);
   border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(46, 168, 255, 0.04) inset;
   padding: clamp(16px, 2vw, 22px);
   position: relative;
 }
@@ -1243,20 +1283,36 @@ label {
 }
 
 #record-input .form-grid::before {
-  content: "1 終了条件";
+  content: "1 終了カテゴリ・理由";
   grid-column: 1 / -1;
 }
 
 #record-input .score-pair::before {
-  content: "2 得点入力";
+  content: "2 左右チームの得点入力";
   grid-column: 1 / -1;
   justify-self: start;
 }
 
 #record-input .toolbar::before {
-  content: "3 保存";
+  content: "3 結果確認・保存";
   flex: 0 0 100%;
   width: max-content;
+}
+
+#record-input .form-grid::after,
+#record-input .score-pair::after {
+  color: var(--muted);
+  font-size: clamp(0.88rem, 1.4vw, 1rem);
+  font-weight: 800;
+  grid-column: 1 / -1;
+}
+
+#record-input .form-grid::after {
+  content: "終了カテゴリを選び、次に終了理由を確認してください。";
+}
+
+#record-input .score-pair::after {
+  content: "左側チーム、右側チームの順にボール数を確認してください。";
 }
 
 body.operation-record-focus #record-input .section-head h2 {
@@ -1356,8 +1412,8 @@ fieldset strong {
 
 .winner-preview {
   color: var(--success);
-  background: rgba(103, 224, 138, 0.08);
-  border: 1px solid rgba(103, 224, 138, 0.38);
+  background: linear-gradient(135deg, rgba(103, 224, 138, 0.12), rgba(46, 168, 255, 0.08));
+  border: 2px solid rgba(103, 224, 138, 0.5);
   border-radius: 12px;
   font-size: clamp(1.22rem, 2.4vw, 1.8rem);
   font-weight: 900;
@@ -1377,6 +1433,17 @@ fieldset strong {
   border-color: #405d8c;
   color: var(--muted);
   flex-grow: 0.6;
+}
+
+body:not(.timer-started) #timer-fullscreen,
+body:not(.timer-started) #timer-reset,
+body:not(.timer-started) #timer-step,
+body:not(.timer-started) #dashboard-timer-fullscreen,
+body:not(.timer-started) #dashboard-timer-reset,
+body:not(.timer-started) #dashboard-timer-step {
+  background: #101c34;
+  border-color: #30466e;
+  color: var(--muted);
 }
 
 body.operation-record-focus #record-status {
@@ -1717,8 +1784,8 @@ tr.win td {
 .history-card,
 .news-card,
 .link-section {
-  background: #0e1830;
-  border: 1px solid var(--border);
+  background: rgba(14, 24, 48, 0.72);
+  border: 1px solid rgba(43, 67, 117, 0.7);
   border-radius: 15px;
   display: grid;
   gap: 10px;
@@ -1881,9 +1948,14 @@ tr.win td {
 
 .rule-links .button {
   align-items: center;
+  background: #173a63;
+  border-color: rgba(46, 168, 255, 0.78);
+  color: #eef8ff;
   display: flex;
+  font-weight: 900;
   justify-content: center;
   line-height: 1.25;
+  min-height: 54px;
   text-align: center;
 }
 
@@ -1922,8 +1994,8 @@ tr.win td {
 }
 
 .rule-content {
-  background: #0e1830;
-  border: 1px solid var(--border);
+  background: rgba(14, 24, 48, 0.72);
+  border: 1px solid rgba(43, 67, 117, 0.72);
   border-radius: 15px;
   display: grid;
   gap: 14px;
@@ -1952,13 +2024,24 @@ tr.win td {
 
 .link-grid .button {
   align-items: center;
+  background: #132542;
+  border-color: rgba(46, 168, 255, 0.38);
+  color: #dcecff;
   display: flex;
+  font-weight: 800;
   justify-content: center;
   line-height: 1.25;
   min-height: 48px;
   text-align: center;
   word-break: keep-all;
   overflow-wrap: normal;
+}
+
+.link-grid .button:hover,
+.rule-links .button:hover {
+  background: #1f5b91;
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .dialog {
