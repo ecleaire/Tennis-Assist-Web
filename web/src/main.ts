@@ -97,6 +97,15 @@ type TeamImportResult = {
 };
 
 type AdminMode = "standard" | "hyogo" | "rsam";
+type AppVariant = "venue" | "general";
+
+type AppVariantConfig = {
+  id: AppVariant;
+  titleSuffix: string;
+  showNews: boolean;
+  allowLightUi: boolean;
+  allowTokyoClock: boolean;
+};
 
 type QrDetector = {
   detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
@@ -121,6 +130,27 @@ const defaultTeams = [
   "INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA",
   "QUEBEC", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "YANKEE", "ZULU",
 ] as const;
+
+const appVariants: Record<AppVariant, AppVariantConfig> = {
+  venue: {
+    id: "venue",
+    titleSuffix: "大会用",
+    showNews: false,
+    allowLightUi: false,
+    allowTokyoClock: false,
+  },
+  general: {
+    id: "general",
+    titleSuffix: "general",
+    showNews: true,
+    allowLightUi: true,
+    allowTokyoClock: true,
+  },
+};
+
+function currentAppVariant(): AppVariantConfig {
+  return window.location.pathname.split("/").filter(Boolean).includes("general") ? appVariants.general : appVariants.venue;
+}
 
 let teams: string[] = [...defaultTeams];
 const csvColumns = [
@@ -1595,14 +1625,16 @@ class RecordsController {
     const record = this.buildRecord();
     if (!record) return;
     const violation = record.reasonCategory !== scoringCategory;
+    const scoreLine = `${record.teamAScore} VS ${record.teamBScore}`;
     const violationNotice = violation
       ? `<p class="confirm-auto-score"><span>違反時の自動スコア</span><strong>${escapeText(record.targetTeam)} は自動敗北として 9点、相手チームは -4点で記録します。</strong></p>`
       : "";
     el("confirm-detail").innerHTML =
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
+      `<section class="confirm-hero"><span>保存前の最終確認</span><strong>${escapeText(record.winner)}</strong><em>${scoreLine}</em></section>` +
       `<p class="confirm-reason"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
       violationNotice +
-      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small>オレンジ ${record.teamAOrange}個 / 紫 ${record.teamAPurple}個</small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small>オレンジ ${record.teamBOrange}個 / 紫 ${record.teamBPurple}個</small></p></div>` +
+      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
       `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
     el<HTMLDialogElement>("confirm-dialog").showModal();
   }
@@ -2736,7 +2768,6 @@ class QrScanner {
 
   private async startFallbackScanner(): Promise<void> {
     const dialog = el<HTMLDialogElement>("qr-dialog");
-    const { default: jsQR } = await import("jsqr");
     if (!dialog.open) return;
     const video = el<HTMLVideoElement>("qr-video");
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
@@ -2747,6 +2778,9 @@ class QrScanner {
     this.cameraStream = stream;
     video.srcObject = stream;
     await video.play();
+    el("qr-status").textContent = "QR読み取り機能を準備しています...";
+    const { default: jsQR } = await import("jsqr");
+    if (!dialog.open || !this.cameraStream) return;
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { willReadFrequently: true });
     if (!context) throw new Error("Camera canvas is unavailable.");
@@ -2835,11 +2869,11 @@ class AdminController {
     this.populate();
   }
 
-  private static isPublicVersion(): boolean {
-    return location.pathname.includes("/general/");
+  private static variant(): AppVariantConfig {
+    return currentAppVariant();
   }
 
-  private static normalizeAccentMode(value: unknown, allowLight = this.isPublicVersion()): AdminSettings["accentMode"] {
+  private static normalizeAccentMode(value: unknown, allowLight = this.variant().allowLightUi): AdminSettings["accentMode"] {
     if (value === "admin") return "admin";
     if (value === "light" && allowLight) return "light";
     return "standard";
@@ -2870,7 +2904,7 @@ class AdminController {
     const colorSelect = el<HTMLSelectElement>("venue-color");
     const lightOption = Array.from(colorSelect.options).find((option) => option.value === "light");
     if (!lightOption) return;
-    const allowLight = AdminController.isPublicVersion() && this.mode === "rsam";
+    const allowLight = AdminController.variant().allowLightUi && this.mode === "rsam";
     lightOption.hidden = !allowLight;
     lightOption.disabled = !allowLight;
     if (!allowLight && colorSelect.value === "light") colorSelect.value = "standard";
@@ -2899,7 +2933,7 @@ class AdminController {
       gasUrl: el<HTMLInputElement>("gas-url").value.trim(),
       apiKey: el<HTMLInputElement>("gas-key").value,
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
-      accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.isPublicVersion()),
+      accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
@@ -2910,7 +2944,7 @@ class AdminController {
 
   private applyColor(): void {
     const settings = AdminController.settings();
-    settings.accentMode = AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.isPublicVersion());
+    settings.accentMode = AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi);
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
@@ -2998,6 +3032,7 @@ class Application {
   private linksClicks = 0;
   private secret = false;
   private hyogo = false;
+  private readonly variant = currentAppVariant();
   private readonly timer: TimerController;
   private readonly refereeTimer: RefereeTimerController;
   private readonly balls: BallController;
@@ -3035,7 +3070,7 @@ class Application {
       this.show("timer");
     });
     this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
-    this.timer.setPracticeTimerPresetsAvailable(this.isPublicVersion());
+    this.timer.setPracticeTimerPresetsAvailable(this.variant.allowTokyoClock);
     this.setupOperationFlow();
     this.applyVariantVisibility();
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
@@ -3056,14 +3091,23 @@ class Application {
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
     els<HTMLButtonElement>("dashboard-timer-fullscreen").forEach((button) => button.addEventListener("click", () => {
-      this.beginDashboardFullscreen();
+      this.prepareFullscreenReturn();
       this.show("timer");
       void this.timer.enterDisplayFullscreen();
     }));
     els<HTMLButtonElement>("dashboard-balls-fullscreen").forEach((button) => button.addEventListener("click", () => {
-      this.beginDashboardFullscreen();
+      this.prepareFullscreenReturn();
       void this.enterBallsFullscreen();
     }));
+    el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => {
+      if (!document.fullscreenElement && !document.body.classList.contains("compact")) this.prepareFullscreenReturn();
+    }, { capture: true });
+    el<HTMLButtonElement>("referee-fullscreen").addEventListener("click", () => {
+      if (!document.fullscreenElement && !document.body.classList.contains("referee-compact")) this.prepareFullscreenReturn();
+    }, { capture: true });
+    el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => {
+      if (!this.ballsFullscreen) this.prepareFullscreenReturn();
+    }, { capture: true });
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
@@ -3131,8 +3175,8 @@ class Application {
     return activeId && activeId in screenLabels ? activeId as Screen : "dashboard";
   }
 
-  private beginDashboardFullscreen(): void {
-    this.fullscreenReturnScreen = this.currentScreen() === "dashboard" ? "dashboard" : null;
+  private prepareFullscreenReturn(): void {
+    this.fullscreenReturnScreen = this.currentScreen();
   }
 
   private restoreFullscreenReturn(activeFullscreenScreen?: Screen): void {
@@ -3146,12 +3190,8 @@ class Application {
     this.show(returnScreen);
   }
 
-  private isPublicVersion(): boolean {
-    return window.location.pathname.split("/").filter(Boolean).includes("general");
-  }
-
   private applyVariantVisibility(): void {
-    const showNews = this.isPublicVersion();
+    const showNews = this.variant.showNews;
     document.querySelectorAll<HTMLElement>('[data-screen="news"], #screen-news, #news-dialog').forEach((element) => {
       element.classList.toggle("hidden", !showNews);
       element.toggleAttribute("hidden", !showNews);
@@ -3312,7 +3352,7 @@ class Application {
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
     const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.sendEnabled);
-    panel.classList.toggle("hidden", sync.unsent === 0 && !hasGasHistory);
+    panel.classList.toggle("hidden", sync.unsent === 0 && (sync.configured || !hasGasHistory));
     const gasState = sync.configured ? "GAS接続中" : "GAS未接続";
     let markup = "";
     if (!sync.unsent) {
@@ -3659,22 +3699,21 @@ class Application {
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
     this.hyogo = mode === "hyogo";
-    const lightAllowed = this.isPublicVersion() && mode === "rsam";
+    const lightAllowed = this.variant.allowLightUi && mode === "rsam";
     const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
     document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
     document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");
     document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
     this.timer.setHyogoMode(this.hyogo);
-    this.timer.setTokyoClockModeAvailable(this.isPublicVersion());
+    this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
     this.updateTitle();
     this.updateHomeSyncAlert();
   }
 
   private updateTitle(): void {
-    const suffix = this.isPublicVersion() ? "general" : "大会用";
     const base = this.hyogo ? "RoboSports Assist HYOGO" : "RoboSports Assist";
-    const title = `${base} ${suffix}`;
+    const title = `${base} ${this.variant.titleSuffix}`;
     el("title").textContent = title;
     document.title = title;
   }
