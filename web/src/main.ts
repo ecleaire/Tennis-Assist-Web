@@ -536,6 +536,7 @@ class TimerController {
   private subCaption = "";
   private randomStep: number | "manual" | "tokyo" = 5;
   private manualSeconds = 120;
+  private fixedSeconds: number | null = null;
   private initialReset = true;
   private secret = false;
   private hyogo = false;
@@ -590,6 +591,34 @@ class TimerController {
     this.dashboardSteps.forEach((step) => { step.value = String(this.randomStep); });
     this.reset();
     requestAnimationFrame((now) => this.frame(now));
+  }
+
+  setPracticeTimerPresetsAvailable(active: boolean): void {
+    const presets = [
+      ["preset-60", "練習プリセット: 1分"],
+      ["preset-90", "練習プリセット: 1分30秒"],
+      ["preset-120", "練習プリセット: 2分"],
+    ] as const;
+    const sync = (select: HTMLSelectElement): void => {
+      presets.forEach(([value, label]) => {
+        const existing = select.querySelector<HTMLOptionElement>(`option[value="${value}"]`);
+        if (active && !existing) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          select.append(option);
+        }
+        if (!active && existing) existing.remove();
+      });
+      if (!active && select.value.startsWith("preset-")) select.value = "5";
+    };
+    sync(this.step);
+    this.dashboardSteps.forEach(sync);
+    if (!active && this.fixedSeconds !== null) {
+      this.fixedSeconds = null;
+      this.randomStep = 5;
+      this.reset();
+    }
   }
 
   setSecret(active: boolean): void {
@@ -700,6 +729,7 @@ class TimerController {
       return;
     }
     if (this.step.value === "tokyo") {
+      this.fixedSeconds = null;
       this.randomStep = "tokyo";
       this.running = false;
       this.started = false;
@@ -712,6 +742,13 @@ class TimerController {
       this.render();
       return;
     }
+    if (this.step.value.startsWith("preset-")) {
+      this.fixedSeconds = Number(this.step.value.replace("preset-", "")) || 120;
+      this.randomStep = 5;
+      this.reset();
+      return;
+    }
+    this.fixedSeconds = null;
     this.randomStep = Number(this.step.value);
     this.reset();
   }
@@ -735,6 +772,7 @@ class TimerController {
   }
 
   private generatedDuration(): number {
+    if (this.fixedSeconds !== null) return this.fixedSeconds;
     if (this.randomStep === "tokyo") return 120;
     if (this.hyogo) {
       const candidates = [90, 95, 100, 105, 110, 115, 120];
@@ -1269,6 +1307,7 @@ class RecordsController {
     el<HTMLButtonElement>("team-sheet-load").addEventListener("click", () => void this.importTeamsFromSpreadsheet(el<HTMLInputElement>("team-sheet-url").value));
     el<HTMLInputElement>("team-file").addEventListener("change", (event) => void this.importTeams(event));
     el<HTMLButtonElement>("history-export").addEventListener("click", () => this.exportHistory());
+    el<HTMLButtonElement>("history-series-export").addEventListener("click", () => this.exportSeriesHistory());
     el<HTMLButtonElement>("history-import").addEventListener("click", () => el<HTMLInputElement>("history-file").click());
     el<HTMLButtonElement>("history-sheet-import").addEventListener("click", () => void this.importHistoryFromSpreadsheet());
     el<HTMLButtonElement>("history-sheet-scan").addEventListener("click", () => void this.importHistoryFromSpreadsheetQr());
@@ -1280,6 +1319,25 @@ class RecordsController {
     this.resetSeries(false);
     this.renderHistory();
     if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
+  }
+
+  syncSummary(): { pending: number; failed: number; unsent: number; configured: boolean; gasText: string } {
+    let pending = 0;
+    let failed = 0;
+    for (const record of this.records) {
+      if (isSheetPreviewRecord(record) || record.recordKind !== "試合結果") continue;
+      if (record.sendStatus === "pending") pending += 1;
+      if (record.sendStatus === "failed") failed += 1;
+    }
+    const settings = AdminController.settings();
+    const configured = settings.sendEnabled && settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey);
+    return {
+      pending,
+      failed,
+      unsent: pending + failed,
+      configured,
+      gasText: configured ? "GAS接続設定: 有効" : "GAS接続設定: 未設定または送信OFF",
+    };
   }
 
   teamOptions(): string[] {
@@ -1945,8 +2003,13 @@ class RecordsController {
   }
 
   private renderSyncAlert(): void {
-    const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "pending");
-    const failed = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "failed");
+    const pending: MatchRecord[] = [];
+    const failed: MatchRecord[] = [];
+    for (const record of this.records) {
+      if (isSheetPreviewRecord(record) || record.recordKind !== "試合結果") continue;
+      if (record.sendStatus === "pending") pending.push(record);
+      if (record.sendStatus === "failed") failed.push(record);
+    }
     const targets = [...pending, ...failed];
     const panel = el("sync-alert-panel");
     const list = el("sync-alert-list");
@@ -1961,6 +2024,11 @@ class RecordsController {
       const item = document.createElement("article");
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
       item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合</small>`;
+      const retry = document.createElement("button");
+      retry.className = "button tiny sync-alert-retry";
+      retry.textContent = "1件再送信";
+      retry.addEventListener("click", () => void this.retrySend(record));
+      item.append(retry);
       return item;
     }));
   }
@@ -2175,6 +2243,21 @@ class RecordsController {
     el("history-status").textContent = `${storedRecords.length}件をCSVに保存しました。確認用に読み込んだ履歴は出力していません。`;
   }
 
+  private exportSeriesHistory(): void {
+    const seriesRecords = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果");
+    if (!seriesRecords.length) {
+      el("history-status").textContent = "出力できる試合結果がありません。";
+      return;
+    }
+    const text = "\uFEFF" + [csvColumns.map(csvEscape).join(","), ...[...seriesRecords].reverse().map((record) => csvRow(record).map(csvEscape).join(","))].join("\r\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    link.download = `tennis_assist_series_results_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    el("history-status").textContent = `試合結果 ${seriesRecords.length}件をCSVに保存しました。`;
+  }
+
   private async importHistory(event: Event): Promise<void> {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -2312,7 +2395,7 @@ class RecordsController {
     await this.sendSeriesResult(record);
   }
 
-  private async retryPendingSends(reason: "startup" | "online" | "manual"): Promise<void> {
+  async retryPendingSends(reason: "startup" | "online" | "manual"): Promise<void> {
     if (this.retryingPendingSends || !navigator.onLine) return;
     const settings = AdminController.settings();
     if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
@@ -2331,6 +2414,7 @@ class RecordsController {
     } finally {
       this.retryingPendingSends = false;
       this.renderHistory();
+      document.dispatchEvent(new CustomEvent("records-storage-updated"));
     }
   }
 
@@ -2413,6 +2497,65 @@ class RecordsController {
   }
 }
 
+class PracticeLogController {
+  private readonly storageKey = "tennis-assist-practice-log-v1";
+  private entries: Array<{ id: string; timestamp: string; text: string }> = [];
+
+  constructor() {
+    this.entries = this.load();
+    el<HTMLButtonElement>("practice-log-save").addEventListener("click", () => this.save());
+    el<HTMLInputElement>("practice-log-text").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.save();
+      }
+    });
+    this.render();
+  }
+
+  private load(): Array<{ id: string; timestamp: string; text: string }> {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "[]") as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((item) => {
+          const record = item as Partial<{ id: string; timestamp: string; text: string }>;
+          return { id: record.id ?? String(Date.now()), timestamp: record.timestamp ?? timestamp(), text: record.text ?? "" };
+        })
+        .filter((item) => item.text);
+    } catch {
+      return [];
+    }
+  }
+
+  private persist(): void {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.entries.slice(0, 30)));
+  }
+
+  private save(): void {
+    const input = el<HTMLInputElement>("practice-log-text");
+    const text = input.value.trim();
+    if (!text) {
+      el("practice-log-status").textContent = "練習内容を入力してください。";
+      return;
+    }
+    this.entries.unshift({ id: `${Date.now()}`, timestamp: timestamp(), text });
+    this.persist();
+    input.value = "";
+    el("practice-log-status").textContent = "練習記録をこの端末に保存しました。";
+    this.render();
+  }
+
+  private render(): void {
+    const list = el("practice-log-list");
+    if (!this.entries.length) {
+      list.innerHTML = '<p class="muted">保存された練習記録はありません。</p>';
+      return;
+    }
+    list.innerHTML = this.entries.slice(0, 5).map((entry) => `<article><strong>${escapeText(entry.timestamp)}</strong><span>${escapeText(entry.text)}</span></article>`).join("");
+  }
+}
+
 class ContentController {
   private rules: RuleSection[] = [];
   private news: NewsItem[] = [];
@@ -2431,7 +2574,7 @@ class ContentController {
       const target = event.target as Node;
       if (this.ruleMenuOpen && !el("rule-nav").contains(target) && !el("rule-menu-toggle").contains(target)) this.setRuleMenu(false);
     });
-    el<HTMLSelectElement>("news-filter").addEventListener("change", () => this.renderNews());
+    document.getElementById("news-filter")?.addEventListener("change", () => this.renderNews());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => el<HTMLDialogElement>((button as HTMLElement).dataset.close ?? "").close()));
   }
 
@@ -2914,7 +3057,9 @@ class Application {
   private operationActive = false;
   private operationMatch = 1;
   private operationHomeTimer = 0;
+  private operationHomeCountdownTimer = 0;
   private operationTimerFinishDelay = 0;
+  private homeSyncNotice = "";
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
 
   constructor() {
@@ -2934,6 +3079,8 @@ class Application {
       this.show("timer");
     });
     this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
+    this.timer.setPracticeTimerPresetsAvailable(this.isPublicVersion());
+    if (this.isPublicVersion() && document.getElementById("practice-log-panel")) new PracticeLogController();
     this.setupOperationFlow();
     this.applyVariantVisibility();
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
@@ -3070,7 +3217,8 @@ class Application {
       this.show(this.operationScreen());
       this.showOperationStep("team");
     });
-    el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.startOperationSeries());
+    el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.openOperationStartCheck());
+    el<HTMLButtonElement>("operation-start-check-confirm").addEventListener("click", () => this.startOperationSeries());
     document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.goOperationBack()));
     el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.confirmOperationTimerBack());
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
@@ -3095,6 +3243,10 @@ class Application {
       this.records.continueForOperation();
     });
     el<HTMLButtonElement>("operation-home-return").addEventListener("click", () => this.returnOperationHome(true));
+    el<HTMLButtonElement>("operation-home-countdown-cancel").addEventListener("click", () => {
+      this.clearOperationHomeTimer();
+      el("operation-home-countdown").textContent = "自動ホーム復帰を停止しました。";
+    });
     document.addEventListener("series-match-saved", (event) => {
       const detail = (event as CustomEvent<{ match: number; finished: boolean }>).detail;
       this.setOperationRecordFocus(false);
@@ -3108,7 +3260,7 @@ class Application {
       this.show(this.operationScreen());
       this.showOperationStep("between");
       el("operation-ended-match").textContent = `第${detail.match}マッチが終了しました`;
-      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span><span class="operation-between-note">ボタンを一度押したらスタートできる状態にしてください。</span>`;
+      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${this.operationMatch}マッチの準備をお願いします。</span><span class="operation-between-note">（コートチェンジ後）ロボットのボタンを一度押したらスタートできる状態にしてください。準備ができ次第、抽選を行います。</span>`;
       el<HTMLButtonElement>("operation-next-match").textContent = `第${this.operationMatch}マッチへ進む`;
     });
     document.addEventListener("series-finalized", (event) => {
@@ -3147,6 +3299,29 @@ class Application {
     options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
   }
 
+  private openOperationStartCheck(): void {
+    const court = el<HTMLSelectElement>("operation-court").value;
+    const teamA = el<HTMLSelectElement>("operation-team-a").value;
+    const teamB = el<HTMLSelectElement>("operation-team-b").value;
+    if (teamA === teamB) {
+      el("operation-team-status").textContent = "左右で別のチームを選択してください。";
+      return;
+    }
+    el("operation-team-status").textContent = "";
+    const sync = this.records.syncSummary();
+    const settings = AdminController.settings();
+    el("operation-start-check-detail").innerHTML =
+      `<dl class="start-check-list">` +
+      `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
+      `<div><dt>左側チーム</dt><dd>${escapeText(teamA)}</dd></div>` +
+      `<div><dt>右側チーム</dt><dd>${escapeText(teamB)}</dd></div>` +
+      `<div><dt>試合種別</dt><dd>${escapeText(settings.matchType)}</dd></div>` +
+      `<div><dt>GAS接続</dt><dd>${escapeText(sync.gasText)}</dd></div>` +
+      `<div><dt>未送信</dt><dd>未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件</dd></div>` +
+      `</dl>`;
+    el<HTMLDialogElement>("operation-start-check-dialog").showModal();
+  }
+
   private startOperationSeries(): void {
     const court = el<HTMLSelectElement>("operation-court").value;
     const teamA = el<HTMLSelectElement>("operation-team-a").value;
@@ -3183,25 +3358,29 @@ class Application {
   private updateHomeSyncAlert(): void {
     const panel = document.getElementById("home-sync-alert");
     if (!panel) return;
-    let records: MatchRecord[] = [];
-    try {
-      const parsed = JSON.parse(localStorage.getItem("tennis-assist-records-v1") ?? "[]") as unknown;
-      records = Array.isArray(parsed) ? parsed as MatchRecord[] : [];
-    } catch {
-      records = [];
-    }
-    const pending = records.filter((record) => record.recordKind === "試合結果" && record.sendStatus === "pending").length;
-    const failed = records.filter((record) => record.recordKind === "試合結果" && record.sendStatus === "failed").length;
-    const unsent = pending + failed;
-    const settings = AdminController.settings();
-    const configured = settings.sendEnabled && settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey);
-    panel.classList.toggle("hidden", unsent === 0 && configured);
-    const gasText = configured ? "GAS接続設定: 有効" : "GAS接続設定: 未設定または送信OFF";
-    if (!unsent) {
-      panel.innerHTML = `<strong>${gasText}</strong><span>未送信の対戦結果はありません。</span>`;
+    const sync = this.records.syncSummary();
+    panel.classList.toggle("hidden", sync.unsent === 0 && sync.configured);
+    if (!sync.unsent) {
+      panel.innerHTML = `<div><strong>${sync.gasText}</strong><span>${this.homeSyncNotice || "未送信の対戦結果はありません。"}</span></div>`;
       return;
     }
-    panel.innerHTML = `<strong>${gasText}</strong><span>対戦結果が未送信です。未送信 ${pending}件 / 送信失敗 ${failed}件。試合記録の「対戦履歴と統計」から再送信してください。</span>`;
+    panel.innerHTML =
+      `<div><strong>${sync.gasText}</strong><span>${this.homeSyncNotice || `対戦結果が未送信です。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件。詳細は試合記録の「対戦履歴と統計」で確認してください。`}</span></div>` +
+      `<button id="home-sync-retry" class="button danger" type="button">再送信</button>`;
+    panel.querySelector<HTMLButtonElement>("#home-sync-retry")?.addEventListener("click", () => {
+      void this.retryHomeUnsent();
+    });
+  }
+
+  private async retryHomeUnsent(): Promise<void> {
+    this.homeSyncNotice = "ホームから再送信を実行しています。詳細は試合記録の「対戦履歴と統計」で確認してください。";
+    this.updateHomeSyncAlert();
+    await this.records.retryPendingSends("manual");
+    const sync = this.records.syncSummary();
+    this.homeSyncNotice = sync.unsent
+      ? `再送信を実行しました。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件が残っています。詳細は試合記録の「対戦履歴と統計」で確認してください。`
+      : "再送信を実行しました。未送信の対戦結果はありません。";
+    this.updateHomeSyncAlert();
   }
 
   private setOperationDrawStage(stage: 1 | 2 | 3): void {
@@ -3221,13 +3400,25 @@ class Application {
 
   private scheduleOperationHomeReturn(delay = 60000): void {
     this.clearOperationHomeTimer();
+    const countdown = document.getElementById("operation-home-countdown");
+    let remaining = Math.max(1, Math.ceil(delay / 1000));
+    if (countdown) countdown.textContent = `${remaining}秒後にホームへ戻ります。`;
+    this.operationHomeCountdownTimer = window.setInterval(() => {
+      remaining -= 1;
+      if (countdown && remaining > 0) countdown.textContent = `${remaining}秒後にホームへ戻ります。`;
+    }, 1000);
     this.operationHomeTimer = window.setTimeout(() => this.returnOperationHome(false), delay);
   }
 
   private clearOperationHomeTimer(): void {
-    if (!this.operationHomeTimer) return;
-    window.clearTimeout(this.operationHomeTimer);
-    this.operationHomeTimer = 0;
+    if (this.operationHomeTimer) {
+      window.clearTimeout(this.operationHomeTimer);
+      this.operationHomeTimer = 0;
+    }
+    if (this.operationHomeCountdownTimer) {
+      window.clearInterval(this.operationHomeCountdownTimer);
+      this.operationHomeCountdownTimer = 0;
+    }
   }
 
   private clearOperationTimerFinishDelay(): void {

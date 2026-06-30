@@ -89,6 +89,20 @@
               <output id="dashboard-sub-time" class="digital sub dashboard-sub-time hidden">00 : 10</output>
             </div>
           </article>
+          <article id="practice-log-panel" class="panel dashboard-card practice-log-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">PRACTICE LOG</p>
+                <h2>練習記録</h2>
+              </div>
+            </div>
+            <div class="practice-log-form">
+              <label>チーム・メモ<input id="practice-log-text" type="text" placeholder="例: ALFA 2分練習 / 配置確認" /></label>
+              <button id="practice-log-save" class="button primary" type="button">端末に保存</button>
+            </div>
+            <p id="practice-log-status" class="muted status-message">GASなしで、この端末だけに練習メモを保存できます。</p>
+            <div id="practice-log-list" class="practice-log-list"></div>
+          </article>
         </div>
       </section>
 
@@ -141,7 +155,7 @@
           <article id="operation-between" class="panel operation-step operation-between">
             <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <p id="operation-ended-match" class="operation-ended-match">第1マッチが終了しました</p>
-            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span><span class="operation-between-note">ボタンを一度押したらスタートできる状態にしてください。</span></h2>
+            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span><span class="operation-between-note">（コートチェンジ後）ロボットのボタンを一度押したらスタートできる状態にしてください。準備ができ次第、抽選を行います。</span></h2>
             <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
           </article>
 
@@ -150,6 +164,8 @@
             <p id="operation-result-line-a" class="operation-result-message">ただいまの試合結果を保存しました。</p>
             <p id="operation-result-line-b" class="operation-result-winner"></p>
             <p class="operation-thanks">お疲れ様でした</p>
+            <p id="operation-home-countdown" class="operation-home-countdown">120秒後に試合運営画面へ戻ります。</p>
+            <button id="operation-home-countdown-cancel" class="button operation-home-countdown-cancel" type="button">自動で戻らない</button>
             <button id="operation-home-return" class="button primary">試合運営画面に戻る</button>
           </article>
         </div>
@@ -372,6 +388,7 @@
               </div>
               <div class="import-actions history-import-actions">
                 <button id="history-export" class="button">CSV出力</button>
+                <button id="history-series-export" class="button">試合結果CSV出力</button>
                 <button id="history-import" class="button">CSV読込</button>
                 <button id="history-sheet-import" class="button">URL読込</button>
                 <button id="history-sheet-scan" class="button">QR読込</button>
@@ -538,6 +555,17 @@
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="operation-start-check-dialog" class="dialog">
+      <form method="dialog">
+        <h2>試合開始前チェック</h2>
+        <div id="operation-start-check-detail" class="operation-start-check-detail"></div>
+        <p class="pre-wrap">内容を確認してから第1マッチ抽選へ進んでください。</p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="operation-start-check-confirm" class="button primary" value="default">確認して開始</button>
         </div>
       </form>
     </dialog>

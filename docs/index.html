@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist 大会用</title>
-    <script type="module" crossorigin src="./assets/index-DjKC_l4O.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CAEMHvOq.css">
+    <script type="module" crossorigin src="./assets/index-pR7wAXGd.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Bx1-o_SH.css">
   </head>
   <body>
     <main id="app">
@@ -31,7 +31,6 @@
             <button class="nav" data-screen="balls">ボール配置</button>
             <button class="nav" data-screen="records">試合記録</button>
             <button class="nav" data-screen="rules">ルール</button>
-            <button class="nav" data-screen="news">ニュース</button>
             <button class="nav" data-screen="links">リンク</button>
           </nav>
           <div class="secret-navigation">
@@ -92,7 +91,7 @@
           <article id="operation-between" class="panel operation-step operation-between">
             <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
             <p id="operation-ended-match" class="operation-ended-match">第1マッチが終了しました</p>
-            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span><span class="operation-between-note">ボタンを一度押したらスタートできる状態にしてください。</span></h2>
+            <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span><span class="operation-between-note">（コートチェンジ後）ロボットのボタンを一度押したらスタートできる状態にしてください。準備ができ次第、抽選を行います。</span></h2>
             <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
           </article>
 
@@ -101,6 +100,8 @@
             <p id="operation-result-line-a" class="operation-result-message">ただいまの試合結果を保存しました。</p>
             <p id="operation-result-line-b" class="operation-result-winner"></p>
             <p class="operation-thanks">お疲れ様でした</p>
+            <p id="operation-home-countdown" class="operation-home-countdown">120秒後にホームへ戻ります。</p>
+            <button id="operation-home-countdown-cancel" class="button operation-home-countdown-cancel" type="button">自動で戻らない</button>
             <button id="operation-home-return" class="button primary">ホーム画面に戻る</button>
           </article>
 
@@ -344,6 +345,7 @@
               </div>
               <div class="import-actions history-import-actions">
                 <button id="history-export" class="button">CSV出力</button>
+                <button id="history-series-export" class="button">試合結果CSV出力</button>
                 <button id="history-import" class="button">CSV読込</button>
                 <button id="history-sheet-import" class="button">URL読込</button>
                 <button id="history-sheet-scan" class="button">QR読込</button>
@@ -398,25 +400,6 @@
             <nav id="rule-nav" class="rule-nav" aria-label="ルール章"></nav>
             <div id="rule-content" class="rule-content"></div>
           </div>
-        </article>
-      </section>
-
-      <section id="screen-news" class="screen">
-        <article class="panel section-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">NEWS</p>
-              <h2>ニュース</h2>
-            </div>
-            <select id="news-filter" aria-label="ニュースカテゴリ">
-              <option>すべて</option>
-              <option>Q&amp;A更新</option>
-              <option>ルール更新</option>
-              <option>機能更新</option>
-            </select>
-          </div>
-          <p id="news-status" class="muted"></p>
-          <div id="news-list" class="cards"></div>
         </article>
       </section>
 
@@ -484,14 +467,6 @@
         </div>
       </form>
     </dialog>
-    <dialog id="news-dialog" class="dialog detail-dialog">
-      <article>
-        <button class="dialog-close" data-close="news-dialog" aria-label="閉じる">x</button>
-        <h2 id="news-detail-title"></h2>
-        <p id="news-detail-meta" class="muted"></p>
-        <p id="news-detail-content" class="pre-wrap"></p>
-      </article>
-    </dialog>
     <dialog id="confirm-dialog" class="dialog">
       <form method="dialog">
         <h2>結果の確認</h2>
@@ -509,6 +484,17 @@
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
           <button id="operation-ready-confirm" class="button primary" value="default">開始する</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="operation-start-check-dialog" class="dialog">
+      <form method="dialog">
+        <h2>試合開始前チェック</h2>
+        <div id="operation-start-check-detail" class="operation-start-check-detail"></div>
+        <p class="pre-wrap">内容を確認してから第1マッチ抽選へ進んでください。</p>
+        <div class="toolbar">
+          <button class="button" value="cancel">戻る</button>
+          <button id="operation-start-check-confirm" class="button primary" value="default">確認して開始</button>
         </div>
       </form>
     </dialog>
