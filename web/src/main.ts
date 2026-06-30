@@ -1594,9 +1594,14 @@ class RecordsController {
     }
     const record = this.buildRecord();
     if (!record) return;
+    const violation = record.reasonCategory !== scoringCategory;
+    const violationNotice = violation
+      ? `<p class="confirm-auto-score"><span>違反時の自動スコア</span><strong>${escapeText(record.targetTeam)} は自動敗北として 9点、相手チームは -4点で記録します。</strong></p>`
+      : "";
     el("confirm-detail").innerHTML =
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
       `<p class="confirm-reason"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
+      violationNotice +
       `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small>オレンジ ${record.teamAOrange}個 / 紫 ${record.teamAPurple}個</small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small>オレンジ ${record.teamBOrange}個 / 紫 ${record.teamBPurple}個</small></p></div>` +
       `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
     el<HTMLDialogElement>("confirm-dialog").showModal();
@@ -2497,65 +2502,6 @@ class RecordsController {
   }
 }
 
-class PracticeLogController {
-  private readonly storageKey = "tennis-assist-practice-log-v1";
-  private entries: Array<{ id: string; timestamp: string; text: string }> = [];
-
-  constructor() {
-    this.entries = this.load();
-    el<HTMLButtonElement>("practice-log-save").addEventListener("click", () => this.save());
-    el<HTMLInputElement>("practice-log-text").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        this.save();
-      }
-    });
-    this.render();
-  }
-
-  private load(): Array<{ id: string; timestamp: string; text: string }> {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "[]") as unknown;
-      if (!Array.isArray(parsed)) return [];
-      return parsed
-        .map((item) => {
-          const record = item as Partial<{ id: string; timestamp: string; text: string }>;
-          return { id: record.id ?? String(Date.now()), timestamp: record.timestamp ?? timestamp(), text: record.text ?? "" };
-        })
-        .filter((item) => item.text);
-    } catch {
-      return [];
-    }
-  }
-
-  private persist(): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(this.entries.slice(0, 30)));
-  }
-
-  private save(): void {
-    const input = el<HTMLInputElement>("practice-log-text");
-    const text = input.value.trim();
-    if (!text) {
-      el("practice-log-status").textContent = "練習内容を入力してください。";
-      return;
-    }
-    this.entries.unshift({ id: `${Date.now()}`, timestamp: timestamp(), text });
-    this.persist();
-    input.value = "";
-    el("practice-log-status").textContent = "練習記録をこの端末に保存しました。";
-    this.render();
-  }
-
-  private render(): void {
-    const list = el("practice-log-list");
-    if (!this.entries.length) {
-      list.innerHTML = '<p class="muted">保存された練習記録はありません。</p>';
-      return;
-    }
-    list.innerHTML = this.entries.slice(0, 5).map((entry) => `<article><strong>${escapeText(entry.timestamp)}</strong><span>${escapeText(entry.text)}</span></article>`).join("");
-  }
-}
-
 class ContentController {
   private rules: RuleSection[] = [];
   private news: NewsItem[] = [];
@@ -3060,6 +3006,7 @@ class Application {
   private operationHomeCountdownTimer = 0;
   private operationTimerFinishDelay = 0;
   private homeSyncNotice = "";
+  private homeSyncAlertMarkup = "";
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
 
   constructor() {
@@ -3080,7 +3027,6 @@ class Application {
     });
     this.records = new RecordsController((event, match) => this.handleFlow(event, match), this.qrScanner);
     this.timer.setPracticeTimerPresetsAvailable(this.isPublicVersion());
-    if (this.isPublicVersion() && document.getElementById("practice-log-panel")) new PracticeLogController();
     this.setupOperationFlow();
     this.applyVariantVisibility();
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
@@ -3308,16 +3254,12 @@ class Application {
       return;
     }
     el("operation-team-status").textContent = "";
-    const sync = this.records.syncSummary();
     const settings = AdminController.settings();
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
       `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
-      `<div><dt>左側チーム</dt><dd>${escapeText(teamA)}</dd></div>` +
-      `<div><dt>右側チーム</dt><dd>${escapeText(teamB)}</dd></div>` +
+      `<div class="start-check-teams"><dt>対戦チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
       `<div><dt>試合種別</dt><dd>${escapeText(settings.matchType)}</dd></div>` +
-      `<div><dt>GAS接続</dt><dd>${escapeText(sync.gasText)}</dd></div>` +
-      `<div><dt>未送信</dt><dd>未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件</dd></div>` +
       `</dl>`;
     el<HTMLDialogElement>("operation-start-check-dialog").showModal();
   }
@@ -3359,14 +3301,25 @@ class Application {
     const panel = document.getElementById("home-sync-alert");
     if (!panel) return;
     const sync = this.records.syncSummary();
-    panel.classList.toggle("hidden", sync.unsent === 0 && sync.configured);
+    const settings = AdminController.settings();
+    const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.sendEnabled);
+    panel.classList.toggle("hidden", sync.unsent === 0 && !hasGasHistory);
+    const gasState = sync.configured ? "GAS接続中" : "GAS未接続";
+    let markup = "";
     if (!sync.unsent) {
-      panel.innerHTML = `<div><strong>${sync.gasText}</strong><span>${this.homeSyncNotice || "未送信の対戦結果はありません。"}</span></div>`;
+      markup = `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || "未送信の対戦結果はありません。"}</span></div>`;
+      if (this.homeSyncAlertMarkup !== markup) {
+        panel.innerHTML = markup;
+        this.homeSyncAlertMarkup = markup;
+      }
       return;
     }
-    panel.innerHTML =
-      `<div><strong>${sync.gasText}</strong><span>${this.homeSyncNotice || `対戦結果が未送信です。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件。詳細は試合記録の「対戦履歴と統計」で確認してください。`}</span></div>` +
+    markup =
+      `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || `対戦結果が未送信です。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件。詳細は試合記録の「対戦履歴と統計」で確認してください。`}</span></div>` +
       `<button id="home-sync-retry" class="button danger" type="button">再送信</button>`;
+    if (this.homeSyncAlertMarkup === markup) return;
+    panel.innerHTML = markup;
+    this.homeSyncAlertMarkup = markup;
     panel.querySelector<HTMLButtonElement>("#home-sync-retry")?.addEventListener("click", () => {
       void this.retryHomeUnsent();
     });

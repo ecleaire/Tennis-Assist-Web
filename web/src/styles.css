@@ -45,17 +45,17 @@
 }
 
 :root.venue-light-accent {
-  --bg: #f7f9fc;
+  --bg: #f3f7fb;
   --surface: #ffffff;
-  --surface-alt: #eef4fb;
-  --border: #c9d7ea;
-  --accent: #1477c9;
-  --accent-soft: #dceeff;
-  --text: #101828;
-  --muted: #52657f;
-  --success: #16864a;
-  --warning: #c66a00;
-  --danger: #c82e44;
+  --surface-alt: #eaf2fb;
+  --border: #b8c9de;
+  --accent: #005ea8;
+  --accent-soft: #d8ecff;
+  --text: #0b1728;
+  --muted: #40546d;
+  --success: #08733f;
+  --warning: #a95700;
+  --danger: #b42335;
 }
 
 * {
@@ -445,52 +445,6 @@ output.digital.dashboard-digital {
   font-size: 0.92rem;
 }
 
-.practice-log-panel {
-  align-content: start;
-  min-height: unset;
-}
-
-.practice-log-form {
-  align-items: end;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.practice-log-form label {
-  display: grid;
-  gap: 8px;
-}
-
-.practice-log-form .button {
-  min-height: 56px;
-  white-space: nowrap;
-}
-
-.practice-log-list {
-  display: grid;
-  gap: 8px;
-}
-
-.practice-log-list article {
-  background: rgba(14, 24, 48, 0.72);
-  border: 1px solid rgba(46, 168, 255, 0.24);
-  border-radius: 12px;
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-}
-
-.practice-log-list strong {
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.practice-log-list span {
-  color: var(--text);
-  font-weight: 800;
-}
-
 .dashboard-sub-caption {
   font-size: clamp(1.05rem, 1.9vw, 1.5rem);
   font-weight: 800;
@@ -839,6 +793,50 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   font-size: clamp(1.05rem, 2vw, 1.32rem);
   font-weight: 900;
   margin: 0;
+}
+
+.start-check-list .start-check-teams {
+  align-items: stretch;
+  grid-template-columns: 1fr;
+}
+
+.start-check-teams dd {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.start-check-team-card {
+  background: rgba(46, 168, 255, 0.12);
+  border: 1px solid rgba(46, 168, 255, 0.34);
+  border-radius: 12px;
+  color: var(--text);
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  padding: 12px;
+}
+
+.start-check-team-card.left {
+  border-left: 5px solid var(--accent);
+}
+
+.start-check-team-card.right {
+  border-right: 5px solid var(--accent);
+  text-align: right;
+}
+
+.start-check-team-card b {
+  color: var(--accent);
+  font-size: clamp(0.92rem, 1.6vw, 1.08rem);
+  font-weight: 900;
+}
+
+.start-check-team-card strong {
+  color: var(--text);
+  font-size: clamp(1.35rem, 3vw, 2.15rem);
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 #operation-next-match,
@@ -2298,6 +2296,7 @@ tr.win td {
 
 .confirm-reason,
 .confirm-winner,
+.confirm-auto-score,
 .confirm-score-grid p {
   background: rgba(46, 168, 255, 0.08);
   border: 1px solid rgba(46, 168, 255, 0.32);
@@ -2310,6 +2309,7 @@ tr.win td {
 
 .confirm-reason span,
 .confirm-winner span,
+.confirm-auto-score span,
 .confirm-score-grid span {
   color: var(--muted);
   font-size: 0.95rem;
@@ -2317,7 +2317,8 @@ tr.win td {
 }
 
 .confirm-reason strong,
-.confirm-winner strong {
+.confirm-winner strong,
+.confirm-auto-score strong {
   color: var(--text);
   font-size: clamp(1.35rem, 2.8vw, 2rem);
 }
@@ -2334,6 +2335,16 @@ tr.win td {
   border-color: rgba(103, 224, 138, 0.42);
 }
 
+.confirm-auto-score {
+  background: rgba(255, 180, 74, 0.12);
+  border-color: rgba(255, 180, 74, 0.48);
+}
+
+.confirm-auto-score strong {
+  color: #ffd79a;
+  font-weight: 900;
+}
+
 .confirm-winner strong {
   color: var(--success);
   font-size: clamp(1.75rem, 3.8vw, 2.8rem);
@@ -2348,7 +2359,7 @@ tr.win td {
 
 .confirm-score-grid strong {
   color: var(--accent);
-  font-size: clamp(1.55rem, 3.2vw, 2.3rem);
+  font-size: clamp(1.75rem, 3.6vw, 2.6rem);
   font-weight: 900;
 }
 
@@ -2936,14 +2947,6 @@ body.compact #timer-five {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .practice-log-form {
-    grid-template-columns: 1fr;
-  }
-
-  .practice-log-form .button {
-    width: 100%;
-  }
-
   .sync-alert-item {
     align-items: stretch;
     grid-template-columns: 1fr;
@@ -3486,6 +3489,109 @@ html.phone-portrait .dashboard-timer-controls .button {
   flex-basis: 100%;
 }
 
+html.phone-portrait body.operation-record-focus #record-input,
+html.phone-portrait body.operation-final-review #final-results {
+  min-height: auto;
+  padding: 14px;
+}
+
+html.phone-portrait #record-input {
+  gap: 12px;
+}
+
+html.phone-portrait #record-input .section-head {
+  gap: 8px;
+}
+
+html.phone-portrait #record-input .section-head h2 {
+  font-size: clamp(1.65rem, 8vw, 2.35rem);
+}
+
+html.phone-portrait #record-input .form-grid,
+html.phone-portrait #record-input .score-pair,
+html.phone-portrait #record-input .toolbar {
+  gap: 12px;
+  padding: 12px;
+}
+
+html.phone-portrait #record-input .form-grid,
+html.phone-portrait #record-input .score-pair {
+  grid-template-columns: 1fr;
+}
+
+html.phone-portrait #record-input .form-grid select {
+  min-height: 58px;
+}
+
+html.phone-portrait #record-input fieldset {
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px;
+}
+
+html.phone-portrait #record-input fieldset legend {
+  font-size: clamp(1.35rem, 7vw, 2rem);
+}
+
+html.phone-portrait #record-input .ball-count select {
+  min-height: 58px;
+}
+
+html.phone-portrait #record-save {
+  flex-basis: 100%;
+  min-height: 68px;
+}
+
+html.phone-portrait .winner-preview {
+  font-size: clamp(1.25rem, 6vw, 1.8rem);
+  padding: 12px;
+}
+
+html.phone-portrait #final-results {
+  gap: 12px;
+}
+
+html.phone-portrait #final-results > h2,
+html.phone-portrait #final-results .section-head h2 {
+  font-size: clamp(1.7rem, 8vw, 2.4rem);
+}
+
+html.phone-portrait #final-summary {
+  font-size: clamp(1rem, 4.6vw, 1.25rem);
+  line-height: 1.55;
+}
+
+html.phone-portrait #final-results .table-scroll {
+  padding: 4px;
+}
+
+html.phone-portrait #final-results table {
+  font-size: clamp(0.86rem, 3.6vw, 1rem);
+  min-width: 640px;
+}
+
+html.phone-portrait .agreement {
+  gap: 10px;
+  padding: 12px;
+}
+
+html.phone-portrait .agreement > .button {
+  flex-basis: 100%;
+  min-height: 62px;
+}
+
+html.phone-portrait #finalize {
+  min-height: 72px;
+}
+
+html.phone-portrait .start-check-list div {
+  grid-template-columns: 1fr;
+}
+
+html.phone-portrait .start-check-teams dd {
+  grid-template-columns: 1fr;
+}
+
 html.phone-portrait .dashboard-sub-slot {
   min-height: 62px;
 }
@@ -3779,7 +3885,19 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent fieldset {
   background: var(--surface);
   border-color: var(--border);
-  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 10px 26px rgba(15, 35, 66, 0.08);
+}
+
+:root.venue-light-accent .brand h1,
+:root.venue-light-accent h2,
+:root.venue-light-accent h3,
+:root.venue-light-accent legend,
+:root.venue-light-accent label {
+  color: var(--text);
+}
+
+:root.venue-light-accent .eyebrow {
+  color: #005ea8;
 }
 
 :root.venue-light-accent .nav,
@@ -3788,7 +3906,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent input,
 :root.venue-light-accent textarea {
   background: #ffffff;
-  border-color: #9db4d3;
+  border-color: #7f98b7;
   color: var(--text);
   font-weight: 800;
 }
@@ -3801,16 +3919,35 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   border-color: var(--accent);
 }
 
+:root.venue-light-accent .timer-random-control,
+:root.venue-light-accent select,
+:root.venue-light-accent input,
+:root.venue-light-accent textarea,
+:root.venue-light-accent .controls select,
+:root.venue-light-accent .dashboard-timer-tools select,
+:root.venue-light-accent .operation-court-row select,
+:root.venue-light-accent .operation-team-grid select,
+:root.venue-light-accent #record-input select,
+:root.venue-light-accent .start-row select,
+:root.venue-light-accent .dialog select,
+:root.venue-light-accent .compact-url-input input,
+:root.venue-light-accent .rules-shell input {
+  background: #ffffff !important;
+  border-color: #7f98b7 !important;
+  color: #0b1728 !important;
+  text-shadow: none !important;
+}
+
 :root.venue-light-accent .button.primary,
 :root.venue-light-accent .nav.active,
 :root.venue-light-accent .button.accent {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #005ea8;
+  border-color: #004f8e;
   color: #fff;
 }
 
 :root.venue-light-accent #navigation .nav.active {
-  box-shadow: 0 0 0 2px rgba(20, 119, 201, 0.18) inset;
+  box-shadow: 0 0 0 2px rgba(0, 94, 168, 0.22) inset;
 }
 
 :root.venue-light-accent .admin-exit-button,
@@ -3835,7 +3972,9 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .button.warning {
-  color: #111827;
+  background: #fff4df;
+  border-color: #c47700;
+  color: #623200;
 }
 
 :root.venue-light-accent .timer-shell,
@@ -3846,7 +3985,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
 :root.venue-light-accent .timer-display,
 :root.venue-light-accent .timer-preview {
-  background: var(--surface);
+  background: #ffffff;
   color: var(--text);
 }
 
@@ -3901,22 +4040,47 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .sync-status,
 :root.venue-light-accent .result-summary,
 :root.venue-light-accent .match-result-line {
-  background: #eef7ff;
-  border-color: #8dc5f2;
+  background: #e6f3ff;
+  border-color: #6db2e7;
   color: var(--text);
 }
 
 :root.venue-light-accent .table-row,
 :root.venue-light-accent .result-row,
 :root.venue-light-accent .sync-alert-item {
-  background: #f1f6fc;
+  background: #edf5fd;
   color: var(--text);
+}
+
+:root.venue-light-accent .table-scroll {
+  background: #f6f9fc;
+  border-color: #b8c9de;
+}
+
+:root.venue-light-accent table {
+  color: var(--text);
+}
+
+:root.venue-light-accent th {
+  background: #dcecff;
+  color: #0b3762;
+}
+
+:root.venue-light-accent td {
+  background: #ffffff;
+  color: var(--text);
+}
+
+:root.venue-light-accent tr.win td {
+  background: #dff4e8;
+  color: #063f24;
 }
 
 :root.venue-light-accent .winner-preview,
 :root.venue-light-accent .confirm-winner {
-  background: #e9f8ef;
-  border-color: #87d4a4;
+  background: #dff4e8;
+  border-color: #62bd86;
+  color: #063f24;
 }
 
 :root.venue-light-accent .sync-alert-panel {
@@ -3936,20 +4100,20 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .orange-count {
-  color: #a94f00;
+  color: #8a4300;
 }
 
 :root.venue-light-accent .orange-count select {
-  color: #a94f00;
+  color: #8a4300;
   text-shadow: none;
 }
 
 :root.venue-light-accent .purple-count {
-  color: #8c36b0;
+  color: #70299a;
 }
 
 :root.venue-light-accent .purple-count select {
-  color: #8c36b0;
+  color: #70299a;
   text-shadow: none;
 }
 
@@ -3962,6 +4126,49 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
 :root.venue-light-accent #history {
   scrollbar-color: var(--accent) #e5edf7;
+}
+
+:root.venue-light-accent .operation-numbered {
+  background: #eaf4ff;
+  border-color: #1f7fc9;
+  color: #0b3762;
+}
+
+:root.venue-light-accent .operation-numbered.next-action {
+  background: #dff4e8;
+  border-color: #169b55;
+  box-shadow: 0 0 0 4px rgba(8, 115, 63, 0.12), 0 16px 28px rgba(8, 115, 63, 0.18);
+  color: #063f24;
+}
+
+:root.venue-light-accent .start-check-team-card,
+:root.venue-light-accent .confirm-reason,
+:root.venue-light-accent .confirm-score-grid p {
+  background: #f0f7ff;
+  border-color: #92bde5;
+}
+
+:root.venue-light-accent .confirm-auto-score {
+  background: #fff2dc;
+  border-color: #d48a1f;
+}
+
+:root.venue-light-accent .confirm-auto-score strong {
+  color: #6b3900;
+}
+
+:root.venue-light-accent .rule-content,
+:root.venue-light-accent .link-section,
+:root.venue-light-accent .news-card {
+  background: #ffffff;
+  border-color: #b8c9de;
+}
+
+:root.venue-light-accent .rule-nav .button,
+:root.venue-light-accent .link-grid .button {
+  background: #f7fbff;
+  border-color: #7f98b7;
+  color: #0b3762;
 }
 
 :root.venue-light-accent .dialog::backdrop {
