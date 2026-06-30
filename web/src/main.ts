@@ -1794,6 +1794,17 @@ class RecordsController {
     return "決着が必要な場合の参考: 違反数・総スコアも同じため、追加マッチで確認してください。";
   }
 
+  private finalSummaryHtml(sum: Summary, winner: "a" | "b" | "draw"): string {
+    if (!this.series) return escapeText("3マッチ終了後、最終試合結果を確認できます。");
+    const score = `${sum.teamAWins} VS ${sum.teamBWins}`;
+    if (!this.isFinished()) {
+      return `<span class="final-result-label">途中集計</span><strong class="final-result-score">${score}</strong><span class="final-result-note">引き分け ${sum.draws} / 3マッチ終了後に最終結果を確認できます。</span>`;
+    }
+    const result = winner === "draw" ? "引き分け" : `${winner === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
+    const note = winner === "draw" ? `${this.drawDecisionNote(sum)} 誤入力の場合、各マッチは再入力できます。` : "誤入力の場合、各マッチは再入力できます。";
+    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span><span class="final-result-note">${escapeText(note)}</span>`;
+  }
+
   private renderFinal(): void {
     const matches = el<HTMLTableElement>("final-matches");
     matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th><th></th></tr></thead>";
@@ -1825,9 +1836,7 @@ class RecordsController {
     };
     add(this.series.teamA, "a");
     add(this.series.teamB, "b");
-    el("final-summary").textContent = this.isFinished()
-      ? winner === "draw" ? `総合結果: 引き分け。${this.drawDecisionNote(sum)} 誤入力の場合、各マッチは再入力できます。` : `総合結果: ${winner === "a" ? this.series.teamA : this.series.teamB} の勝ち。誤入力の場合、各マッチは再入力できます。`
-      : `途中集計: 勝利マッチ数 ${sum.teamAWins} - ${sum.teamBWins} / 引き分け ${sum.draws}`;
+    el("final-summary").innerHTML = this.finalSummaryHtml(sum, winner);
     el("series-finished").classList.toggle("hidden", !this.finalized);
   }
 
@@ -1923,13 +1932,13 @@ class RecordsController {
     this.setCompletionPanel(true);
     this.updateCompletionState(record.sendStatus ?? "pending", "送信状態を確認しています。");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
+    this.clearCompletionResetTimer();
+    document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
+    this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
     const sendStatus = await this.sendSeriesResult(record);
     this.setCompletionPanel(true);
     if (sendStatus === "sent") {
-      el("completion-status").textContent = "この結果は保存済みで、スプレッドシートへ送信済みです。終了画面へ移動します。";
-      this.clearCompletionResetTimer();
-      document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
-      this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
+      el("completion-status").textContent = "この結果は保存済みで、スプレッドシートへ送信済みです。";
     }
   }
 

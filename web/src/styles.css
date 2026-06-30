@@ -1744,9 +1744,42 @@ tr.win td {
 }
 
 #final-summary {
+  background: rgba(46, 168, 255, 0.11);
+  border: 2px solid rgba(46, 168, 255, 0.42);
+  border-radius: 16px;
   color: var(--text);
-  font-size: clamp(1.12rem, 2vw, 1.45rem);
-  font-weight: 800;
+  display: grid;
+  gap: 8px;
+  font-size: clamp(1.18rem, 2vw, 1.5rem);
+  font-weight: 900;
+  line-height: 1.35;
+  padding: clamp(16px, 2.6vw, 26px);
+}
+
+.final-result-label {
+  color: var(--accent);
+  font-size: clamp(1rem, 1.8vw, 1.28rem);
+  font-weight: 900;
+}
+
+.final-result-score {
+  color: var(--text);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.final-result-winner {
+  color: var(--success);
+  font-size: clamp(2rem, 4.5vw, 4rem);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.final-result-note {
+  color: var(--muted);
+  font-size: clamp(1rem, 1.8vw, 1.28rem);
+  font-weight: 850;
 }
 
 #final-results .table-scroll {
@@ -3557,8 +3590,16 @@ html.phone-portrait #final-results .section-head h2 {
 }
 
 html.phone-portrait #final-summary {
-  font-size: clamp(1rem, 4.6vw, 1.25rem);
-  line-height: 1.55;
+  gap: 7px;
+  padding: 14px;
+}
+
+html.phone-portrait .final-result-score {
+  font-size: clamp(2.7rem, 15vw, 4.4rem);
+}
+
+html.phone-portrait .final-result-winner {
+  font-size: clamp(1.65rem, 8vw, 2.5rem);
 }
 
 html.phone-portrait #final-results .table-scroll {
@@ -4043,6 +4084,16 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   background: #e6f3ff;
   border-color: #6db2e7;
   color: var(--text);
+}
+
+:root.venue-light-accent #final-summary {
+  background: #e6f3ff;
+  border-color: #4b9ed8;
+  color: var(--text);
+}
+
+:root.venue-light-accent .final-result-winner {
+  color: #08733f;
 }
 
 :root.venue-light-accent .table-row,
