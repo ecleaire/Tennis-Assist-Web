@@ -3,6 +3,7 @@ const SERIES_RESULT_SHEET_NAME = '試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
+// Official timer settings sheet: A column = input item, B column = value.
 const TIMER_SETTING_SHEET_NAME = 'timer_setting';
 const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_settings';
 
@@ -343,7 +344,9 @@ function ensureTimerSettingSheetTemplate(sheet) {
   const width = 2;
   sheet.getRange(1, 2, Math.max(template.length, 30), 1).setNumberFormat('@');
   sheet.getRange(1, 1, template.length, width).setValues(template);
-  sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
+  sheet.getRange(1, 1, 4, width).setBackground('#DFF2C7');
+  sheet.getRange(1, 1, 1, width).setFontWeight('bold');
+  sheet.getRange(2, 1, 3, 1).setFontWeight('bold');
   sheet.getRange(12, 1, 3, width).setBackground('#FFF4D6');
   sheet.getRange(17, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
   sheet.getRange(22, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
