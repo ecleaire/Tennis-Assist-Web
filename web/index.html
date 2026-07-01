@@ -438,8 +438,32 @@
                 <select id="venue-color">
                   <option value="standard">標準の水色</option>
                   <option value="admin">黄緑</option>
+                  <option value="light">ライトUI</option>
                 </select>
               </label>
+            </div>
+            <div class="timer-setting-panel">
+              <div>
+                <h3>タイマー設定</h3>
+                <p id="timer-setting-status" class="muted">外部タイマー設定は未適用です。</p>
+              </div>
+              <div class="form-row timer-setting-grid">
+                <label>方式
+                  <select id="timer-setting-mode">
+                    <option value="random">ランダム範囲</option>
+                    <option value="fixed">固定</option>
+                  </select>
+                </label>
+                <label>最小秒数<input id="timer-setting-min" type="number" min="1" max="7200" step="1" value="60" /></label>
+                <label>最大秒数<input id="timer-setting-max" type="number" min="1" max="7200" step="1" value="120" /></label>
+                <label>間隔秒数<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
+                <label>固定秒数<input id="timer-setting-fixed" type="number" min="1" max="7200" step="1" value="120" /></label>
+              </div>
+              <div class="toolbar">
+                <button id="timer-setting-load" class="button" type="button">スプレッドシート設定読み込み</button>
+                <button id="timer-setting-apply" class="button primary" type="button">手動設定を適用</button>
+                <button id="timer-setting-clear" class="button" type="button">通常設定に戻す</button>
+              </div>
             </div>
             <div class="toolbar">
               <button id="gas-save" class="button primary">設定を保存</button>

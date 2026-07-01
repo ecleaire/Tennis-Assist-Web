@@ -3,6 +3,7 @@ const SERIES_RESULT_SHEET_NAME = '試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
+const TIMER_SETTING_SHEET_NAME = 'timer_setting';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
@@ -18,14 +19,36 @@ function doGet(e) {
     if (!apiKey) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
     if (params.api_key !== apiKey) return jsonResponse({ ok: false, error: 'invalid_api_key' });
     const action = String(params.action || '');
-    if (action !== 'history' && action !== 'teams') return jsonResponse({ ok: false, error: 'unknown_action' });
+    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting') return jsonResponse({ ok: false, error: 'unknown_action' });
 
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
 
-    const sheetName = String(params.sheet || params.sheet_name || (action === 'teams' ? TEAM_LIST_SHEET_NAME : HISTORY_SHEET_NAME));
+    const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_SHEET_NAME;
+    const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
     const sheet = ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheetByName('チーム一覧') : null);
+
+    if (action === 'timer_setting') {
+      if (!sheet || sheet.getLastRow() < 2) {
+        return jsonResponse({
+          ok: true,
+          spreadsheet_id: spreadsheetId,
+          sheet_name: sheetName,
+          timer_setting: defaultTimerSetting('default'),
+          row_count: 0
+        });
+      }
+      const setting = readTimerSetting(sheet.getDataRange().getValues());
+      return jsonResponse({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        sheet_name: sheet.getName(),
+        timer_setting: setting,
+        row_count: sheet.getLastRow() - 1
+      });
+    }
+
     if (!sheet || sheet.getLastRow() < 2) {
       return jsonResponse({ ok: true, spreadsheet_id: spreadsheetId, sheet_name: sheetName, csv_columns: [], csv_rows: [], teams: [] });
     }
@@ -61,6 +84,61 @@ function doGet(e) {
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err), stack: err.stack });
   }
+}
+
+function defaultTimerSetting(source) {
+  return {
+    mode: 'random',
+    min_seconds: 60,
+    max_seconds: 120,
+    step_seconds: 1,
+    fixed_seconds: '',
+    source: source || 'default'
+  };
+}
+
+function readTimerSetting(values) {
+  const setting = defaultTimerSetting('sheet');
+  const entries = {};
+
+  values.slice(1).forEach((row) => {
+    const key = String(row[0] || '').trim().toLowerCase();
+    if (!key) return;
+    entries[key] = row[1];
+  });
+
+  const rawMode = String(entries.mode || entries['設定種別'] || entries['モード'] || '').trim().toLowerCase();
+  if (rawMode === 'fixed' || rawMode === '固定') setting.mode = 'fixed';
+  if (rawMode === 'random' || rawMode === 'ランダム') setting.mode = 'random';
+
+  const minSeconds = readPositiveInteger(entries.min_seconds || entries.min || entries['最小秒数'] || entries['開始秒数']);
+  const maxSeconds = readPositiveInteger(entries.max_seconds || entries.max || entries['最大秒数'] || entries['終了秒数']);
+  const stepSeconds = readPositiveInteger(entries.step_seconds || entries.step || entries['間隔秒数'] || entries['ランダム間隔秒数']);
+  const fixedSeconds = readPositiveInteger(entries.fixed_seconds || entries.fixed || entries['固定秒数']);
+
+  if (minSeconds) setting.min_seconds = minSeconds;
+  if (maxSeconds) setting.max_seconds = maxSeconds;
+  if (stepSeconds) setting.step_seconds = stepSeconds;
+  if (fixedSeconds) setting.fixed_seconds = fixedSeconds;
+
+  if (setting.max_seconds < setting.min_seconds) {
+    const tmp = setting.min_seconds;
+    setting.min_seconds = setting.max_seconds;
+    setting.max_seconds = tmp;
+  }
+  setting.step_seconds = Math.max(1, setting.step_seconds);
+  if (setting.mode === 'fixed' && !setting.fixed_seconds) {
+    setting.fixed_seconds = setting.max_seconds;
+  }
+
+  return setting;
+}
+
+function readPositiveInteger(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  if (!isFinite(number) || number <= 0) return null;
+  return Math.floor(number);
 }
 
 function readTeams(values) {

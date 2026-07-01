@@ -90,6 +90,18 @@ interface AdminSettings {
   matchType: MatchType;
 }
 
+type TimerSettingSource = "sheet" | "manual" | "default";
+
+interface ExternalTimerSetting {
+  mode: "random" | "fixed";
+  minSeconds: number;
+  maxSeconds: number;
+  stepSeconds: number;
+  fixedSeconds: number;
+  source: TimerSettingSource;
+  loadedAt: string;
+}
+
 type TeamImportResult = {
   status: "loaded" | "default" | "failed";
   message: string;
@@ -260,6 +272,49 @@ function timestamp(): string {
   const date = new Date();
   const two = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
+}
+
+function formatClock(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const rest = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function defaultExternalTimerSetting(source: TimerSettingSource = "default"): ExternalTimerSetting {
+  return { mode: "random", minSeconds: 60, maxSeconds: 120, stepSeconds: 1, fixedSeconds: 120, source, loadedAt: timestamp() };
+}
+
+function normalizeExternalTimerSetting(raw: unknown, source: TimerSettingSource): ExternalTimerSetting {
+  const data = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const readNumber = (...keys: string[]): number | null => {
+    for (const key of keys) {
+      const value = data[key];
+      if (value === undefined || value === null || value === "") continue;
+      const number = Number(value);
+      if (Number.isFinite(number) && number > 0) return Math.floor(number);
+    }
+    return null;
+  };
+  const setting = defaultExternalTimerSetting(source);
+  const mode = String(data.mode ?? "").toLowerCase();
+  setting.mode = mode === "fixed" || data.mode === "固定" ? "fixed" : "random";
+  setting.minSeconds = readNumber("minSeconds", "min_seconds", "min", "最小秒数") ?? setting.minSeconds;
+  setting.maxSeconds = readNumber("maxSeconds", "max_seconds", "max", "最大秒数") ?? setting.maxSeconds;
+  setting.stepSeconds = readNumber("stepSeconds", "step_seconds", "step", "間隔秒数") ?? setting.stepSeconds;
+  setting.fixedSeconds = readNumber("fixedSeconds", "fixed_seconds", "fixed", "固定秒数") ?? setting.fixedSeconds;
+  if (setting.maxSeconds < setting.minSeconds) [setting.minSeconds, setting.maxSeconds] = [setting.maxSeconds, setting.minSeconds];
+  setting.stepSeconds = Math.max(1, setting.stepSeconds);
+  setting.fixedSeconds = Math.max(1, setting.fixedSeconds || setting.maxSeconds);
+  setting.loadedAt = typeof data.loadedAt === "string" && data.loadedAt ? data.loadedAt : timestamp();
+  return setting;
+}
+
+function externalTimerSettingText(setting: ExternalTimerSetting, prefix = "ローカルルールを適用しています。"): string {
+  if (setting.mode === "fixed") {
+    return `${prefix} タイマーは ${formatClock(setting.fixedSeconds)} 固定です。`;
+  }
+  return `${prefix} タイマーランダム範囲は ${formatClock(setting.minSeconds)}〜${formatClock(setting.maxSeconds)} です。秒数ランダム間隔は ${setting.stepSeconds}秒間隔です。`;
 }
 
 function deviceSource(): string {
@@ -568,6 +623,7 @@ class TimerController {
   private randomStep: number | "manual" | "tokyo" = 5;
   private manualSeconds = 120;
   private fixedSeconds: number | null = null;
+  private externalTimerSetting: ExternalTimerSetting | null = null;
   private initialReset = true;
   private secret = false;
   private hyogo = false;
@@ -670,6 +726,11 @@ class TimerController {
       this.dashboardSteps.forEach((step) => { step.value = "5"; });
     }
     if (!this.running && !this.started) this.reset();
+  }
+
+  setExternalTimerSetting(setting: ExternalTimerSetting | null): void {
+    this.externalTimerSetting = setting;
+    if (!this.running && !this.started && this.randomStep !== "tokyo") this.reset();
   }
 
   setTokyoClockModeAvailable(active: boolean): void {
@@ -812,6 +873,12 @@ class TimerController {
   private generatedDuration(): number {
     if (this.fixedSeconds !== null) return this.fixedSeconds;
     if (this.randomStep === "tokyo") return 120;
+    if (this.externalTimerSetting) {
+      if (this.externalTimerSetting.mode === "fixed") return this.externalTimerSetting.fixedSeconds;
+      const { minSeconds, maxSeconds, stepSeconds } = this.externalTimerSetting;
+      const count = Math.floor((maxSeconds - minSeconds) / stepSeconds) + 1;
+      return minSeconds + Math.floor(Math.random() * count) * stepSeconds;
+    }
     if (this.hyogo) {
       const candidates = [90, 95, 100, 105, 110, 115, 120];
       return candidates[Math.floor(Math.random() * candidates.length)] ?? 120;
@@ -2889,15 +2956,24 @@ class QrScanner {
 
 class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
+  private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
   private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo", "mie", "MIE", "mie_judge"]);
   private mode: AdminMode = "standard";
 
-  constructor(private readonly qrScanner: QrScanner, private readonly onConnected?: () => Promise<TeamImportResult>, private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void) {
+  constructor(
+    private readonly qrScanner: QrScanner,
+    private readonly onConnected?: () => Promise<TeamImportResult>,
+    private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
+    private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
+  ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
+    el<HTMLButtonElement>("timer-setting-load").addEventListener("click", () => void this.loadTimerSetting());
+    el<HTMLButtonElement>("timer-setting-apply").addEventListener("click", () => this.applyManualTimerSetting());
+    el<HTMLButtonElement>("timer-setting-clear").addEventListener("click", () => this.clearTimerSetting());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
@@ -2925,6 +3001,18 @@ class AdminController {
     }
   }
 
+  static timerSetting(): ExternalTimerSetting | null {
+    try {
+      const raw = localStorage.getItem(this.timerSettingStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as unknown;
+      const source = ((parsed as { source?: unknown }).source === "manual" ? "manual" : (parsed as { source?: unknown }).source === "default" ? "default" : "sheet") satisfies TimerSettingSource;
+      return normalizeExternalTimerSetting(parsed, source);
+    } catch {
+      return null;
+    }
+  }
+
   private populate(): void {
     const settings = AdminController.settings();
     el<HTMLInputElement>("gas-url").value = settings.gasUrl;
@@ -2933,6 +3021,7 @@ class AdminController {
     const colorSelect = el<HTMLSelectElement>("venue-color");
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
+    this.populateTimerSetting(AdminController.timerSetting());
   }
 
   private updateColorOptions(): void {
@@ -2983,6 +3072,72 @@ class AdminController {
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
+  }
+
+  private populateTimerSetting(setting: ExternalTimerSetting | null): void {
+    const current = setting ?? defaultExternalTimerSetting("default");
+    el<HTMLSelectElement>("timer-setting-mode").value = current.mode;
+    el<HTMLInputElement>("timer-setting-min").value = String(current.minSeconds);
+    el<HTMLInputElement>("timer-setting-max").value = String(current.maxSeconds);
+    el<HTMLInputElement>("timer-setting-step").value = String(current.stepSeconds);
+    el<HTMLInputElement>("timer-setting-fixed").value = String(current.fixedSeconds);
+    el("timer-setting-status").textContent = setting ? externalTimerSettingText(setting) : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
+  }
+
+  private saveTimerSetting(setting: ExternalTimerSetting): void {
+    localStorage.setItem(AdminController.timerSettingStorageKey, JSON.stringify(setting));
+    this.populateTimerSetting(setting);
+    this.onTimerSettingChanged?.(setting);
+  }
+
+  private async loadTimerSetting(): Promise<void> {
+    this.save();
+    const settings = AdminController.settings();
+    const cached = AdminController.timerSetting();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      el("timer-setting-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
+      return;
+    }
+    el("timer-setting-status").textContent = "スプレッドシートのタイマー設定を読み込んでいます...";
+    try {
+      const url = new URL(settings.gasUrl);
+      url.searchParams.set("action", "timer_setting");
+      url.searchParams.set("api_key", settings.apiKey);
+      const response = await fetch(url);
+      const data = await response.json() as GasResponse & { timer_setting?: unknown };
+      if (!response.ok || !data.ok) throw new Error(data.message || data.error || "timer_setting_failed");
+      const setting = normalizeExternalTimerSetting(data.timer_setting, "sheet");
+      this.saveTimerSetting(setting);
+      el("timer-setting-status").textContent = externalTimerSettingText(setting);
+    } catch {
+      if (cached) {
+        this.onTimerSettingChanged?.(cached);
+        this.populateTimerSetting(cached);
+        el("timer-setting-status").textContent = `スプレッドシート設定を読み込めませんでした。端末に保存済みの設定を使用しています。${externalTimerSettingText(cached, "")}`;
+        return;
+      }
+      el("timer-setting-status").textContent = "タイマー設定の読み込みに失敗しました。通常のタイマー設定を使用します。";
+    }
+  }
+
+  private applyManualTimerSetting(): void {
+    const raw = {
+      mode: el<HTMLSelectElement>("timer-setting-mode").value,
+      minSeconds: el<HTMLInputElement>("timer-setting-min").value,
+      maxSeconds: el<HTMLInputElement>("timer-setting-max").value,
+      stepSeconds: el<HTMLInputElement>("timer-setting-step").value,
+      fixedSeconds: el<HTMLInputElement>("timer-setting-fixed").value,
+      loadedAt: timestamp(),
+    };
+    const setting = normalizeExternalTimerSetting(raw, "manual");
+    this.saveTimerSetting(setting);
+    el("timer-setting-status").textContent = externalTimerSettingText(setting, "手動タイマー設定を適用しています。");
+  }
+
+  private clearTimerSetting(): void {
+    localStorage.removeItem(AdminController.timerSettingStorageKey);
+    this.populateTimerSetting(null);
+    this.onTimerSettingChanged?.(null);
   }
 
   lock(): void {
@@ -3097,6 +3252,7 @@ class Application {
       () => this.show("timer"),
       () => this.restoreFullscreenReturn("timer"),
     );
+    this.timer.setExternalTimerSetting(AdminController.timerSetting());
     this.refereeTimer = new RefereeTimerController();
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
@@ -3717,6 +3873,7 @@ class Application {
       this.qrScanner,
       () => this.records.importTeamsFromGasConnection(),
       (mode, settings) => this.applyAdminMode(mode, settings),
+      (setting) => this.applyTimerSetting(setting),
     );
     this.secret = true;
     this.linksClicks = 0;
@@ -3744,6 +3901,10 @@ class Application {
     this.balls.setHyogoMode(this.hyogo);
     this.updateTitle();
     this.updateHomeSyncAlert();
+  }
+
+  private applyTimerSetting(setting: ExternalTimerSetting | null): void {
+    this.timer.setExternalTimerSetting(setting);
   }
 
   private updateTitle(): void {

@@ -2068,6 +2068,23 @@ tr.win td {
   gap: 8px;
 }
 
+.timer-setting-panel {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.timer-setting-panel h3 {
+  margin: 0 0 6px;
+}
+
+.timer-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+}
+
 .gas-url-row {
   align-items: end;
   display: grid;
