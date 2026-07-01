@@ -1950,6 +1950,12 @@ tr.win td {
   margin-top: 10px;
 }
 
+.app-version {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: -4px 0 12px;
+}
+
 .sync-alert-panel {
   background: rgba(184, 50, 66, 0.12);
   border: 2px solid rgba(255, 95, 112, 0.78);

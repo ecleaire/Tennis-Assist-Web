@@ -1,5 +1,7 @@
 import "./styles.css";
 
+declare const __APP_VERSION__: string;
+
 type Screen = "dashboard" | "operation" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
@@ -2682,6 +2684,7 @@ class ContentController {
   }
 
   renderLinks(secret: boolean): void {
+    el("app-version").textContent = `アプリバージョン v${__APP_VERSION__}`;
     const sections = [
       { title: "WRO 全国 国際ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
       { title: "WRO 公認予選会", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
