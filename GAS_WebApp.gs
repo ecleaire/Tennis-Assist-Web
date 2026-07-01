@@ -159,9 +159,10 @@ function readTimerSeconds(value) {
   if (!text) return null;
   const clockMatch = text.match(/^(\d{1,2}):([0-5]\d)$/);
   if (clockMatch) return Number(clockMatch[1]) * 60 + Number(clockMatch[2]);
-  if (/^\d{4}$/.test(text)) {
-    const minutes = Number(text.slice(0, 2));
-    const seconds = Number(text.slice(2, 4));
+  if (/^\d{1,4}$/.test(text)) {
+    const padded = text.padStart(4, '0');
+    const minutes = Number(padded.slice(0, 2));
+    const seconds = Number(padded.slice(2, 4));
     if (seconds < 60) return minutes * 60 + seconds;
   }
   return readPositiveInteger(value);
@@ -293,17 +294,17 @@ function getOrCreateTimerSettingSheet(ss, name) {
 
 function ensureTimerSettingSheetTemplate(sheet) {
   const template = [
-    ['入力項目', '数値'],
-    ['ランダム範囲', '0100-0200'],
+    ['入力項目', '設定値'],
+    ['ランダム範囲', "'0100-0200"],
     ['固定時間', ''],
     ['ランダム間隔秒数', '1'],
-    ['mode', ''],
-    ['min_seconds', ''],
-    ['max_seconds', ''],
-    ['step_seconds', ''],
-    ['fixed_seconds', ''],
-    ['入力ルール', '時間は4桁の数字で入力します。2分は0200、1分30秒は0130です。'],
-    ['入力例', '固定時間に0200を入力すると2分固定。固定時間を空白にするとランダム範囲を使用します。']
+    ['使い方', '固定時間が空白ならランダム範囲を使います。固定時間に入力がある場合は固定時間を優先します。'],
+    ['時間の入力形式', '4桁の数字で入力します。2分は0200、1分30秒は0130です。先頭の0が消えて200になっても02:00として読み取ります。'],
+    ['ランダム範囲の例', '0100-0200 と入力すると1分00秒から2分00秒の範囲です。100-200になっても同じ意味です。'],
+    ['固定時間の例', '0200 と入力すると2分固定です。固定しない場合は空白にします。200になっても02:00として読み取ります。'],
+    ['ランダム間隔の例', '1なら1秒単位、5なら5秒単位、10なら10秒単位で抽選します。'],
+    ['注意', 'A列の入力項目名は変更しないでください。B列の設定値だけ編集してください。'],
+    ['旧形式との互換', 'mode / min_seconds / max_seconds / step_seconds / fixed_seconds がある既存シートも読み取れます。']
   ];
   const width = 2;
   const current = sheet.getRange(1, 1, template.length, width).getValues();
@@ -312,6 +313,7 @@ function ensureTimerSettingSheetTemplate(sheet) {
     return currentValue === '' || currentValue === null ? value : currentValue;
   }));
   sheet.getRange(1, 1, next.length, width).setValues(next);
+  sheet.getRange(1, 2, Math.max(next.length, 20), 1).setNumberFormat('@');
   sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
   sheet.autoResizeColumns(1, width);
 }
