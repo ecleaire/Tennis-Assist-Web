@@ -553,6 +553,7 @@ class TimerController {
   private readonly resetButton = el<HTMLButtonElement>("timer-reset");
   private readonly step = el<HTMLSelectElement>("timer-step");
   private readonly dashboardSteps = els<HTMLSelectElement>("dashboard-timer-step");
+  private readonly endConfirmDialog = el<HTMLDialogElement>("timer-end-confirm-dialog");
   private total = 120;
   private remaining = 120;
   private running = false;
@@ -577,6 +578,7 @@ class TimerController {
   private thirtyCuePlayed = false;
   private countdownCuePlayed = false;
   private finishCuePlayed = false;
+  private endWarningArmed = false;
 
   constructor(
     private readonly finished: (naturalEnd?: boolean) => void,
@@ -585,8 +587,12 @@ class TimerController {
   ) {
     this.startButton.addEventListener("click", () => void this.toggle());
     this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => void this.toggle()));
-    el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.end());
-    els<HTMLButtonElement>("dashboard-timer-end").forEach((button) => button.addEventListener("click", () => this.end()));
+    el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.requestEnd());
+    els<HTMLButtonElement>("dashboard-timer-end").forEach((button) => button.addEventListener("click", () => this.requestEnd()));
+    el<HTMLButtonElement>("timer-end-confirm").addEventListener("click", () => this.forceEndFromConfirm());
+    this.endConfirmDialog.addEventListener("close", () => {
+      if (this.endConfirmDialog.returnValue !== "default") this.endWarningArmed = false;
+    });
     this.resetButton.addEventListener("click", () => this.reset());
     els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => button.addEventListener("click", () => this.reset()));
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
@@ -692,6 +698,8 @@ class TimerController {
 
   resetDefault(): void {
     this.touchTimerState();
+    this.endWarningArmed = false;
+    if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
     this.running = false;
     this.started = false;
     this.notifiedFinish = false;
@@ -815,6 +823,8 @@ class TimerController {
 
   private reset(): void {
     this.touchTimerState();
+    this.endWarningArmed = false;
+    if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
     this.running = false;
     this.started = false;
     this.notifiedFinish = false;
@@ -877,14 +887,36 @@ class TimerController {
     this.endAt = 0;
     this.audioCues.stopScheduled();
     this.running = false;
+    this.endWarningArmed = false;
     this.mode.textContent = "一時停止中";
     this.caption.textContent = "";
     this.notice.textContent = "タイマーを一時停止しています";
     this.syncControls();
   }
 
+  private requestEnd(): void {
+    this.touchTimerState();
+    if (!this.running || this.remaining <= 0) {
+      this.end();
+      return;
+    }
+    if (!this.endWarningArmed) {
+      this.endWarningArmed = true;
+      this.notice.textContent = "タイマー作動中です。終了する場合はもう一度「終了」を押してください。";
+      return;
+    }
+    if (!this.endConfirmDialog.open) this.endConfirmDialog.showModal();
+  }
+
+  private forceEndFromConfirm(): void {
+    this.endWarningArmed = false;
+    this.end();
+  }
+
   private end(): void {
     this.touchTimerState();
+    this.endWarningArmed = false;
+    if (this.endConfirmDialog.open) this.endConfirmDialog.close("default");
     this.audioCues.stopScheduled();
     this.running = false;
     this.endAt = 0;
@@ -918,9 +950,12 @@ class TimerController {
       }
       this.playCountdownCue();
       if (this.coldUntil > now) this.notice.textContent = "ここからコールドが適応されます";
+      else if (this.endWarningArmed) this.notice.textContent = "タイマー作動中です。終了する場合はもう一度「終了」を押してください。";
       else if (this.notice.textContent !== "タイマーを一時停止しています") this.notice.textContent = "";
       if (this.remaining === 0) {
         this.touchTimerState();
+        this.endWarningArmed = false;
+        if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
         this.running = false;
         this.endAt = 0;
         this.mode.textContent = "終了";

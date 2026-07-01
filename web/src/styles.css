@@ -4046,6 +4046,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent #finalize,
 :root.venue-light-accent #agreement-accept,
 :root.venue-light-accent #confirm-save,
+:root.venue-light-accent #timer-end-confirm,
 :root.venue-light-accent #operation-ready-confirm,
 :root.venue-light-accent #operation-start-check-confirm,
 :root.venue-light-accent #gas-save,
