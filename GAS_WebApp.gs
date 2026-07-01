@@ -3,7 +3,8 @@ const SERIES_RESULT_SHEET_NAME = '試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
-const TIMER_SETTING_SHEET_NAME = 'timer_setting';
+const TIMER_SETTING_SHEET_NAME = 'timer_settings';
+const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_setting';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
@@ -27,7 +28,9 @@ function doGet(e) {
     const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_SHEET_NAME;
     const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheetByName('チーム一覧') : null);
+    const sheet = action === 'timer_setting'
+      ? getOrCreateTimerSettingSheet(ss, sheetName)
+      : ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheetByName('チーム一覧') : null);
 
     if (action === 'timer_setting') {
       if (!sheet || sheet.getLastRow() < 2) {
@@ -111,15 +114,22 @@ function readTimerSetting(values) {
   if (rawMode === 'fixed' || rawMode === '固定') setting.mode = 'fixed';
   if (rawMode === 'random' || rawMode === 'ランダム') setting.mode = 'random';
 
-  const minSeconds = readPositiveInteger(entries.min_seconds || entries.min || entries['最小秒数'] || entries['開始秒数']);
-  const maxSeconds = readPositiveInteger(entries.max_seconds || entries.max || entries['最大秒数'] || entries['終了秒数']);
+  const randomRange = readTimerRange(entries['ランダム範囲'] || entries.random_range || entries.range);
+  const minSeconds = readTimerSeconds(entries.min_seconds || entries.min || entries['最小秒数'] || entries['開始秒数']) || randomRange.min;
+  const maxSeconds = readTimerSeconds(entries.max_seconds || entries.max || entries['最大秒数'] || entries['終了秒数']) || randomRange.max;
   const stepSeconds = readPositiveInteger(entries.step_seconds || entries.step || entries['間隔秒数'] || entries['ランダム間隔秒数']);
-  const fixedSeconds = readPositiveInteger(entries.fixed_seconds || entries.fixed || entries['固定秒数']);
+  const fixedSeconds = readTimerSeconds(entries.fixed_seconds || entries.fixed || entries['固定秒数'] || entries['固定時間']);
 
   if (minSeconds) setting.min_seconds = minSeconds;
   if (maxSeconds) setting.max_seconds = maxSeconds;
   if (stepSeconds) setting.step_seconds = stepSeconds;
-  if (fixedSeconds) setting.fixed_seconds = fixedSeconds;
+  if (fixedSeconds) {
+    setting.fixed_seconds = fixedSeconds;
+    setting.mode = 'fixed';
+  } else {
+    setting.fixed_seconds = '';
+    setting.mode = 'random';
+  }
 
   if (setting.max_seconds < setting.min_seconds) {
     const tmp = setting.min_seconds;
@@ -127,11 +137,34 @@ function readTimerSetting(values) {
     setting.max_seconds = tmp;
   }
   setting.step_seconds = Math.max(1, setting.step_seconds);
-  if (setting.mode === 'fixed' && !setting.fixed_seconds) {
-    setting.fixed_seconds = setting.max_seconds;
-  }
 
   return setting;
+}
+
+function readTimerRange(value) {
+  const result = { min: null, max: null };
+  if (value === null || value === undefined || value === '') return result;
+  const text = String(value).trim();
+  const parts = text.split(/[-〜~～]/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    result.min = readTimerSeconds(parts[0]);
+    result.max = readTimerSeconds(parts[1]);
+  }
+  return result;
+}
+
+function readTimerSeconds(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const clockMatch = text.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (clockMatch) return Number(clockMatch[1]) * 60 + Number(clockMatch[2]);
+  if (/^\d{4}$/.test(text)) {
+    const minutes = Number(text.slice(0, 2));
+    const seconds = Number(text.slice(2, 4));
+    if (seconds < 60) return minutes * 60 + seconds;
+  }
+  return readPositiveInteger(value);
 }
 
 function readPositiveInteger(value) {
@@ -243,6 +276,44 @@ function appendTestRow(sheet, body, eventName) {
 
 function getOrCreateSheet(ss, name) {
   return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
+function getOrCreateTimerSettingSheet(ss, name) {
+  const requestedName = name || TIMER_SETTING_SHEET_NAME;
+  let sheet = ss.getSheetByName(requestedName);
+  if (!sheet && requestedName === TIMER_SETTING_SHEET_NAME) {
+    sheet = ss.getSheetByName(LEGACY_TIMER_SETTING_SHEET_NAME);
+  }
+  if (!sheet) {
+    sheet = ss.insertSheet(requestedName);
+  }
+  ensureTimerSettingSheetTemplate(sheet);
+  return sheet;
+}
+
+function ensureTimerSettingSheetTemplate(sheet) {
+  const template = [
+    ['入力項目', '数値'],
+    ['ランダム範囲', '0100-0200'],
+    ['固定時間', ''],
+    ['ランダム間隔秒数', '1'],
+    ['mode', ''],
+    ['min_seconds', ''],
+    ['max_seconds', ''],
+    ['step_seconds', ''],
+    ['fixed_seconds', ''],
+    ['入力ルール', '時間は4桁の数字で入力します。2分は0200、1分30秒は0130です。'],
+    ['入力例', '固定時間に0200を入力すると2分固定。固定時間を空白にするとランダム範囲を使用します。']
+  ];
+  const width = 2;
+  const current = sheet.getRange(1, 1, template.length, width).getValues();
+  const next = template.map((row, rowIndex) => row.map((value, columnIndex) => {
+    const currentValue = current[rowIndex] && current[rowIndex][columnIndex];
+    return currentValue === '' || currentValue === null ? value : currentValue;
+  }));
+  sheet.getRange(1, 1, next.length, width).setValues(next);
+  sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
+  sheet.autoResizeColumns(1, width);
 }
 
 function collectRecords(body) {

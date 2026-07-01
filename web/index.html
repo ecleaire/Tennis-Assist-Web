@@ -455,18 +455,18 @@
                     <option value="fixed">固定</option>
                   </select>
                 </label>
-                <fieldset class="duration-field">
+                <fieldset id="timer-setting-random-min" class="duration-field timer-setting-random-field">
                   <legend>最小時間</legend>
                   <label>分<input id="timer-setting-min-minute" type="number" min="0" max="120" step="1" value="1" /></label>
                   <label>秒<input id="timer-setting-min-second" type="number" min="0" max="59" step="1" value="0" /></label>
                 </fieldset>
-                <fieldset class="duration-field">
+                <fieldset id="timer-setting-random-max" class="duration-field timer-setting-random-field">
                   <legend>最大時間</legend>
                   <label>分<input id="timer-setting-max-minute" type="number" min="0" max="120" step="1" value="2" /></label>
                   <label>秒<input id="timer-setting-max-second" type="number" min="0" max="59" step="1" value="0" /></label>
                 </fieldset>
-                <label>間隔秒数<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
-                <fieldset class="duration-field">
+                <label id="timer-setting-random-step" class="timer-setting-random-field">ランダム間隔<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
+                <fieldset id="timer-setting-fixed-field" class="duration-field hidden" hidden>
                   <legend>固定時間</legend>
                   <label>分<input id="timer-setting-fixed-minute" type="number" min="0" max="120" step="1" value="2" /></label>
                   <label>秒<input id="timer-setting-fixed-second" type="number" min="0" max="59" step="1" value="0" /></label>

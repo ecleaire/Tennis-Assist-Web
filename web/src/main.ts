@@ -2977,6 +2977,7 @@ class AdminController {
     el<HTMLButtonElement>("timer-setting-load").addEventListener("click", () => void this.loadTimerSetting());
     el<HTMLButtonElement>("timer-setting-apply").addEventListener("click", () => this.applyManualTimerSetting());
     el<HTMLButtonElement>("timer-setting-clear").addEventListener("click", () => this.clearTimerSetting());
+    el<HTMLSelectElement>("timer-setting-mode").addEventListener("change", () => this.updateTimerSettingModeFields());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
@@ -3084,7 +3085,19 @@ class AdminController {
     this.writeDurationFields("timer-setting-max", current.maxSeconds);
     el<HTMLInputElement>("timer-setting-step").value = String(current.stepSeconds);
     this.writeDurationFields("timer-setting-fixed", current.fixedSeconds);
+    this.updateTimerSettingModeFields();
     el("timer-setting-status").textContent = setting ? externalTimerSettingText(setting) : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
+  }
+
+  private updateTimerSettingModeFields(): void {
+    const fixed = el<HTMLSelectElement>("timer-setting-mode").value === "fixed";
+    document.querySelectorAll<HTMLElement>(".timer-setting-random-field").forEach((field) => {
+      field.classList.toggle("hidden", fixed);
+      field.toggleAttribute("hidden", fixed);
+    });
+    const fixedField = el<HTMLElement>("timer-setting-fixed-field");
+    fixedField.classList.toggle("hidden", !fixed);
+    fixedField.toggleAttribute("hidden", !fixed);
   }
 
   private writeDurationFields(prefix: string, seconds: number): void {
@@ -3235,6 +3248,7 @@ class AdminController {
 
 class Application {
   private linksClicks = 0;
+  private rulesClicks = 0;
   private secret = false;
   private hyogo = false;
   private readonly variant = currentAppVariant();
@@ -3282,7 +3296,8 @@ class Application {
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
       button.addEventListener("click", () => {
         const screen = button.dataset.screen as Screen;
-        if (screen === "links") this.visitLinks();
+        if (screen === "links") this.visitSecretScreen("links");
+        else if (screen === "rules") this.visitSecretScreen("rules");
         else this.show(screen);
         this.closeMobileMenu();
       });
@@ -3877,10 +3892,21 @@ class Application {
     el("flow-status").classList.add("hidden");
   }
 
-  private visitLinks(): void {
-    this.linksClicks += 1;
-    if (!this.secret && this.linksClicks >= 10) this.activateSecret();
-    this.show("links");
+  private visitSecretScreen(screen: "links" | "rules"): void {
+    if (screen === "links") {
+      this.linksClicks += 1;
+      this.rulesClicks = 0;
+    } else {
+      this.rulesClicks += 1;
+      this.linksClicks = 0;
+    }
+    const count = screen === "links" ? this.linksClicks : this.rulesClicks;
+    if (!this.secret && count >= 10) {
+      this.activateSecret();
+    } else if (this.secret && count >= 10) {
+      this.deactivateSecret();
+    }
+    this.show(screen);
   }
 
   private activateSecret(): void {
@@ -3892,6 +3918,7 @@ class Application {
     );
     this.secret = true;
     this.linksClicks = 0;
+    this.rulesClicks = 0;
     document.documentElement.classList.add("secret");
     this.updateTitle();
     el("development-nav").classList.remove("hidden");
@@ -3932,6 +3959,8 @@ class Application {
   private deactivateSecret(): void {
     this.secret = false;
     this.hyogo = false;
+    this.linksClicks = 0;
+    this.rulesClicks = 0;
     document.documentElement.classList.remove("secret");
     document.documentElement.classList.remove("venue-standard-accent");
     document.documentElement.classList.remove("venue-admin-accent");
