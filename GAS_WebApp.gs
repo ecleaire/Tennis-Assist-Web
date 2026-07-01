@@ -322,19 +322,20 @@ function ensureTimerSettingSheetTemplate(sheet) {
     ['', ''],
     ['入力ルール', '時間は4桁の数字で入力します。2分は2:00、1分30秒は1:30です。'],
     ['入力例', '固定時間に2:00を入力すると2分固定。固定時間を空白にするとランダム範囲を使用します。'],
+    ['', '全て空白の場合は初期数値が適用されます'],
     ['', ''],
     ['', ''],
-    ['【例：試合時間を固定する場合】', ''],
+    ['【例：試合時間を2分に固定する場合】', ''],
     ['固定時間', '2:00'],
     ['ランダム範囲', ''],
     ['ランダム間隔秒数', ''],
     ['', ''],
-    ['【例：試合時間のランダム範囲を指定する場合】', ''],
+    ['【例：試合時間のランダム範囲を1分30秒〜2分で、5秒間隔に指定する場合】', ''],
     ['固定時間', ''],
     ['ランダム範囲', '1:30-2:00'],
     ['ランダム間隔秒数', '5'],
     ['', ''],
-    ['【初期数値】', ''],
+    ['【初期数値：ランダム範囲1分〜2分の1秒間隔】', ''],
     ['固定時間', ''],
     ['ランダム範囲', '1:00-2:00'],
     ['ランダム間隔秒数', '1']
@@ -343,10 +344,10 @@ function ensureTimerSettingSheetTemplate(sheet) {
   sheet.getRange(1, 2, Math.max(template.length, 30), 1).setNumberFormat('@');
   sheet.getRange(1, 1, template.length, width).setValues(template);
   sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
-  sheet.getRange(12, 1, 2, width).setBackground('#FFF4D6');
-  sheet.getRange(16, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
-  sheet.getRange(21, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
-  sheet.getRange(26, 1, 1, width).setBackground('#E8F5E9').setFontWeight('bold');
+  sheet.getRange(12, 1, 3, width).setBackground('#FFF4D6');
+  sheet.getRange(17, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
+  sheet.getRange(22, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
+  sheet.getRange(27, 1, 1, width).setBackground('#E8F5E9').setFontWeight('bold');
   sheet.autoResizeColumns(1, width);
 }
 
