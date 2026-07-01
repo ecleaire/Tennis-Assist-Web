@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist 大会用</title>
-    <script type="module" crossorigin src="./assets/index-DpCoWMQu.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Ds6y54X1.css">
+    <script type="module" crossorigin src="./assets/index-CIocV0TP.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-GzBCij46.css">
   </head>
   <body>
     <main id="app">
@@ -457,10 +457,22 @@
                     <option value="fixed">固定</option>
                   </select>
                 </label>
-                <label>最小秒数<input id="timer-setting-min" type="number" min="1" max="7200" step="1" value="60" /></label>
-                <label>最大秒数<input id="timer-setting-max" type="number" min="1" max="7200" step="1" value="120" /></label>
+                <fieldset class="duration-field">
+                  <legend>最小時間</legend>
+                  <label>分<input id="timer-setting-min-minute" type="number" min="0" max="120" step="1" value="1" /></label>
+                  <label>秒<input id="timer-setting-min-second" type="number" min="0" max="59" step="1" value="0" /></label>
+                </fieldset>
+                <fieldset class="duration-field">
+                  <legend>最大時間</legend>
+                  <label>分<input id="timer-setting-max-minute" type="number" min="0" max="120" step="1" value="2" /></label>
+                  <label>秒<input id="timer-setting-max-second" type="number" min="0" max="59" step="1" value="0" /></label>
+                </fieldset>
                 <label>間隔秒数<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
-                <label>固定秒数<input id="timer-setting-fixed" type="number" min="1" max="7200" step="1" value="120" /></label>
+                <fieldset class="duration-field">
+                  <legend>固定時間</legend>
+                  <label>分<input id="timer-setting-fixed-minute" type="number" min="0" max="120" step="1" value="2" /></label>
+                  <label>秒<input id="timer-setting-fixed-second" type="number" min="0" max="59" step="1" value="0" /></label>
+                </fieldset>
               </div>
               <div class="toolbar">
                 <button id="timer-setting-load" class="button" type="button">スプレッドシート設定読み込み</button>

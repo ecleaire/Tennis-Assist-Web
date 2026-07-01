@@ -68,6 +68,7 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 body {
@@ -128,12 +129,14 @@ a {
   gap: 14px;
   width: min(1520px, 100%);
   margin: 0 auto;
+  min-width: 0;
 }
 
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  min-width: 0;
 }
 
 .app-header {
@@ -209,6 +212,8 @@ textarea {
   border-radius: 13px;
   color: #dcecff;
   min-height: 45px;
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 15px;
   transition: border-color 160ms ease, background 160ms ease;
 }
@@ -2056,6 +2061,7 @@ tr.win td {
 .admin-shell {
   margin: 0 auto;
   max-width: 800px;
+  width: 100%;
 }
 
 .admin-settings {
@@ -2088,7 +2094,32 @@ tr.win td {
 
 .timer-setting-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  align-items: stretch;
+  grid-template-columns: minmax(130px, 0.85fr) repeat(3, minmax(150px, 1fr)) minmax(120px, 0.7fr);
+}
+
+.duration-field {
+  border: 1px solid rgba(62, 93, 152, 0.72);
+  border-radius: 13px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  min-width: 0;
+  padding: 10px;
+}
+
+.duration-field legend {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 0 5px;
+}
+
+.duration-field label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
 }
 
 .gas-url-row {
@@ -3035,6 +3066,52 @@ body.compact #timer-five {
   .gas-url-row,
   .sheet-url-row {
     grid-template-columns: 1fr;
+  }
+
+  .admin-shell {
+    max-width: none;
+    padding: 14px;
+  }
+
+  .admin-shell h2 {
+    font-size: clamp(1.08rem, 5vw, 1.38rem);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-shell .muted {
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-settings {
+    gap: 12px;
+  }
+
+  .timer-setting-panel {
+    gap: 14px;
+    padding: 14px 12px;
+  }
+
+  .timer-setting-panel > .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .timer-setting-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .duration-field {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
+  }
+
+  .duration-field input,
+  .timer-setting-grid input,
+  .timer-setting-grid select {
+    font-size: 16px;
+    min-height: 48px;
   }
 
   .gas-url-row .button,

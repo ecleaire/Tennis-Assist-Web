@@ -3080,11 +3080,23 @@ class AdminController {
   private populateTimerSetting(setting: ExternalTimerSetting | null): void {
     const current = setting ?? defaultExternalTimerSetting("default");
     el<HTMLSelectElement>("timer-setting-mode").value = current.mode;
-    el<HTMLInputElement>("timer-setting-min").value = String(current.minSeconds);
-    el<HTMLInputElement>("timer-setting-max").value = String(current.maxSeconds);
+    this.writeDurationFields("timer-setting-min", current.minSeconds);
+    this.writeDurationFields("timer-setting-max", current.maxSeconds);
     el<HTMLInputElement>("timer-setting-step").value = String(current.stepSeconds);
-    el<HTMLInputElement>("timer-setting-fixed").value = String(current.fixedSeconds);
+    this.writeDurationFields("timer-setting-fixed", current.fixedSeconds);
     el("timer-setting-status").textContent = setting ? externalTimerSettingText(setting) : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
+  }
+
+  private writeDurationFields(prefix: string, seconds: number): void {
+    const safeSeconds = Math.max(1, Math.floor(seconds));
+    el<HTMLInputElement>(`${prefix}-minute`).value = String(Math.floor(safeSeconds / 60));
+    el<HTMLInputElement>(`${prefix}-second`).value = String(safeSeconds % 60);
+  }
+
+  private readDurationFields(prefix: string): number {
+    const minutes = Math.max(0, Math.floor(Number(el<HTMLInputElement>(`${prefix}-minute`).value) || 0));
+    const seconds = Math.max(0, Math.min(59, Math.floor(Number(el<HTMLInputElement>(`${prefix}-second`).value) || 0)));
+    return Math.max(1, minutes * 60 + seconds);
   }
 
   private saveTimerSetting(setting: ExternalTimerSetting): void {
@@ -3126,10 +3138,10 @@ class AdminController {
   private applyManualTimerSetting(): void {
     const raw = {
       mode: el<HTMLSelectElement>("timer-setting-mode").value,
-      minSeconds: el<HTMLInputElement>("timer-setting-min").value,
-      maxSeconds: el<HTMLInputElement>("timer-setting-max").value,
+      minSeconds: this.readDurationFields("timer-setting-min"),
+      maxSeconds: this.readDurationFields("timer-setting-max"),
       stepSeconds: el<HTMLInputElement>("timer-setting-step").value,
-      fixedSeconds: el<HTMLInputElement>("timer-setting-fixed").value,
+      fixedSeconds: this.readDurationFields("timer-setting-fixed"),
       loadedAt: timestamp(),
     };
     const setting = normalizeExternalTimerSetting(raw, "manual");
