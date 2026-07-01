@@ -104,10 +104,18 @@ function readTimerSetting(values) {
   const setting = defaultTimerSetting('sheet');
   const entries = {};
 
-  values.slice(1).forEach((row) => {
+  values.slice(1).some((row) => {
     const key = String(row[0] || '').trim().toLowerCase();
-    if (!key) return;
-    entries[key] = row[1];
+    const value = row[1];
+    if (!key) {
+      const hasModernInput =
+        Object.prototype.hasOwnProperty.call(entries, '固定時間') ||
+        Object.prototype.hasOwnProperty.call(entries, 'ランダム範囲') ||
+        Object.prototype.hasOwnProperty.call(entries, 'ランダム間隔秒数');
+      return hasModernInput;
+    }
+    if (!Object.prototype.hasOwnProperty.call(entries, key)) entries[key] = value;
+    return false;
   });
 
   const rawMode = String(entries.mode || entries['設定種別'] || entries['モード'] || '').trim().toLowerCase();
@@ -293,28 +301,52 @@ function getOrCreateTimerSettingSheet(ss, name) {
 }
 
 function ensureTimerSettingSheetTemplate(sheet) {
+  const existingValues = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 20), 2).getValues();
+  const existingEntries = {};
+  existingValues.forEach((row) => {
+    const key = String(row[0] || '').trim();
+    if (!key || Object.prototype.hasOwnProperty.call(existingEntries, key)) return;
+    existingEntries[key] = row[1];
+  });
   const template = [
-    ['入力項目', '設定値'],
-    ['ランダム範囲', "'0100-0200"],
+    ['入力項目', '数値'],
+    ['固定時間', existingEntries['固定時間'] || ''],
+    ['ランダム範囲', existingEntries['ランダム範囲'] || '1:00-2:00'],
+    ['ランダム間隔秒数', existingEntries['ランダム間隔秒数'] || existingEntries['ランダム間隔'] || existingEntries.step_seconds || '1'],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['入力ルール', '時間は4桁の数字で入力します。2分は2:00、1分30秒は1:30です。'],
+    ['入力例', '固定時間に2:00を入力すると2分固定。固定時間を空白にするとランダム範囲を使用します。'],
+    ['', ''],
+    ['', ''],
+    ['【例：試合時間を固定する場合】', ''],
+    ['固定時間', '2:00'],
+    ['ランダム範囲', ''],
+    ['ランダム間隔秒数', ''],
+    ['', ''],
+    ['【例：試合時間のランダム範囲を指定する場合】', ''],
     ['固定時間', ''],
-    ['ランダム間隔秒数', '1'],
-    ['使い方', '固定時間が空白ならランダム範囲を使います。固定時間に入力がある場合は固定時間を優先します。'],
-    ['時間の入力形式', '4桁の数字で入力します。2分は0200、1分30秒は0130です。先頭の0が消えて200になっても02:00として読み取ります。'],
-    ['ランダム範囲の例', '0100-0200 と入力すると1分00秒から2分00秒の範囲です。100-200になっても同じ意味です。'],
-    ['固定時間の例', '0200 と入力すると2分固定です。固定しない場合は空白にします。200になっても02:00として読み取ります。'],
-    ['ランダム間隔の例', '1なら1秒単位、5なら5秒単位、10なら10秒単位で抽選します。'],
-    ['注意', 'A列の入力項目名は変更しないでください。B列の設定値だけ編集してください。'],
-    ['旧形式との互換', 'mode / min_seconds / max_seconds / step_seconds / fixed_seconds がある既存シートも読み取れます。']
+    ['ランダム範囲', '1:30-2:00'],
+    ['ランダム間隔秒数', '5'],
+    ['', ''],
+    ['【初期数値】', ''],
+    ['固定時間', ''],
+    ['ランダム範囲', '1:00-2:00'],
+    ['ランダム間隔秒数', '1']
   ];
   const width = 2;
-  const current = sheet.getRange(1, 1, template.length, width).getValues();
-  const next = template.map((row, rowIndex) => row.map((value, columnIndex) => {
-    const currentValue = current[rowIndex] && current[rowIndex][columnIndex];
-    return currentValue === '' || currentValue === null ? value : currentValue;
-  }));
-  sheet.getRange(1, 1, next.length, width).setValues(next);
-  sheet.getRange(1, 2, Math.max(next.length, 20), 1).setNumberFormat('@');
+  sheet.getRange(1, 2, Math.max(template.length, 30), 1).setNumberFormat('@');
+  sheet.getRange(1, 1, template.length, width).setValues(template);
   sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
+  sheet.getRange(12, 1, 2, width).setBackground('#FFF4D6');
+  sheet.getRange(16, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
+  sheet.getRange(21, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
+  sheet.getRange(26, 1, 1, width).setBackground('#E8F5E9').setFontWeight('bold');
   sheet.autoResizeColumns(1, width);
 }
 
