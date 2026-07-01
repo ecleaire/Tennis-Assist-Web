@@ -110,7 +110,12 @@ type TeamImportResult = {
   count: number;
 };
 
-type AdminMode = "standard" | "hyogo" | "rsam";
+type TimerSettingLoadResult = {
+  status: "loaded" | "cached" | "failed";
+  message: string;
+};
+
+type AdminMode = "standard" | "hyogo" | "mie" | "rsam";
 type AppVariant = "venue" | "general";
 
 type AppVariantConfig = {
@@ -3025,7 +3030,27 @@ class AdminController {
     const colorSelect = el<HTMLSelectElement>("venue-color");
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
-    this.populateTimerSetting(AdminController.timerSetting());
+    this.populateTimerSetting(this.effectiveTimerSetting());
+  }
+
+  private defaultTimerSettingForMode(): ExternalTimerSetting | null {
+    if (this.mode === "mie") {
+      return { mode: "fixed", minSeconds: 120, maxSeconds: 120, stepSeconds: 1, fixedSeconds: 120, source: "default", loadedAt: timestamp() };
+    }
+    if (this.mode === "hyogo") {
+      return { mode: "random", minSeconds: 90, maxSeconds: 120, stepSeconds: 5, fixedSeconds: 120, source: "default", loadedAt: timestamp() };
+    }
+    return null;
+  }
+
+  private effectiveTimerSetting(): ExternalTimerSetting | null {
+    return AdminController.timerSetting() ?? this.defaultTimerSettingForMode();
+  }
+
+  private applyEffectiveTimerSetting(): void {
+    const setting = this.effectiveTimerSetting();
+    this.populateTimerSetting(setting);
+    this.onTimerSettingChanged?.(setting);
   }
 
   private updateColorOptions(): void {
@@ -3047,12 +3072,17 @@ class AdminController {
       el("gas-status").textContent = "パスワードを確認してください。";
       return;
     }
-    this.mode = password === "HYOGO" || password === "hyogo" ? "hyogo" : password === "rsam" ? "rsam" : "standard";
+    this.mode =
+      password === "HYOGO" || password === "hyogo" ? "hyogo" :
+        password === "mie" || password === "MIE" || password === "mie_judge" ? "mie" :
+          password === "rsam" ? "rsam" :
+            "standard";
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
     this.updateColorOptions();
     this.onModeChanged?.(this.mode, AdminController.settings());
+    this.applyEffectiveTimerSetting();
     el("gas-status").textContent = "管理者設定を表示しました。";
   }
 
@@ -3121,12 +3151,17 @@ class AdminController {
   private async loadTimerSetting(): Promise<void> {
     this.save();
     const settings = AdminController.settings();
-    const cached = AdminController.timerSetting();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       el("timer-setting-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
       return;
     }
     el("timer-setting-status").textContent = "スプレッドシートのタイマー設定を読み込んでいます...";
+    const result = await this.loadTimerSettingFromGas(settings);
+    el("timer-setting-status").textContent = result.message;
+  }
+
+  private async loadTimerSettingFromGas(settings: AdminSettings): Promise<TimerSettingLoadResult> {
+    const cached = AdminController.timerSetting();
     try {
       const url = new URL(settings.gasUrl);
       url.searchParams.set("action", "timer_setting");
@@ -3136,15 +3171,21 @@ class AdminController {
       if (!response.ok || !data.ok) throw new Error(data.message || data.error || "timer_setting_failed");
       const setting = normalizeExternalTimerSetting(data.timer_setting, "sheet");
       this.saveTimerSetting(setting);
-      el("timer-setting-status").textContent = externalTimerSettingText(setting);
+      return { status: "loaded", message: externalTimerSettingText(setting) };
     } catch {
       if (cached) {
         this.onTimerSettingChanged?.(cached);
         this.populateTimerSetting(cached);
-        el("timer-setting-status").textContent = `スプレッドシート設定を読み込めませんでした。端末に保存済みの設定を使用しています。${externalTimerSettingText(cached, "")}`;
-        return;
+        return { status: "cached", message: `スプレッドシート設定を読み込めませんでした。端末に保存済みの設定を使用しています。${externalTimerSettingText(cached, "")}` };
       }
-      el("timer-setting-status").textContent = "タイマー設定の読み込みに失敗しました。通常のタイマー設定を使用します。";
+      const fallback = this.defaultTimerSettingForMode();
+      if (fallback) {
+        this.populateTimerSetting(fallback);
+        this.onTimerSettingChanged?.(fallback);
+        return { status: "failed", message: `タイマー設定の読み込みに失敗しました。${externalTimerSettingText(fallback, "管理パスワードのデフォルト設定を適用しています。")}` };
+      }
+      this.onTimerSettingChanged?.(null);
+      return { status: "failed", message: "タイマー設定の読み込みに失敗しました。通常のタイマー設定を使用します。" };
     }
   }
 
@@ -3164,8 +3205,12 @@ class AdminController {
 
   private clearTimerSetting(): void {
     localStorage.removeItem(AdminController.timerSettingStorageKey);
-    this.populateTimerSetting(null);
-    this.onTimerSettingChanged?.(null);
+    const fallback = this.defaultTimerSettingForMode();
+    this.populateTimerSetting(fallback);
+    this.onTimerSettingChanged?.(fallback);
+    el("timer-setting-status").textContent = fallback
+      ? externalTimerSettingText(fallback, "管理パスワードのデフォルト設定を適用しています。")
+      : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
   }
 
   lock(): void {
@@ -3207,20 +3252,26 @@ class AdminController {
       el("gas-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
       return;
     }
-    el("gas-status").textContent = "テスト送信中...";
+    el("gas-status").textContent = "接続確認とテスト送信を実行しています...";
     try {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
-      el("gas-status").textContent = "テスト送信を完了しました。チームリストを確認しています...";
+      const messages = ["テスト送信: 成功"];
+      el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
       if (this.onConnected) {
         const loaded = await this.onConnected();
-        el("gas-status").textContent = this.teamImportGasStatusMessage("テスト送信を完了しました。試合記録の同期確認も成功しました。", loaded);
+        messages.push(this.teamImportSummary(loaded));
       } else {
-        el("gas-status").textContent = "テスト送信を完了しました。スプレッドシート側も確認してください。";
+        messages.push("チームリスト: 読み込み機能を初期化できていません。");
       }
+      el("gas-status").textContent = "タイマー設定を読み込んでいます...";
+      const timerResult = await this.loadTimerSettingFromGas(settings);
+      el("timer-setting-status").textContent = timerResult.message;
+      messages.push(`タイマー設定: ${timerResult.message}`);
+      el("gas-status").textContent = `接続 / テスト送信を完了しました。${messages.join(" / ")}`;
     } catch {
-      el("gas-status").textContent = "テスト送信に失敗しました。試合記録は同期できていません。チームリストの読み込みは実行していません。URL と公開設定を確認してください。";
+      el("gas-status").textContent = "接続 / テスト送信に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。URL と公開設定を確認してください。";
     }
   }
 
@@ -3243,6 +3294,11 @@ class AdminController {
     if (result.status === "loaded") return `${prefix} チームリストも読み込みました。${result.count}チームを反映しています。`;
     if (result.status === "default") return `${prefix} ${result.message}`;
     return `${prefix} ${result.message}`;
+  }
+
+  private teamImportSummary(result: TeamImportResult): string {
+    if (result.status === "loaded") return `チームリスト: ${result.count}チームを読み込みました`;
+    return `チームリスト: ${result.message}`;
   }
 }
 
@@ -3970,6 +4026,7 @@ class Application {
     el("admin-exit").classList.add("hidden");
     this.timer.setSecret(false);
     this.timer.setHyogoMode(false);
+    this.timer.setExternalTimerSetting(AdminController.timerSetting());
     this.timer.setTokyoClockModeAvailable(false);
     this.balls.setHyogoMode(false);
     this.admin?.lock();

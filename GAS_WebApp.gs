@@ -3,8 +3,8 @@ const SERIES_RESULT_SHEET_NAME = '試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
-const TIMER_SETTING_SHEET_NAME = 'timer_settings';
-const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_setting';
+const TIMER_SETTING_SHEET_NAME = 'timer_setting';
+const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_settings';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
