@@ -167,6 +167,21 @@ const appVariants: Record<AppVariant, AppVariantConfig> = {
   },
 };
 
+const managedGasUrlsByPassword = new Map<string, string>([
+  ["HYOGO", "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec"],
+  ["hyogo", "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec"],
+  ["mie", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
+  ["MIE", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
+  ["mie_judge", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
+  ["JUDGE", "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec"],
+  ["judge", "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec"],
+  ["rsam", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
+  ["gas", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
+  ["wrorsam", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
+]);
+
+const managedGasUrls = new Set(managedGasUrlsByPassword.values());
+
 function currentAppVariant(): AppVariantConfig {
   return window.location.pathname.split("/").filter(Boolean).includes("general") ? appVariants.general : appVariants.venue;
 }
@@ -2979,6 +2994,9 @@ class AdminController {
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
+    el<HTMLInputElement>("gas-url").addEventListener("input", () => {
+      el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
+    });
     el<HTMLButtonElement>("timer-setting-load").addEventListener("click", () => void this.loadTimerSetting());
     el<HTMLButtonElement>("timer-setting-apply").addEventListener("click", () => this.applyManualTimerSetting());
     el<HTMLButtonElement>("timer-setting-clear").addEventListener("click", () => this.clearTimerSetting());
@@ -3024,7 +3042,9 @@ class AdminController {
 
   private populate(): void {
     const settings = AdminController.settings();
-    el<HTMLInputElement>("gas-url").value = settings.gasUrl;
+    const gasUrlInput = el<HTMLInputElement>("gas-url");
+    gasUrlInput.value = settings.gasUrl;
+    gasUrlInput.dataset.autoGasUrl = !settings.gasUrl || managedGasUrls.has(settings.gasUrl) ? "true" : "false";
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
     el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
     const colorSelect = el<HTMLSelectElement>("venue-color");
@@ -3081,9 +3101,27 @@ class AdminController {
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
     this.updateColorOptions();
+    this.applyManagedGasUrl(password);
     this.onModeChanged?.(this.mode, AdminController.settings());
     this.applyEffectiveTimerSetting();
     el("gas-status").textContent = "管理者設定を表示しました。";
+  }
+
+  private applyManagedGasUrl(password: string): void {
+    const gasUrl = managedGasUrlsByPassword.get(password);
+    if (!gasUrl) return;
+    const gasUrlInput = el<HTMLInputElement>("gas-url");
+    const current = gasUrlInput.value.trim();
+    const isAutoManaged = gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
+    if (!isAutoManaged) {
+      el("gas-status").textContent = "手動指定のGAS URLを保持しています。";
+      return;
+    }
+    gasUrlInput.value = gasUrl;
+    gasUrlInput.dataset.autoGasUrl = "true";
+    const settings = AdminController.settings();
+    settings.gasUrl = gasUrl;
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
   }
 
   private save(): void {
