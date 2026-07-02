@@ -3129,7 +3129,7 @@ class AdminController {
     const settings = AdminController.settings();
     settings.gasUrl = gasUrl;
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
-    el("gas-status").textContent = "GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。";
+    el("gas-status").textContent = `${this.gasUrlContextLabel()}GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
     return true;
   }
 
@@ -3357,6 +3357,10 @@ class AdminController {
     if (this.mode === "mie" || this.mode === "hyogo") return "このパスワードに対応した管理設定";
     if (this.mode === "rsam") return "管理者設定";
     return "標準の管理設定";
+  }
+
+  private gasUrlContextLabel(): string {
+    return "このパスワード用";
   }
 }
 

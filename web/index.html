@@ -423,6 +423,8 @@
           </div>
           <div id="admin-settings" class="admin-settings hidden">
             <p id="admin-login-context" class="admin-login-context" aria-live="polite"></p>
+            <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
+            <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
             <details id="gas-url-details" class="admin-details">
               <summary>GAS Web アプリ URL</summary>
               <div class="gas-url-row">
@@ -431,24 +433,12 @@
               </div>
               <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
             </details>
-            <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
-            <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
             <label>試合種別
               <select id="match-type">
                 <option value="練習試合">練習試合</option>
                 <option value="公式試合">公式試合</option>
               </select>
             </label>
-            <details id="venue-color-setting" class="venue-color-setting admin-details hidden">
-              <summary>表示カラー</summary>
-              <label>表示カラー
-                <select id="venue-color">
-                  <option value="standard">標準の水色</option>
-                  <option value="admin">黄緑</option>
-                  <option value="light">ライトUI</option>
-                </select>
-              </label>
-            </details>
             <details id="timer-setting-details" class="timer-setting-panel admin-details">
               <summary>タイマー設定</summary>
               <div>
@@ -485,10 +475,21 @@
                 <button id="timer-setting-clear" class="button" type="button">通常設定に戻す</button>
               </div>
             </details>
+            <div class="admin-settings-spacer" aria-hidden="true"></div>
+            <details id="venue-color-setting" class="venue-color-setting admin-details hidden">
+              <summary>表示設定</summary>
+              <label>表示カラー
+                <select id="venue-color">
+                  <option value="standard">標準の水色</option>
+                  <option value="admin">黄緑</option>
+                  <option value="light">ライトUI</option>
+                </select>
+              </label>
+            </details>
             <div class="toolbar">
               <button id="gas-save" class="button primary">設定を保存</button>
               <button id="gas-test" class="button">接続 / テスト送信</button>
-              <button id="gas-team-load" class="button">チームリスト読み込み</button>
+              <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>
           </div>

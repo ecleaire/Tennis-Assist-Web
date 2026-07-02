@@ -2069,6 +2069,10 @@ tr.win td {
   gap: 14px;
 }
 
+.admin-settings-spacer {
+  height: 8px;
+}
+
 .admin-login-context {
   background: rgba(46, 168, 255, 0.13);
   border: 1px solid rgba(46, 168, 255, 0.48);
@@ -2190,11 +2194,22 @@ tr.win td {
   align-items: center;
   display: flex;
   gap: 10px;
+  min-height: 44px;
 }
 
-.checkbox input {
-  min-height: auto;
-  width: auto;
+.checkbox input[type="checkbox"] {
+  accent-color: var(--accent);
+  flex: 0 0 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  transition: none;
+  width: 22px;
+}
+
+.checkbox input[type="checkbox"]:hover {
+  background: initial;
+  border-color: initial;
 }
 
 .cards {
