@@ -269,7 +269,7 @@ function el<T extends HTMLElement>(id: string): T {
 }
 
 function els<T extends HTMLElement>(id: string): T[] {
-  return Array.from(document.querySelectorAll<T>(`[id="${id}"]`));
+  return Array.from(document.querySelectorAll<T>(`[id="${id}"], [data-sync-id="${id}"]`));
 }
 
 function setText(elements: HTMLElement[], text: string | null): void {
