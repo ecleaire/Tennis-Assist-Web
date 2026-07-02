@@ -129,6 +129,7 @@ type AppVariantConfig = {
 type ManagedGasConfig = {
   label: string;
   url: string;
+  spreadsheetUrl: string;
 };
 
 type QrDetector = {
@@ -172,17 +173,24 @@ const appVariants: Record<AppVariant, AppVariantConfig> = {
   },
 };
 
+const managedSheets = {
+  hyogo: "https://docs.google.com/spreadsheets/d/1pxTMvdcpTMFeSfroOeTyh2hziLgfAvLxe0Nh79sMk_0/edit?usp=sharing",
+  mie: "https://docs.google.com/spreadsheets/d/185jPLjc-nBri49aOr-CVw1baUI1qaxqjgcWLRS2-oxo/edit?usp=sharing",
+  shared: "https://docs.google.com/spreadsheets/d/1BTByUtO5IAdwdTYCMNhFUtqeRy2yIWpAnCZRQw_b0HU/edit?usp=sharing",
+  self: "https://docs.google.com/spreadsheets/d/1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8Ngk6lZwcTA/edit?usp=sharing",
+} as const;
+
 const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
-  ["HYOGO", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec" }],
-  ["hyogo", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec" }],
-  ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
-  ["MIE", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
-  ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
-  ["JUDGE", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec" }],
-  ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec" }],
-  ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
-  ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
-  ["wrorsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
+  ["HYOGO", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec", spreadsheetUrl: managedSheets.hyogo }],
+  ["hyogo", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec", spreadsheetUrl: managedSheets.hyogo }],
+  ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
+  ["MIE", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
+  ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
+  ["JUDGE", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
+  ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
+  ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
+  ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
+  ["wrorsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
 ]);
 
 const managedGasUrls = new Set(Array.from(managedGasUrlsByPassword.values(), (config) => config.url));
@@ -3018,16 +3026,21 @@ class AdminController {
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
+    el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
+    el<HTMLButtonElement>("gas-key-toggle").addEventListener("click", () => this.toggleSecretInput("gas-key", "gas-key-toggle"));
+    el<HTMLButtonElement>("admin-open-sheet").addEventListener("click", () => this.openManagedSpreadsheet());
     el<HTMLInputElement>("gas-key").addEventListener("input", () => {
       this.connectionVerified = false;
+      this.clearConnectionSummary();
       this.updateConnectionCard();
     });
     el<HTMLInputElement>("gas-url").addEventListener("input", () => {
       el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
       this.connectionVerified = false;
+      this.clearConnectionSummary();
       this.updateConnectionCard();
     });
     el<HTMLButtonElement>("timer-setting-load").addEventListener("click", () => void this.loadTimerSetting());
@@ -3202,6 +3215,7 @@ class AdminController {
     this.writeDurationFields("timer-setting-fixed", current.fixedSeconds);
     this.updateTimerSettingModeFields();
     el("timer-setting-status").textContent = setting ? externalTimerSettingText(setting) : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
+    this.updateTimerSettingSummary(current, Boolean(setting));
   }
 
   private updateTimerSettingModeFields(): void {
@@ -3353,6 +3367,7 @@ class AdminController {
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       el("gas-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
       this.connectionVerified = false;
+      this.clearConnectionSummary();
       this.updateConnectionCard();
       return;
     }
@@ -3364,22 +3379,28 @@ class AdminController {
       this.connectionVerified = true;
       this.updateConnectionCard();
       const messages = ["テスト送信: 成功"];
+      el("admin-summary-test").textContent = "テスト送信 OK";
       el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
       if (this.onConnected) {
         const loaded = await this.onConnected();
         messages.push(this.teamImportSummary(loaded));
+        el("admin-summary-team").textContent = loaded.status === "loaded" ? `チームリスト ${loaded.count}件` : `チームリスト ${loaded.message}`;
       } else {
         messages.push("チームリスト: 読み込み機能を初期化できていません。");
+        el("admin-summary-team").textContent = "チームリスト 未確認";
       }
       el("gas-status").textContent = "タイマー設定を読み込んでいます...";
       const timerResult = await this.loadTimerSettingFromGas(settings);
       el("timer-setting-status").textContent = timerResult.message;
       this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
       this.updateConnectionCard();
+      el("admin-summary-timer").textContent = `タイマー ${this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting())}`;
+      el("admin-success-summary").classList.remove("hidden");
       messages.push(`タイマー設定: ${timerResult.message}`);
       el("gas-status").textContent = `接続・設定読込を完了しました。${messages.join(" / ")}`;
     } catch {
       this.connectionVerified = false;
+      this.clearConnectionSummary();
       this.updateConnectionCard();
       el("gas-status").textContent = "接続・設定読込に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。URL と公開設定を確認してください。";
     }
@@ -3420,11 +3441,17 @@ class AdminController {
     const apiKey = el<HTMLInputElement>("gas-key").value.trim();
     const gasUrl = gasUrlInput.value.trim();
     const urlAuto = Boolean(gasUrl) && gasUrlInput.dataset.autoGasUrl !== "false";
+    const managedConfig = this.activeManagedConfig(gasUrl);
+    const sheetButton = el<HTMLButtonElement>("admin-open-sheet");
+    el("admin-status-target").textContent = `接続先: ${this.connectionTargetLabel(gasUrl)}`;
     this.setStatusChip("admin-status-api", apiKey ? "APIキー入力済み" : "APIキー未入力", apiKey ? "ok" : "warn");
     this.setStatusChip("admin-status-url", urlAuto ? "URL自動設定済み" : gasUrl ? "URL手動設定済み" : "URL未設定", gasUrl ? "ok" : "warn");
     this.setStatusChip("admin-status-connection", this.connectionVerified ? "接続確認済み" : "接続未確認", this.connectionVerified ? "ok" : "pending");
     this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
     el("admin-status-message").textContent = this.connectionCardMessage(Boolean(apiKey), Boolean(gasUrl));
+    sheetButton.classList.toggle("hidden", !managedConfig);
+    sheetButton.textContent = managedConfig ? `${managedConfig.label} スプレッドシートを開く` : "対応スプレッドシートを開く";
+    sheetButton.disabled = !managedConfig;
   }
 
   private setStatusChip(id: string, text: string, state: "ok" | "warn" | "pending"): void {
@@ -3440,6 +3467,50 @@ class AdminController {
     if (!this.connectionVerified) return "接続・設定読込ボタンを押してください。";
     if (!this.timerSettingLoaded) return "接続は確認済みです。必要に応じてタイマー設定を読み込んでください。";
     return "接続確認と設定読み込みが完了しています。必要に応じて設定を保存してください。";
+  }
+
+  private connectionTargetLabel(gasUrl: string): string {
+    if (!gasUrl) return "未設定";
+    return this.activeManagedConfig(gasUrl)?.label ?? "手動指定";
+  }
+
+  private activeManagedConfig(gasUrl = el<HTMLInputElement>("gas-url").value.trim()): ManagedGasConfig | null {
+    if (!gasUrl) return null;
+    return Array.from(managedGasUrlsByPassword.values()).find((config) => config.url === gasUrl) ?? null;
+  }
+
+  private openManagedSpreadsheet(): void {
+    const config = this.activeManagedConfig();
+    if (!config) {
+      el("gas-status").textContent = "対応するスプレッドシートURLがありません。GAS Web アプリ URLを確認してください。";
+      return;
+    }
+    window.open(config.spreadsheetUrl, "_blank", "noopener");
+  }
+
+  private clearConnectionSummary(): void {
+    el("admin-success-summary").classList.add("hidden");
+    el("admin-summary-test").textContent = "テスト送信 未確認";
+    el("admin-summary-team").textContent = "チームリスト 未読込";
+    el("admin-summary-timer").textContent = "タイマー設定 未読込";
+  }
+
+  private timerSettingSummary(setting: ExternalTimerSetting | null): string {
+    if (!setting) return "通常設定";
+    if (setting.mode === "fixed") return `${formatClock(setting.fixedSeconds)}固定`;
+    return `${formatClock(setting.minSeconds)}-${formatClock(setting.maxSeconds)} / ${setting.stepSeconds}秒間隔`;
+  }
+
+  private updateTimerSettingSummary(setting: ExternalTimerSetting | null, applied: boolean): void {
+    el("timer-setting-summary").textContent = applied || setting ? `タイマー設定: ${this.timerSettingSummary(setting)}` : "タイマー設定";
+  }
+
+  private toggleSecretInput(inputId: string, buttonId: string): void {
+    const input = el<HTMLInputElement>(inputId);
+    const button = el<HTMLButtonElement>(buttonId);
+    const visible = input.type === "text";
+    input.type = visible ? "password" : "text";
+    button.textContent = visible ? "表示" : "非表示";
   }
 }
 

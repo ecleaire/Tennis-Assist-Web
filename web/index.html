@@ -418,19 +418,36 @@
           </div>
           <p class="muted">管理者パスワードで設定画面を開き、APIキーを入力してから「接続・設定読込」で確認してください。</p>
           <div id="admin-gate" class="form-row">
-            <label>管理者パスワード<input id="admin-password" type="password" autocomplete="off" /></label>
+            <label>管理者パスワード
+              <span class="secret-input-row">
+                <input id="admin-password" type="password" autocomplete="off" />
+                <button id="admin-password-toggle" class="button secret-toggle" type="button">表示</button>
+              </span>
+            </label>
             <button id="admin-unlock" class="button primary">設定を開く</button>
           </div>
           <div id="admin-settings" class="admin-settings hidden">
             <p id="admin-login-context" class="admin-login-context" aria-live="polite"></p>
             <div id="admin-connection-card" class="admin-connection-card" aria-live="polite">
+              <div id="admin-status-target" class="admin-status-target">接続先: 未設定</div>
               <div id="admin-status-api" class="admin-status-chip pending">APIキー未入力</div>
               <div id="admin-status-url" class="admin-status-chip pending">URL未設定</div>
               <div id="admin-status-connection" class="admin-status-chip pending">接続未確認</div>
               <div id="admin-status-timer" class="admin-status-chip pending">タイマー設定未読込</div>
               <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
+              <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
+              <div id="admin-success-summary" class="admin-success-summary hidden">
+                <span id="admin-summary-test">テスト送信 未確認</span>
+                <span id="admin-summary-team">チームリスト 未読込</span>
+                <span id="admin-summary-timer">タイマー設定 未読込</span>
+              </div>
             </div>
-            <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
+            <label>API キー
+              <span class="secret-input-row">
+                <input id="gas-key" type="password" autocomplete="off" />
+                <button id="gas-key-toggle" class="button secret-toggle" type="button">表示</button>
+              </span>
+            </label>
             <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
             <details id="gas-url-details" class="admin-details">
               <summary>GAS Web アプリ URL</summary>
@@ -447,7 +464,7 @@
               </select>
             </label>
             <details id="timer-setting-details" class="timer-setting-panel admin-details">
-              <summary>タイマー設定</summary>
+              <summary id="timer-setting-summary">タイマー設定</summary>
               <div>
                 <h3>タイマー設定</h3>
                 <p id="timer-setting-status" class="muted">外部タイマー設定は未適用です。</p>
@@ -495,7 +512,7 @@
             </details>
             <div class="toolbar admin-sticky-actions">
               <button id="gas-test" class="button primary">接続・設定読込</button>
-              <button id="gas-save" class="button">設定を保存</button>
+              <button id="gas-save" class="button">端末に保存</button>
               <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>
