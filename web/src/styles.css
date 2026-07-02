@@ -2069,10 +2069,64 @@ tr.win td {
   gap: 14px;
 }
 
-.venue-color-setting {
+.admin-login-context {
+  background: rgba(46, 168, 255, 0.13);
+  border: 1px solid rgba(46, 168, 255, 0.48);
+  border-radius: 13px;
+  color: var(--text);
+  font-weight: 900;
+  line-height: 1.55;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.admin-details {
   border: 1px solid var(--border);
   border-radius: 13px;
-  padding: 12px;
+  padding: 0;
+}
+
+.admin-details > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-weight: 900;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 52px;
+  padding: 12px 14px;
+}
+
+.admin-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-details > summary::after {
+  color: var(--accent);
+  content: "開く";
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.admin-details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-details[open] > summary::after {
+  content: "閉じる";
+}
+
+.admin-details > :not(summary) {
+  margin: 12px;
+}
+
+.compact-note {
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.venue-color-setting {
+  padding: 0;
 }
 
 .venue-color-setting label {
@@ -2081,11 +2135,9 @@ tr.win td {
 }
 
 .timer-setting-panel {
-  border: 1px solid var(--border);
-  border-radius: 13px;
   display: grid;
   gap: 12px;
-  padding: 14px;
+  padding: 0;
 }
 
 .timer-setting-panel h3 {

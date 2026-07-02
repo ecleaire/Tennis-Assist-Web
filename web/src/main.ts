@@ -3045,6 +3045,9 @@ class AdminController {
     const gasUrlInput = el<HTMLInputElement>("gas-url");
     gasUrlInput.value = settings.gasUrl;
     gasUrlInput.dataset.autoGasUrl = !settings.gasUrl || managedGasUrls.has(settings.gasUrl) ? "true" : "false";
+    el<HTMLDetailsElement>("gas-url-details").open = false;
+    el<HTMLDetailsElement>("timer-setting-details").open = false;
+    el("admin-login-context").textContent = "";
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
     el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
     const colorSelect = el<HTMLSelectElement>("venue-color");
@@ -3097,31 +3100,37 @@ class AdminController {
         password === "mie" || password === "MIE" || password === "mie_judge" ? "mie" :
           password === "rsam" ? "rsam" :
             "standard";
+    el("admin-login-context").textContent = `${this.adminContextLabel()}で管理画面にログインしています。APIキーを入力してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
+    el<HTMLDetailsElement>("venue-color-setting").open = false;
+    el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
-    this.applyManagedGasUrl(password);
+    const managedUrlApplied = this.applyManagedGasUrl(password);
     this.onModeChanged?.(this.mode, AdminController.settings());
     this.applyEffectiveTimerSetting();
-    el("gas-status").textContent = "管理者設定を表示しました。";
+    if (!managedUrlApplied) el("gas-status").textContent = "管理者設定を表示しました。APIキーを入力してください。";
   }
 
-  private applyManagedGasUrl(password: string): void {
+  private applyManagedGasUrl(password: string): boolean {
     const gasUrl = managedGasUrlsByPassword.get(password);
-    if (!gasUrl) return;
+    if (!gasUrl) return false;
     const gasUrlInput = el<HTMLInputElement>("gas-url");
     const current = gasUrlInput.value.trim();
     const isAutoManaged = gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
     if (!isAutoManaged) {
       el("gas-status").textContent = "手動指定のGAS URLを保持しています。";
-      return;
+      return true;
     }
     gasUrlInput.value = gasUrl;
     gasUrlInput.dataset.autoGasUrl = "true";
+    el<HTMLDetailsElement>("gas-url-details").open = false;
     const settings = AdminController.settings();
     settings.gasUrl = gasUrl;
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    el("gas-status").textContent = "GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。";
+    return true;
   }
 
   private save(): void {
@@ -3254,9 +3263,13 @@ class AdminController {
   lock(): void {
     this.mode = "standard";
     el<HTMLInputElement>("admin-password").value = "";
+    el("admin-login-context").textContent = "";
     el("admin-settings").classList.add("hidden");
     el("admin-gate").classList.remove("hidden");
     el("venue-color-setting").classList.add("hidden");
+    el<HTMLDetailsElement>("gas-url-details").open = false;
+    el<HTMLDetailsElement>("venue-color-setting").open = false;
+    el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
     el("gas-status").textContent = "";
   }
@@ -3271,6 +3284,7 @@ class AdminController {
     });
     if (!scanned) return;
     el<HTMLInputElement>("gas-url").value = scanned;
+    el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
     el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
   }
 
@@ -3337,6 +3351,12 @@ class AdminController {
   private teamImportSummary(result: TeamImportResult): string {
     if (result.status === "loaded") return `チームリスト: ${result.count}チームを読み込みました`;
     return `チームリスト: ${result.message}`;
+  }
+
+  private adminContextLabel(): string {
+    if (this.mode === "mie" || this.mode === "hyogo") return "このパスワードに対応した管理設定";
+    if (this.mode === "rsam") return "管理者設定";
+    return "標準の管理設定";
   }
 }
 
