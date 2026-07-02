@@ -3378,15 +3378,12 @@ class AdminController {
       await ensureGasSuccess(response);
       this.connectionVerified = true;
       this.updateConnectionCard();
-      const messages = ["テスト送信: 成功"];
       el("admin-summary-test").textContent = "テスト送信 OK";
       el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
       if (this.onConnected) {
         const loaded = await this.onConnected();
-        messages.push(this.teamImportSummary(loaded));
-        el("admin-summary-team").textContent = loaded.status === "loaded" ? `チームリスト ${loaded.count}件` : `チームリスト ${loaded.message}`;
+        el("admin-summary-team").textContent = this.teamImportSummaryLabel(loaded);
       } else {
-        messages.push("チームリスト: 読み込み機能を初期化できていません。");
         el("admin-summary-team").textContent = "チームリスト 未確認";
       }
       el("gas-status").textContent = "タイマー設定を読み込んでいます...";
@@ -3396,8 +3393,7 @@ class AdminController {
       this.updateConnectionCard();
       el("admin-summary-timer").textContent = `タイマー ${this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting())}`;
       el("admin-success-summary").classList.remove("hidden");
-      messages.push(`タイマー設定: ${timerResult.message}`);
-      el("gas-status").textContent = `接続・設定読込を完了しました。${messages.join(" / ")}`;
+      el("gas-status").textContent = "";
     } catch {
       this.connectionVerified = false;
       this.clearConnectionSummary();
@@ -3427,9 +3423,10 @@ class AdminController {
     return `${prefix} ${result.message}`;
   }
 
-  private teamImportSummary(result: TeamImportResult): string {
-    if (result.status === "loaded") return `チームリスト: ${result.count}チームを読み込みました`;
-    return `チームリスト: ${result.message}`;
+  private teamImportSummaryLabel(result: TeamImportResult): string {
+    if (result.status === "loaded") return `チームリスト ${result.count}件`;
+    if (result.status === "default") return "チームリスト 初期リスト";
+    return "チームリスト 読込失敗";
   }
 
   private adminContextLabel(password: string): string {
@@ -3466,7 +3463,7 @@ class AdminController {
     if (!hasGasUrl) return "GAS Web アプリ URLを確認してください。通常は管理者パスワードに合わせて自動入力されます。";
     if (!this.connectionVerified) return "接続・設定読込ボタンを押してください。";
     if (!this.timerSettingLoaded) return "接続は確認済みです。必要に応じてタイマー設定を読み込んでください。";
-    return "接続確認と設定読み込みが完了しています。必要に応じて設定を保存してください。";
+    return "接続確認と設定読み込みが完了しています。";
   }
 
   private connectionTargetLabel(gasUrl: string): string {
