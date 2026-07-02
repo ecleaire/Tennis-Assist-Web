@@ -160,7 +160,7 @@ const appVariants: Record<AppVariant, AppVariantConfig> = {
     id: "venue",
     titleSuffix: "大会用",
     showNews: false,
-    allowLightUi: false,
+    allowLightUi: true,
     allowTokyoClock: false,
   },
   general: {
@@ -2716,7 +2716,27 @@ class ContentController {
       { title: "ルール関連", links: [["Japan決勝大会ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
       { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
     ];
-    el("links-list").innerHTML = sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("");
+    const credits = `
+      <article class="link-section credit-section">
+        <h3>ライセンス / クレジット</h3>
+        <p class="muted">本アプリでは、以下の素晴らしい素材を利用しています。公開してくださっている制作者の皆さまに心より感謝いたします。</p>
+        <div class="credit-list">
+          <div>
+            <strong>DSEG（7セグメントフォント）</strong>
+            <p>タイマー表示に使用しています。</p>
+            <p><a target="_blank" rel="noopener" href="https://www.keshikan.net/fonts.html">公式サイト</a> / <a target="_blank" rel="noopener" href="https://github.com/keshikan/DSEG">GitHub</a></p>
+          </div>
+          <div>
+            <strong>効果音ラボ（システム音声・効果音）</strong>
+            <p>案内音声やシステム効果音の一部に使用しています。</p>
+            <p><a target="_blank" rel="noopener" href="https://soundeffect-lab.info/">公式サイト</a></p>
+          </div>
+          <p>WRO、RoboSports、競技ルールに関する正式な情報は WRO 公式サイトを参照してください。</p>
+          <p>開発支援: OpenAI ChatGPT / Codex</p>
+        </div>
+      </article>
+    `;
+    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${credits}`;
   }
 
   private async loadRules(): Promise<void> {
@@ -2988,6 +3008,8 @@ class AdminController {
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
   private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo", "mie", "MIE", "mie_judge"]);
   private mode: AdminMode = "standard";
+  private connectionVerified = false;
+  private timerSettingLoaded = Boolean(AdminController.timerSetting());
 
   constructor(
     private readonly qrScanner: QrScanner,
@@ -2999,8 +3021,14 @@ class AdminController {
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
+    el<HTMLInputElement>("gas-key").addEventListener("input", () => {
+      this.connectionVerified = false;
+      this.updateConnectionCard();
+    });
     el<HTMLInputElement>("gas-url").addEventListener("input", () => {
       el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
+      this.connectionVerified = false;
+      this.updateConnectionCard();
     });
     el<HTMLButtonElement>("timer-setting-load").addEventListener("click", () => void this.loadTimerSetting());
     el<HTMLButtonElement>("timer-setting-apply").addEventListener("click", () => this.applyManualTimerSetting());
@@ -3059,6 +3087,7 @@ class AdminController {
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
     this.populateTimerSetting(this.effectiveTimerSetting());
+    this.updateConnectionCard();
   }
 
   private defaultTimerSettingForMode(): ExternalTimerSetting | null {
@@ -3115,6 +3144,7 @@ class AdminController {
     const managedUrlApplied = this.applyManagedGasUrl(password);
     this.onModeChanged?.(this.mode, AdminController.settings());
     this.applyEffectiveTimerSetting();
+    this.updateConnectionCard();
     if (!managedUrlApplied) el("gas-status").textContent = "管理者設定を表示しました。APIキーを入力してください。";
   }
 
@@ -3136,6 +3166,7 @@ class AdminController {
     settings.gasUrl = gasUrl;
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     el("gas-status").textContent = `${config.label}用GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
+    this.updateConnectionCard();
     return true;
   }
 
@@ -3150,6 +3181,7 @@ class AdminController {
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
+    this.updateConnectionCard();
     el("gas-status").textContent = "この端末に設定を保存しました。";
   }
 
@@ -3199,6 +3231,8 @@ class AdminController {
     localStorage.setItem(AdminController.timerSettingStorageKey, JSON.stringify(setting));
     this.populateTimerSetting(setting);
     this.onTimerSettingChanged?.(setting);
+    this.timerSettingLoaded = true;
+    this.updateConnectionCard();
   }
 
   private async loadTimerSetting(): Promise<void> {
@@ -3206,11 +3240,14 @@ class AdminController {
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       el("timer-setting-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
+      this.updateConnectionCard();
       return;
     }
     el("timer-setting-status").textContent = "スプレッドシートのタイマー設定を読み込んでいます...";
     const result = await this.loadTimerSettingFromGas(settings);
     el("timer-setting-status").textContent = result.message;
+    this.timerSettingLoaded = result.status === "loaded" || result.status === "cached";
+    this.updateConnectionCard();
   }
 
   private async loadTimerSettingFromGas(settings: AdminSettings): Promise<TimerSettingLoadResult> {
@@ -3258,12 +3295,14 @@ class AdminController {
 
   private clearTimerSetting(): void {
     localStorage.removeItem(AdminController.timerSettingStorageKey);
+    this.timerSettingLoaded = false;
     const fallback = this.defaultTimerSettingForMode();
     this.populateTimerSetting(fallback);
     this.onTimerSettingChanged?.(fallback);
     el("timer-setting-status").textContent = fallback
       ? externalTimerSettingText(fallback, "管理パスワードのデフォルト設定を適用しています。")
       : "外部タイマー設定は未適用です。通常のタイマー設定を使用します。";
+    this.updateConnectionCard();
   }
 
   lock(): void {
@@ -3277,6 +3316,9 @@ class AdminController {
     el<HTMLDetailsElement>("venue-color-setting").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
+    this.connectionVerified = false;
+    this.timerSettingLoaded = Boolean(AdminController.timerSetting());
+    this.updateConnectionCard();
     el("gas-status").textContent = "";
   }
 
@@ -3291,6 +3333,8 @@ class AdminController {
     if (!scanned) return;
     el<HTMLInputElement>("gas-url").value = scanned;
     el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
+    this.connectionVerified = false;
+    this.updateConnectionCard();
     el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
   }
 
@@ -3308,13 +3352,17 @@ class AdminController {
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       el("gas-status").textContent = "GAS Web アプリ URL（/exec）と API キーを入力してください。";
+      this.connectionVerified = false;
+      this.updateConnectionCard();
       return;
     }
-    el("gas-status").textContent = "接続確認とテスト送信を実行しています...";
+    el("gas-status").textContent = "接続確認と設定読み込みを実行しています...";
     try {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
+      this.connectionVerified = true;
+      this.updateConnectionCard();
       const messages = ["テスト送信: 成功"];
       el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
       if (this.onConnected) {
@@ -3326,10 +3374,14 @@ class AdminController {
       el("gas-status").textContent = "タイマー設定を読み込んでいます...";
       const timerResult = await this.loadTimerSettingFromGas(settings);
       el("timer-setting-status").textContent = timerResult.message;
+      this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
+      this.updateConnectionCard();
       messages.push(`タイマー設定: ${timerResult.message}`);
-      el("gas-status").textContent = `接続 / テスト送信を完了しました。${messages.join(" / ")}`;
+      el("gas-status").textContent = `接続・設定読込を完了しました。${messages.join(" / ")}`;
     } catch {
-      el("gas-status").textContent = "接続 / テスト送信に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。URL と公開設定を確認してください。";
+      this.connectionVerified = false;
+      this.updateConnectionCard();
+      el("gas-status").textContent = "接続・設定読込に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。URL と公開設定を確認してください。";
     }
   }
 
@@ -3361,6 +3413,24 @@ class AdminController {
 
   private adminContextLabel(password: string): string {
     return managedGasUrlsByPassword.get(password)?.label ?? "標準の管理設定";
+  }
+
+  private updateConnectionCard(): void {
+    const gasUrlInput = el<HTMLInputElement>("gas-url");
+    const apiKey = el<HTMLInputElement>("gas-key").value.trim();
+    const gasUrl = gasUrlInput.value.trim();
+    const urlAuto = Boolean(gasUrl) && gasUrlInput.dataset.autoGasUrl !== "false";
+    this.setStatusChip("admin-status-api", apiKey ? "APIキー入力済み" : "APIキー未入力", apiKey ? "ok" : "warn");
+    this.setStatusChip("admin-status-url", urlAuto ? "URL自動設定済み" : gasUrl ? "URL手動設定済み" : "URL未設定", gasUrl ? "ok" : "warn");
+    this.setStatusChip("admin-status-connection", this.connectionVerified ? "接続確認済み" : "接続未確認", this.connectionVerified ? "ok" : "pending");
+    this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
+  }
+
+  private setStatusChip(id: string, text: string, state: "ok" | "warn" | "pending"): void {
+    const chip = el(id);
+    chip.textContent = text;
+    chip.classList.remove("ok", "warn", "pending");
+    chip.classList.add(state);
   }
 }
 

@@ -1961,6 +1961,24 @@ tr.win td {
   margin: -4px 0 12px;
 }
 
+.credit-section {
+  margin-top: 10px;
+}
+
+.credit-list {
+  display: grid;
+  gap: 12px;
+}
+
+.credit-list p {
+  margin: 4px 0 0;
+}
+
+.credit-list a {
+  color: var(--accent);
+  font-weight: 900;
+}
+
 .sync-alert-panel {
   background: rgba(184, 50, 66, 0.12);
   border: 2px solid rgba(255, 95, 112, 0.78);
@@ -2082,6 +2100,58 @@ tr.win td {
   line-height: 1.55;
   margin: 0;
   padding: 12px 14px;
+}
+
+.admin-connection-card {
+  background: rgba(10, 19, 39, 0.46);
+  border: 1px solid rgba(62, 93, 152, 0.72);
+  border-radius: 13px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px;
+}
+
+.admin-status-chip {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.25;
+  min-height: 42px;
+  padding: 10px 12px;
+}
+
+.admin-status-chip.ok {
+  background: rgba(103, 224, 138, 0.14);
+  border-color: rgba(103, 224, 138, 0.6);
+  color: #dfffea;
+}
+
+.admin-status-chip.warn {
+  background: rgba(255, 180, 74, 0.14);
+  border-color: rgba(255, 180, 74, 0.62);
+  color: #ffe0ad;
+}
+
+.admin-status-chip.pending {
+  background: rgba(151, 176, 216, 0.08);
+  border-color: rgba(92, 121, 174, 0.62);
+  color: var(--muted);
+}
+
+.admin-sticky-actions {
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid rgba(62, 93, 152, 0.68);
+  border-radius: 15px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  padding: 10px;
+  position: sticky;
+  z-index: 12;
+}
+
+.admin-sticky-actions .button {
+  font-weight: 900;
 }
 
 .admin-details {
@@ -3155,6 +3225,14 @@ body.compact #timer-five {
     gap: 12px;
   }
 
+  .admin-connection-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sticky-actions {
+    grid-template-columns: 1fr;
+  }
+
   .timer-setting-panel {
     gap: 14px;
     padding: 14px 12px;
@@ -4134,6 +4212,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .card,
 :root.venue-light-accent .panel,
 :root.venue-light-accent .venue-color-setting,
+:root.venue-light-accent .admin-connection-card,
 :root.venue-light-accent .result-confirm-card,
 :root.venue-light-accent .consent-panel,
 :root.venue-light-accent .history-card,
@@ -4143,6 +4222,29 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   background: var(--surface);
   border-color: var(--border);
   box-shadow: 0 10px 26px rgba(15, 35, 66, 0.08);
+}
+
+:root.venue-light-accent .admin-status-chip.ok {
+  background: #e6f7ed;
+  border-color: #62bd86;
+  color: #063f24;
+}
+
+:root.venue-light-accent .admin-status-chip.warn {
+  background: #fff3da;
+  border-color: #d0832d;
+  color: #6b3900;
+}
+
+:root.venue-light-accent .admin-status-chip.pending {
+  background: #eef4fb;
+  border-color: #b8c9de;
+  color: #21364f;
+}
+
+:root.venue-light-accent .admin-sticky-actions {
+  background: rgba(247, 251, 255, 0.96);
+  border-color: #b8c9de;
 }
 
 :root.venue-light-accent .brand h1,
