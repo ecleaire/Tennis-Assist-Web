@@ -3424,6 +3424,7 @@ class AdminController {
     this.setStatusChip("admin-status-url", urlAuto ? "URL自動設定済み" : gasUrl ? "URL手動設定済み" : "URL未設定", gasUrl ? "ok" : "warn");
     this.setStatusChip("admin-status-connection", this.connectionVerified ? "接続確認済み" : "接続未確認", this.connectionVerified ? "ok" : "pending");
     this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
+    el("admin-status-message").textContent = this.connectionCardMessage(Boolean(apiKey), Boolean(gasUrl));
   }
 
   private setStatusChip(id: string, text: string, state: "ok" | "warn" | "pending"): void {
@@ -3431,6 +3432,14 @@ class AdminController {
     chip.textContent = text;
     chip.classList.remove("ok", "warn", "pending");
     chip.classList.add(state);
+  }
+
+  private connectionCardMessage(hasApiKey: boolean, hasGasUrl: boolean): string {
+    if (!hasApiKey) return "APIキーを入力してください。";
+    if (!hasGasUrl) return "GAS Web アプリ URLを確認してください。通常は管理者パスワードに合わせて自動入力されます。";
+    if (!this.connectionVerified) return "接続・設定読込ボタンを押してください。";
+    if (!this.timerSettingLoaded) return "接続は確認済みです。必要に応じてタイマー設定を読み込んでください。";
+    return "接続確認と設定読み込みが完了しています。必要に応じて設定を保存してください。";
   }
 }
 

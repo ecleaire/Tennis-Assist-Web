@@ -2140,6 +2140,18 @@ tr.win td {
   color: var(--muted);
 }
 
+.admin-status-message {
+  background: rgba(46, 168, 255, 0.1);
+  border: 1px solid rgba(46, 168, 255, 0.34);
+  border-radius: 11px;
+  color: var(--text);
+  font-weight: 850;
+  grid-column: 1 / -1;
+  line-height: 1.45;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+}
+
 .admin-sticky-actions {
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px solid rgba(62, 93, 152, 0.68);
@@ -4240,6 +4252,12 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   background: #eef4fb;
   border-color: #b8c9de;
   color: #21364f;
+}
+
+:root.venue-light-accent .admin-status-message {
+  background: #eef7ff;
+  border-color: #92bde5;
+  color: #0b3762;
 }
 
 :root.venue-light-accent .admin-sticky-actions {
