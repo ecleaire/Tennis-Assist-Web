@@ -126,6 +126,11 @@ type AppVariantConfig = {
   allowTokyoClock: boolean;
 };
 
+type ManagedGasConfig = {
+  label: string;
+  url: string;
+};
+
 type QrDetector = {
   detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
 };
@@ -167,20 +172,20 @@ const appVariants: Record<AppVariant, AppVariantConfig> = {
   },
 };
 
-const managedGasUrlsByPassword = new Map<string, string>([
-  ["HYOGO", "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec"],
-  ["hyogo", "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec"],
-  ["mie", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
-  ["MIE", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
-  ["mie_judge", "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec"],
-  ["JUDGE", "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec"],
-  ["judge", "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec"],
-  ["rsam", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
-  ["gas", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
-  ["wrorsam", "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec"],
+const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
+  ["HYOGO", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec" }],
+  ["hyogo", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec" }],
+  ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
+  ["MIE", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
+  ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec" }],
+  ["JUDGE", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec" }],
+  ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec" }],
+  ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
+  ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
+  ["wrorsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec" }],
 ]);
 
-const managedGasUrls = new Set(managedGasUrlsByPassword.values());
+const managedGasUrls = new Set(Array.from(managedGasUrlsByPassword.values(), (config) => config.url));
 
 function currentAppVariant(): AppVariantConfig {
   return window.location.pathname.split("/").filter(Boolean).includes("general") ? appVariants.general : appVariants.venue;
@@ -3100,7 +3105,7 @@ class AdminController {
         password === "mie" || password === "MIE" || password === "mie_judge" ? "mie" :
           password === "rsam" ? "rsam" :
             "standard";
-    el("admin-login-context").textContent = `${this.adminContextLabel()}で管理画面にログインしています。APIキーを入力してください。`;
+    el("admin-login-context").textContent = `${this.adminContextLabel(password)}で管理画面にログインしています。APIキーを入力してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
@@ -3114,8 +3119,9 @@ class AdminController {
   }
 
   private applyManagedGasUrl(password: string): boolean {
-    const gasUrl = managedGasUrlsByPassword.get(password);
-    if (!gasUrl) return false;
+    const config = managedGasUrlsByPassword.get(password);
+    if (!config) return false;
+    const gasUrl = config.url;
     const gasUrlInput = el<HTMLInputElement>("gas-url");
     const current = gasUrlInput.value.trim();
     const isAutoManaged = gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
@@ -3129,7 +3135,7 @@ class AdminController {
     const settings = AdminController.settings();
     settings.gasUrl = gasUrl;
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
-    el("gas-status").textContent = `${this.gasUrlContextLabel()}GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
+    el("gas-status").textContent = `${config.label}用GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
     return true;
   }
 
@@ -3353,14 +3359,8 @@ class AdminController {
     return `チームリスト: ${result.message}`;
   }
 
-  private adminContextLabel(): string {
-    if (this.mode === "mie" || this.mode === "hyogo") return "このパスワードに対応した管理設定";
-    if (this.mode === "rsam") return "管理者設定";
-    return "標準の管理設定";
-  }
-
-  private gasUrlContextLabel(): string {
-    return "このパスワード用";
+  private adminContextLabel(password: string): string {
+    return managedGasUrlsByPassword.get(password)?.label ?? "標準の管理設定";
   }
 }
 
