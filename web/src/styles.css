@@ -2110,9 +2110,47 @@ tr.win td {
 }
 
 .secret-toggle {
+  align-items: center;
+  aspect-ratio: 1;
+  display: inline-flex;
+  justify-content: center;
   min-height: 52px;
-  min-width: 82px;
-  padding-inline: 14px;
+  min-width: 52px;
+  padding: 0;
+  position: relative;
+}
+
+.secret-toggle::before {
+  border: 2px solid currentColor;
+  border-radius: 100% 0;
+  content: "";
+  display: block;
+  height: 15px;
+  opacity: 0.92;
+  transform: rotate(45deg);
+  width: 24px;
+}
+
+.secret-toggle::after {
+  background: currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--panel) 95%, transparent);
+  content: "";
+  height: 7px;
+  left: 50%;
+  opacity: 0.92;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 7px;
+}
+
+.secret-toggle.secret-visible::after {
+  border-radius: 999px;
+  box-shadow: none;
+  height: 3px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 31px;
 }
 
 .admin-connection-card {

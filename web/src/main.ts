@@ -3510,7 +3510,11 @@ class AdminController {
     const button = el<HTMLButtonElement>(buttonId);
     const visible = input.type === "text";
     input.type = visible ? "password" : "text";
-    button.textContent = visible ? "表示" : "非表示";
+    const nextVisible = !visible;
+    const labelBase = inputId === "admin-password" ? "管理者パスワード" : "APIキー";
+    button.classList.toggle("secret-visible", nextVisible);
+    button.setAttribute("aria-label", nextVisible ? `${labelBase}を隠す` : `${labelBase}を表示`);
+    button.title = nextVisible ? `${labelBase}を隠す` : `${labelBase}を表示`;
   }
 }
 
