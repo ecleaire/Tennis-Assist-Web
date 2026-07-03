@@ -522,6 +522,24 @@ output.digital.dashboard-digital {
   z-index: 12;
 }
 
+.home-sync-alert.sync-running {
+  background: linear-gradient(135deg, rgba(46, 168, 255, 0.24), rgba(46, 168, 255, 0.12));
+  border-color: rgba(46, 168, 255, 0.78);
+}
+
+.home-sync-alert.sync-success {
+  background: linear-gradient(135deg, rgba(103, 224, 138, 0.24), rgba(46, 168, 255, 0.1));
+  border-color: rgba(103, 224, 138, 0.74);
+}
+
+.home-sync-alert.sync-success strong {
+  color: #caffd7;
+}
+
+.home-sync-alert.sync-running strong {
+  color: #bfe5ff;
+}
+
 .home-sync-alert > div {
   display: grid;
   gap: 5px;
@@ -2225,18 +2243,36 @@ tr.win td {
   display: grid;
   gap: 8px;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }
 
 .admin-success-summary span {
-  background: rgba(103, 224, 138, 0.12);
-  border: 1px solid rgba(103, 224, 138, 0.5);
+  background: rgba(151, 176, 216, 0.08);
+  border: 1px solid rgba(92, 121, 174, 0.62);
   border-radius: 11px;
-  color: #e4ffed;
+  color: var(--muted);
   font-weight: 950;
   line-height: 1.35;
   min-height: 44px;
   padding: 10px 12px;
+}
+
+.admin-success-summary span.ok {
+  background: rgba(103, 224, 138, 0.14);
+  border-color: rgba(103, 224, 138, 0.58);
+  color: #e4ffed;
+}
+
+.admin-success-summary span.warn {
+  background: rgba(255, 180, 74, 0.14);
+  border-color: rgba(255, 180, 74, 0.62);
+  color: #ffe0ad;
+}
+
+.admin-success-summary span.danger {
+  background: rgba(255, 93, 115, 0.14);
+  border-color: rgba(255, 93, 115, 0.62);
+  color: #ffd4dc;
 }
 
 .admin-sticky-actions {
@@ -2615,6 +2651,47 @@ tr.win td {
   color: var(--muted);
   font-size: clamp(1.08rem, 2vw, 1.35rem);
   font-weight: 800;
+}
+
+.confirm-judge-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1.1fr 0.9fr 1.4fr;
+}
+
+.confirm-judge-summary div {
+  background: rgba(46, 168, 255, 0.12);
+  border: 2px solid rgba(46, 168, 255, 0.46);
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  padding: clamp(14px, 2.5vw, 20px);
+}
+
+.confirm-judge-summary span {
+  color: var(--muted);
+  font-size: clamp(0.92rem, 1.6vw, 1.1rem);
+  font-weight: 900;
+}
+
+.confirm-judge-summary strong {
+  color: var(--text);
+  font-size: clamp(1.48rem, 3.5vw, 2.45rem);
+  font-weight: 1000;
+  line-height: 1.12;
+}
+
+.confirm-judge-summary div:first-child {
+  background: rgba(103, 224, 138, 0.12);
+  border-color: rgba(103, 224, 138, 0.58);
+}
+
+.confirm-judge-summary div:first-child strong {
+  color: var(--success);
+}
+
+.confirm-judge-summary div:nth-child(2) strong {
+  color: var(--accent);
 }
 
 .confirm-hero {
@@ -3329,6 +3406,10 @@ body.compact #timer-five {
   }
 
   .admin-success-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-judge-summary {
     grid-template-columns: 1fr;
   }
 
@@ -4358,9 +4439,27 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .admin-success-summary span {
-  background: #e8f7ef;
-  border-color: #70bd90;
+  background: #eef4fb;
+  border-color: #b8c9de;
+  color: #21364f;
+}
+
+:root.venue-light-accent .admin-success-summary span.ok {
+  background: #e6f7ed;
+  border-color: #62bd86;
   color: #063f24;
+}
+
+:root.venue-light-accent .admin-success-summary span.warn {
+  background: #fff3da;
+  border-color: #d0832d;
+  color: #6b3900;
+}
+
+:root.venue-light-accent .admin-success-summary span.danger {
+  background: #ffe8ec;
+  border-color: #e86f82;
+  color: #7a1020;
 }
 
 :root.venue-light-accent .admin-sticky-actions {
@@ -4702,11 +4801,26 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   box-shadow: 0 12px 28px rgba(15, 35, 66, 0.1);
 }
 
+:root.venue-light-accent .confirm-judge-summary div {
+  background: #f0f7ff;
+  border-color: #92bde5;
+}
+
+:root.venue-light-accent .confirm-judge-summary div:first-child {
+  background: #e6f7ed;
+  border-color: #62bd86;
+}
+
 :root.venue-light-accent .confirm-hero strong {
   color: #08733f;
 }
 
+:root.venue-light-accent .confirm-judge-summary div:first-child strong {
+  color: #08733f;
+}
+
 :root.venue-light-accent .confirm-hero em,
+:root.venue-light-accent .confirm-judge-summary strong,
 :root.venue-light-accent .confirm-reason strong,
 :root.venue-light-accent .confirm-reason em,
 :root.venue-light-accent .confirm-score-grid strong {

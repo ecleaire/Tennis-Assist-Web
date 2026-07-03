@@ -1768,8 +1768,8 @@ class RecordsController {
       : "";
     el("confirm-detail").innerHTML =
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
-      `<section class="confirm-hero"><span>保存前の最終確認</span><strong>${escapeText(record.winner)}</strong><em>${scoreLine}</em></section>` +
-      `<p class="confirm-reason"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
+      `<section class="confirm-judge-summary"><div><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div><span>得点</span><strong>${scoreLine}</strong></div><div><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
+      `<p class="confirm-reason"><span>終了カテゴリ</span><strong>${escapeText(record.reasonCategory)}</strong></p>` +
       violationNotice +
       `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
       `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
@@ -3024,11 +3024,13 @@ class AdminController {
     private readonly onConnected?: () => Promise<TeamImportResult>,
     private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
+    private readonly syncSummaryProvider?: () => { pending: number; failed: number; unsent: number; configured: boolean; gasText: string },
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
+    el<HTMLButtonElement>("admin-day-check").addEventListener("click", () => void this.dayCheck());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
     el<HTMLButtonElement>("gas-key-toggle").addEventListener("click", () => this.toggleSecretInput("gas-key", "gas-key-toggle"));
     el<HTMLButtonElement>("admin-open-sheet").addEventListener("click", () => this.openManagedSpreadsheet());
@@ -3378,20 +3380,20 @@ class AdminController {
       await ensureGasSuccess(response);
       this.connectionVerified = true;
       this.updateConnectionCard();
-      el("admin-summary-test").textContent = "テスト送信 OK";
+      this.setSummaryChip("admin-summary-test", "OK", "ok");
       el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
       if (this.onConnected) {
         const loaded = await this.onConnected();
-        el("admin-summary-team").textContent = this.teamImportSummaryLabel(loaded);
+        this.setSummaryChip("admin-summary-team", this.teamImportSummaryLabel(loaded), loaded.status === "loaded" ? "ok" : loaded.status === "default" ? "warn" : "danger");
       } else {
-        el("admin-summary-team").textContent = "チームリスト 未確認";
+        this.setSummaryChip("admin-summary-team", "チーム未確認", "warn");
       }
       el("gas-status").textContent = "タイマー設定を読み込んでいます...";
       const timerResult = await this.loadTimerSettingFromGas(settings);
       el("timer-setting-status").textContent = timerResult.message;
       this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
       this.updateConnectionCard();
-      el("admin-summary-timer").textContent = `タイマー ${this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting())}`;
+      this.setSummaryChip("admin-summary-timer", this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting()), timerResult.status === "failed" ? "danger" : timerResult.status === "cached" ? "warn" : "ok");
       el("admin-success-summary").classList.remove("hidden");
       el("gas-status").textContent = "";
     } catch {
@@ -3424,9 +3426,39 @@ class AdminController {
   }
 
   private teamImportSummaryLabel(result: TeamImportResult): string {
-    if (result.status === "loaded") return `チームリスト ${result.count}件`;
-    if (result.status === "default") return "チームリスト 初期リスト";
-    return "チームリスト 読込失敗";
+    if (result.status === "loaded") return `チーム ${result.count}件`;
+    if (result.status === "default") return "初期リスト";
+    return "チーム失敗";
+  }
+
+  private async dayCheck(): Promise<void> {
+    el("gas-status").textContent = "当日チェックを実行しています...";
+    await this.test();
+    const sync = this.syncSummaryProvider?.();
+    if (!sync) return;
+    const syncText = sync.unsent ? `未送信 ${sync.unsent}件` : "未送信 0件";
+    const syncState = sync.unsent ? "warn" : "ok";
+    this.setSummaryChip("admin-summary-test", this.connectionVerified ? "OK" : "接続失敗", this.connectionVerified ? "ok" : "danger");
+    const extra = document.getElementById("admin-summary-sync") ?? this.createSummaryChip("admin-summary-sync");
+    extra.textContent = syncText;
+    extra.classList.remove("ok", "warn", "danger", "pending");
+    extra.classList.add(syncState);
+    el("admin-success-summary").classList.remove("hidden");
+    el("gas-status").textContent = this.connectionVerified && !sync.unsent ? "運用準備OKです。" : "確認が必要な項目があります。";
+  }
+
+  private createSummaryChip(id: string): HTMLElement {
+    const chip = document.createElement("span");
+    chip.id = id;
+    el("admin-success-summary").append(chip);
+    return chip;
+  }
+
+  private setSummaryChip(id: string, text: string, state: "ok" | "warn" | "danger" | "pending"): void {
+    const chip = el(id);
+    chip.textContent = text;
+    chip.classList.remove("ok", "warn", "danger", "pending");
+    chip.classList.add(state);
   }
 
   private adminContextLabel(password: string): string {
@@ -3487,9 +3519,10 @@ class AdminController {
 
   private clearConnectionSummary(): void {
     el("admin-success-summary").classList.add("hidden");
-    el("admin-summary-test").textContent = "テスト送信 未確認";
-    el("admin-summary-team").textContent = "チームリスト 未読込";
-    el("admin-summary-timer").textContent = "タイマー設定 未読込";
+    this.setSummaryChip("admin-summary-test", "未確認", "pending");
+    this.setSummaryChip("admin-summary-team", "未読込", "pending");
+    this.setSummaryChip("admin-summary-timer", "未読込", "pending");
+    document.getElementById("admin-summary-sync")?.remove();
   }
 
   private timerSettingSummary(setting: ExternalTimerSetting | null): string {
@@ -3538,6 +3571,7 @@ class Application {
   private operationHomeCountdownTimer = 0;
   private operationTimerFinishDelay = 0;
   private homeSyncNotice = "";
+  private homeSyncState: "idle" | "running" | "success" | "warning" = "idle";
   private homeSyncAlertMarkup = "";
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
 
@@ -3844,8 +3878,11 @@ class Application {
     const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.sendEnabled);
     panel.classList.toggle("hidden", sync.unsent === 0 && (sync.configured || !hasGasHistory));
     const gasState = sync.configured ? "GAS接続中" : "GAS未接続";
+    panel.classList.remove("sync-running", "sync-success", "sync-warning");
+    panel.classList.add(this.homeSyncState === "running" ? "sync-running" : this.homeSyncState === "success" ? "sync-success" : "sync-warning");
     let markup = "";
     if (!sync.unsent) {
+      panel.classList.toggle("hidden", !this.homeSyncNotice && (sync.configured || !hasGasHistory));
       markup = `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || "未送信の対戦結果はありません。"}</span></div>`;
       if (this.homeSyncAlertMarkup !== markup) {
         panel.innerHTML = markup;
@@ -3865,10 +3902,12 @@ class Application {
   }
 
   private async retryHomeUnsent(): Promise<void> {
+    this.homeSyncState = "running";
     this.homeSyncNotice = "ホームから再送信を実行しています。詳細は試合記録の「対戦履歴と統計」で確認してください。";
     this.updateHomeSyncAlert();
     await this.records.retryPendingSends("manual");
     const sync = this.records.syncSummary();
+    this.homeSyncState = sync.unsent ? "warning" : "success";
     this.homeSyncNotice = sync.unsent
       ? `再送信を実行しました。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件が残っています。詳細は試合記録の「対戦履歴と統計」で確認してください。`
       : "再送信を実行しました。未送信の対戦結果はありません。";
@@ -4184,6 +4223,7 @@ class Application {
       () => this.records.importTeamsFromGasConnection(),
       (mode, settings) => this.applyAdminMode(mode, settings),
       (setting) => this.applyTimerSetting(setting),
+      () => this.records.syncSummary(),
     );
     this.secret = true;
     this.linksClicks = 0;

@@ -437,9 +437,9 @@
               <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
               <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
               <div id="admin-success-summary" class="admin-success-summary hidden">
-                <span id="admin-summary-test">テスト送信 未確認</span>
-                <span id="admin-summary-team">チームリスト 未読込</span>
-                <span id="admin-summary-timer">タイマー設定 未読込</span>
+                <span id="admin-summary-test" class="pending">テスト送信 未確認</span>
+                <span id="admin-summary-team" class="pending">チームリスト 未読込</span>
+                <span id="admin-summary-timer" class="pending">タイマー設定 未読込</span>
               </div>
             </div>
             <label>API キー
@@ -512,6 +512,7 @@
             </details>
             <div class="toolbar admin-sticky-actions">
               <button id="gas-test" class="button primary">接続・設定読込</button>
+              <button id="admin-day-check" class="button primary" type="button">当日チェック</button>
               <button id="gas-save" class="button">端末に保存</button>
               <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>
