@@ -40,6 +40,7 @@ interface MatchRecord {
   overallWinner?: string;
   notes?: string;
   sendStatus?: "pending" | "sent" | "failed" | "local-only";
+  sendError?: string;
 }
 
 interface Series {
@@ -1488,7 +1489,7 @@ class RecordsController {
     if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
   }
 
-  syncSummary(): { pending: number; failed: number; unsent: number; configured: boolean; gasText: string } {
+  syncSummary(): { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string } {
     let pending = 0;
     let failed = 0;
     for (const record of this.records) {
@@ -1498,17 +1499,30 @@ class RecordsController {
     }
     const settings = AdminController.settings();
     const configured = settings.sendEnabled && settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey);
+    const latestFailed = this.records.find((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "failed" && record.sendError);
     return {
       pending,
       failed,
       unsent: pending + failed,
       configured,
       gasText: configured ? "GAS接続設定: 有効" : "GAS接続設定: 未設定または送信OFF",
+      reason: this.sendIssueReason(settings, latestFailed?.sendError),
     };
   }
 
   teamOptions(): string[] {
     return [...teams];
+  }
+
+  private sendIssueReason(settings: AdminSettings, latestError = ""): string {
+    if (!settings.sendEnabled) return "送信OFF";
+    if (!settings.gasUrl.endsWith("/exec")) return "GAS URL未設定";
+    if (!settings.apiKey) return "APIキー未入力";
+    if (!navigator.onLine) return "オフライン";
+    if (/api|key|認証|unauthorized|forbidden|invalid/i.test(latestError)) return "APIキー確認";
+    if (/failed to fetch|network|ネットワーク|fetch/i.test(latestError)) return "ネットワークエラー";
+    if (/gas|script|spreadsheet|sheet/i.test(latestError)) return "GASエラー";
+    return latestError ? "送信エラー" : "原因確認中";
   }
 
   currentMatchNumber(): number {
@@ -1768,7 +1782,7 @@ class RecordsController {
       : "";
     el("confirm-detail").innerHTML =
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
-      `<section class="confirm-judge-summary"><div><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div><span>得点</span><strong>${scoreLine}</strong></div><div><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
+      `<section class="confirm-judge-summary"><div class="confirm-judge-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div class="confirm-judge-score"><span>得点差</span><strong>${scoreLine}</strong></div><div class="${record.reasonCategory.includes("違反") ? "confirm-judge-reason warning" : "confirm-judge-reason"}"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
       `<p class="confirm-reason"><span>終了カテゴリ</span><strong>${escapeText(record.reasonCategory)}</strong></p>` +
       violationNotice +
       `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
@@ -2206,7 +2220,7 @@ class RecordsController {
     list.replaceChildren(...targets.map((record) => {
       const item = document.createElement("article");
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
-      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合</small>`;
+      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合${record.sendError ? ` / ${escapeText(record.sendError)}` : ""}</small>`;
       const retry = document.createElement("button");
       retry.className = "button tiny sync-alert-retry";
       retry.textContent = "1件再送信";
@@ -2564,10 +2578,14 @@ class RecordsController {
     el("history-status").textContent = "この端末の対戦履歴をすべて削除しました。";
   }
 
-  private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>): void {
+  private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>, sendError = ""): void {
     record.sendStatus = status;
+    record.sendError = sendError;
     const stored = this.records.find((item) => item.recordId === record.recordId);
-    if (stored) stored.sendStatus = status;
+    if (stored) {
+      stored.sendStatus = status;
+      stored.sendError = sendError;
+    }
     this.saveStoredRecords();
     this.renderHistory();
   }
@@ -2604,15 +2622,16 @@ class RecordsController {
   private async sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
-      this.updateSendStatus(record, "local-only");
+      this.updateSendStatus(record, "local-only", "送信OFF");
       this.updateCompletionState("local-only", "スプレッドシート送信はOFFです。端末内に保存しました。");
       el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
       return "local-only";
     }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
-      this.updateSendStatus(record, "failed");
-      this.updateCompletionState("failed", "GAS URLまたはAPIキーが未設定です。");
-      el("record-status").textContent = "試合結果は保存しました。GAS URLまたはAPIキーを確認し、履歴から再送してください。";
+      const reason = !settings.gasUrl.endsWith("/exec") ? "GAS URL未設定" : "APIキー未入力";
+      this.updateSendStatus(record, "failed", reason);
+      this.updateCompletionState("failed", `${reason}です。`);
+      el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送してください。`;
       return "failed";
     }
     this.updateSendStatus(record, "pending");
@@ -2631,9 +2650,10 @@ class RecordsController {
       el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
       return "sent";
     } catch (error) {
-      this.updateSendStatus(record, "failed");
-      this.updateCompletionState("failed", error instanceof Error ? error.message : "ネットワークまたはGAS接続エラーです。");
-      el("record-status").textContent = "試合結果は保存しました。スプレッドシート送信に失敗しました。履歴から再送できます。";
+      const reason = this.sendIssueReason(settings, error instanceof Error ? error.message : "");
+      this.updateSendStatus(record, "failed", reason);
+      this.updateCompletionState("failed", reason);
+      el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`;
       return "failed";
     }
   }
@@ -3024,7 +3044,7 @@ class AdminController {
     private readonly onConnected?: () => Promise<TeamImportResult>,
     private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
-    private readonly syncSummaryProvider?: () => { pending: number; failed: number; unsent: number; configured: boolean; gasText: string },
+    private readonly syncSummaryProvider?: () => { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string },
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
@@ -3891,7 +3911,7 @@ class Application {
       return;
     }
     markup =
-      `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || `対戦結果が未送信です。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件。詳細は試合記録の「対戦履歴と統計」で確認してください。`}</span></div>` +
+      `<div><strong>${gasState} / ${escapeText(sync.reason)}</strong><span>${this.homeSyncNotice || `対戦結果が未送信です。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件。詳細は試合記録の「対戦履歴と統計」で確認してください。`}</span></div>` +
       `<button id="home-sync-retry" class="button danger" type="button">再送信</button>`;
     if (this.homeSyncAlertMarkup === markup) return;
     panel.innerHTML = markup;
@@ -3909,7 +3929,7 @@ class Application {
     const sync = this.records.syncSummary();
     this.homeSyncState = sync.unsent ? "warning" : "success";
     this.homeSyncNotice = sync.unsent
-      ? `再送信を実行しました。未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件が残っています。詳細は試合記録の「対戦履歴と統計」で確認してください。`
+      ? `再送信を実行しましたが、${sync.reason}のため未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件が残っています。詳細は試合記録の「対戦履歴と統計」で確認してください。`
       : "再送信を実行しました。未送信の対戦結果はありません。";
     this.updateHomeSyncAlert();
   }

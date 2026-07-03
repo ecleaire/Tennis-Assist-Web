@@ -2681,17 +2681,31 @@ tr.win td {
   line-height: 1.12;
 }
 
-.confirm-judge-summary div:first-child {
+.confirm-judge-summary .confirm-judge-winner {
   background: rgba(103, 224, 138, 0.12);
   border-color: rgba(103, 224, 138, 0.58);
 }
 
-.confirm-judge-summary div:first-child strong {
+.confirm-judge-summary .confirm-judge-winner strong {
   color: var(--success);
 }
 
-.confirm-judge-summary div:nth-child(2) strong {
+.confirm-judge-summary .confirm-judge-score {
+  background: rgba(46, 168, 255, 0.14);
+  border-color: rgba(46, 168, 255, 0.58);
+}
+
+.confirm-judge-summary .confirm-judge-score strong {
   color: var(--accent);
+}
+
+.confirm-judge-summary .confirm-judge-reason.warning {
+  background: rgba(255, 180, 74, 0.15);
+  border-color: rgba(255, 180, 74, 0.68);
+}
+
+.confirm-judge-summary .confirm-judge-reason.warning strong {
+  color: #ffd38f;
 }
 
 .confirm-hero {
@@ -4806,17 +4820,35 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   border-color: #92bde5;
 }
 
-:root.venue-light-accent .confirm-judge-summary div:first-child {
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-winner {
   background: #e6f7ed;
   border-color: #62bd86;
+}
+
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-score {
+  background: #e6f3ff;
+  border-color: #4b9ed8;
+}
+
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-reason.warning {
+  background: #fff3da;
+  border-color: #d0832d;
 }
 
 :root.venue-light-accent .confirm-hero strong {
   color: #08733f;
 }
 
-:root.venue-light-accent .confirm-judge-summary div:first-child strong {
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-winner strong {
   color: #08733f;
+}
+
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-score strong {
+  color: #0069b5;
+}
+
+:root.venue-light-accent .confirm-judge-summary .confirm-judge-reason.warning strong {
+  color: #7a4100;
 }
 
 :root.venue-light-accent .confirm-hero em,
