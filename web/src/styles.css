@@ -701,6 +701,46 @@ output.digital.dashboard-digital {
   width: 100%;
 }
 
+.operation-court-panel:fullscreen,
+body.operation-balls-compact .operation-court-panel {
+  align-content: center;
+  background: var(--bg);
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  gap: clamp(12px, 2vw, 22px);
+  inset: 0;
+  justify-items: center;
+  min-height: 100vh;
+  padding: clamp(12px, 2vw, 24px);
+  width: 100vw;
+  z-index: 100;
+}
+
+body.operation-balls-compact .operation-court-panel {
+  position: fixed;
+}
+
+.operation-court-panel:fullscreen > p,
+body.operation-balls-compact .operation-court-panel > p {
+  display: none;
+}
+
+.operation-court-panel:fullscreen .dashboard-court,
+body.operation-balls-compact .operation-court-panel .dashboard-court {
+  max-height: calc(100vh - 92px);
+  width: min(100vw - 24px, 1400px);
+}
+
+.operation-court-panel:fullscreen .operation-court-fullscreen,
+body.operation-balls-compact .operation-court-panel .operation-court-fullscreen {
+  align-self: end;
+  justify-self: center;
+  max-width: 360px;
+  min-height: 56px;
+  width: min(360px, calc(100vw - 32px));
+}
+
 .operation-draw-side {
   align-content: start;
   display: grid;

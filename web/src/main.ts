@@ -3768,6 +3768,7 @@ class Application {
   private recordTimerPending = false;
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
+  private operationBallsFullscreen = false;
   private fullscreenReturnScreen: Screen | null = null;
   private mobileMenuOpen = false;
   private operationActive = false;
@@ -3831,8 +3832,7 @@ class Application {
       void this.enterBallsFullscreen();
     }));
     el<HTMLButtonElement>("operation-balls-fullscreen").addEventListener("click", () => {
-      this.prepareFullscreenReturn();
-      void this.enterBallsFullscreen();
+      void this.toggleOperationBallsFullscreen();
     });
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => {
       if (!document.fullscreenElement && !document.body.classList.contains("compact")) this.prepareFullscreenReturn();
@@ -3846,8 +3846,10 @@ class Application {
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
+        const wasOperationBallsFullscreen = this.operationBallsFullscreen;
+        if (this.operationBallsFullscreen) this.setOperationBallsFullscreen(false);
         if (this.ballsFullscreen) this.setBallsFullscreen(false);
-        this.restoreFullscreenReturn();
+        if (!wasOperationBallsFullscreen) this.restoreFullscreenReturn();
       }
     });
     el<HTMLButtonElement>("admin-exit").addEventListener("click", () => this.confirmDeactivateSecret());
@@ -4411,6 +4413,36 @@ class Application {
     el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
     setText(els<HTMLButtonElement>("dashboard-balls-fullscreen"), active ? "全画面解除" : "全画面表示");
     setText(els<HTMLButtonElement>("operation-balls-fullscreen"), active ? "全画面解除" : "ボール配置を全画面表示");
+  }
+
+  private async toggleOperationBallsFullscreen(): Promise<void> {
+    if (this.operationBallsFullscreen) {
+      await this.leaveOperationBallsFullscreen();
+      return;
+    }
+    this.setOperationBallsFullscreen(true);
+    try {
+      await el("operation-court-panel").requestFullscreen?.();
+    } catch {
+      // The in-page focused layout still keeps the draw screen active.
+    }
+  }
+
+  private async leaveOperationBallsFullscreen(): Promise<void> {
+    if (document.fullscreenElement === el("operation-court-panel")) {
+      try {
+        await document.exitFullscreen?.();
+      } catch {
+        // The in-page focused layout can still be restored.
+      }
+    }
+    this.setOperationBallsFullscreen(false);
+  }
+
+  private setOperationBallsFullscreen(active: boolean): void {
+    this.operationBallsFullscreen = active;
+    document.body.classList.toggle("operation-balls-compact", active);
+    el<HTMLButtonElement>("operation-balls-fullscreen").textContent = active ? "全画面解除" : "ボール配置を全画面表示";
   }
 
   private handleFlow(event: FlowEvent, match = 0): void {
