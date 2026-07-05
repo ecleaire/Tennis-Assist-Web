@@ -2329,6 +2329,10 @@ tr.win td {
   margin: 12px;
 }
 
+.admin-send-toggle {
+  margin-top: 10px;
+}
+
 .compact-note {
   font-size: 0.9rem;
   line-height: 1.55;
@@ -4388,6 +4392,108 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 @media (max-width: 760px) {
   body.compact.timer-running:not(.operation-timer-active) .controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .app-shell {
+    gap: 14px;
+    padding: clamp(10px, 1.8vw, 18px);
+  }
+
+  .app-header,
+  .screen {
+    border-radius: 16px;
+    padding: clamp(14px, 2vw, 22px);
+  }
+
+  .dashboard-grid {
+    gap: 14px;
+  }
+
+  .admin-shell {
+    max-width: 920px;
+  }
+
+  .admin-settings {
+    gap: 10px;
+  }
+
+  .admin-login-context,
+  .admin-status-target,
+  .admin-status-message {
+    padding: 9px 11px;
+  }
+
+  .admin-connection-card {
+    gap: 7px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 10px;
+  }
+
+  .admin-status-chip,
+  .admin-success-summary span {
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .admin-success-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-details > summary {
+    min-height: 46px;
+    padding: 10px 12px;
+  }
+
+  .timer-setting-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .timer-setting-grid .duration-field {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #record-input {
+    gap: 14px;
+  }
+
+  #record-input .form-grid,
+  #record-input .score-pair {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .winner-preview,
+  .result-summary {
+    padding: 12px 14px;
+  }
+
+  #final-results .table-scroll {
+    max-height: min(44vh, 430px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
+  .admin-connection-card,
+  .admin-success-summary,
+  .timer-setting-grid,
+  #record-input .score-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-draw-layout {
+    gap: 14px;
+    grid-template-columns: 1fr;
+  }
+
+  .operation-draw-side {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-judge-summary,
+  .confirm-score-grid {
+    grid-template-columns: 1fr;
   }
 }
 

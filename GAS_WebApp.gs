@@ -11,15 +11,32 @@ const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送�
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
+function getApiKeys(props) {
+  const all = props.getProperties();
+  return Object.keys(all)
+    .filter(function (name) { return /^API_KEY/.test(name); })
+    .map(function (name) { return String(all[name] || '').trim(); })
+    .filter(Boolean);
+}
+
+function hasAnyApiKey(props) {
+  return getApiKeys(props).length > 0;
+}
+
+function isValidApiKey(props, input) {
+  const apiKey = String(input || '').trim();
+  if (!apiKey) return false;
+  return getApiKeys(props).indexOf(apiKey) >= 0;
+}
+
 function doGet(e) {
   try {
     const params = (e && e.parameter) || {};
     const props = PropertiesService.getScriptProperties();
-    const apiKey = props.getProperty('API_KEY');
     const defaultSpreadsheetId = props.getProperty('SPREADSHEET_ID');
 
-    if (!apiKey) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
-    if (params.api_key !== apiKey) return jsonResponse({ ok: false, error: 'invalid_api_key' });
+    if (!hasAnyApiKey(props)) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
+    if (!isValidApiKey(props, params.api_key)) return jsonResponse({ ok: false, error: 'invalid_api_key' });
     const action = String(params.action || '');
     if (action !== 'history' && action !== 'teams' && action !== 'timer_setting') return jsonResponse({ ok: false, error: 'unknown_action' });
 
@@ -204,12 +221,11 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const props = PropertiesService.getScriptProperties();
-    const apiKey = props.getProperty('API_KEY');
     const spreadsheetId = props.getProperty('SPREADSHEET_ID');
 
-    if (!apiKey) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
+    if (!hasAnyApiKey(props)) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
-    if (body.api_key !== apiKey) return jsonResponse({ ok: false, error: 'invalid_api_key' });
+    if (!isValidApiKey(props, body.api_key)) return jsonResponse({ ok: false, error: 'invalid_api_key' });
 
     locked = lock.tryLock(15000);
     if (!locked) {

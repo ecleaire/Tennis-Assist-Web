@@ -91,6 +91,9 @@ interface AdminSettings {
   sendEnabled: boolean;
   accentMode: "standard" | "admin" | "light";
   matchType: MatchType;
+  gasConnectedAt?: string;
+  gasConnectedUrl?: string;
+  dayCheckAt?: string;
 }
 
 type TimerSettingSource = "sheet" | "manual" | "default";
@@ -671,6 +674,8 @@ class TimerController {
   private countdownCuePlayed = false;
   private finishCuePlayed = false;
   private endWarningArmed = false;
+  private stopWarningArmed = false;
+  private stopWarningTimer = 0;
 
   constructor(
     private readonly finished: (naturalEnd?: boolean) => void,
@@ -795,6 +800,7 @@ class TimerController {
 
   resetDefault(): void {
     this.touchTimerState();
+    this.clearStopWarning();
     this.endWarningArmed = false;
     if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
     this.running = false;
@@ -926,6 +932,7 @@ class TimerController {
 
   private reset(): void {
     this.touchTimerState();
+    this.clearStopWarning();
     this.endWarningArmed = false;
     if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
     this.running = false;
@@ -964,13 +971,14 @@ class TimerController {
 
   private async toggle(): Promise<void> {
     if (this.randomStep === "tokyo") return;
-    if (this.running) this.pause();
+    if (this.running) this.requestPause();
     else await this.start();
   }
 
   private async start(): Promise<void> {
     if (this.remaining <= 0) return;
     this.touchTimerState();
+    this.clearStopWarning();
     await this.audioCues.prepare();
     this.activated();
     void this.enterFullscreen(true);
@@ -984,8 +992,23 @@ class TimerController {
     this.syncControls();
   }
 
+  private requestPause(): void {
+    this.touchTimerState();
+    if (!this.running) return;
+    if (!this.stopWarningArmed) {
+      this.stopWarningArmed = true;
+      this.notice.textContent = "タイマー作動中です。停止する場合はもう一度「停止」を押してください。";
+      this.syncControls();
+      window.clearTimeout(this.stopWarningTimer);
+      this.stopWarningTimer = window.setTimeout(() => this.clearStopWarning(), 3000);
+      return;
+    }
+    this.pause();
+  }
+
   private pause(): void {
     this.touchTimerState();
+    this.clearStopWarning();
     if (this.endAt) this.remaining = Math.max(0, (this.endAt - performance.now()) / 1000);
     this.endAt = 0;
     this.audioCues.stopScheduled();
@@ -999,6 +1022,7 @@ class TimerController {
 
   private requestEnd(): void {
     this.touchTimerState();
+    this.clearStopWarning();
     if (!this.running || this.remaining <= 0) {
       this.end();
       return;
@@ -1013,11 +1037,13 @@ class TimerController {
 
   private forceEndFromConfirm(): void {
     this.endWarningArmed = false;
+    this.clearStopWarning();
     this.end();
   }
 
   private end(): void {
     this.touchTimerState();
+    this.clearStopWarning();
     this.endWarningArmed = false;
     if (this.endConfirmDialog.open) this.endConfirmDialog.close("default");
     this.audioCues.stopScheduled();
@@ -1054,9 +1080,11 @@ class TimerController {
       this.playCountdownCue();
       if (this.coldUntil > now) this.notice.textContent = "ここからコールドが適応されます";
       else if (this.endWarningArmed) this.notice.textContent = "タイマー作動中です。終了する場合はもう一度「終了」を押してください。";
+      else if (this.stopWarningArmed) this.notice.textContent = "タイマー作動中です。停止する場合はもう一度「停止」を押してください。";
       else if (this.notice.textContent !== "タイマーを一時停止しています") this.notice.textContent = "";
       if (this.remaining === 0) {
         this.touchTimerState();
+        this.clearStopWarning();
         this.endWarningArmed = false;
         if (this.endConfirmDialog.open) this.endConfirmDialog.close("cancel");
         this.running = false;
@@ -1143,7 +1171,7 @@ class TimerController {
 
   private syncControls(): void {
     const clockMode = this.randomStep === "tokyo";
-    const startLabel = clockMode ? "時計表示中" : this.running ? "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
+    const startLabel = clockMode ? "時計表示中" : this.running ? this.stopWarningArmed ? "もう一度押すと停止" : "停止" : this.remaining < this.total && this.remaining > 0 ? "再開" : "開始";
     document.body.classList.toggle("timer-running", this.running);
     document.body.classList.toggle("timer-started", this.started);
     document.body.classList.toggle("timer-ended", this.started && this.remaining <= 0);
@@ -1155,6 +1183,15 @@ class TimerController {
     els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => { button.disabled = this.running || clockMode; });
     this.step.disabled = this.running;
     this.dashboardSteps.forEach((step) => { step.disabled = this.running; });
+  }
+
+  private clearStopWarning(): void {
+    this.stopWarningArmed = false;
+    if (this.stopWarningTimer) {
+      window.clearTimeout(this.stopWarningTimer);
+      this.stopWarningTimer = 0;
+    }
+    this.syncControls();
   }
 
   private toggleSubTimer(seconds: number, label: string): void {
@@ -1498,14 +1535,15 @@ class RecordsController {
       if (record.sendStatus === "failed") failed += 1;
     }
     const settings = AdminController.settings();
-    const configured = settings.sendEnabled && settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey);
+    const connectionVerified = Boolean(settings.gasConnectedAt && settings.gasConnectedUrl && settings.gasConnectedUrl === settings.gasUrl && settings.apiKey);
+    const configured = settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey) && connectionVerified;
     const latestFailed = this.records.find((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "failed" && record.sendError);
     return {
       pending,
       failed,
       unsent: pending + failed,
       configured,
-      gasText: configured ? "GAS接続設定: 有効" : "GAS接続設定: 未設定または送信OFF",
+      gasText: configured ? "GAS接続: 確認済み" : "GAS接続: 未確認",
       reason: this.sendIssueReason(settings, latestFailed?.sendError),
     };
   }
@@ -3055,13 +3093,13 @@ class AdminController {
     el<HTMLButtonElement>("gas-key-toggle").addEventListener("click", () => this.toggleSecretInput("gas-key", "gas-key-toggle"));
     el<HTMLButtonElement>("admin-open-sheet").addEventListener("click", () => this.openManagedSpreadsheet());
     el<HTMLInputElement>("gas-key").addEventListener("input", () => {
-      this.connectionVerified = false;
+      this.clearStoredConnection();
       this.clearConnectionSummary();
       this.updateConnectionCard();
     });
     el<HTMLInputElement>("gas-url").addEventListener("input", () => {
       el<HTMLInputElement>("gas-url").dataset.autoGasUrl = "false";
-      this.connectionVerified = false;
+      this.clearStoredConnection();
       this.clearConnectionSummary();
       this.updateConnectionCard();
     });
@@ -3090,9 +3128,18 @@ class AdminController {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? "{}") as Partial<AdminSettings>;
       const accentMode = this.normalizeAccentMode(parsed.accentMode);
       const matchType = parsed.matchType === "公式試合" ? "公式試合" : "練習試合";
-      return { gasUrl: parsed.gasUrl ?? "", apiKey: parsed.apiKey ?? "", sendEnabled: Boolean(parsed.sendEnabled), accentMode, matchType };
+      return {
+        gasUrl: parsed.gasUrl ?? "",
+        apiKey: parsed.apiKey ?? "",
+        sendEnabled: parsed.sendEnabled !== false,
+        accentMode,
+        matchType,
+        gasConnectedAt: parsed.gasConnectedAt,
+        gasConnectedUrl: parsed.gasConnectedUrl,
+        dayCheckAt: parsed.dayCheckAt,
+      };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: false, accentMode: "standard", matchType: "練習試合" };
+      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合" };
     }
   }
 
@@ -3117,12 +3164,35 @@ class AdminController {
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     el("admin-login-context").textContent = "";
     el<HTMLInputElement>("gas-key").value = settings.apiKey;
-    el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled;
+    el<HTMLInputElement>("gas-enabled").checked = settings.sendEnabled !== false;
     const colorSelect = el<HTMLSelectElement>("venue-color");
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
+    this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
     this.updateConnectionCard();
+  }
+
+  private storedConnectionValid(settings = AdminController.settings()): boolean {
+    return Boolean(settings.gasConnectedAt && settings.gasConnectedUrl && settings.gasConnectedUrl === settings.gasUrl && settings.apiKey);
+  }
+
+  private saveConnectionVerified(): void {
+    const settings = AdminController.settings();
+    settings.gasConnectedAt = timestamp();
+    settings.gasConnectedUrl = settings.gasUrl;
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    this.connectionVerified = true;
+    document.dispatchEvent(new CustomEvent("admin-settings-updated"));
+  }
+
+  private clearStoredConnection(): void {
+    const settings = AdminController.settings();
+    settings.gasConnectedAt = "";
+    settings.gasConnectedUrl = "";
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    this.connectionVerified = false;
+    document.dispatchEvent(new CustomEvent("admin-settings-updated"));
   }
 
   private defaultTimerSettingForMode(): ExternalTimerSetting | null {
@@ -3199,6 +3269,8 @@ class AdminController {
     el<HTMLDetailsElement>("gas-url-details").open = false;
     const settings = AdminController.settings();
     settings.gasUrl = gasUrl;
+    settings.gasConnectedAt = "";
+    settings.gasConnectedUrl = "";
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     el("gas-status").textContent = `${config.label}用GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
     this.updateConnectionCard();
@@ -3212,6 +3284,9 @@ class AdminController {
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
       accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
+      gasConnectedAt: AdminController.settings().gasConnectedAt,
+      gasConnectedUrl: AdminController.settings().gasConnectedUrl,
+      dayCheckAt: AdminController.settings().dayCheckAt,
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
@@ -3398,7 +3473,7 @@ class AdminController {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
       await ensureGasSuccess(response);
-      this.connectionVerified = true;
+      this.saveConnectionVerified();
       this.updateConnectionCard();
       this.setSummaryChip("admin-summary-test", "OK", "ok");
       el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
@@ -3456,6 +3531,9 @@ class AdminController {
     await this.test();
     const sync = this.syncSummaryProvider?.();
     if (!sync) return;
+    const settings = AdminController.settings();
+    settings.dayCheckAt = timestamp();
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     const syncText = sync.unsent ? `未送信 ${sync.unsent}件` : "未送信 0件";
     const syncState = sync.unsent ? "warn" : "ok";
     this.setSummaryChip("admin-summary-test", this.connectionVerified ? "OK" : "接続失敗", this.connectionVerified ? "ok" : "danger");
@@ -3465,6 +3543,7 @@ class AdminController {
     extra.classList.add(syncState);
     el("admin-success-summary").classList.remove("hidden");
     el("gas-status").textContent = this.connectionVerified && !sync.unsent ? "運用準備OKです。" : "確認が必要な項目があります。";
+    this.updateConnectionCard();
   }
 
   private createSummaryChip(id: string): HTMLElement {
@@ -3495,8 +3574,11 @@ class AdminController {
     el("admin-status-target").textContent = `接続先: ${this.connectionTargetLabel(gasUrl)}`;
     this.setStatusChip("admin-status-api", apiKey ? "APIキー入力済み" : "APIキー未入力", apiKey ? "ok" : "warn");
     this.setStatusChip("admin-status-url", urlAuto ? "URL自動設定済み" : gasUrl ? "URL手動設定済み" : "URL未設定", gasUrl ? "ok" : "warn");
-    this.setStatusChip("admin-status-connection", this.connectionVerified ? "接続確認済み" : "接続未確認", this.connectionVerified ? "ok" : "pending");
+    const settings = AdminController.settings();
+    this.connectionVerified = this.connectionVerified || this.storedConnectionValid(settings);
+    this.setStatusChip("admin-status-connection", this.connectionVerified ? "GAS接続 OK" : "GAS未接続", this.connectionVerified ? "ok" : "warn");
     this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
+    this.setStatusChip("admin-status-check-time", settings.dayCheckAt ? `最終チェック ${this.shortDateTime(settings.dayCheckAt)}` : "最終チェック 未チェック", settings.dayCheckAt ? "ok" : "pending");
     el("admin-status-message").textContent = this.connectionCardMessage(Boolean(apiKey), Boolean(gasUrl));
     sheetButton.classList.toggle("hidden", !managedConfig);
     sheetButton.textContent = managedConfig ? `${managedConfig.label} スプレッドシートを開く` : "対応スプレッドシートを開く";
@@ -3508,6 +3590,11 @@ class AdminController {
     chip.textContent = text;
     chip.classList.remove("ok", "warn", "pending");
     chip.classList.add(state);
+  }
+
+  private shortDateTime(value: string): string {
+    const parts = value.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/);
+    return parts ? `${parts[2]}/${parts[3]} ${parts[4]}` : value;
   }
 
   private connectionCardMessage(hasApiKey: boolean, hasGasUrl: boolean): string {
@@ -3895,15 +3982,15 @@ class Application {
     if (!panel) return;
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
-    const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.sendEnabled);
-    panel.classList.toggle("hidden", sync.unsent === 0 && (sync.configured || !hasGasHistory));
-    const gasState = sync.configured ? "GAS接続中" : "GAS未接続";
+    const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt);
+    panel.classList.toggle("hidden", sync.unsent === 0 && !sync.configured && !hasGasHistory);
+    const gasState = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : "GAS未接続";
     panel.classList.remove("sync-running", "sync-success", "sync-warning");
     panel.classList.add(this.homeSyncState === "running" ? "sync-running" : this.homeSyncState === "success" ? "sync-success" : "sync-warning");
     let markup = "";
     if (!sync.unsent) {
-      panel.classList.toggle("hidden", !this.homeSyncNotice && (sync.configured || !hasGasHistory));
-      markup = `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || "未送信の対戦結果はありません。"}</span></div>`;
+      panel.classList.toggle("hidden", !this.homeSyncNotice && !sync.configured && !hasGasHistory);
+      markup = `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || "未送信 0件"}</span></div>`;
       if (this.homeSyncAlertMarkup !== markup) {
         panel.innerHTML = markup;
         this.homeSyncAlertMarkup = markup;

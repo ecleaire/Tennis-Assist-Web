@@ -434,6 +434,7 @@
               <div id="admin-status-url" class="admin-status-chip pending">URL未設定</div>
               <div id="admin-status-connection" class="admin-status-chip pending">接続未確認</div>
               <div id="admin-status-timer" class="admin-status-chip pending">タイマー設定未読込</div>
+              <div id="admin-status-check-time" class="admin-status-chip pending">最終チェック: 未チェック</div>
               <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
               <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
               <div id="admin-success-summary" class="admin-success-summary hidden">
@@ -448,14 +449,15 @@
                 <button id="gas-key-toggle" class="button secret-toggle" type="button" aria-label="APIキーを表示" title="APIキーを表示"></button>
               </span>
             </label>
-            <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
             <details id="gas-url-details" class="admin-details">
-              <summary>GAS Web アプリ URL</summary>
+              <summary>GAS Web アプリ URL・詳細送信設定</summary>
               <div class="gas-url-row">
                 <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
                 <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
               </div>
               <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
+              <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+              <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
             </details>
             <label>試合種別
               <select id="match-type">
