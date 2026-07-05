@@ -3495,12 +3495,29 @@ class AdminController {
       this.setSummaryChip("admin-summary-timer", this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting()), timerResult.status === "failed" ? "danger" : timerResult.status === "cached" ? "warn" : "ok");
       el("admin-success-summary").classList.remove("hidden");
       el("gas-status").textContent = "";
-    } catch {
+    } catch (error) {
       this.connectionVerified = false;
       this.clearConnectionSummary();
       this.updateConnectionCard();
-      el("gas-status").textContent = "接続・設定読込に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。URL と公開設定を確認してください。";
+      el("gas-status").textContent = this.gasConnectionErrorMessage(error);
     }
+  }
+
+  private gasConnectionErrorMessage(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (message.includes("invalid_api_key")) {
+      return "接続・設定読込に失敗しました。APIキーが一致していません。GAS側の API_KEY / API_KEY1 / API_KEY2 など、API_KEYで始まるプロパティの値を確認してください。";
+    }
+    if (message.includes("API_KEY is missing")) {
+      return "接続・設定読込に失敗しました。GAS側に API_KEY で始まるスクリプトプロパティが設定されていません。";
+    }
+    if (message.includes("SPREADSHEET_ID is missing")) {
+      return "接続・設定読込に失敗しました。GAS側の SPREADSHEET_ID が未設定です。";
+    }
+    if (message.includes("Failed to fetch")) {
+      return "接続・設定読込に失敗しました。ネットワーク、GAS Web アプリ URL、公開設定を確認してください。";
+    }
+    return `接続・設定読込に失敗しました。試合記録は同期できていません。チームリストとタイマー設定の読み込みは実行していません。${message || "URL と公開設定を確認してください。"}`;
   }
 
   private async loadTeamList(): Promise<void> {
