@@ -993,17 +993,19 @@ class TimerController {
     if (this.remaining <= 0) return;
     this.touchTimerState();
     this.clearStopWarning();
-    await this.audioCues.prepare();
     this.activated();
     void this.enterFullscreen(true);
     this.endAt = performance.now() + this.remaining * 1000;
-    this.audioCues.scheduleMainCues(this.remaining, this.total);
     this.running = true;
     this.started = true;
     this.mode.textContent = "試合進行中";
     this.caption.textContent = "";
     this.notice.textContent = this.coldUntil > performance.now() ? "ここからコールドが適応されます" : "";
     this.syncControls();
+    void this.audioCues.prepare().then(() => {
+      if (!this.running || !this.endAt) return;
+      this.audioCues.scheduleMainCues(Math.max(0, (this.endAt - performance.now()) / 1000), this.total);
+    });
   }
 
   private requestPause(): void {
@@ -1568,13 +1570,18 @@ class RecordsController {
     return [...teams];
   }
 
+  nextSeriesNumberForCourt(court: string): number {
+    return this.nextSeriesNumber(court);
+  }
+
   private sendIssueReason(settings: AdminSettings, latestError = ""): string {
     if (!settings.sendEnabled) return "送信OFF";
-    if (!settings.gasUrl.endsWith("/exec")) return "GAS URL未設定";
+    if (!settings.gasUrl.endsWith("/exec")) return "GAS未接続";
     if (!settings.apiKey) return "APIキー未入力";
-    if (!navigator.onLine) return "オフライン";
-    if (/api|key|認証|unauthorized|forbidden|invalid/i.test(latestError)) return "APIキー確認";
-    if (/failed to fetch|network|ネットワーク|fetch/i.test(latestError)) return "ネットワークエラー";
+    if (!settings.gasConnectedAt || settings.gasConnectedUrl !== settings.gasUrl) return "GAS未接続";
+    if (!navigator.onLine) return "ネットワーク";
+    if (/invalid_api_key|api|key|認証|unauthorized|forbidden|invalid/i.test(latestError)) return "APIキー不一致";
+    if (/failed to fetch|network|ネットワーク|fetch/i.test(latestError)) return "ネットワーク";
     if (/gas|script|spreadsheet|sheet/i.test(latestError)) return "GASエラー";
     return latestError ? "送信エラー" : "原因確認中";
   }
@@ -2213,6 +2220,7 @@ class RecordsController {
       if (team !== "すべてのチーム" && record.teamA !== team && record.teamB !== team) return false;
       if (kind === "match" && record.recordKind !== "マッチ") return false;
       if (kind === "series" && record.recordKind !== "試合結果") return false;
+      if (kind === "unsent" && !(record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"))) return false;
       if (result === "all") return true;
       const winner = record.overallWinner || record.winner;
       if (team === "すべてのチーム") return result === "draw" ? winner === "引き分け" : true;
@@ -2429,7 +2437,7 @@ class RecordsController {
     const header = rows[0]?.map((cell) => cell.trim()) ?? [];
     const nameIndex = header.indexOf("チーム名");
     const names = rows.slice(nameIndex >= 0 ? 1 : 0).map((row) => row[nameIndex >= 0 ? nameIndex : row.length - 1]);
-    this.applyTeams(names, false);
+    this.applyTeams(names, false, `端末内CSVファイルから${names.filter(Boolean).length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
     (event.target as HTMLInputElement).value = "";
   }
 
@@ -2493,11 +2501,11 @@ class RecordsController {
     this.applyCourtCount(data.court_count ?? null);
     const courtMessage = `使用コート: ${courtRangeLabel()}`;
     if (nextTeams.length < 2) {
-      const message = `チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
+      const message = `GASから読み込みましたが、チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
       this.applyTeams([...defaultTeams], false, message);
       return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null };
     }
-    const message = `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
+    const message = `GASから${data.sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
     this.applyTeams(nextTeams, false, message);
     return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null };
   }
@@ -2819,8 +2827,25 @@ class ContentController {
       { title: "WRO 全国 国際ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
       { title: "WRO 公認予選会", links: [["WRO兵庫", LINKS.wroHyogo], ["WRO東京", LINKS.wroTokyo], ["WRO三重", LINKS.wroMie], ["WRO奈良", LINKS.wroNara]] },
       { title: "ルール関連", links: [["Japan決勝大会ルール", LINKS.japanFinalRule], ["世界大会ルール", LINKS.worldRules], ["Q&A", LINKS.officialQa], ["Google翻訳", LINKS.googleRules], ["DeepL翻訳", LINKS.deeplRules]] },
-      { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
+      { title: "その他", links: [["YouTube関連動画", LINKS.youtube], ["GitHubリポジトリ", "https://github.com/ecleaire/Tennis-Assist-Web.git"], ...(secret ? [["旧テニスタイマー", LINKS.legacyTimer], ["旧 litlink", LINKS.legacyLitlink]] : [])] },
     ];
+    const publicUrls = `
+      <article class="link-section public-url-section">
+        <h3>公開URL QRコード</h3>
+        <div class="public-url-grid">
+          <a class="public-url-card" target="_blank" rel="noopener" href="https://ecleaire.github.io/Tennis-Assist-Web/">
+            <img src="./assets/qr-judge.png" alt="大会 審判用 公開URL QRコード" loading="lazy">
+            <strong>大会 審判用</strong>
+            <span>https://ecleaire.github.io/Tennis-Assist-Web/</span>
+          </a>
+          <a class="public-url-card" target="_blank" rel="noopener" href="https://ecleaire.github.io/Tennis-Assist-Web/general/">
+            <img src="./assets/qr-general.png" alt="選手 練習用 general 公開URL QRコード" loading="lazy">
+            <strong>選手 練習用 / general</strong>
+            <span>https://ecleaire.github.io/Tennis-Assist-Web/general/</span>
+          </a>
+        </div>
+      </article>
+    `;
     const credits = `
       <article class="link-section credit-section">
         <h3>ライセンス / クレジット</h3>
@@ -2841,7 +2866,7 @@ class ContentController {
         </div>
       </article>
     `;
-    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${credits}`;
+    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${credits}`;
   }
 
   private async loadRules(): Promise<void> {
@@ -3599,8 +3624,19 @@ class AdminController {
     this.setSummaryChip("admin-summary-test", this.connectionVerified ? "OK" : "接続失敗", this.connectionVerified ? "ok" : "danger");
     this.setStatusChip("admin-status-unsent", syncText, syncState);
     el("admin-success-summary").classList.remove("hidden");
-    el("gas-status").textContent = this.connectionVerified && !sync.unsent ? "運用準備OKです。" : "確認が必要な項目があります。";
+    el("gas-status").textContent = this.dayCheckResultLabel(sync);
     this.updateConnectionCard();
+  }
+
+  private dayCheckResultLabel(sync: { unsent: number; reason: string }): string {
+    const settings = AdminController.settings();
+    if (!settings.apiKey) return "APIキー未入力";
+    if (!settings.gasUrl.endsWith("/exec") || !this.connectionVerified) return "GAS未接続";
+    if (!this.timerSettingLoaded) return "タイマー未読込";
+    const teamSummary = el("admin-summary-team").textContent;
+    if (!teamSummary || /失敗|未読込/.test(teamSummary)) return "チーム未読込";
+    if (sync.unsent) return `未送信あり ${sync.unsent}件`;
+    return "運用準備OK";
   }
 
   private setSummaryChip(id: string, text: string, state: "ok" | "warn" | "danger" | "pending"): void {
@@ -3794,6 +3830,10 @@ class Application {
       this.prepareFullscreenReturn();
       void this.enterBallsFullscreen();
     }));
+    el<HTMLButtonElement>("operation-balls-fullscreen").addEventListener("click", () => {
+      this.prepareFullscreenReturn();
+      void this.enterBallsFullscreen();
+    });
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => {
       if (!document.fullscreenElement && !document.body.classList.contains("compact")) this.prepareFullscreenReturn();
     }, { capture: true });
@@ -4042,6 +4082,7 @@ class Application {
   }
 
   private updateHomeSyncAlert(): void {
+    this.updateHomeOperationSummary();
     const panel = document.getElementById("home-sync-alert");
     if (!panel) return;
     const sync = this.records.syncSummary();
@@ -4070,6 +4111,19 @@ class Application {
     panel.querySelector<HTMLButtonElement>("#home-sync-retry")?.addEventListener("click", () => {
       void this.retryHomeUnsent();
     });
+  }
+
+  private updateHomeOperationSummary(): void {
+    const panel = document.getElementById("home-operation-summary");
+    if (!panel) return;
+    const selectedCourt = document.getElementById("operation-court") instanceof HTMLSelectElement
+      ? (document.getElementById("operation-court") as HTMLSelectElement).value
+      : "";
+    const court = activeCourtOptions.includes(selectedCourt) ? selectedCourt : activeCourtOptions[0] ?? "Aコート";
+    const teamCount = this.records.teamOptions().length;
+    const nextNumber = this.records.nextSeriesNumberForCourt(court);
+    const markup = `<span>使用コート: ${escapeText(courtRangeLabel())}</span><span>チーム数: ${teamCount}</span><span>次は${escapeText(court)}第${nextNumber}試合</span>`;
+    if (panel.innerHTML !== markup) panel.innerHTML = markup;
   }
 
   private async retryHomeUnsent(): Promise<void> {
@@ -4356,6 +4410,7 @@ class Application {
     document.body.classList.toggle("balls-compact", active);
     el<HTMLButtonElement>("balls-fullscreen").textContent = active ? "全画面解除" : "全画面表示";
     setText(els<HTMLButtonElement>("dashboard-balls-fullscreen"), active ? "全画面解除" : "全画面表示");
+    setText(els<HTMLButtonElement>("operation-balls-fullscreen"), active ? "全画面解除" : "ボール配置を全画面表示");
   }
 
   private handleFlow(event: FlowEvent, match = 0): void {

@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-general-62fd6b4e6252";
+const CACHE_NAME = "tennis-assist-general-c65eb25c9654";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
-  "./assets/index-N2px2rJE.js",
-  "./assets/index-RHpXkxnV.css",
+  "./assets/index-Dl2TI3Ax.css",
+  "./assets/index-UE7ndoE8.js",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -12,6 +12,8 @@ const CORE = [
 const OPTIONAL = [
   "./assets/countdown-10.aac",
   "./assets/jsQR-BnGm8Ll0.js",
+  "./assets/qr-general.png",
+  "./assets/qr-judge.png",
   "./assets/thirty-seconds.mp3",
   "./assist_icon_512.png",
   "./data/news.json",

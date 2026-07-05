@@ -502,6 +502,28 @@ output.digital.dashboard-digital {
   padding-inline: clamp(34px, 8vw, 92px);
 }
 
+.home-operation-summary {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  font-weight: 900;
+  gap: 8px;
+  justify-content: center;
+  margin-top: clamp(14px, 2vw, 22px);
+  max-width: min(980px, 100%);
+}
+
+.home-operation-summary span {
+  background: rgba(46, 168, 255, 0.12);
+  border: 1px solid rgba(46, 168, 255, 0.28);
+  border-radius: 999px;
+  color: #d8e7ff;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
 .home-sync-alert {
   background: linear-gradient(135deg, rgba(255, 178, 74, 0.22), rgba(184, 50, 66, 0.18));
   border: 2px solid rgba(255, 178, 74, 0.76);
@@ -670,6 +692,12 @@ output.digital.dashboard-digital {
 .operation-court-panel .dashboard-court {
   aspect-ratio: 1280 / 620;
   max-height: min(52vh, 560px);
+  width: 100%;
+}
+
+.operation-court-fullscreen {
+  margin-top: 10px;
+  min-height: 44px;
   width: 100%;
 }
 
@@ -1980,6 +2008,31 @@ tr.win td {
   margin-top: 10px;
 }
 
+.compact-details {
+  background: rgba(9, 21, 45, 0.56);
+  border: 1px solid rgba(46, 168, 255, 0.24);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.compact-details summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  list-style-position: inside;
+  min-height: 32px;
+}
+
+.compact-details[open] {
+  padding-bottom: 14px;
+}
+
+.compact-details .import-box {
+  margin-top: 8px;
+}
+
 .app-version {
   font-size: 0.95rem;
   font-weight: 700;
@@ -1988,6 +2041,48 @@ tr.win td {
 
 .credit-section {
   margin-top: 10px;
+}
+
+.public-url-section {
+  margin-top: 10px;
+}
+
+.public-url-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-url-card {
+  align-items: center;
+  background: rgba(9, 21, 45, 0.68);
+  border: 1px solid rgba(46, 168, 255, 0.34);
+  border-radius: 14px;
+  color: var(--text);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.public-url-card img {
+  background: #fff;
+  border-radius: 10px;
+  height: clamp(132px, 20vw, 190px);
+  padding: 8px;
+  width: clamp(132px, 20vw, 190px);
+}
+
+.public-url-card strong {
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+}
+
+.public-url-card span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
 }
 
 .credit-list {
@@ -3408,6 +3503,10 @@ body.compact #timer-five {
 
   .home-sync-alert .button {
     width: 100%;
+  }
+
+  .public-url-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-card {
@@ -4980,6 +5079,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .home-sync-alert,
+:root.venue-light-accent .home-operation-summary span,
 :root.venue-light-accent .sync-status,
 :root.venue-light-accent .result-summary,
 :root.venue-light-accent .match-result-line {
