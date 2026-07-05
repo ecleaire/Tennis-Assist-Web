@@ -6,6 +6,7 @@ type Screen = "dashboard" | "operation" | "timer" | "referee" | "balls" | "recor
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 type MatchType = "練習試合" | "公式試合";
+type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
 
 interface MatchRecord {
   recordId: string;
@@ -41,6 +42,8 @@ interface MatchRecord {
   notes?: string;
   sendStatus?: "pending" | "sent" | "failed" | "local-only";
   sendError?: string;
+  deviceId?: string;
+  appVersion?: string;
 }
 
 interface Series {
@@ -325,6 +328,15 @@ function timestamp(): string {
   const date = new Date();
   const two = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
+}
+
+function shortDeviceId(): string {
+  const key = "tennis-assist-device-id-v1";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const generated = `端末-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  localStorage.setItem(key, generated);
+  return generated;
 }
 
 function formatClock(seconds: number): string {
@@ -684,6 +696,7 @@ class TimerController {
   private autoResetTimer = 0;
   private dashboardOverride: string | null = null;
   private readonly audioCues = new TimerAudioCueController();
+  private wakeLock: WakeLockSentinelLike | null = null;
   private thirtyCuePlayed = false;
   private countdownCuePlayed = false;
   private finishCuePlayed = false;
@@ -733,6 +746,9 @@ class TimerController {
         }
       }
       if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && this.running) void this.requestWakeLock();
     });
     this.step.value = String(this.randomStep);
     this.dashboardSteps.forEach((step) => { step.value = String(this.randomStep); });
@@ -841,6 +857,7 @@ class TimerController {
     this.dashboardOverride = null;
     this.syncControls();
     this.render();
+    void this.releaseWakeLock();
   }
 
   displayText(): string {
@@ -895,6 +912,7 @@ class TimerController {
       this.dashboardSteps.forEach((step) => { step.value = "tokyo"; });
       this.syncControls();
       this.render();
+      void this.releaseWakeLock();
       return;
     }
     if (this.step.value.startsWith("preset-")) {
@@ -981,6 +999,7 @@ class TimerController {
     this.caption.classList.remove("count");
     this.syncControls();
     this.render();
+    void this.releaseWakeLock();
   }
 
   private async toggle(): Promise<void> {
@@ -1002,6 +1021,7 @@ class TimerController {
     this.caption.textContent = "";
     this.notice.textContent = this.coldUntil > performance.now() ? "ここからコールドが適応されます" : "";
     this.syncControls();
+    void this.requestWakeLock();
     void this.audioCues.prepare().then(() => {
       if (!this.running || !this.endAt) return;
       this.audioCues.scheduleMainCues(Math.max(0, (this.endAt - performance.now()) / 1000), this.total);
@@ -1034,6 +1054,7 @@ class TimerController {
     this.caption.textContent = "";
     this.notice.textContent = "タイマーを一時停止しています";
     this.syncControls();
+    void this.releaseWakeLock();
   }
 
   private requestEnd(): void {
@@ -1074,6 +1095,7 @@ class TimerController {
     this.syncControls();
     this.render();
     this.emitFinish(true, false);
+    void this.releaseWakeLock();
   }
 
   private emitFinish(force = false, naturalEnd = false): void {
@@ -1111,6 +1133,7 @@ class TimerController {
         this.scheduleAutoReset();
         this.syncControls();
         this.emitFinish(false, true);
+        void this.releaseWakeLock();
       }
     }
     if (this.subRemaining > 0) {
@@ -1126,6 +1149,26 @@ class TimerController {
     }
     this.render();
     requestAnimationFrame((next) => this.frame(next));
+  }
+
+  private async requestWakeLock(): Promise<void> {
+    const wakeLock = (navigator as Navigator & { wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> } }).wakeLock;
+    if (!wakeLock || this.wakeLock && !this.wakeLock.released) return;
+    try {
+      this.wakeLock = await wakeLock.request("screen");
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseWakeLock(): Promise<void> {
+    const current = this.wakeLock;
+    this.wakeLock = null;
+    try {
+      await current?.release();
+    } catch {
+      // Wake Lock support varies by browser and power state.
+    }
   }
 
   private render(): void {
@@ -1809,6 +1852,8 @@ class RecordsController {
     return {
       recordId: `${this.series.id}_match_${matchNumber}`,
       timestamp: timestamp(),
+      deviceId: shortDeviceId(),
+      appVersion: __APP_VERSION__,
       recordKind: "マッチ",
       seriesId: this.series.id,
       seriesNumber: this.series.seriesNumber,
@@ -2108,7 +2153,7 @@ class RecordsController {
     this.renderFinal();
     this.agreementPending = side;
     const team = side === "a" ? this.series.teamA : this.series.teamB;
-    el("agreement-confirm-team").textContent = `${team}代表が確認しています。上の試合結果をもう一度確認してください。`;
+    el("agreement-confirm-team").textContent = `${team}代表が確認しています。左右チーム、各マッチ、違反時スコア、勝者をもう一度確認してください。`;
     el("agreement-confirm").classList.remove("hidden");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -2135,6 +2180,8 @@ class RecordsController {
     const record: MatchRecord = {
       recordId: `${this.series.id}_result`,
       timestamp: timestamp(),
+      deviceId: shortDeviceId(),
+      appVersion: __APP_VERSION__,
       recordKind: "試合結果",
       seriesId: this.series.id,
       seriesNumber: this.series.seriesNumber,
@@ -2243,7 +2290,8 @@ class RecordsController {
       const number = record.recordKind === "マッチ" ? `第${record.matchNumber}マッチ` : "試合結果";
       const winner = record.overallWinner || record.winner;
       const sendState = record.recordKind === "試合結果" ? this.sendStateLabel(record.sendStatus) : "";
-      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}`;
+      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number} | ${escapeText(device)}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}`;
       if (record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
         const retry = document.createElement("button");
         retry.className = "button history-retry";
@@ -2279,10 +2327,13 @@ class RecordsController {
     }
     el("sync-alert-summary").textContent = `未送信 ${pending.length}件 / 送信失敗 ${failed.length}件。GAS設定と通信状態を確認して一斉再送信できます。`;
     el<HTMLButtonElement>("history-retry-all").disabled = this.retryingPendingSends;
+    const issue = this.syncSummary().reason;
     list.replaceChildren(...targets.map((record) => {
       const item = document.createElement("article");
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
-      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合${record.sendError ? ` / ${escapeText(record.sendError)}` : ""}</small>`;
+      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      const reason = record.sendError || issue;
+      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合 / ${escapeText(device)} / ${escapeText(reason)}</small>`;
       const retry = document.createElement("button");
       retry.className = "button tiny sync-alert-retry";
       retry.textContent = "1件再送信";
@@ -3779,6 +3830,7 @@ class Application {
   private homeSyncNotice = "";
   private homeSyncState: "idle" | "running" | "success" | "warning" = "idle";
   private homeSyncAlertMarkup = "";
+  private homeRiskMarkup = "";
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
   private backConfirmButton: HTMLButtonElement | null = null;
   private backConfirmTimer = 0;
@@ -4012,6 +4064,8 @@ class Application {
     });
     document.addEventListener("records-storage-updated", () => this.updateHomeSyncAlert());
     document.addEventListener("admin-settings-updated", () => this.updateHomeSyncAlert());
+    window.addEventListener("online", () => this.updateHomeSyncAlert());
+    window.addEventListener("offline", () => this.updateHomeSyncAlert());
     window.addEventListener("storage", (event) => {
       if (event.key === "tennis-assist-records-v1" || event.key === "tennis-assist-admin-v1") this.updateHomeSyncAlert();
     });
@@ -4085,6 +4139,7 @@ class Application {
 
   private updateHomeSyncAlert(): void {
     this.updateHomeOperationSummary();
+    this.updateHomeRiskPanel();
     const panel = document.getElementById("home-sync-alert");
     if (!panel) return;
     const sync = this.records.syncSummary();
@@ -4096,7 +4151,7 @@ class Application {
     panel.classList.add(this.homeSyncState === "running" ? "sync-running" : this.homeSyncState === "success" ? "sync-success" : "sync-warning");
     let markup = "";
     if (!sync.unsent) {
-      panel.classList.toggle("hidden", !this.homeSyncNotice && !sync.configured && !hasGasHistory);
+      panel.classList.toggle("hidden", !this.homeSyncNotice);
       markup = `<div><strong>${gasState}</strong><span>${this.homeSyncNotice || "未送信 0件"}</span></div>`;
       if (this.homeSyncAlertMarkup !== markup) {
         panel.innerHTML = markup;
@@ -4113,6 +4168,83 @@ class Application {
     panel.querySelector<HTMLButtonElement>("#home-sync-retry")?.addEventListener("click", () => {
       void this.retryHomeUnsent();
     });
+  }
+
+  private updateHomeRiskPanel(): void {
+    const panel = document.getElementById("home-risk-panel");
+    if (!panel) return;
+    const sync = this.records.syncSummary();
+    const settings = AdminController.settings();
+    const device = shortDeviceId();
+    const online = navigator.onLine;
+    const checked = settings.dayCheckAt ? `最終チェック ${settings.dayCheckAt.slice(5, 16).replace("-", "/")}` : "当日チェック未実行";
+    const gas = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : "GAS未接続";
+    const gasState = sync.configured ? "ok" : "warn";
+    const unsentState = sync.unsent ? "warn" : "ok";
+    const onlineState = online ? "ok" : "warn";
+    const markup =
+      `<div class="home-risk-chips">` +
+      `<span class="home-risk-chip ok">${escapeText(device)} / v${escapeText(__APP_VERSION__)}</span>` +
+      `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` +
+      `<span class="home-risk-chip ${unsentState}">未送信 ${sync.unsent}件${sync.unsent ? ` / ${escapeText(sync.reason)}` : ""}</span>` +
+      `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
+      `<span class="home-risk-chip">${escapeText(checked)}</span>` +
+      `</div>` +
+      `<div class="home-risk-actions"><button id="home-force-update" class="button tiny" type="button">強制更新</button><button id="home-sound-test" class="button tiny" type="button">音声テスト</button></div>`;
+    if (this.homeRiskMarkup === markup) return;
+    panel.innerHTML = markup;
+    this.homeRiskMarkup = markup;
+    panel.querySelector<HTMLButtonElement>("#home-force-update")?.addEventListener("click", () => void this.forceUpdate());
+    panel.querySelector<HTMLButtonElement>("#home-sound-test")?.addEventListener("click", () => this.playSoundTest());
+  }
+
+  private async forceUpdate(): Promise<void> {
+    this.homeSyncState = "running";
+    this.homeSyncNotice = "強制更新を実行しています。再読み込み後にバージョンを確認してください。";
+    this.updateHomeSyncAlert();
+    try {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.update()));
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    } catch {
+      // Reloading with a cache-busting query is still useful if cache APIs fail.
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("appVersion", __APP_VERSION__);
+    url.searchParams.set("reload", String(Date.now()));
+    window.location.replace(url.toString());
+  }
+
+  private playSoundTest(): void {
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("AudioContext unsupported");
+      const context = new AudioContextClass();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const now = context.currentTime;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.28);
+      window.setTimeout(() => void context.close(), 420);
+      this.homeSyncState = "success";
+      this.homeSyncNotice = "音声テストを再生しました。聞こえない場合は端末音量、マナーモード、ブラウザ設定を確認してください。";
+    } catch {
+      this.homeSyncState = "warning";
+      this.homeSyncNotice = "音声テストを再生できませんでした。端末音量、マナーモード、ブラウザの音声許可を確認してください。";
+    }
+    this.updateHomeSyncAlert();
   }
 
   private updateHomeOperationSummary(): void {

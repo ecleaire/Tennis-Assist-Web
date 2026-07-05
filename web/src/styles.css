@@ -524,6 +524,53 @@ output.digital.dashboard-digital {
   white-space: nowrap;
 }
 
+.home-risk-panel {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  max-width: min(980px, 100%);
+}
+
+.home-risk-chips,
+.home-risk-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.home-risk-chip {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  color: #dce8ff;
+  font-size: clamp(0.78rem, 1.25vw, 0.92rem);
+  font-weight: 900;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.home-risk-chip.ok {
+  background: rgba(103, 224, 138, 0.14);
+  border-color: rgba(103, 224, 138, 0.42);
+  color: #caffd7;
+}
+
+.home-risk-chip.warn {
+  background: rgba(255, 178, 74, 0.18);
+  border-color: rgba(255, 178, 74, 0.62);
+  color: #ffe0aa;
+}
+
+.home-risk-actions .button {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
 .home-sync-alert {
   background: linear-gradient(135deg, rgba(255, 178, 74, 0.22), rgba(184, 50, 66, 0.18));
   border: 2px solid rgba(255, 178, 74, 0.76);
@@ -5120,12 +5167,25 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
 :root.venue-light-accent .home-sync-alert,
 :root.venue-light-accent .home-operation-summary span,
+:root.venue-light-accent .home-risk-chip,
 :root.venue-light-accent .sync-status,
 :root.venue-light-accent .result-summary,
 :root.venue-light-accent .match-result-line {
   background: #e6f3ff;
   border-color: #6db2e7;
   color: var(--text);
+}
+
+:root.venue-light-accent .home-risk-chip.ok {
+  background: #e7f8eb;
+  border-color: #4faf68;
+  color: #154b25;
+}
+
+:root.venue-light-accent .home-risk-chip.warn {
+  background: #fff1d6;
+  border-color: #d18a20;
+  color: #6b3d00;
 }
 
 :root.venue-light-accent #final-summary {
