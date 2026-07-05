@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist 大会用</title>
-    <script type="module" crossorigin src="./assets/index-Dhk7Zk2q.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DSgNBjq7.css">
+    <script type="module" crossorigin src="./assets/index-Bd8x15Xo.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DkOnDS2p.css">
   </head>
   <body>
     <main id="app">
@@ -430,36 +430,54 @@
           </div>
           <div id="admin-settings" class="admin-settings hidden">
             <p id="admin-login-context" class="admin-login-context" aria-live="polite"></p>
-            <div id="admin-connection-card" class="admin-connection-card" aria-live="polite">
-              <div id="admin-status-target" class="admin-status-target">接続先: 未設定</div>
-              <div id="admin-status-api" class="admin-status-chip pending">APIキー未入力</div>
-              <div id="admin-status-url" class="admin-status-chip pending">URL未設定</div>
-              <div id="admin-status-connection" class="admin-status-chip pending">接続未確認</div>
-              <div id="admin-status-timer" class="admin-status-chip pending">タイマー設定未読込</div>
-              <div id="admin-status-check-time" class="admin-status-chip pending">最終チェック: 未チェック</div>
-              <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
-              <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
-              <div id="admin-success-summary" class="admin-success-summary hidden">
-                <span id="admin-summary-test" class="pending">テスト送信 未確認</span>
-                <span id="admin-summary-team" class="pending">チームリスト 未読込</span>
-                <span id="admin-summary-timer" class="pending">タイマー設定 未読込</span>
+            <details id="admin-connection-card" class="admin-connection-card" aria-live="polite">
+              <summary class="admin-connection-summary">
+                <span id="admin-status-connection" class="admin-status-chip pending">GAS未接続</span>
+                <span id="admin-status-api" class="admin-status-chip pending">APIキー未入力</span>
+                <span id="admin-summary-team" class="admin-status-chip pending">チーム未読込</span>
+                <span id="admin-status-unsent" class="admin-status-chip pending">未送信 --</span>
+                <span id="admin-status-check-time" class="admin-status-chip pending">最終チェック: 未チェック</span>
+              </summary>
+              <div class="admin-connection-details">
+                <div id="admin-status-target" class="admin-status-target">接続先: 未設定</div>
+                <div id="admin-status-url" class="admin-status-chip pending">URL未設定</div>
+                <div id="admin-status-timer" class="admin-status-chip pending">タイマー設定未読込</div>
+                <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
+                <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
+                <div id="admin-success-summary" class="admin-success-summary hidden">
+                  <span id="admin-summary-test" class="pending">テスト送信 未確認</span>
+                  <span id="admin-summary-timer" class="pending">タイマー設定 未読込</span>
+                </div>
               </div>
-            </div>
+            </details>
             <label>API キー
               <span class="secret-input-row">
                 <input id="gas-key" type="password" autocomplete="off" />
                 <button id="gas-key-toggle" class="button secret-toggle" type="button" aria-label="APIキーを表示" title="APIキーを表示"></button>
               </span>
             </label>
-            <details id="gas-url-details" class="admin-details">
-              <summary>GAS Web アプリ URL・詳細送信設定</summary>
-              <div class="gas-url-row">
-                <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-                <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
-              </div>
-              <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
-              <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
-              <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
+            <details id="admin-advanced-details" class="admin-details">
+              <summary>詳細設定</summary>
+              <details id="gas-url-details" class="admin-details nested-details">
+                <summary>GAS Web アプリ URL・詳細送信設定</summary>
+                <div class="gas-url-row">
+                  <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+                  <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
+                </div>
+                <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
+                <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+                <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
+              </details>
+              <details id="venue-color-setting" class="venue-color-setting admin-details nested-details hidden">
+                <summary>表示設定</summary>
+                <label>表示カラー
+                  <select id="venue-color">
+                    <option value="standard">標準の水色</option>
+                    <option value="admin">黄緑</option>
+                    <option value="light">ライトUI</option>
+                  </select>
+                </label>
+              </details>
             </details>
             <label>試合種別
               <select id="match-type">
@@ -504,16 +522,6 @@
               </div>
             </details>
             <div class="admin-settings-spacer" aria-hidden="true"></div>
-            <details id="venue-color-setting" class="venue-color-setting admin-details hidden">
-              <summary>表示設定</summary>
-              <label>表示カラー
-                <select id="venue-color">
-                  <option value="standard">標準の水色</option>
-                  <option value="admin">黄緑</option>
-                  <option value="light">ライトUI</option>
-                </select>
-              </label>
-            </details>
             <div class="toolbar admin-sticky-actions">
               <button id="gas-test" class="button primary">接続・設定読込</button>
               <button id="admin-day-check" class="button primary" type="button">当日チェック</button>

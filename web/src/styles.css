@@ -698,6 +698,7 @@ output.digital.dashboard-digital {
   min-height: clamp(70px, 9vw, 92px);
   padding-inline: clamp(16px, 3vw, 28px);
   text-align: left;
+  white-space: nowrap;
 }
 
 .operation-numbered.next-action {
@@ -712,8 +713,14 @@ output.digital.dashboard-digital {
   font-weight: 800;
   justify-self: start;
   min-height: 40px;
-  min-width: 152px;
+  min-width: 172px;
   padding: 7px 13px;
+}
+
+.operation-back.confirming {
+  background: rgba(255, 180, 74, 0.18);
+  border-color: rgba(255, 180, 74, 0.8);
+  color: #ffe0ad;
 }
 
 .operation-team > .operation-back,
@@ -728,7 +735,7 @@ output.digital.dashboard-digital {
 }
 
 .timer-shell > .operation-timer-return {
-  left: calc(clamp(14px, 2vw, 24px) + 164px);
+  left: calc(clamp(14px, 2vw, 24px) + 184px);
 }
 
 body:not(.operation-timer-returnable) #operation-timer-return {
@@ -2175,10 +2182,39 @@ tr.win td {
   background: rgba(10, 19, 39, 0.46);
   border: 1px solid rgba(62, 93, 152, 0.72);
   border-radius: 13px;
+  padding: 12px;
+}
+
+.admin-connection-card > summary {
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  list-style: none;
+}
+
+.admin-connection-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-connection-card > summary::after {
+  align-self: center;
+  color: var(--accent);
+  content: "詳細";
+  font-size: 0.78rem;
+  font-weight: 950;
+  justify-self: end;
+}
+
+.admin-connection-card[open] > summary::after {
+  content: "閉じる";
+}
+
+.admin-connection-details {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 12px;
+  margin-top: 10px;
 }
 
 .admin-status-target {
@@ -2199,8 +2235,8 @@ tr.win td {
   font-size: 0.92rem;
   font-weight: 900;
   line-height: 1.25;
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 38px;
+  padding: 8px 10px;
 }
 
 .admin-status-chip.ok {
@@ -2244,6 +2280,10 @@ tr.win td {
   gap: 8px;
   grid-column: 1 / -1;
   grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.nested-details {
+  margin-top: 10px;
 }
 
 .admin-success-summary span {
@@ -4426,9 +4466,17 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .admin-connection-card {
+    padding: 10px;
+  }
+
+  .admin-connection-card > summary {
+    gap: 7px;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+
+  .admin-connection-details {
     gap: 7px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 10px;
   }
 
   .admin-status-chip,
@@ -4444,6 +4492,45 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   .admin-details > summary {
     min-height: 46px;
     padding: 10px 12px;
+  }
+
+  .operation-step {
+    min-height: min(74vh, 760px);
+    padding: clamp(18px, 2.4vw, 28px);
+  }
+
+  .operation-team {
+    align-content: start;
+  }
+
+  .operation-draw-layout {
+    gap: 16px;
+  }
+
+  .operation-numbered {
+    font-size: clamp(1rem, 1.65vw, 1.22rem);
+    min-height: 62px;
+    padding-inline: 16px;
+  }
+
+  .operation-between h2,
+  .operation-finished h2 {
+    font-size: clamp(1.9rem, 4vw, 3.4rem);
+    margin-bottom: 24px;
+  }
+
+  .operation-ended-match {
+    font-size: clamp(1.4rem, 2.8vw, 2.4rem);
+  }
+
+  .operation-between-note {
+    font-size: clamp(1rem, 1.7vw, 1.22rem);
+    line-height: 1.45;
+  }
+
+  #operation-next-match {
+    min-height: 70px;
+    min-width: min(430px, 72vw);
   }
 
   .timer-setting-grid {
@@ -4475,11 +4562,20 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 @media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
-  .admin-connection-card,
+  .admin-connection-card > summary,
   .admin-success-summary,
   .timer-setting-grid,
   #record-input .score-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-connection-card > summary::after {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .admin-connection-details {
+    grid-template-columns: 1fr;
   }
 
   .operation-draw-layout {
@@ -4489,6 +4585,15 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
   .operation-draw-side {
     grid-template-columns: 1fr;
+  }
+
+  .operation-step {
+    min-height: auto;
+  }
+
+  .operation-numbered {
+    font-size: clamp(0.96rem, 2.2vw, 1.1rem);
+    min-height: 58px;
   }
 
   .confirm-judge-summary,

@@ -3160,6 +3160,8 @@ class AdminController {
     const gasUrlInput = el<HTMLInputElement>("gas-url");
     gasUrlInput.value = settings.gasUrl;
     gasUrlInput.dataset.autoGasUrl = !settings.gasUrl || managedGasUrls.has(settings.gasUrl) ? "true" : "false";
+    el<HTMLDetailsElement>("admin-advanced-details").open = false;
+    el<HTMLDetailsElement>("admin-connection-card").open = false;
     el<HTMLDetailsElement>("gas-url-details").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     el("admin-login-context").textContent = "";
@@ -3423,6 +3425,8 @@ class AdminController {
     el("admin-settings").classList.add("hidden");
     el("admin-gate").classList.remove("hidden");
     el("venue-color-setting").classList.add("hidden");
+    el<HTMLDetailsElement>("admin-advanced-details").open = false;
+    el<HTMLDetailsElement>("admin-connection-card").open = false;
     el<HTMLDetailsElement>("gas-url-details").open = false;
     el<HTMLDetailsElement>("venue-color-setting").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
@@ -3537,20 +3541,10 @@ class AdminController {
     const syncText = sync.unsent ? `未送信 ${sync.unsent}件` : "未送信 0件";
     const syncState = sync.unsent ? "warn" : "ok";
     this.setSummaryChip("admin-summary-test", this.connectionVerified ? "OK" : "接続失敗", this.connectionVerified ? "ok" : "danger");
-    const extra = document.getElementById("admin-summary-sync") ?? this.createSummaryChip("admin-summary-sync");
-    extra.textContent = syncText;
-    extra.classList.remove("ok", "warn", "danger", "pending");
-    extra.classList.add(syncState);
+    this.setStatusChip("admin-status-unsent", syncText, syncState);
     el("admin-success-summary").classList.remove("hidden");
     el("gas-status").textContent = this.connectionVerified && !sync.unsent ? "運用準備OKです。" : "確認が必要な項目があります。";
     this.updateConnectionCard();
-  }
-
-  private createSummaryChip(id: string): HTMLElement {
-    const chip = document.createElement("span");
-    chip.id = id;
-    el("admin-success-summary").append(chip);
-    return chip;
   }
 
   private setSummaryChip(id: string, text: string, state: "ok" | "warn" | "danger" | "pending"): void {
@@ -3571,6 +3565,7 @@ class AdminController {
     const urlAuto = Boolean(gasUrl) && gasUrlInput.dataset.autoGasUrl !== "false";
     const managedConfig = this.activeManagedConfig(gasUrl);
     const sheetButton = el<HTMLButtonElement>("admin-open-sheet");
+    const sync = this.syncSummaryProvider?.();
     el("admin-status-target").textContent = `接続先: ${this.connectionTargetLabel(gasUrl)}`;
     this.setStatusChip("admin-status-api", apiKey ? "APIキー入力済み" : "APIキー未入力", apiKey ? "ok" : "warn");
     this.setStatusChip("admin-status-url", urlAuto ? "URL自動設定済み" : gasUrl ? "URL手動設定済み" : "URL未設定", gasUrl ? "ok" : "warn");
@@ -3579,6 +3574,7 @@ class AdminController {
     this.setStatusChip("admin-status-connection", this.connectionVerified ? "GAS接続 OK" : "GAS未接続", this.connectionVerified ? "ok" : "warn");
     this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
     this.setStatusChip("admin-status-check-time", settings.dayCheckAt ? `最終チェック ${this.shortDateTime(settings.dayCheckAt)}` : "最終チェック 未チェック", settings.dayCheckAt ? "ok" : "pending");
+    if (sync) this.setStatusChip("admin-status-unsent", sync.unsent ? `未送信 ${sync.unsent}件` : "未送信 0件", sync.unsent ? "warn" : "ok");
     el("admin-status-message").textContent = this.connectionCardMessage(Boolean(apiKey), Boolean(gasUrl));
     sheetButton.classList.toggle("hidden", !managedConfig);
     sheetButton.textContent = managedConfig ? `${managedConfig.label} スプレッドシートを開く` : "対応スプレッドシートを開く";
@@ -3627,9 +3623,9 @@ class AdminController {
   private clearConnectionSummary(): void {
     el("admin-success-summary").classList.add("hidden");
     this.setSummaryChip("admin-summary-test", "未確認", "pending");
-    this.setSummaryChip("admin-summary-team", "未読込", "pending");
+    this.setSummaryChip("admin-summary-team", "チーム未読込", "pending");
     this.setSummaryChip("admin-summary-timer", "未読込", "pending");
-    document.getElementById("admin-summary-sync")?.remove();
+    this.setStatusChip("admin-status-unsent", "未送信 --", "pending");
   }
 
   private timerSettingSummary(setting: ExternalTimerSetting | null): string {
@@ -3681,6 +3677,8 @@ class Application {
   private homeSyncState: "idle" | "running" | "success" | "warning" = "idle";
   private homeSyncAlertMarkup = "";
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
+  private backConfirmButton: HTMLButtonElement | null = null;
+  private backConfirmTimer = 0;
 
   constructor() {
     syncViewportMetrics();
@@ -3845,7 +3843,7 @@ class Application {
     });
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.openOperationStartCheck());
     el<HTMLButtonElement>("operation-start-check-confirm").addEventListener("click", () => this.startOperationSeries());
-    document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.goOperationBack()));
+    document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.requestOperationBack(button)));
     el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.confirmOperationTimerBack());
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
@@ -4148,7 +4146,35 @@ class Application {
     this.goOperationBack();
   }
 
+  private requestOperationBack(button: HTMLButtonElement): void {
+    if (this.backConfirmButton === button) {
+      this.clearBackConfirmation();
+      this.goOperationBack();
+      return;
+    }
+    this.clearBackConfirmation();
+    this.backConfirmButton = button;
+    button.dataset.originalLabel = button.textContent ?? "前の画面に戻る";
+    button.textContent = "もう一度押すと戻る";
+    button.classList.add("confirming");
+    this.backConfirmTimer = window.setTimeout(() => this.clearBackConfirmation(), 3000);
+  }
+
+  private clearBackConfirmation(): void {
+    if (this.backConfirmTimer) {
+      window.clearTimeout(this.backConfirmTimer);
+      this.backConfirmTimer = 0;
+    }
+    if (this.backConfirmButton) {
+      this.backConfirmButton.textContent = this.backConfirmButton.dataset.originalLabel ?? "前の画面に戻る";
+      this.backConfirmButton.classList.remove("confirming");
+      delete this.backConfirmButton.dataset.originalLabel;
+      this.backConfirmButton = null;
+    }
+  }
+
   private goOperationBack(): void {
+    this.clearBackConfirmation();
     this.clearOperationHomeTimer();
     this.clearOperationTimerFinishDelay();
     if (document.body.classList.contains("operation-record-focus")) {
