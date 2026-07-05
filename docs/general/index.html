@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist general</title>
-    <script type="module" crossorigin src="./assets/index-C27nOCK-.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DkOnDS2p.css">
+    <script type="module" crossorigin src="./assets/index-N2px2rJE.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-RHpXkxnV.css">
   </head>
   <body>
     <main id="app">
@@ -468,32 +468,73 @@
           </div>
           <p class="muted">この画面のパスワードは表示制御用です。API キーの検証は Google Apps Script 側で行ってください。</p>
           <div id="admin-gate" class="form-row">
-            <label>管理者パスワード<input id="admin-password" type="password" autocomplete="off" /></label>
+            <label>管理者パスワード
+              <span class="secret-input-row">
+                <input id="admin-password" type="password" autocomplete="off" />
+                <button id="admin-password-toggle" class="button secret-toggle" type="button" aria-label="管理者パスワードを表示" title="管理者パスワードを表示"></button>
+              </span>
+            </label>
             <button id="admin-unlock" class="button primary">設定を開く</button>
           </div>
           <div id="admin-settings" class="admin-settings hidden">
-            <div class="gas-url-row">
-              <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-              <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
-            </div>
-            <label>API キー<input id="gas-key" type="password" autocomplete="off" /></label>
-            <label class="checkbox"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
-            <label>試合種別
+            <p id="admin-login-context" class="admin-login-context" aria-live="polite"></p>
+            <details id="admin-connection-card" class="admin-connection-card" aria-live="polite">
+              <summary class="admin-connection-summary">
+                <span id="admin-status-connection" class="admin-status-chip pending">GAS未接続</span>
+                <span id="admin-status-api" class="admin-status-chip pending">APIキー未入力</span>
+                <span id="admin-summary-team" class="admin-status-chip pending">チーム未読込</span>
+                <span id="admin-status-unsent" class="admin-status-chip pending">未送信 --</span>
+                <span id="admin-status-check-time" class="admin-status-chip pending">最終チェック: 未チェック</span>
+              </summary>
+              <div class="admin-connection-details">
+                <div id="admin-status-target" class="admin-status-target">接続先: 未設定</div>
+                <div id="admin-status-url" class="admin-status-chip pending">URL未設定</div>
+                <div id="admin-status-timer" class="admin-status-chip pending">タイマー設定未読込</div>
+                <p id="admin-status-message" class="admin-status-message">接続・設定読込ボタンを押してください。</p>
+                <button id="admin-open-sheet" class="button admin-sheet-link hidden" type="button">対応スプレッドシートを開く</button>
+                <div id="admin-success-summary" class="admin-success-summary hidden">
+                  <span id="admin-summary-test" class="pending">テスト送信 未確認</span>
+                  <span id="admin-summary-timer" class="pending">タイマー設定 未読込</span>
+                </div>
+              </div>
+            </details>
+            <label>API キー
+              <span class="secret-input-row">
+                <input id="gas-key" type="password" autocomplete="off" />
+                <button id="gas-key-toggle" class="button secret-toggle" type="button" aria-label="APIキーを表示" title="APIキーを表示"></button>
+              </span>
+            </label>
+            <details id="admin-advanced-details" class="admin-details">
+              <summary>詳細設定</summary>
+              <details id="gas-url-details" class="admin-details nested-details">
+                <summary>GAS Web アプリ URL・詳細送信設定</summary>
+                <div class="gas-url-row">
+                  <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+                  <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
+                </div>
+                <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
+                <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+                <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
+              </details>
+              <details id="venue-color-setting" class="venue-color-setting admin-details nested-details hidden">
+                <summary>表示設定</summary>
+                <label>表示カラー
+                  <select id="venue-color">
+                    <option value="standard">標準の水色</option>
+                    <option value="admin">黄緑</option>
+                    <option value="light">ライトUI</option>
+                  </select>
+                </label>
+              </details>
+            </details>
+            <label class="admin-step-field admin-match-type-field"><span class="admin-step-badge">③</span><span>試合種別</span>
               <select id="match-type">
                 <option value="練習試合">練習試合</option>
                 <option value="公式試合">公式試合</option>
               </select>
             </label>
-            <div id="venue-color-setting" class="venue-color-setting hidden">
-              <label>表示カラー
-                <select id="venue-color">
-                  <option value="standard">標準の水色</option>
-                  <option value="admin">黄緑</option>
-                  <option value="light">ライトUI</option>
-                </select>
-              </label>
-            </div>
-            <div class="timer-setting-panel">
+            <details id="timer-setting-details" class="timer-setting-panel admin-details">
+              <summary id="timer-setting-summary"><span>タイマー設定</span></summary>
               <div>
                 <h3>タイマー設定</h3>
                 <p id="timer-setting-status" class="muted">外部タイマー設定は未適用です。</p>
@@ -505,18 +546,18 @@
                     <option value="fixed">固定</option>
                   </select>
                 </label>
-                <fieldset class="duration-field">
+                <fieldset id="timer-setting-random-min" class="duration-field timer-setting-random-field">
                   <legend>最小時間</legend>
                   <label>分<input id="timer-setting-min-minute" type="number" min="0" max="120" step="1" value="1" /></label>
                   <label>秒<input id="timer-setting-min-second" type="number" min="0" max="59" step="1" value="0" /></label>
                 </fieldset>
-                <fieldset class="duration-field">
+                <fieldset id="timer-setting-random-max" class="duration-field timer-setting-random-field">
                   <legend>最大時間</legend>
                   <label>分<input id="timer-setting-max-minute" type="number" min="0" max="120" step="1" value="2" /></label>
                   <label>秒<input id="timer-setting-max-second" type="number" min="0" max="59" step="1" value="0" /></label>
                 </fieldset>
-                <label>間隔秒数<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
-                <fieldset class="duration-field">
+                <label id="timer-setting-random-step" class="timer-setting-random-field">ランダム間隔<input id="timer-setting-step" type="number" min="1" max="600" step="1" value="1" /></label>
+                <fieldset id="timer-setting-fixed-field" class="duration-field hidden" hidden>
                   <legend>固定時間</legend>
                   <label>分<input id="timer-setting-fixed-minute" type="number" min="0" max="120" step="1" value="2" /></label>
                   <label>秒<input id="timer-setting-fixed-second" type="number" min="0" max="59" step="1" value="0" /></label>
@@ -524,14 +565,16 @@
               </div>
               <div class="toolbar">
                 <button id="timer-setting-load" class="button" type="button">スプレッドシート設定読み込み</button>
-                <button id="timer-setting-apply" class="button primary" type="button">手動設定を適用</button>
+                <button id="timer-setting-apply" class="button" type="button">手動設定を適用</button>
                 <button id="timer-setting-clear" class="button" type="button">通常設定に戻す</button>
               </div>
-            </div>
-            <div class="toolbar">
-              <button id="gas-save" class="button primary">設定を保存</button>
-              <button id="gas-test" class="button">接続 / テスト送信</button>
-              <button id="gas-team-load" class="button">チームリスト読み込み</button>
+            </details>
+            <div class="admin-settings-spacer" aria-hidden="true"></div>
+            <div class="toolbar admin-sticky-actions">
+              <button id="gas-test" class="button admin-action-primary"><span class="admin-step-badge">①</span>接続・設定読込</button>
+              <button id="admin-day-check" class="button admin-action-primary" type="button"><span class="admin-step-badge">②</span>当日チェック</button>
+              <button id="gas-save" class="button admin-action-secondary">端末に保存</button>
+              <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>
           </div>

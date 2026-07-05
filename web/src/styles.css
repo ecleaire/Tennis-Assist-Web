@@ -2116,6 +2116,45 @@ tr.win td {
   height: 8px;
 }
 
+.admin-step-badge {
+  align-items: center;
+  background: #37afff;
+  border-radius: 999px;
+  color: #041326;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.9em;
+  font-weight: 1000;
+  justify-content: center;
+  line-height: 1;
+  min-height: 1.7em;
+  min-width: 1.7em;
+  padding: 0 0.42em;
+}
+
+.admin-step-field {
+  background: rgba(46, 168, 255, 0.13);
+  border: 1px solid rgba(46, 168, 255, 0.58);
+  border-radius: 14px;
+  color: var(--text);
+  font-size: 1.02rem;
+  font-weight: 950;
+  padding: 12px;
+}
+
+.admin-step-field > span:not(.admin-step-badge) {
+  display: inline-block;
+  margin: 0 0 8px 6px;
+}
+
+.admin-match-type-field select {
+  border-color: rgba(46, 168, 255, 0.8);
+  color: var(--text);
+  font-size: 1.08rem;
+  font-weight: 950;
+  min-height: 56px;
+}
+
 .admin-login-context {
   background: rgba(46, 168, 255, 0.13);
   border: 1px solid rgba(46, 168, 255, 0.48);
@@ -2329,6 +2368,24 @@ tr.win td {
   font-weight: 900;
 }
 
+.admin-sticky-actions .admin-action-primary {
+  background: linear-gradient(180deg, #37afff, #087bd1);
+  border-color: #5bc5ff;
+  box-shadow: 0 10px 28px rgba(46, 168, 255, 0.22);
+  color: #031426;
+  font-weight: 1000;
+}
+
+.admin-sticky-actions .admin-action-primary:hover {
+  background: linear-gradient(180deg, #5bc5ff, #1394ef);
+}
+
+.admin-sticky-actions .admin-action-secondary {
+  background: rgba(46, 168, 255, 0.18);
+  border-color: rgba(46, 168, 255, 0.46);
+  color: #d9f0ff;
+}
+
 .admin-details {
   border: 1px solid var(--border);
   border-radius: 13px;
@@ -2344,6 +2401,20 @@ tr.win td {
   list-style: none;
   min-height: 52px;
   padding: 12px 14px;
+}
+
+.timer-setting-panel > summary {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.timer-setting-summary-note {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .admin-details > summary::-webkit-details-marker {
@@ -4690,6 +4761,34 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .admin-sticky-actions {
   background: rgba(247, 251, 255, 0.96);
   border-color: #b8c9de;
+}
+
+:root.venue-light-accent .admin-step-badge {
+  background: #0077c8;
+  color: #ffffff;
+}
+
+:root.venue-light-accent .admin-step-field {
+  background: #e8f4ff;
+  border-color: #82b8e9;
+  color: #062b4e;
+}
+
+:root.venue-light-accent .admin-match-type-field select {
+  border-color: #138bd8;
+  color: #061b32;
+}
+
+:root.venue-light-accent .admin-sticky-actions .admin-action-primary {
+  background: linear-gradient(180deg, #28a7f3, #0077c8);
+  border-color: #006fb8;
+  color: #ffffff;
+}
+
+:root.venue-light-accent .admin-sticky-actions .admin-action-secondary {
+  background: #d9efff;
+  border-color: #84bfe9;
+  color: #06345e;
 }
 
 :root.venue-light-accent .brand h1,

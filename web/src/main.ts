@@ -112,6 +112,7 @@ type TeamImportResult = {
   status: "loaded" | "default" | "failed";
   message: string;
   count: number;
+  courtCount?: number | null;
 };
 
 type TimerSettingLoadResult = {
@@ -246,6 +247,7 @@ const prematchCategory: Category = "【違反・自動敗北 / 失格】試合�
 const inmatchCategory: Category = "【違反・自動敗北 / 失格】試合中の違反";
 const countdownAudioStartRemainingSeconds = 9.95;
 const courtOptions = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}コート`);
+let activeCourtOptions = [...courtOptions];
 const reasons: Record<Category, string[]> = {
   [scoringCategory]: [
     "時間切れでの終了(6.32.1)", "コールドルールの成立(6.32.4)", "偶発的な接触(6.28)",
@@ -260,6 +262,18 @@ const reasons: Record<Category, string[]> = {
     "ボールの破損(6.32.7)", "フィールド・設備の破損(6.32.8)", "無許可の移動・撤去(6.33)",
   ],
 };
+
+function courtOptionsFromCount(count: number | null | undefined): string[] {
+  const normalized = Number.isFinite(count) ? Math.floor(Number(count)) : 0;
+  if (normalized < 1 || normalized > courtOptions.length) return [...courtOptions];
+  return courtOptions.slice(0, normalized);
+}
+
+function courtRangeLabel(optionsList = activeCourtOptions): string {
+  if (optionsList.length >= courtOptions.length) return "A〜Zコート";
+  const last = optionsList.at(-1)?.charAt(0) ?? "A";
+  return `A〜${last}コート`;
+}
 
 const elementCache = new Map<string, HTMLElement>();
 
@@ -1471,6 +1485,7 @@ class BallController {
 class RecordsController {
   private readonly storageKey = "tennis-assist-records-v1";
   private readonly teamStorageKey = "tennis-assist-teams-v1";
+  private readonly courtCountStorageKey = "tennis-assist-court-count-v1";
   private records: MatchRecord[] = [];
   private series: Series | null = null;
   private editing = 0;
@@ -1485,6 +1500,7 @@ class RecordsController {
   constructor(private readonly flow: (event: FlowEvent, match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
     this.loadTeams();
+    this.loadCourtCount();
     this.setupInputs();
     el<HTMLButtonElement>("series-start").addEventListener("click", () => this.startSeries());
     el<HTMLButtonElement>("series-reset").addEventListener("click", () => this.resetSeries());
@@ -1628,7 +1644,7 @@ class RecordsController {
     options(el<HTMLSelectElement>("team-b"), teams, teams[1]);
     options(el<HTMLSelectElement>("stats-team"), ["チームを選択", ...teams], "チームを選択");
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams], "すべてのチーム");
-    options(el<HTMLSelectElement>("court-select"), courtOptions, "Aコート");
+    options(el<HTMLSelectElement>("court-select"), activeCourtOptions, activeCourtOptions[0]);
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
     options(el<HTMLSelectElement>("reason-category"), Object.keys(reasons), scoringCategory);
     rangeOptions(el<HTMLSelectElement>("a-orange"), 9, 0);
@@ -2358,6 +2374,24 @@ class RecordsController {
     }
   }
 
+  private loadCourtCount(): void {
+    const saved = Number(localStorage.getItem(this.courtCountStorageKey) || "");
+    activeCourtOptions = courtOptionsFromCount(saved || null);
+  }
+
+  private applyCourtCount(courtCount: number | null | undefined, persist = true): void {
+    activeCourtOptions = courtOptionsFromCount(courtCount);
+    if (persist && courtCount && courtCount >= 1 && courtCount <= courtOptions.length) {
+      localStorage.setItem(this.courtCountStorageKey, String(Math.floor(courtCount)));
+    } else if (persist) {
+      localStorage.removeItem(this.courtCountStorageKey);
+    }
+    const currentCourt = el<HTMLSelectElement>("court-select").value;
+    const selected = activeCourtOptions.includes(currentCourt) ? currentCourt : activeCourtOptions[0];
+    options(el<HTMLSelectElement>("court-select"), activeCourtOptions, selected);
+    options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, selected);
+  }
+
   private applyTeams(next: string[], persist = true, message?: string): void {
     teams = Array.from(new Set(next.map((team) => team.trim()).filter(Boolean)));
     if (teams.length < 2) {
@@ -2371,6 +2405,7 @@ class RecordsController {
     options(el<HTMLSelectElement>("team-b"), teams, teams.includes(currentB) ? currentB : teams[1]);
     options(el<HTMLSelectElement>("stats-team"), ["チームを選択", ...teams]);
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams]);
+    this.applyCourtCount(Number(localStorage.getItem(this.courtCountStorageKey) || "") || null, false);
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
     el("team-status").textContent = message ?? (persist ? `${teams.length}チームをこの端末に保存しました。` : `${teams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
   }
@@ -2381,6 +2416,8 @@ class RecordsController {
 
   private resetTeams(): void {
     localStorage.removeItem(this.teamStorageKey);
+    localStorage.removeItem(this.courtCountStorageKey);
+    this.applyCourtCount(null, false);
     teams = [...defaultTeams];
     this.applyTeams(teams);
   }
@@ -2450,17 +2487,19 @@ class RecordsController {
     });
     if (options.spreadsheetId) params.set("spreadsheet_id", options.spreadsheetId);
     const response = await fetch(`${settings.gasUrl}?${params.toString()}`);
-    const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string };
+    const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string; court_count?: number | null };
     if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
     const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
+    this.applyCourtCount(data.court_count ?? null);
+    const courtMessage = `使用コート: ${courtRangeLabel()}`;
     if (nextTeams.length < 2) {
-      const message = "チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。";
+      const message = `チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
       this.applyTeams([...defaultTeams], false, message);
-      return { status: "default", message, count: defaultTeams.length };
+      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null };
     }
-    const message = `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`;
+    const message = `${data.sheet_name ?? "チームリスト"} から${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
     this.applyTeams(nextTeams, false, message);
-    return { status: "loaded", message, count: nextTeams.length };
+    return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null };
   }
 
   private exportHistory(): void {
@@ -3536,13 +3575,13 @@ class AdminController {
   }
 
   private teamImportGasStatusMessage(prefix: string, result: TeamImportResult): string {
-    if (result.status === "loaded") return `${prefix} チームリストも読み込みました。${result.count}チームを反映しています。`;
+    if (result.status === "loaded") return `${prefix} チームリストも読み込みました。${result.count}チーム、${courtRangeLabel()}を反映しています。`;
     if (result.status === "default") return `${prefix} ${result.message}`;
     return `${prefix} ${result.message}`;
   }
 
   private teamImportSummaryLabel(result: TeamImportResult): string {
-    if (result.status === "loaded") return `チーム ${result.count}件`;
+    if (result.status === "loaded") return `チーム ${result.count}件 / ${courtRangeLabel()}`;
     if (result.status === "default") return "初期リスト";
     return "チーム失敗";
   }
@@ -3652,7 +3691,17 @@ class AdminController {
   }
 
   private updateTimerSettingSummary(setting: ExternalTimerSetting | null, applied: boolean): void {
-    el("timer-setting-summary").textContent = applied || setting ? `タイマー設定: ${this.timerSettingSummary(setting)}` : "タイマー設定";
+    const summary = el("timer-setting-summary");
+    summary.replaceChildren();
+    const title = document.createElement("span");
+    title.textContent = applied || setting ? `タイマー設定: ${this.timerSettingSummary(setting)}` : "タイマー設定";
+    summary.append(title);
+    if (setting?.source === "sheet") {
+      const note = document.createElement("small");
+      note.className = "timer-setting-summary-note";
+      note.textContent = "スプレッドシートから読み込んでいるため、手動での設定変更は不要です。";
+      summary.append(note);
+    }
   }
 
   private toggleSecretInput(inputId: string, buttonId: string): void {
@@ -3935,7 +3984,7 @@ class Application {
 
   private syncOperationTeams(): void {
     const values = this.records.teamOptions();
-    options(el<HTMLSelectElement>("operation-court"), courtOptions, el<HTMLSelectElement>("court-select").value || "Aコート");
+    options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, el<HTMLSelectElement>("court-select").value || activeCourtOptions[0]);
     options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
     options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
   }

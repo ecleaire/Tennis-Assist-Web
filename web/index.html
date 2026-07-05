@@ -477,14 +477,14 @@
                 </label>
               </details>
             </details>
-            <label>試合種別
+            <label class="admin-step-field admin-match-type-field"><span class="admin-step-badge">③</span><span>試合種別</span>
               <select id="match-type">
                 <option value="練習試合">練習試合</option>
                 <option value="公式試合">公式試合</option>
               </select>
             </label>
             <details id="timer-setting-details" class="timer-setting-panel admin-details">
-              <summary id="timer-setting-summary">タイマー設定</summary>
+              <summary id="timer-setting-summary"><span>タイマー設定</span></summary>
               <div>
                 <h3>タイマー設定</h3>
                 <p id="timer-setting-status" class="muted">外部タイマー設定は未適用です。</p>
@@ -521,9 +521,9 @@
             </details>
             <div class="admin-settings-spacer" aria-hidden="true"></div>
             <div class="toolbar admin-sticky-actions">
-              <button id="gas-test" class="button primary">接続・設定読込</button>
-              <button id="admin-day-check" class="button primary" type="button">当日チェック</button>
-              <button id="gas-save" class="button">端末に保存</button>
+              <button id="gas-test" class="button admin-action-primary"><span class="admin-step-badge">①</span>接続・設定読込</button>
+              <button id="admin-day-check" class="button admin-action-primary" type="button"><span class="admin-step-badge">②</span>当日チェック</button>
+              <button id="gas-save" class="button admin-action-secondary">端末に保存</button>
               <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>
             <p id="gas-status" class="muted"></p>

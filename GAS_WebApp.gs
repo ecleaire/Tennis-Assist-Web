@@ -85,11 +85,13 @@ function doGet(e) {
 
     if (action === 'teams') {
       const teams = readTeams(values);
+      const courtCount = readCourtCount(values);
       return jsonResponse({
         ok: true,
         spreadsheet_id: spreadsheetId,
         sheet_name: sheet.getName(),
         teams: Array.from(new Set(teams)),
+        court_count: courtCount,
         row_count: teams.length
       });
     }
@@ -211,6 +213,21 @@ function readTeams(values) {
   return Array.from(new Set(values.slice(1)
     .map((row) => String(row[nameIndex] || '').trim())
     .filter(Boolean)));
+}
+
+function readCourtCount(values) {
+  if (!values || !values.length) return null;
+  for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
+    const row = values[rowIndex] || [];
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      if (String(row[columnIndex] || '').trim() !== 'コート数') continue;
+      const raw = values[rowIndex + 1] && values[rowIndex + 1][columnIndex];
+      const count = Number(String(raw || '').trim());
+      if (!isFinite(count) || count < 1) return null;
+      return Math.min(26, Math.floor(count));
+    }
+  }
+  return null;
 }
 
 function doPost(e) {
