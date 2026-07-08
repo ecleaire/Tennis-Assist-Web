@@ -404,6 +404,11 @@ function externalTimerSettingText(setting: ExternalTimerSetting, prefix = "ロ�
   return `${prefix} タイマーランダム範囲は ${formatClock(setting.minSeconds)}〜${formatClock(setting.maxSeconds)} です。秒数ランダム間隔は ${setting.stepSeconds}秒間隔です。`;
 }
 
+function timerSettingSummary(setting: ExternalTimerSetting): string {
+  if (setting.mode === "fixed") return `${formatClock(setting.fixedSeconds)}固定`;
+  return `${formatClock(setting.minSeconds)}-${formatClock(setting.maxSeconds)} / ${setting.stepSeconds}秒間隔`;
+}
+
 function deviceSource(): string {
   const width = Math.round(window.visualViewport?.width ?? window.innerWidth);
   const height = Math.round(window.visualViewport?.height ?? window.innerHeight);
@@ -2361,9 +2366,12 @@ class RecordsController {
       const number = record.recordKind === "マッチ" ? `第${record.matchNumber}マッチ` : "試合結果";
       const winner = record.overallWinner || record.winner;
       const sendState = record.recordKind === "試合結果" ? this.sendStateLabel(record.sendStatus) : "";
-      const role = record.deviceRole ? `${record.deviceRole} / ` : "";
-      const device = `${role}${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
-      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number} | ${escapeText(device)}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}`;
+      const roleBadge = record.deviceRole ? `<span class="history-role-badge">${escapeText(record.deviceRole)}</span>` : "";
+      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      const sendIssue = record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")
+        ? `<p class="history-send-reason">理由: ${escapeText(this.sendIssueReason(AdminController.settings(), record.sendError || ""))}</p>`
+        : "";
+      card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}${roleBadge}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number}</p><p class="history-device-line">端末: ${escapeText(device)}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}${sendIssue}`;
       if (record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
         const retry = document.createElement("button");
         retry.className = "button history-retry";
@@ -2405,7 +2413,7 @@ class RecordsController {
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
       const role = record.deviceRole ? `${record.deviceRole} / ` : "";
       const device = `${role}${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
-      const reason = record.sendError || issue;
+      const reason = this.sendIssueReason(AdminController.settings(), record.sendError || issue);
       item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合 / ${escapeText(device)} / ${escapeText(reason)}</small>`;
       const retry = document.createElement("button");
       retry.className = "button tiny sync-alert-retry";
@@ -3811,7 +3819,11 @@ class AdminController {
     this.setStatusChip("admin-status-timer", this.timerSettingLoaded ? "タイマー設定読込済み" : "タイマー設定未読込", this.timerSettingLoaded ? "ok" : "pending");
     this.setStatusChip("admin-status-check-time", settings.dayCheckAt ? `最終チェック ${this.shortDateTime(settings.dayCheckAt)}` : "最終チェック 未チェック", settings.dayCheckAt ? "ok" : "pending");
     if (sync) this.setStatusChip("admin-status-unsent", sync.unsent ? `未送信 ${sync.unsent}件` : "未送信 0件", sync.unsent ? "warn" : "ok");
-    el("admin-status-message").textContent = this.connectionCardMessage(Boolean(apiKey), Boolean(gasUrl));
+    const readiness = this.readinessSummary(Boolean(apiKey), Boolean(gasUrl), sync);
+    const statusMessage = el("admin-status-message");
+    statusMessage.textContent = readiness.text;
+    statusMessage.classList.remove("ok", "warn", "danger", "pending");
+    statusMessage.classList.add(readiness.state);
     sheetButton.classList.toggle("hidden", !managedConfig);
     sheetButton.textContent = managedConfig ? `${managedConfig.label} スプレッドシートを開く` : "対応スプレッドシートを開く";
     sheetButton.disabled = !managedConfig;
@@ -3829,12 +3841,15 @@ class AdminController {
     return parts ? `${parts[2]}/${parts[3]} ${parts[4]}` : value;
   }
 
-  private connectionCardMessage(hasApiKey: boolean, hasGasUrl: boolean): string {
-    if (!hasApiKey) return "APIキーを入力してください。";
-    if (!hasGasUrl) return "GAS Web アプリ URLを確認してください。通常は管理者パスワードに合わせて自動入力されます。";
-    if (!this.connectionVerified) return "接続・設定読込ボタンを押してください。";
-    if (!this.timerSettingLoaded) return "接続は確認済みです。必要に応じてタイマー設定を読み込んでください。";
-    return "接続確認と設定読み込みが完了しています。";
+  private readinessSummary(hasApiKey: boolean, hasGasUrl: boolean, sync?: { unsent: number; reason: string }): { text: string; state: "ok" | "warn" | "danger" | "pending" } {
+    if (!hasApiKey) return { text: "APIキー未入力", state: "warn" };
+    if (!hasGasUrl || !el<HTMLInputElement>("gas-url").value.trim().endsWith("/exec")) return { text: "GAS未接続", state: "warn" };
+    if (!this.connectionVerified) return { text: "接続未確認", state: "pending" };
+    if (!this.timerSettingLoaded) return { text: "タイマー未読込", state: "pending" };
+    const teamSummary = el("admin-summary-team").textContent;
+    if (!teamSummary || /失敗|未読込/.test(teamSummary)) return { text: "チーム未読込", state: "warn" };
+    if (sync?.unsent) return { text: `未送信あり ${sync.unsent}件 / ${sync.reason}`, state: "warn" };
+    return { text: "運用準備OK", state: "ok" };
   }
 
   private connectionTargetLabel(gasUrl: string): string {
@@ -3866,8 +3881,7 @@ class AdminController {
 
   private timerSettingSummary(setting: ExternalTimerSetting | null): string {
     if (!setting) return "通常設定";
-    if (setting.mode === "fixed") return `${formatClock(setting.fixedSeconds)}固定`;
-    return `${formatClock(setting.minSeconds)}-${formatClock(setting.maxSeconds)} / ${setting.stepSeconds}秒間隔`;
+    return timerSettingSummary(setting);
   }
 
   private updateTimerSettingSummary(setting: ExternalTimerSetting | null, applied: boolean): void {
@@ -4002,6 +4016,7 @@ class Application {
     el<HTMLButtonElement>("admin-exit-confirm").addEventListener("click", () => this.deactivateSecret());
     el<HTMLButtonElement>("admin-exit-cancel").addEventListener("click", () => el<HTMLDialogElement>("admin-exit-dialog").close());
     this.content.init();
+    this.showUpdateCompleteNotice();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       let refreshing = false;
       const activateWaitingWorker = (registration: ServiceWorkerRegistration): void => {
@@ -4079,6 +4094,17 @@ class Application {
       element.classList.toggle("hidden", !showNews);
       element.toggleAttribute("hidden", !showNews);
     });
+  }
+
+  private showUpdateCompleteNotice(): void {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("appVersion") !== __APP_VERSION__ || !url.searchParams.has("reload")) return;
+    this.homeSyncState = "success";
+    this.homeSyncNotice = `最新版 v${__APP_VERSION__} を読み込みました。`;
+    url.searchParams.delete("appVersion");
+    url.searchParams.delete("reload");
+    window.history.replaceState(null, "", url.toString());
+    this.updateHomeSyncAlert();
   }
 
   private operationScreen(): Screen {
@@ -4189,11 +4215,13 @@ class Application {
     }
     el("operation-team-status").textContent = "";
     const settings = AdminController.settings();
+    const timerSetting = AdminController.timerSetting() ?? defaultExternalTimerSetting("default");
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
       `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
-      `<div class="start-check-teams"><dt>対戦チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
+      `<div class="start-check-teams"><dt>チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
       `<div><dt>試合種別</dt><dd>${escapeText(settings.matchType)}</dd></div>` +
+      `<div><dt>タイマー</dt><dd>${escapeText(timerSettingSummary(timerSetting))}</dd></div>` +
       `</dl>`;
     el<HTMLDialogElement>("operation-start-check-dialog").showModal();
   }

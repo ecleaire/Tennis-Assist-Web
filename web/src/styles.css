@@ -971,7 +971,7 @@ body:not(.operation-timer-returnable) #operation-timer-return {
 
 .start-check-list dd {
   color: var(--text);
-  font-size: clamp(1.05rem, 2vw, 1.32rem);
+  font-size: clamp(1.12rem, 2.2vw, 1.46rem);
   font-weight: 900;
   margin: 0;
 }
@@ -1018,6 +1018,31 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   font-size: clamp(1.35rem, 3vw, 2.15rem);
   font-weight: 900;
   line-height: 1.2;
+}
+
+.history-role-badge {
+  background: rgba(46, 168, 255, 0.14);
+  border: 1px solid rgba(46, 168, 255, 0.45);
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 950;
+  margin-left: 10px;
+  padding: 4px 10px;
+  vertical-align: middle;
+}
+
+.history-device-line,
+.history-send-reason {
+  color: var(--muted);
+  font-size: 0.94rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.history-send-reason {
+  color: #ffd27d;
 }
 
 #operation-next-match,
@@ -2526,6 +2551,25 @@ tr.win td {
   line-height: 1.45;
   margin: 2px 0 0;
   padding: 10px 12px;
+}
+
+.admin-status-message.ok {
+  background: rgba(82, 232, 128, 0.12);
+  border-color: rgba(82, 232, 128, 0.5);
+  color: #dbffe8;
+}
+
+.admin-status-message.warn,
+.admin-status-message.pending {
+  background: rgba(255, 180, 74, 0.12);
+  border-color: rgba(255, 180, 74, 0.54);
+  color: #ffe0ad;
+}
+
+.admin-status-message.danger {
+  background: rgba(255, 83, 112, 0.13);
+  border-color: rgba(255, 83, 112, 0.58);
+  color: #ffd5dd;
 }
 
 .admin-sheet-link {
