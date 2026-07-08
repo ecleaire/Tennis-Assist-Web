@@ -1615,6 +1615,7 @@ class RecordsController {
   private awaitingNextMatch = false;
   private completionResetTimer = 0;
   private retryingPendingSends = false;
+  private historyViewDirty = true;
 
   constructor(private readonly flow: (event: FlowEvent, match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
@@ -1657,8 +1658,22 @@ class RecordsController {
     el<HTMLButtonElement>("history-clear-confirm").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
     this.resetSeries(false);
+    this.renderSyncAlert();
+    if (navigator.onLine && this.syncSummary().unsent) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
+  }
+
+  openHistoryView(): void {
+    if (!this.historyViewDirty) return;
     this.renderHistory();
-    if (navigator.onLine) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
+  }
+
+  private refreshHistoryView(): void {
+    if (document.getElementById("screen-records")?.classList.contains("active")) {
+      this.renderHistory();
+      return;
+    }
+    this.historyViewDirty = true;
+    this.renderSyncAlert();
   }
 
   syncSummary(): { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string } {
@@ -2330,6 +2345,7 @@ class RecordsController {
   }
 
   private renderHistory(): void {
+    this.historyViewDirty = false;
     const host = el("history");
     host.replaceChildren();
     const statsTeam = el<HTMLSelectElement>("stats-team").value;
@@ -2790,8 +2806,8 @@ class RecordsController {
 
   private clearHistory(): void {
     this.records = this.records.filter(isSheetPreviewRecord);
-    localStorage.setItem(this.storageKey, "[]");
-    this.renderHistory();
+    this.saveStoredRecords();
+    this.refreshHistoryView();
     el("history-status").textContent = "この端末の対戦履歴をすべて削除しました。";
   }
 
@@ -2804,7 +2820,7 @@ class RecordsController {
       stored.sendError = sendError;
     }
     this.saveStoredRecords();
-    this.renderHistory();
+    this.refreshHistoryView();
   }
 
   private async retrySend(record: MatchRecord): Promise<void> {
@@ -2831,7 +2847,7 @@ class RecordsController {
       }
     } finally {
       this.retryingPendingSends = false;
-      this.renderHistory();
+      this.refreshHistoryView();
       document.dispatchEvent(new CustomEvent("records-storage-updated"));
     }
   }
@@ -2908,7 +2924,12 @@ class RecordsController {
   }
 
   private saveStoredRecords(): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !isSheetPreviewRecord(record))));
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !isSheetPreviewRecord(record))));
+    } catch {
+      el("history-status").textContent = "端末内保存に失敗しました。ブラウザの空き容量、プライベートモード、サイトデータ設定を確認してください。";
+    }
+    this.historyViewDirty = true;
     document.dispatchEvent(new CustomEvent("records-storage-updated"));
   }
 
@@ -2924,6 +2945,7 @@ class ContentController {
   private rulesRequested = false;
   private newsRequested = false;
   private ruleMenuOpen = false;
+  private linksRenderedSecret: boolean | null = null;
 
   init(): void {
     el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
@@ -2954,6 +2976,8 @@ class ContentController {
   }
 
   renderLinks(secret: boolean): void {
+    if (this.linksRenderedSecret === secret) return;
+    this.linksRenderedSecret = secret;
     el("app-version").textContent = `アプリバージョン v${__APP_VERSION__}`;
     const sections = [
       { title: "WRO 全国 国際ホームページ", links: [["WRO Japan", LINKS.wroJapan], ["WRO 国際", LINKS.wroInternational]] },
@@ -4065,6 +4089,7 @@ class Application {
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => button.classList.toggle("active", button.dataset.screen === screen));
     el("current-mode-label").textContent = screenLabels[screen];
     this.content.open(screen, this.secret);
+    if (screen === "records") this.records.openHistoryView();
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
