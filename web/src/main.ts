@@ -1102,13 +1102,16 @@ class TimerController {
     this.clearStopWarning();
     this.activated();
     void this.enterFullscreen(true);
-    this.endAt = performance.now() + this.remaining * 1000;
+    const startAt = performance.now();
+    this.lastFrame = startAt;
+    this.endAt = startAt + this.remaining * 1000;
     this.running = true;
     this.started = true;
     this.mode.textContent = "試合進行中";
     this.caption.textContent = "";
     this.notice.textContent = this.coldUntil > performance.now() ? "ここからコールドが適応されます" : "";
     this.syncControls();
+    this.render();
     void this.requestWakeLock();
     void this.audioCues.prepare().then(() => {
       if (!this.running || !this.endAt) return;
