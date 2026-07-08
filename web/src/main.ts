@@ -3469,7 +3469,7 @@ class AdminController {
     settings.gasConnectedAt = "";
     settings.gasConnectedUrl = "";
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
-    el("gas-status").textContent = `${config.label}用GAS URLを設定済み。手動変更は「GAS Web アプリ URL」から行えます。`;
+    el("gas-status").textContent = "";
     this.updateConnectionCard();
     return true;
   }
