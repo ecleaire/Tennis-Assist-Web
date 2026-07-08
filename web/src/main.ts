@@ -4257,6 +4257,8 @@ class Application {
     const unsentState = sync.unsent ? "warn" : "ok";
     const onlineState = online ? "ok" : "warn";
     const markup =
+      `<details class="home-risk-details">` +
+      `<summary>端末・接続情報</summary>` +
       `<div class="home-risk-chips">` +
       `<span class="home-risk-chip ok">${escapeText(device)} / v${escapeText(__APP_VERSION__)}</span>` +
       `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` +
@@ -4264,7 +4266,8 @@ class Application {
       `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
       `<span class="home-risk-chip">${escapeText(checked)}</span>` +
       `</div>` +
-      `<div class="home-risk-actions"><button id="home-force-update" class="button tiny" type="button">強制更新</button><button id="home-sound-test" class="button tiny" type="button">音声テスト</button></div>`;
+      `<div class="home-risk-actions"><button id="home-force-update" class="button tiny" type="button">強制更新</button><button id="home-sound-test" class="button tiny" type="button">音声テスト</button></div>` +
+      `</details>`;
     if (this.homeRiskMarkup === markup) return;
     panel.innerHTML = markup;
     this.homeRiskMarkup = markup;
@@ -4324,13 +4327,8 @@ class Application {
   private updateHomeOperationSummary(): void {
     const panel = document.getElementById("home-operation-summary");
     if (!panel) return;
-    const selectedCourt = document.getElementById("operation-court") instanceof HTMLSelectElement
-      ? (document.getElementById("operation-court") as HTMLSelectElement).value
-      : "";
-    const court = activeCourtOptions.includes(selectedCourt) ? selectedCourt : activeCourtOptions[0] ?? "Aコート";
     const teamCount = this.records.teamOptions().length;
-    const nextNumber = this.records.nextSeriesNumberForCourt(court);
-    const markup = `<span>使用コート: ${escapeText(courtRangeLabel())}</span><span>チーム数: ${teamCount}</span><span>次は${escapeText(court)}第${nextNumber}試合</span>`;
+    const markup = `<span>使用コート: ${escapeText(courtRangeLabel())}</span><span>チーム数: ${teamCount}</span>`;
     if (panel.innerHTML !== markup) panel.innerHTML = markup;
   }
 

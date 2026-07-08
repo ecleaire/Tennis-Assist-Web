@@ -513,54 +513,7 @@
                 <button id="gas-key-toggle" class="button secret-toggle" type="button" aria-label="APIキーを表示" title="APIキーを表示"></button>
               </span>
             </label>
-            <label class="admin-step-field admin-device-role-field"><span>端末役割</span>
-              <select id="device-role">
-                <option value="">未設定</option>
-                <option value="Aコート用">Aコート用</option>
-                <option value="Bコート用">Bコート用</option>
-                <option value="Cコート用">Cコート用</option>
-                <option value="Dコート用">Dコート用</option>
-                <option value="Eコート用">Eコート用</option>
-                <option value="Fコート用">Fコート用</option>
-                <option value="Gコート用">Gコート用</option>
-                <option value="Hコート用">Hコート用</option>
-                <option value="本部用">本部用</option>
-                <option value="予備端末">予備端末</option>
-              </select>
-            </label>
-            <details id="admin-advanced-details" class="admin-details">
-              <summary>詳細設定</summary>
-              <details id="gas-url-details" class="admin-details nested-details">
-                <summary>GAS Web アプリ URL・詳細送信設定</summary>
-                <div class="gas-url-row">
-                  <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-                  <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
-                </div>
-                <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
-                <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
-                <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
-              </details>
-              <details id="venue-color-setting" class="venue-color-setting admin-details nested-details hidden">
-                <summary>表示設定</summary>
-                <label>表示カラー
-                  <select id="venue-color">
-                    <option value="standard">標準の水色</option>
-                    <option value="admin">黄緑</option>
-                    <option value="light">ライトUI</option>
-                  </select>
-                </label>
-              </details>
-              <details id="audio-check-details" class="admin-details nested-details">
-                <summary>音声テスト</summary>
-                <p class="muted compact-note">本番前に端末音量、マナーモード、ブラウザ音声許可を確認してください。</p>
-                <div class="toolbar audio-check-actions">
-                  <button id="audio-test-thirty" class="button" type="button">30秒経過音</button>
-                  <button id="audio-test-countdown" class="button" type="button">10カウント音声</button>
-                  <button id="audio-test-five" class="button" type="button">5カウント操作</button>
-                </div>
-              </details>
-            </details>
-            <label class="admin-step-field admin-match-type-field"><span class="admin-step-badge">③</span><span>試合種別</span>
+            <label class="admin-step-field admin-match-type-field"><span>試合種別</span>
               <select id="match-type">
                 <option value="練習試合">練習試合</option>
                 <option value="公式試合">公式試合</option>
@@ -602,10 +555,57 @@
                 <button id="timer-setting-clear" class="button" type="button">通常設定に戻す</button>
               </div>
             </details>
+            <details id="admin-advanced-details" class="admin-details">
+              <summary>詳細設定</summary>
+              <label class="admin-device-role-field">端末役割
+                <select id="device-role">
+                  <option value="">未設定</option>
+                  <option value="Aコート用">Aコート用</option>
+                  <option value="Bコート用">Bコート用</option>
+                  <option value="Cコート用">Cコート用</option>
+                  <option value="Dコート用">Dコート用</option>
+                  <option value="Eコート用">Eコート用</option>
+                  <option value="Fコート用">Fコート用</option>
+                  <option value="Gコート用">Gコート用</option>
+                  <option value="Hコート用">Hコート用</option>
+                  <option value="本部用">本部用</option>
+                  <option value="予備端末">予備端末</option>
+                </select>
+              </label>
+              <details id="gas-url-details" class="admin-details nested-details">
+                <summary>GAS Web アプリ URL・詳細送信設定</summary>
+                <div class="gas-url-row">
+                  <label>GAS Web アプリ URL<input id="gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+                  <button id="gas-scan" class="button" type="button">QRコードでURL読取</button>
+                </div>
+                <p class="muted compact-note">通常は管理者パスワードに合わせて自動入力されます。手動で変更する場合だけ開いてください。</p>
+                <label class="checkbox admin-send-toggle"><input id="gas-enabled" type="checkbox" /> 結果確定時にスプレッドシートへ送信</label>
+                <p class="muted compact-note">通常はオンで使用します。GASを使わず端末内保存だけにしたい場合のみオフにしてください。</p>
+              </details>
+              <details id="venue-color-setting" class="venue-color-setting admin-details nested-details hidden">
+                <summary>表示設定</summary>
+                <label>表示カラー
+                  <select id="venue-color">
+                    <option value="standard">標準の水色</option>
+                    <option value="admin">黄緑</option>
+                    <option value="light">ライトUI</option>
+                  </select>
+                </label>
+              </details>
+              <details id="audio-check-details" class="admin-details nested-details">
+                <summary>音声テスト</summary>
+                <p class="muted compact-note">本番前に端末音量、マナーモード、ブラウザ音声許可を確認してください。</p>
+                <div class="toolbar audio-check-actions">
+                  <button id="audio-test-thirty" class="button" type="button">30秒経過音</button>
+                  <button id="audio-test-countdown" class="button" type="button">10カウント音声</button>
+                  <button id="audio-test-five" class="button" type="button">5カウント操作</button>
+                </div>
+              </details>
+            </details>
             <div class="admin-settings-spacer" aria-hidden="true"></div>
             <div class="toolbar admin-sticky-actions">
-              <button id="gas-test" class="button admin-action-primary"><span class="admin-step-badge">①</span>接続・設定読込</button>
-              <button id="admin-day-check" class="button admin-action-primary" type="button"><span class="admin-step-badge">②</span>当日チェック</button>
+              <button id="gas-test" class="button admin-action-primary">接続・設定読込</button>
+              <button id="admin-day-check" class="button admin-action-primary" type="button">当日チェック</button>
               <button id="gas-save" class="button admin-action-secondary">端末に保存</button>
               <button id="gas-team-load" class="button hidden" type="button">チームリスト読み込み</button>
             </div>

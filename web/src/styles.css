@@ -534,6 +534,42 @@ output.digital.dashboard-digital {
   max-width: min(980px, 100%);
 }
 
+.home-risk-details {
+  background: rgba(46, 168, 255, 0.08);
+  border: 1px solid rgba(46, 168, 255, 0.24);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 850;
+  max-width: min(720px, 100%);
+  padding: 6px 10px;
+}
+
+.home-risk-details > summary {
+  cursor: pointer;
+  list-style: none;
+  text-align: center;
+}
+
+.home-risk-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.home-risk-details > summary::after {
+  color: var(--accent);
+  content: " 開く";
+  font-size: 0.86em;
+  font-weight: 1000;
+}
+
+.home-risk-details[open] > summary {
+  margin-bottom: 8px;
+}
+
+.home-risk-details[open] > summary::after {
+  content: " 閉じる";
+}
+
 .home-risk-chips,
 .home-risk-actions {
   align-items: center;
@@ -2298,22 +2334,6 @@ tr.win td {
   height: 8px;
 }
 
-.admin-step-badge {
-  align-items: center;
-  background: #37afff;
-  border-radius: 999px;
-  color: #041326;
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: 0.9em;
-  font-weight: 1000;
-  justify-content: center;
-  line-height: 1;
-  min-height: 1.7em;
-  min-width: 1.7em;
-  padding: 0 0.42em;
-}
-
 .admin-step-field {
   background: rgba(46, 168, 255, 0.13);
   border: 1px solid rgba(46, 168, 255, 0.58);
@@ -2324,7 +2344,7 @@ tr.win td {
   padding: 12px;
 }
 
-.admin-step-field > span:not(.admin-step-badge) {
+.admin-step-field > span {
   display: inline-block;
   margin: 0 0 8px 6px;
 }
@@ -4969,11 +4989,6 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .admin-sticky-actions {
   background: rgba(247, 251, 255, 0.96);
   border-color: #b8c9de;
-}
-
-:root.venue-light-accent .admin-step-badge {
-  background: #0077c8;
-  color: #ffffff;
 }
 
 :root.venue-light-accent .admin-step-field {
