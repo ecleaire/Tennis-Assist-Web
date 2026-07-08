@@ -4256,10 +4256,13 @@ class Application {
     const gasState = sync.configured ? "ok" : "warn";
     const unsentState = sync.unsent ? "warn" : "ok";
     const onlineState = online ? "ok" : "warn";
+    const teamCount = this.records.teamOptions().length;
     const markup =
       `<details class="home-risk-details">` +
       `<summary>端末・接続情報</summary>` +
       `<div class="home-risk-chips">` +
+      `<span class="home-risk-chip">使用コート: ${escapeText(courtRangeLabel())}</span>` +
+      `<span class="home-risk-chip">チーム数: ${teamCount}</span>` +
       `<span class="home-risk-chip ok">${escapeText(device)} / v${escapeText(__APP_VERSION__)}</span>` +
       `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` +
       `<span class="home-risk-chip ${unsentState}">未送信 ${sync.unsent}件${sync.unsent ? ` / ${escapeText(sync.reason)}` : ""}</span>` +
@@ -4327,9 +4330,7 @@ class Application {
   private updateHomeOperationSummary(): void {
     const panel = document.getElementById("home-operation-summary");
     if (!panel) return;
-    const teamCount = this.records.teamOptions().length;
-    const markup = `<span>使用コート: ${escapeText(courtRangeLabel())}</span><span>チーム数: ${teamCount}</span>`;
-    if (panel.innerHTML !== markup) panel.innerHTML = markup;
+    if (panel.innerHTML) panel.innerHTML = "";
   }
 
   private async retryHomeUnsent(): Promise<void> {
