@@ -226,6 +226,10 @@ input:hover {
   border-color: var(--accent);
 }
 
+.button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
 .button.primary {
   background: #1b4f82;
   border-color: var(--accent);
@@ -1307,14 +1311,25 @@ body.operation-timer-active #timer-ten {
 
 .referee-controls .button {
   flex: 1 1 150px;
-  min-height: 50px;
+  font-size: clamp(1rem, 2.1vw, 1.22rem);
+  min-height: 58px;
 }
 
 .referee-controls .button.danger {
   background: #b83242;
   border-color: var(--danger);
   color: #fff;
-  font-weight: 800;
+  font-weight: 950;
+}
+
+.referee-controls .referee-primary-count {
+  font-size: clamp(1.18rem, 2.6vw, 1.58rem);
+  min-height: 72px;
+}
+
+#referee-reset {
+  flex-grow: 0.72;
+  opacity: 0.86;
 }
 
 body.referee-compact {
@@ -1350,13 +1365,17 @@ body.referee-compact .referee-time {
 body.referee-compact .referee-controls {
   align-items: stretch;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(112px, 0.68fr);
 }
 
 body.referee-compact .referee-controls .button {
-  min-height: 48px;
+  min-height: 58px;
   padding: 8px 10px;
   white-space: nowrap;
+}
+
+body.referee-compact .referee-controls .referee-primary-count {
+  min-height: 72px;
 }
 
 progress {
@@ -3425,13 +3444,18 @@ body.compact #timer-five {
   }
 
   .referee-bottom {
-    gap: 6px;
+    gap: 8px;
   }
 
   .referee-controls .button {
-    font-size: clamp(0.82rem, 1.9vw, 1rem);
-    min-height: 31px;
-    padding: 4px 8px;
+    font-size: clamp(0.92rem, 2.1vw, 1.08rem);
+    min-height: 48px;
+    padding: 8px 10px;
+  }
+
+  .referee-controls .referee-primary-count {
+    font-size: clamp(1.06rem, 2.45vw, 1.28rem);
+    min-height: 58px;
   }
 
   body.compact .timer-shell {
@@ -3528,8 +3552,13 @@ body.compact #timer-five {
   }
 
   body.referee-compact .referee-controls .button {
-    font-size: clamp(0.82rem, 2vw, 1rem);
-    min-height: 42px;
+    font-size: clamp(0.9rem, 2.35vw, 1.12rem);
+    min-height: 50px;
+  }
+
+  body.referee-compact .referee-controls .referee-primary-count {
+    font-size: clamp(1.08rem, 2.9vw, 1.36rem);
+    min-height: 58px;
   }
 }
 
@@ -4570,13 +4599,28 @@ html.phone-portrait .referee-time {
 
 html.phone-portrait .referee-controls {
   display: grid;
+  gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 html.phone-portrait .referee-controls .button {
-  min-height: 48px;
-  padding: 8px 9px;
+  border-radius: 14px;
+  font-size: clamp(1.06rem, 4vw, 1.34rem);
+  min-height: 64px;
+  padding: 12px 10px;
   white-space: nowrap;
+}
+
+html.phone-portrait .referee-controls .referee-primary-count {
+  font-size: clamp(1.25rem, 5.1vw, 1.7rem);
+  min-height: 84px;
+}
+
+html.phone-portrait #referee-reset {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 50px;
+  width: min(220px, 70%);
 }
 
 html.phone-portrait body.referee-compact .referee-shell {
@@ -4589,7 +4633,17 @@ html.phone-portrait body.referee-compact .referee-center {
 }
 
 html.phone-portrait body.referee-compact .referee-controls {
+  gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait body.referee-compact .referee-controls .referee-primary-count {
+  min-height: 88px;
+}
+
+html.phone-portrait body.referee-compact #referee-reset {
+  grid-column: 1 / -1;
+  min-height: 52px;
 }
 
 html.phone-portrait .team-import-actions {

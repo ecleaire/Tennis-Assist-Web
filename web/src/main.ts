@@ -1472,11 +1472,6 @@ class RefereeTimerController {
     this.total = seconds;
     this.remaining = seconds;
     this.activeLabel = label;
-    if (this.running) {
-      this.running = false;
-      this.render();
-      return;
-    }
     this.running = true;
     this.lastFrame = performance.now();
     this.render();
