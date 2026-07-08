@@ -324,6 +324,7 @@
                 <div class="import-actions history-import-actions">
                   <button id="history-export" class="button">CSV出力</button>
                   <button id="history-series-export" class="button">試合結果CSV出力</button>
+                  <button id="history-unsent-export" class="button">未送信バックアップCSV</button>
                   <button id="history-import" class="button">CSV読込</button>
                   <button id="history-sheet-import" class="button">URL読込</button>
                   <button id="history-sheet-scan" class="button">QR読込</button>
@@ -338,6 +339,7 @@
               <label>履歴検索チーム<select id="history-team"></select></label>
               <label>勝敗<select id="history-result"><option value="all">勝敗すべて</option><option value="win">勝利のみ</option><option value="loss">敗北のみ</option><option value="draw">引き分けのみ</option></select></label>
               <label>種類<select id="history-kind"><option value="all">すべて表示</option><option value="match">マッチ結果のみ</option><option value="series">試合結果のみ</option><option value="unsent">未送信のみ</option></select></label>
+              <label>未送信理由<select id="history-send-reason"><option value="all">すべて</option><option value="APIキー未入力">APIキー未入力</option><option value="GAS未接続">GAS未接続</option><option value="ネットワーク">ネットワーク</option><option value="APIキー不一致">APIキー不一致</option></select></label>
               <label>並び順<select id="history-sort"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
             </div>
             <div id="stats-cards" class="stats-grid"></div>
@@ -535,6 +537,10 @@
                     <option value="予備端末">予備端末</option>
                   </select>
                 </label>
+                <div class="toolbar">
+                  <button id="device-config-qr-show" class="button" type="button">端末設定QRを表示</button>
+                  <button id="device-config-qr-scan" class="button" type="button">端末設定QRを読込</button>
+                </div>
               </details>
               <details id="venue-color-setting" class="venue-color-setting admin-details nested-details hidden">
                 <summary>表示</summary>
@@ -549,6 +555,7 @@
               <details id="audio-check-details" class="admin-details nested-details">
                 <summary>音声</summary>
                 <p class="muted compact-note">本番前に端末音量、マナーモード、ブラウザ音声許可を確認してください。</p>
+                <p class="muted compact-note">端末本体の音量を上げ、マナーモードやブラウザの音声制限を事前に確認してください。</p>
                 <div class="toolbar audio-check-actions">
                   <button id="audio-test-thirty" class="button" type="button">30秒経過音</button>
                   <button id="audio-test-countdown" class="button" type="button">10カウント音声</button>
@@ -659,6 +666,18 @@
           <button id="qr-apply" class="button primary hidden" type="button">このURLを入力</button>
         </div>
       </article>
+    </dialog>
+
+    <dialog id="device-config-qr-dialog" class="dialog qr-dialog">
+      <form method="dialog">
+        <h2>端末設定QR</h2>
+        <p class="muted">予備端末で「端末設定QRを読込」から読み取ると、GAS URL、試合種別、タイマー設定、チームリスト、コート数、端末役割をコピーできます。APIキーは含めません。</p>
+        <img id="device-config-qr-image" class="device-config-qr-image" alt="端末設定QRコード" />
+        <textarea id="device-config-qr-text" class="device-config-qr-text" readonly aria-label="端末設定QRの内容"></textarea>
+        <div class="toolbar">
+          <button class="button primary" value="close">閉じる</button>
+        </div>
+      </form>
     </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>

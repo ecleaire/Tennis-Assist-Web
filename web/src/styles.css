@@ -957,21 +957,22 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   align-items: center;
   background: rgba(14, 35, 64, 0.88);
   border: 1px solid rgba(46, 168, 255, 0.35);
-  border-radius: 12px;
+  border-radius: 14px;
   display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(92px, 0.34fr) minmax(0, 1fr);
-  padding: 12px 14px;
+  gap: 12px;
+  grid-template-columns: minmax(112px, 0.3fr) minmax(0, 1fr);
+  padding: 15px 17px;
 }
 
 .start-check-list dt {
   color: var(--muted);
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
   font-weight: 900;
 }
 
 .start-check-list dd {
   color: var(--text);
-  font-size: clamp(1.12rem, 2.2vw, 1.46rem);
+  font-size: clamp(1.28rem, 2.7vw, 1.78rem);
   font-weight: 900;
   margin: 0;
 }
@@ -1015,7 +1016,7 @@ body:not(.operation-timer-returnable) #operation-timer-return {
 
 .start-check-team-card strong {
   color: var(--text);
-  font-size: clamp(1.35rem, 3vw, 2.15rem);
+  font-size: clamp(1.55rem, 3.4vw, 2.55rem);
   font-weight: 900;
   line-height: 1.2;
 }
@@ -2297,6 +2298,17 @@ tr.win td {
   font-weight: 900;
 }
 
+.sync-alert-role {
+  background: rgba(46, 168, 255, 0.16);
+  border: 1px solid rgba(46, 168, 255, 0.46);
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-size: 0.82rem;
+  margin-left: 8px;
+  padding: 3px 8px;
+}
+
 .sync-alert-item small {
   color: var(--muted);
   font-weight: 700;
@@ -2971,6 +2983,22 @@ tr.win td {
 
 .qr-hint {
   font-size: 0.92rem;
+}
+
+.device-config-qr-image {
+  background: #fff;
+  border-radius: 12px;
+  display: block;
+  margin: 14px auto;
+  max-width: min(280px, 100%);
+  padding: 10px;
+}
+
+.device-config-qr-text {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  min-height: 90px;
+  resize: vertical;
+  width: 100%;
 }
 
 .pre-wrap {

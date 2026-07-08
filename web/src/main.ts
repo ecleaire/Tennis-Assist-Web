@@ -409,6 +409,20 @@ function timerSettingSummary(setting: ExternalTimerSetting): string {
   return `${formatClock(setting.minSeconds)}-${formatClock(setting.maxSeconds)} / ${setting.stepSeconds}秒間隔`;
 }
 
+function encodePortablePayload(value: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return `RSA_CONFIG:${btoa(binary)}`;
+}
+
+function decodePortablePayload(value: string): unknown {
+  const encoded = value.trim().replace(/^RSA_CONFIG:/, "");
+  const binary = atob(encoded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+
 function deviceSource(): string {
   const width = Math.round(window.visualViewport?.width ?? window.innerWidth);
   const height = Math.round(window.visualViewport?.height ?? window.innerHeight);
@@ -1638,7 +1652,7 @@ class RecordsController {
     el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.returnHomeAfterCompletion());
     el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
     el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderHistory());
-    ["history-team", "history-result", "history-kind", "history-sort"].forEach((id) => {
+    ["history-team", "history-result", "history-kind", "history-sort", "history-send-reason"].forEach((id) => {
       el<HTMLSelectElement>(id).addEventListener("change", () => this.renderHistory());
     });
     el<HTMLButtonElement>("team-save").addEventListener("click", () => this.saveTeams());
@@ -1649,6 +1663,7 @@ class RecordsController {
     el<HTMLInputElement>("team-file").addEventListener("change", (event) => void this.importTeams(event));
     el<HTMLButtonElement>("history-export").addEventListener("click", () => this.exportHistory());
     el<HTMLButtonElement>("history-series-export").addEventListener("click", () => this.exportSeriesHistory());
+    el<HTMLButtonElement>("history-unsent-export").addEventListener("click", () => this.exportUnsentHistory());
     el<HTMLButtonElement>("history-import").addEventListener("click", () => el<HTMLInputElement>("history-file").click());
     el<HTMLButtonElement>("history-sheet-import").addEventListener("click", () => void this.importHistoryFromSpreadsheet());
     el<HTMLButtonElement>("history-sheet-scan").addEventListener("click", () => void this.importHistoryFromSpreadsheetQr());
@@ -1665,6 +1680,18 @@ class RecordsController {
   openHistoryView(): void {
     if (!this.historyViewDirty) return;
     this.renderHistory();
+  }
+
+  portableState(): { teams: string[]; courtCount: number | null } {
+    const savedCourtCount = Number(localStorage.getItem(this.courtCountStorageKey) || "");
+    return { teams: [...teams], courtCount: savedCourtCount || (activeCourtOptions.length < courtOptions.length ? activeCourtOptions.length : null) };
+  }
+
+  applyPortableState(value: unknown): void {
+    const data = (value && typeof value === "object" ? value : {}) as { teams?: unknown; courtCount?: unknown };
+    if (Array.isArray(data.teams) && data.teams.length >= 2) this.applyTeams(data.teams.map(String), true, `端末設定QRから${data.teams.length}チームを読み込みました。`);
+    const courtCount = Number(data.courtCount);
+    if (Number.isFinite(courtCount) && courtCount >= 1) this.applyCourtCount(courtCount);
   }
 
   private refreshHistoryView(): void {
@@ -2352,6 +2379,7 @@ class RecordsController {
     const team = statsTeam !== "チームを選択" ? statsTeam : el<HTMLSelectElement>("history-team").value;
     const result = el<HTMLSelectElement>("history-result").value;
     const kind = el<HTMLSelectElement>("history-kind").value;
+    const sendReasonFilter = el<HTMLSelectElement>("history-send-reason").value;
     const since = this.historySince();
     let usedFallback = false;
     let visible = this.records.filter((record) => {
@@ -2360,6 +2388,10 @@ class RecordsController {
       if (kind === "match" && record.recordKind !== "マッチ") return false;
       if (kind === "series" && record.recordKind !== "試合結果") return false;
       if (kind === "unsent" && !(record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"))) return false;
+      if (sendReasonFilter !== "all") {
+        if (record.recordKind !== "試合結果" || (record.sendStatus !== "pending" && record.sendStatus !== "failed")) return false;
+        if (this.sendIssueReason(AdminController.settings(), record.sendError || "") !== sendReasonFilter) return false;
+      }
       if (result === "all") return true;
       const winner = record.overallWinner || record.winner;
       if (team === "すべてのチーム") return result === "draw" ? winner === "引き分け" : true;
@@ -2427,10 +2459,10 @@ class RecordsController {
     list.replaceChildren(...targets.map((record) => {
       const item = document.createElement("article");
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
-      const role = record.deviceRole ? `${record.deviceRole} / ` : "";
-      const device = `${role}${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      const role = record.deviceRole ? `<b class="sync-alert-role">${escapeText(record.deviceRole)}</b>` : "";
+      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
       const reason = this.sendIssueReason(AdminController.settings(), record.sendError || issue);
-      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合 / ${escapeText(device)} / ${escapeText(reason)}</small>`;
+      item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}${role}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合 / ${escapeText(device)} / ${escapeText(reason)}</small>`;
       const retry = document.createElement("button");
       retry.className = "button tiny sync-alert-retry";
       retry.textContent = "1件再送信";
@@ -2686,6 +2718,21 @@ class RecordsController {
     link.click();
     URL.revokeObjectURL(link.href);
     el("history-status").textContent = `試合結果 ${seriesRecords.length}件をCSVに保存しました。`;
+  }
+
+  private exportUnsentHistory(): void {
+    const unsentRecords = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
+    if (!unsentRecords.length) {
+      el("history-status").textContent = "バックアップできる未送信の試合結果はありません。";
+      return;
+    }
+    const text = "\uFEFF" + [csvColumns.map(csvEscape).join(","), ...[...unsentRecords].reverse().map((record) => csvRow(record).map(csvEscape).join(","))].join("\r\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    link.download = `tennis_assist_unsent_backup_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    el("history-status").textContent = `未送信の試合結果 ${unsentRecords.length}件をバックアップCSVに保存しました。`;
   }
 
   private async importHistory(event: Event): Promise<void> {
@@ -3304,6 +3351,8 @@ class AdminController {
     private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
     private readonly syncSummaryProvider?: () => { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string },
+    private readonly portableStateProvider?: () => unknown,
+    private readonly portableStateApplier?: (value: unknown) => void,
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
@@ -3332,6 +3381,8 @@ class AdminController {
     el<HTMLButtonElement>("audio-test-thirty").addEventListener("click", () => void this.testAudioCue("thirty"));
     el<HTMLButtonElement>("audio-test-countdown").addEventListener("click", () => void this.testAudioCue("countdown"));
     el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
+    el<HTMLButtonElement>("device-config-qr-show").addEventListener("click", () => this.showDeviceConfigQr());
+    el<HTMLButtonElement>("device-config-qr-scan").addEventListener("click", () => void this.scanDeviceConfigQr());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
@@ -3691,6 +3742,59 @@ class AdminController {
     this.connectionVerified = false;
     this.updateConnectionCard();
     el("gas-status").textContent = "QRコードからURLを入力しました。設定を保存するかテスト送信で確認してください。";
+  }
+
+  private showDeviceConfigQr(): void {
+    const settings = AdminController.settings();
+    const payload = encodePortablePayload({
+      app: "RoboSports Assist",
+      version: 1,
+      admin: {
+        gasUrl: settings.gasUrl,
+        sendEnabled: settings.sendEnabled,
+        accentMode: settings.accentMode,
+        matchType: settings.matchType,
+        deviceRole: settings.deviceRole,
+      },
+      timerSetting: AdminController.timerSetting(),
+      records: this.portableStateProvider?.() ?? {},
+    });
+    el<HTMLImageElement>("device-config-qr-image").src = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(payload)}`;
+    el<HTMLTextAreaElement>("device-config-qr-text").value = payload;
+    el<HTMLDialogElement>("device-config-qr-dialog").showModal();
+  }
+
+  private async scanDeviceConfigQr(): Promise<void> {
+    const scanned = await this.qrScanner.scan({
+      title: "端末設定QR読込",
+      hint: "RoboSports Assist の端末設定QRを読み取ってください。APIキーは含まれません。",
+      applyLabel: "この設定を読込",
+      validator: (value) => value.trim().startsWith("RSA_CONFIG:"),
+      invalidMessage: "端末設定QRではありません。",
+    });
+    if (!scanned) return;
+    try {
+      const parsed = decodePortablePayload(scanned) as { admin?: Partial<AdminSettings>; timerSetting?: unknown; records?: unknown };
+      const settings = AdminController.settings();
+      const admin = parsed.admin ?? {};
+      settings.gasUrl = typeof admin.gasUrl === "string" ? admin.gasUrl : settings.gasUrl;
+      settings.sendEnabled = admin.sendEnabled !== false;
+      settings.accentMode = AdminController.normalizeAccentMode(admin.accentMode);
+      settings.matchType = admin.matchType === "公式試合" ? "公式試合" : "練習試合";
+      settings.deviceRole = normalizeDeviceRole(admin.deviceRole);
+      localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+      if (parsed.timerSetting) {
+        const timerSetting = normalizeExternalTimerSetting(parsed.timerSetting, "manual");
+        localStorage.setItem(AdminController.timerSettingStorageKey, JSON.stringify(timerSetting));
+        this.onTimerSettingChanged?.(timerSetting);
+      }
+      this.portableStateApplier?.(parsed.records);
+      this.populate();
+      this.onModeChanged?.(this.mode, AdminController.settings());
+      el("gas-status").textContent = "端末設定QRから設定を読み込みました。APIキーはこの端末で入力してください。";
+    } catch {
+      el("gas-status").textContent = "端末設定QRを読み込めませんでした。QRコードの内容を確認してください。";
+    }
   }
 
   private isGasDeploymentUrl(value: string): boolean {
@@ -4788,6 +4892,8 @@ class Application {
       (mode, settings) => this.applyAdminMode(mode, settings),
       (setting) => this.applyTimerSetting(setting),
       () => this.records.syncSummary(),
+      () => this.records.portableState(),
+      (value) => this.records.applyPortableState(value),
     );
     this.secret = true;
     this.linksClicks = 0;
