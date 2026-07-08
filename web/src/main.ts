@@ -537,7 +537,7 @@ async function ensureGasSuccess(response: Response): Promise<void> {
 class TimerAudioCueController {
   private context: AudioContext | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
-  private readonly volumeBoost = 1.45;
+  private readonly volumeBoost = 2;
   private countdownBuffer: AudioBuffer | null = null;
   private thirtyBuffer: AudioBuffer | null = null;
   private loading: Promise<void> | null = null;
@@ -551,7 +551,7 @@ class TimerAudioCueController {
   }
 
   playThirtySeconds(): void {
-    if (!this.playBuffer(this.thirtyBuffer)) this.beep(1175, 0.18, "sine", 0.22);
+    if (!this.playBuffer(this.thirtyBuffer)) this.beep(1175, 0.18, "sine", 0.32);
   }
 
   playFinish(): void {
@@ -560,12 +560,12 @@ class TimerAudioCueController {
 
   playCountdown(remaining = 10): void {
     const offset = this.countdownOffset(remaining);
-    if (!this.playBuffer(this.countdownBuffer, offset)) this.beep(1200, 0.08, "sine", 0.18);
+    if (!this.playBuffer(this.countdownBuffer, offset)) this.beep(1200, 0.08, "sine", 0.28);
   }
 
   playFiveCountTest(): void {
     [0, 0.18, 0.36, 0.54, 0.72].forEach((delay, index) => {
-      window.setTimeout(() => this.beep(880 + index * 45, 0.1, "sine", 0.2), delay * 1000);
+      window.setTimeout(() => this.beep(880 + index * 45, 0.1, "sine", 0.3), delay * 1000);
     });
   }
 
@@ -735,13 +735,14 @@ class TimerController {
   private coldUntil = 0;
   private subRemaining = 0;
   private subCaption = "";
-  private randomStep: number | "manual" | "tokyo" = 5;
+  private randomStep: number | "manual" | "tokyo" | "gas" = 5;
   private manualSeconds = 120;
   private fixedSeconds: number | null = null;
   private externalTimerSetting: ExternalTimerSetting | null = null;
+  private dashboardUsesExternalSetting = false;
+  private forceExternalForNextReset = false;
   private initialReset = true;
   private secret = false;
-  private hyogo = false;
   private stateVersion = 0;
   private autoResetTimer = 0;
   private dashboardOverride: string | null = null;
@@ -760,7 +761,10 @@ class TimerController {
     private readonly displayFullscreenExited: () => void = () => {},
   ) {
     this.startButton.addEventListener("click", () => void this.toggle());
-    this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => void this.toggle()));
+    this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => {
+      if (this.dashboardUsesExternalSetting && !this.started && !this.running) this.prepare(true);
+      void this.toggle();
+    }));
     el<HTMLButtonElement>("timer-end").addEventListener("click", () => this.requestEnd());
     els<HTMLButtonElement>("dashboard-timer-end").forEach((button) => button.addEventListener("click", () => this.requestEnd()));
     el<HTMLButtonElement>("timer-end-confirm").addEventListener("click", () => this.forceEndFromConfirm());
@@ -768,14 +772,14 @@ class TimerController {
       if (this.endConfirmDialog.returnValue !== "default") this.endWarningArmed = false;
     });
     this.resetButton.addEventListener("click", () => this.reset());
-    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => button.addEventListener("click", () => this.reset()));
+    els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => button.addEventListener("click", () => this.prepare(this.dashboardUsesExternalSetting)));
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => void this.toggleFullscreen());
     el<HTMLButtonElement>("timer-ten").addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント"));
     el<HTMLButtonElement>("timer-five").addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール"));
     els<HTMLButtonElement>("dashboard-timer-ten").forEach((button) => button.addEventListener("click", () => this.toggleSubTimer(10, "コールドカウント")));
     els<HTMLButtonElement>("dashboard-timer-five").forEach((button) => button.addEventListener("click", () => this.toggleSubTimer(5, "オーバーボール")));
     this.step.addEventListener("change", () => {
-      this.dashboardSteps.forEach((step) => { step.value = this.step.value; });
+      if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = this.step.value; });
       this.chooseStep();
     });
     this.dashboardSteps.forEach((step) => step.addEventListener("change", () => {
@@ -840,18 +844,26 @@ class TimerController {
   }
 
   setHyogoMode(active: boolean): void {
-    this.hyogo = active;
     if (active) {
       this.randomStep = 5;
       this.step.value = "5";
-      this.dashboardSteps.forEach((step) => { step.value = "5"; });
+      if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = "5"; });
     }
     if (!this.running && !this.started) this.reset();
   }
 
   setExternalTimerSetting(setting: ExternalTimerSetting | null): void {
     this.externalTimerSetting = setting;
-    if (!this.running && !this.started && this.randomStep !== "tokyo") this.reset();
+    if (!this.running && !this.started && (this.randomStep === "gas" || this.dashboardUsesExternalSetting)) this.prepare(this.dashboardUsesExternalSetting);
+  }
+
+  setDashboardUsesExternalSetting(active: boolean): void {
+    this.dashboardUsesExternalSetting = active;
+    this.dashboardSteps.forEach((step) => {
+      step.value = active ? "gas" : this.step.value;
+      step.disabled = active || this.running;
+    });
+    if (active && !this.running && !this.started) this.prepare(true);
   }
 
   setTokyoClockModeAvailable(active: boolean): void {
@@ -874,7 +886,8 @@ class TimerController {
     }
   }
 
-  prepare(): void {
+  prepare(useExternalSetting = false): void {
+    this.forceExternalForNextReset = useExternalSetting;
     this.reset();
   }
 
@@ -959,10 +972,17 @@ class TimerController {
       this.endAt = 0;
       this.audioCues.stopScheduled();
       this.mode.textContent = "東京現在時刻";
-      this.dashboardSteps.forEach((step) => { step.value = "tokyo"; });
+      if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = "tokyo"; });
       this.syncControls();
       this.render();
       void this.releaseWakeLock();
+      return;
+    }
+    if (this.step.value === "gas") {
+      this.fixedSeconds = null;
+      this.randomStep = "gas";
+      if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = "gas"; });
+      this.reset();
       return;
     }
     if (this.step.value.startsWith("preset-")) {
@@ -990,22 +1010,19 @@ class TimerController {
     this.manualSeconds = Math.max(1, minutes * 60 + seconds);
     this.randomStep = "manual";
     this.step.value = "manual";
-    this.dashboardSteps.forEach((step) => { step.value = "manual"; });
+    if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = "manual"; });
     this.reset();
   }
 
   private generatedDuration(): number {
     if (this.fixedSeconds !== null) return this.fixedSeconds;
     if (this.randomStep === "tokyo") return 120;
-    if (this.externalTimerSetting) {
-      if (this.externalTimerSetting.mode === "fixed") return this.externalTimerSetting.fixedSeconds;
-      const { minSeconds, maxSeconds, stepSeconds } = this.externalTimerSetting;
+    if (this.forceExternalForNextReset || this.randomStep === "gas") {
+      const setting = this.externalTimerSetting ?? defaultExternalTimerSetting("default");
+      if (setting.mode === "fixed") return setting.fixedSeconds;
+      const { minSeconds, maxSeconds, stepSeconds } = setting;
       const count = Math.floor((maxSeconds - minSeconds) / stepSeconds) + 1;
       return minSeconds + Math.floor(Math.random() * count) * stepSeconds;
-    }
-    if (this.hyogo) {
-      const candidates = [90, 95, 100, 105, 110, 115, 120];
-      return candidates[Math.floor(Math.random() * candidates.length)] ?? 120;
     }
     if (this.randomStep === "manual") return this.manualSeconds;
     const count = Math.floor((120 - 60) / this.randomStep) + 1;
@@ -1029,11 +1046,13 @@ class TimerController {
       this.total = 120;
       this.remaining = 120;
       this.mode.textContent = "東京現在時刻";
+      this.forceExternalForNextReset = false;
       this.syncControls();
       this.render();
       return;
     }
     this.total = this.initialReset ? 120 : this.generatedDuration();
+    this.forceExternalForNextReset = false;
     this.initialReset = false;
     this.remaining = this.total;
     this.mode.textContent = "試合準備完了";
@@ -1291,7 +1310,7 @@ class TimerController {
     this.resetButton.disabled = this.running || clockMode;
     els<HTMLButtonElement>("dashboard-timer-reset").forEach((button) => { button.disabled = this.running || clockMode; });
     this.step.disabled = this.running;
-    this.dashboardSteps.forEach((step) => { step.disabled = this.running; });
+    this.dashboardSteps.forEach((step) => { step.disabled = this.dashboardUsesExternalSetting || this.running; });
   }
 
   private clearStopWarning(): void {
@@ -3417,7 +3436,7 @@ class AdminController {
         password === "mie" || password === "MIE" || password === "mie_judge" ? "mie" :
           password === "rsam" ? "rsam" :
             "standard";
-    el("admin-login-context").textContent = `${this.adminContextLabel(password)}で管理画面にログインしています。APIキーを入力してください。`;
+    el("admin-login-context").textContent = `${this.adminContextLabel(password)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
@@ -3428,7 +3447,7 @@ class AdminController {
     this.onModeChanged?.(this.mode, AdminController.settings());
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
-    if (!managedUrlApplied) el("gas-status").textContent = "管理者設定を表示しました。APIキーを入力してください。";
+    if (!managedUrlApplied) el("gas-status").textContent = "";
   }
 
   private applyManagedGasUrl(password: string): boolean {
@@ -3439,7 +3458,7 @@ class AdminController {
     const current = gasUrlInput.value.trim();
     const isAutoManaged = gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
     if (!isAutoManaged) {
-      el("gas-status").textContent = "手動指定のGAS URLを保持しています。";
+      el("gas-status").textContent = "手動指定のGAS URLを使用しています。";
       return true;
     }
     gasUrlInput.value = gasUrl;
@@ -3450,7 +3469,7 @@ class AdminController {
     settings.gasConnectedAt = "";
     settings.gasConnectedUrl = "";
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
-    el("gas-status").textContent = `${config.label}用GAS Web アプリ URLを自動入力しました。APIキーを入力してください。URLを手動で変更する場合は「GAS Web アプリ URL」を開いてください。`;
+    el("gas-status").textContent = `${config.label}用GAS URLを設定済み。手動変更は「GAS Web アプリ URL」から行えます。`;
     this.updateConnectionCard();
     return true;
   }
@@ -3919,6 +3938,7 @@ class Application {
       () => this.restoreFullscreenReturn("timer"),
     );
     this.timer.setExternalTimerSetting(AdminController.timerSetting());
+    this.timer.setDashboardUsesExternalSetting(this.variant.id === "venue");
     this.refereeTimer = new RefereeTimerController();
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
@@ -4087,7 +4107,7 @@ class Application {
     });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
       this.timer.setDashboardOverride(null);
-      this.timer.prepare();
+      this.timer.prepare(true);
       setText(els("dashboard-time"), this.timer.displayText());
       this.setOperationDrawButtonsLocked(true, true);
       this.setOperationDrawStage(3);
@@ -4671,7 +4691,7 @@ class Application {
       this.operationMatch = match || this.records.currentMatchNumber();
       this.setFlow(this.operationMatch, "抽選準備中");
       this.balls.beginWorkflow(this.operationMatch);
-      this.timer.prepare();
+      this.timer.prepare(true);
       this.show(this.operationScreen());
       this.showOperationStep("draw");
       return;
