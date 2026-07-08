@@ -2337,6 +2337,24 @@ tr.win td {
   min-height: 56px;
 }
 
+.admin-device-role-field select {
+  border-color: rgba(46, 168, 255, 0.46);
+  color: var(--text);
+  font-size: 1.02rem;
+  font-weight: 850;
+  min-height: 52px;
+}
+
+.audio-check-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.audio-check-actions .button {
+  min-height: 48px;
+}
+
 .admin-login-context {
   background: rgba(46, 168, 255, 0.13);
   border: 1px solid rgba(46, 168, 255, 0.48);
@@ -3424,6 +3442,10 @@ body.compact #timer-five {
 }
 
 @media (max-width: 760px) {
+  .audio-check-actions {
+    grid-template-columns: 1fr;
+  }
+
   .operation-step {
     min-height: calc(var(--viewport-height) - 122px);
     padding: 14px;

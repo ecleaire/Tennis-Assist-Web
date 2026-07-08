@@ -7,6 +7,7 @@ type Category = "【終了・その時点で採点】（通常の試合停止）
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 type MatchType = "練習試合" | "公式試合";
 type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
+type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "Dコート用" | "Eコート用" | "Fコート用" | "Gコート用" | "Hコート用" | "本部用" | "予備端末";
 
 interface MatchRecord {
   recordId: string;
@@ -43,6 +44,7 @@ interface MatchRecord {
   sendStatus?: "pending" | "sent" | "failed" | "local-only";
   sendError?: string;
   deviceId?: string;
+  deviceRole?: DeviceRole;
   appVersion?: string;
 }
 
@@ -94,6 +96,7 @@ interface AdminSettings {
   sendEnabled: boolean;
   accentMode: "standard" | "admin" | "light";
   matchType: MatchType;
+  deviceRole: DeviceRole;
   gasConnectedAt?: string;
   gasConnectedUrl?: string;
   dayCheckAt?: string;
@@ -181,6 +184,15 @@ const appVariants: Record<AppVariant, AppVariantConfig> = {
   },
 };
 
+const featureScopes = {
+  common: ["timer", "balls", "records", "rules", "links", "admin-base"],
+  venueOnly: ["operation-flow", "home-unsent-alert", "venue-title"],
+  generalOnly: ["news", "tokyo-clock", "practice-log"],
+  adminOnly: ["gas-settings", "timer-settings", "device-role", "audio-check"],
+} as const;
+
+const deviceRoleOptions: DeviceRole[] = ["", "Aコート用", "Bコート用", "Cコート用", "Dコート用", "Eコート用", "Fコート用", "Gコート用", "Hコート用", "本部用", "予備端末"];
+
 const managedSheets = {
   hyogo: "https://docs.google.com/spreadsheets/d/1pxTMvdcpTMFeSfroOeTyh2hziLgfAvLxe0Nh79sMk_0/edit?usp=sharing",
   mie: "https://docs.google.com/spreadsheets/d/185jPLjc-nBri49aOr-CVw1baUI1qaxqjgcWLRS2-oxo/edit?usp=sharing",
@@ -204,6 +216,7 @@ const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
 const managedGasUrls = new Set(Array.from(managedGasUrlsByPassword.values(), (config) => config.url));
 
 function currentAppVariant(): AppVariantConfig {
+  void featureScopes;
   return window.location.pathname.split("/").filter(Boolean).includes("general") ? appVariants.general : appVariants.venue;
 }
 
@@ -337,6 +350,15 @@ function shortDeviceId(): string {
   const generated = `端末-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   localStorage.setItem(key, generated);
   return generated;
+}
+
+function normalizeDeviceRole(value: unknown): DeviceRole {
+  return deviceRoleOptions.includes(value as DeviceRole) ? value as DeviceRole : "";
+}
+
+function deviceLabel(settings = AdminController.settings()): string {
+  const role = normalizeDeviceRole(settings.deviceRole);
+  return role ? `${role} / ${shortDeviceId()}` : shortDeviceId();
 }
 
 function formatClock(seconds: number): string {
@@ -515,6 +537,7 @@ async function ensureGasSuccess(response: Response): Promise<void> {
 class TimerAudioCueController {
   private context: AudioContext | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
+  private readonly volumeBoost = 1.45;
   private countdownBuffer: AudioBuffer | null = null;
   private thirtyBuffer: AudioBuffer | null = null;
   private loading: Promise<void> | null = null;
@@ -528,7 +551,7 @@ class TimerAudioCueController {
   }
 
   playThirtySeconds(): void {
-    if (!this.playBuffer(this.thirtyBuffer)) this.beep(1175, 0.18, "sine", 0.16);
+    if (!this.playBuffer(this.thirtyBuffer)) this.beep(1175, 0.18, "sine", 0.22);
   }
 
   playFinish(): void {
@@ -537,7 +560,28 @@ class TimerAudioCueController {
 
   playCountdown(remaining = 10): void {
     const offset = this.countdownOffset(remaining);
-    if (!this.playBuffer(this.countdownBuffer, offset)) this.beep(1200, 0.08, "sine", 0.12);
+    if (!this.playBuffer(this.countdownBuffer, offset)) this.beep(1200, 0.08, "sine", 0.18);
+  }
+
+  playFiveCountTest(): void {
+    [0, 0.18, 0.36, 0.54, 0.72].forEach((delay, index) => {
+      window.setTimeout(() => this.beep(880 + index * 45, 0.1, "sine", 0.2), delay * 1000);
+    });
+  }
+
+  async testThirtySeconds(): Promise<void> {
+    await this.prepare();
+    this.playThirtySeconds();
+  }
+
+  async testCountdown(): Promise<void> {
+    await this.prepare();
+    this.playCountdown(10);
+  }
+
+  async testFiveCount(): Promise<void> {
+    await this.prepare();
+    this.playFiveCountTest();
   }
 
   scheduleMainCues(remaining: number, total: number): boolean {
@@ -614,8 +658,11 @@ class TimerAudioCueController {
     const context = this.audioContext();
     if (!context || !buffer) return false;
     const source = context.createBufferSource();
+    const gain = context.createGain();
     source.buffer = buffer;
-    source.connect(context.destination);
+    gain.gain.value = this.volumeBoost;
+    source.connect(gain);
+    gain.connect(context.destination);
     source.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.05)));
     return true;
   }
@@ -624,8 +671,11 @@ class TimerAudioCueController {
     const context = this.audioContext();
     if (!context) return;
     const source = context.createBufferSource();
+    const gain = context.createGain();
     source.buffer = buffer;
-    source.connect(context.destination);
+    gain.gain.value = this.volumeBoost;
+    source.connect(gain);
+    gain.connect(context.destination);
     source.addEventListener("ended", () => {
       const index = this.scheduledSources.indexOf(source);
       if (index >= 0) this.scheduledSources.splice(index, 1);
@@ -1853,6 +1903,7 @@ class RecordsController {
       recordId: `${this.series.id}_match_${matchNumber}`,
       timestamp: timestamp(),
       deviceId: shortDeviceId(),
+      deviceRole: AdminController.settings().deviceRole,
       appVersion: __APP_VERSION__,
       recordKind: "マッチ",
       seriesId: this.series.id,
@@ -2181,6 +2232,7 @@ class RecordsController {
       recordId: `${this.series.id}_result`,
       timestamp: timestamp(),
       deviceId: shortDeviceId(),
+      deviceRole: AdminController.settings().deviceRole,
       appVersion: __APP_VERSION__,
       recordKind: "試合結果",
       seriesId: this.series.id,
@@ -2290,7 +2342,8 @@ class RecordsController {
       const number = record.recordKind === "マッチ" ? `第${record.matchNumber}マッチ` : "試合結果";
       const winner = record.overallWinner || record.winner;
       const sendState = record.recordKind === "試合結果" ? this.sendStateLabel(record.sendStatus) : "";
-      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      const role = record.deviceRole ? `${record.deviceRole} / ` : "";
+      const device = `${role}${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
       card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number} | ${escapeText(device)}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}`;
       if (record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
         const retry = document.createElement("button");
@@ -2331,7 +2384,8 @@ class RecordsController {
     list.replaceChildren(...targets.map((record) => {
       const item = document.createElement("article");
       item.className = `sync-alert-item ${record.sendStatus ?? ""}`;
-      const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
+      const role = record.deviceRole ? `${record.deviceRole} / ` : "";
+      const device = `${role}${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
       const reason = record.sendError || issue;
       item.innerHTML = `<strong>${record.sendStatus === "pending" ? "未送信" : "送信失敗"}</strong><span>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</span><small>${escapeText(record.timestamp)} / ${escapeText(record.court)} 第${record.seriesNumber}試合 / ${escapeText(device)} / ${escapeText(reason)}</small>`;
       const retry = document.createElement("button");
@@ -3191,6 +3245,7 @@ class AdminController {
   private mode: AdminMode = "standard";
   private connectionVerified = false;
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
+  private readonly audioCheck = new TimerAudioCueController();
 
   constructor(
     private readonly qrScanner: QrScanner,
@@ -3222,6 +3277,10 @@ class AdminController {
     el<HTMLButtonElement>("timer-setting-apply").addEventListener("click", () => this.applyManualTimerSetting());
     el<HTMLButtonElement>("timer-setting-clear").addEventListener("click", () => this.clearTimerSetting());
     el<HTMLSelectElement>("timer-setting-mode").addEventListener("change", () => this.updateTimerSettingModeFields());
+    el<HTMLSelectElement>("device-role").addEventListener("change", () => this.save());
+    el<HTMLButtonElement>("audio-test-thirty").addEventListener("click", () => void this.testAudioCue("thirty"));
+    el<HTMLButtonElement>("audio-test-countdown").addEventListener("click", () => void this.testAudioCue("countdown"));
+    el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
@@ -3249,12 +3308,13 @@ class AdminController {
         sendEnabled: parsed.sendEnabled !== false,
         accentMode,
         matchType,
+        deviceRole: normalizeDeviceRole(parsed.deviceRole),
         gasConnectedAt: parsed.gasConnectedAt,
         gasConnectedUrl: parsed.gasConnectedUrl,
         dayCheckAt: parsed.dayCheckAt,
       };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合" };
+      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合", deviceRole: "" };
     }
   }
 
@@ -3285,6 +3345,7 @@ class AdminController {
     const colorSelect = el<HTMLSelectElement>("venue-color");
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
+    el<HTMLSelectElement>("device-role").value = normalizeDeviceRole(settings.deviceRole);
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
     this.updateConnectionCard();
@@ -3401,6 +3462,7 @@ class AdminController {
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
       accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
+      deviceRole: normalizeDeviceRole(el<HTMLSelectElement>("device-role").value),
       gasConnectedAt: AdminController.settings().gasConnectedAt,
       gasConnectedUrl: AdminController.settings().gasConnectedUrl,
       dayCheckAt: AdminController.settings().dayCheckAt,
@@ -3410,6 +3472,18 @@ class AdminController {
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
     this.updateConnectionCard();
     el("gas-status").textContent = "この端末に設定を保存しました。";
+  }
+
+  private async testAudioCue(kind: "thirty" | "countdown" | "five"): Promise<void> {
+    const label = kind === "thirty" ? "30秒経過音" : kind === "countdown" ? "10カウント音声" : "5カウント操作";
+    el("gas-status").textContent = `${label}を再生しています。聞こえない場合は端末音量、マナーモード、ブラウザ音声許可を確認してください。`;
+    try {
+      if (kind === "thirty") await this.audioCheck.testThirtySeconds();
+      else if (kind === "countdown") await this.audioCheck.testCountdown();
+      else await this.audioCheck.testFiveCount();
+    } catch {
+      el("gas-status").textContent = `${label}を再生できませんでした。ブラウザの音声許可を確認してください。`;
+    }
   }
 
   private applyColor(): void {
@@ -4175,7 +4249,7 @@ class Application {
     if (!panel) return;
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
-    const device = shortDeviceId();
+    const device = deviceLabel(settings);
     const online = navigator.onLine;
     const checked = settings.dayCheckAt ? `最終チェック ${settings.dayCheckAt.slice(5, 16).replace("-", "/")}` : "当日チェック未実行";
     const gas = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : "GAS未接続";
