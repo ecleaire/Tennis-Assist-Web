@@ -557,6 +557,7 @@ async function ensureGasSuccess(response: Response): Promise<void> {
 class TimerAudioCueController {
   private context: AudioContext | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
+  private readonly delayedCueTimers: number[] = [];
   private readonly volumeBoost = 2;
   private countdownBuffer: AudioBuffer | null = null;
   private thirtyBuffer: AudioBuffer | null = null;
@@ -585,21 +586,29 @@ class TimerAudioCueController {
 
   playFiveCountTest(): void {
     [0, 0.18, 0.36, 0.54, 0.72].forEach((delay, index) => {
-      window.setTimeout(() => this.beep(880 + index * 45, 0.1, "sine", 0.3), delay * 1000);
+      const timer = window.setTimeout(() => {
+        const timerIndex = this.delayedCueTimers.indexOf(timer);
+        if (timerIndex >= 0) this.delayedCueTimers.splice(timerIndex, 1);
+        this.beep(880 + index * 45, 0.1, "sine", 0.3);
+      }, delay * 1000);
+      this.delayedCueTimers.push(timer);
     });
   }
 
   async testThirtySeconds(): Promise<void> {
+    this.stopScheduled();
     await this.prepare();
     this.playThirtySeconds();
   }
 
   async testCountdown(): Promise<void> {
+    this.stopScheduled();
     await this.prepare();
     this.playCountdown(10);
   }
 
   async testFiveCount(): Promise<void> {
+    this.stopScheduled();
     await this.prepare();
     this.playFiveCountTest();
   }
@@ -625,6 +634,9 @@ class TimerAudioCueController {
   }
 
   stopScheduled(): void {
+    for (const timer of this.delayedCueTimers.splice(0)) {
+      window.clearTimeout(timer);
+    }
     for (const source of this.scheduledSources.splice(0)) {
       try {
         source.stop();
@@ -683,6 +695,7 @@ class TimerAudioCueController {
     gain.gain.value = this.volumeBoost;
     source.connect(gain);
     gain.connect(context.destination);
+    this.trackSource(source);
     source.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.05)));
     return true;
   }
@@ -696,13 +709,8 @@ class TimerAudioCueController {
     gain.gain.value = this.volumeBoost;
     source.connect(gain);
     gain.connect(context.destination);
-    source.addEventListener("ended", () => {
-      const index = this.scheduledSources.indexOf(source);
-      if (index >= 0) this.scheduledSources.splice(index, 1);
-      if (this.scheduledSources.length === 0) this.scheduled = false;
-    }, { once: true });
+    this.trackSource(source);
     source.start(Math.max(context.currentTime, when), Math.min(offset, Math.max(0, buffer.duration - 0.05)));
-    this.scheduledSources.push(source);
   }
 
   private countdownOffset(remaining: number): number {
@@ -722,8 +730,18 @@ class TimerAudioCueController {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     oscillator.connect(gain);
     gain.connect(context.destination);
+    this.trackSource(oscillator);
     oscillator.start(now);
     oscillator.stop(now + duration + 0.02);
+  }
+
+  private trackSource(source: AudioScheduledSourceNode): void {
+    source.addEventListener("ended", () => {
+      const index = this.scheduledSources.indexOf(source);
+      if (index >= 0) this.scheduledSources.splice(index, 1);
+      if (this.scheduledSources.length === 0) this.scheduled = false;
+    }, { once: true });
+    this.scheduledSources.push(source);
   }
 }
 
