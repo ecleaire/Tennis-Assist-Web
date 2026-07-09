@@ -14,7 +14,7 @@ const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 function getApiKeys(props) {
   const all = props.getProperties();
   return Object.keys(all)
-    .filter(function (name) { return /^API_KEY/.test(name); })
+    .filter(function (name) { return /^API_KEY/i.test(name); })
     .map(function (name) { return String(all[name] || '').trim(); })
     .filter(Boolean);
 }
@@ -24,9 +24,13 @@ function hasAnyApiKey(props) {
 }
 
 function isValidApiKey(props, input) {
-  const apiKey = String(input || '').trim();
+  const apiKey = normalizeApiKey(input);
   if (!apiKey) return false;
-  return getApiKeys(props).indexOf(apiKey) >= 0;
+  return getApiKeys(props).map(normalizeApiKey).indexOf(apiKey) >= 0;
+}
+
+function normalizeApiKey(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function doGet(e) {

@@ -201,12 +201,9 @@ const managedSheets = {
 } as const;
 
 const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
-  ["HYOGO", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec", spreadsheetUrl: managedSheets.hyogo }],
   ["hyogo", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec", spreadsheetUrl: managedSheets.hyogo }],
   ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
-  ["MIE", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
   ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
-  ["JUDGE", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
   ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
   ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
   ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
@@ -3357,7 +3354,7 @@ class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "JUDGE", "judge", "HYOGO", "hyogo", "mie", "MIE", "mie_judge"]);
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "hyogo", "mie", "mie_judge"]);
   private mode: AdminMode = "standard";
   private connectionVerified = false;
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
@@ -3525,26 +3522,27 @@ class AdminController {
 
   private async unlock(): Promise<void> {
     const password = el<HTMLInputElement>("admin-password").value;
+    const normalizedPassword = AdminController.normalizeAdminPassword(password);
     const encoded = new TextEncoder().encode(password);
     const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", encoded));
     const digest = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-    if (digest !== AdminController.gateHash && !AdminController.plainPasswords.has(password)) {
+    if (digest !== AdminController.gateHash && !AdminController.plainPasswords.has(normalizedPassword)) {
       el("gas-status").textContent = "パスワードを確認してください。";
       return;
     }
     this.mode =
-      password === "HYOGO" || password === "hyogo" ? "hyogo" :
-        password === "mie" || password === "MIE" || password === "mie_judge" ? "mie" :
-          password === "rsam" ? "rsam" :
+      normalizedPassword === "hyogo" ? "hyogo" :
+        normalizedPassword === "mie" || normalizedPassword === "mie_judge" ? "mie" :
+          normalizedPassword === "rsam" ? "rsam" :
             "standard";
-    el("admin-login-context").textContent = `${this.adminContextLabel(password)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
+    el("admin-login-context").textContent = `${this.adminContextLabel(normalizedPassword)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     el("venue-color-setting").classList.remove("hidden");
     el<HTMLDetailsElement>("venue-color-setting").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
-    const managedUrlApplied = this.applyManagedGasUrl(password);
+    const managedUrlApplied = this.applyManagedGasUrl(normalizedPassword);
     this.onModeChanged?.(this.mode, AdminController.settings());
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
@@ -3552,7 +3550,7 @@ class AdminController {
   }
 
   private applyManagedGasUrl(password: string): boolean {
-    const config = managedGasUrlsByPassword.get(password);
+    const config = managedGasUrlsByPassword.get(AdminController.normalizeAdminPassword(password));
     if (!config) return false;
     const gasUrl = config.url;
     const gasUrlInput = el<HTMLInputElement>("gas-url");
@@ -3945,7 +3943,11 @@ class AdminController {
   }
 
   private adminContextLabel(password: string): string {
-    return managedGasUrlsByPassword.get(password)?.label ?? "標準の管理設定";
+    return managedGasUrlsByPassword.get(AdminController.normalizeAdminPassword(password))?.label ?? "標準の管理設定";
+  }
+
+  private static normalizeAdminPassword(value: string): string {
+    return value.trim().toLowerCase();
   }
 
   private updateConnectionCard(): void {
