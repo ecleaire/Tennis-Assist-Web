@@ -226,6 +226,7 @@ const csvColumns = [
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
   "チームB勝数", "チームB敗数", "チームBオレンジ", "チームB紫", "チームB得点", "チームB違反数",
   "引き分け数", "総合勝者", "マッチ勝者", "結果", "終了カテゴリ", "終了理由", "対象チーム", "メモ",
+  "端末役割", "端末ID", "アプリバージョン",
 ] as const;
 
 const LINKS = {
@@ -505,6 +506,7 @@ function csvRow(record: MatchRecord): string[] {
     record.teamBWins ?? "", record.teamBLosses ?? "", record.teamBOrange, record.teamBPurple, record.teamBScore,
     record.teamBViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
+    record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "",
   ].map(String);
 }
 
@@ -2002,8 +2004,8 @@ class RecordsController {
       ? `<p class="confirm-auto-score"><span>違反時の自動スコア</span><strong>${escapeText(record.targetTeam)} は自動敗北として 9点、相手チームは -4点で記録します。</strong></p>`
       : "";
     el("confirm-detail").innerHTML =
+      `<section class="confirm-decision"><div class="confirm-decision-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div class="confirm-decision-score"><span>得点</span><strong>${scoreLine}</strong></div><div class="${violation ? "confirm-decision-reason warning" : "confirm-decision-reason"}"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
-      `<section class="confirm-judge-summary"><div class="confirm-judge-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div class="confirm-judge-score"><span>得点差</span><strong>${scoreLine}</strong></div><div class="${record.reasonCategory.includes("違反") ? "confirm-judge-reason warning" : "confirm-judge-reason"}"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
       `<p class="confirm-reason"><span>終了カテゴリ</span><strong>${escapeText(record.reasonCategory)}</strong></p>` +
       violationNotice +
       `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
@@ -2777,6 +2779,9 @@ class RecordsController {
       teamAViolations: Number(at(row, "チームA違反数")) || 0,
       teamBScore: Number(at(row, "チームB得点")) || 0,
       teamBViolations: Number(at(row, "チームB違反数")) || 0,
+      deviceRole: normalizeDeviceRole(at(row, "端末役割")),
+      deviceId: at(row, "端末ID"),
+      appVersion: at(row, "アプリバージョン"),
       notes: at(row, "メモ"),
     })).filter((record) => record.teamA || record.teamB);
   }
@@ -2918,7 +2923,22 @@ class RecordsController {
       .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
       .sort((a, b) => a.matchNumber - b.matchNumber);
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
-    const body = { api_key: settings.apiKey, event: "series_result", target_sheet: "試合結果", source: deviceSource(), sent_at: timestamp(), record_id: record.recordId, payload: record, csv_columns: [...csvColumns], csv_row: csvRow(record), detail_sheet: "対戦履歴", detail_rows: details };
+    const body = {
+      api_key: settings.apiKey,
+      event: "series_result",
+      target_sheet: "試合結果",
+      source: deviceSource(),
+      source_device_id: shortDeviceId(),
+      source_device_role: settings.deviceRole,
+      app_version: __APP_VERSION__,
+      sent_at: timestamp(),
+      record_id: record.recordId,
+      payload: record,
+      csv_columns: [...csvColumns],
+      csv_row: csvRow(record),
+      detail_sheet: "対戦履歴",
+      detail_rows: details,
+    };
     el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
     try {
       const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
