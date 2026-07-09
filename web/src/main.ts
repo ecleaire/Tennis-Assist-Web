@@ -198,6 +198,7 @@ const managedSheets = {
   mie: "https://docs.google.com/spreadsheets/d/185jPLjc-nBri49aOr-CVw1baUI1qaxqjgcWLRS2-oxo/edit?usp=sharing",
   shared: "https://docs.google.com/spreadsheets/d/1BTByUtO5IAdwdTYCMNhFUtqeRy2yIWpAnCZRQw_b0HU/edit?usp=sharing",
   self: "https://docs.google.com/spreadsheets/d/1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8Ngk6lZwcTA/edit?usp=sharing",
+  shukugawa: "https://docs.google.com/spreadsheets/d/1tOyTdp7DD1lFZr5XsYnB3Zc4JEM9rGeMoH_6B43Yeg4/edit?usp=sharing",
 } as const;
 
 const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
@@ -208,6 +209,7 @@ const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
   ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
   ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
   ["wrorsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
+  ["shukugawa", { label: "夙川", url: "https://script.google.com/macros/s/AKfycbwZjAa77dzxEWivtFkZIWGzDdhynAFBjmn3zjdte_KO1eDbhLR0xidIv1mNTvCwwLfIzQ/exec", spreadsheetUrl: managedSheets.shukugawa }],
 ]);
 
 const managedGasUrls = new Set(Array.from(managedGasUrlsByPassword.values(), (config) => config.url));
@@ -3354,7 +3356,7 @@ class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "hyogo", "mie", "mie_judge"]);
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "hyogo", "mie", "mie_judge", "shukugawa"]);
   private mode: AdminMode = "standard";
   private connectionVerified = false;
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
