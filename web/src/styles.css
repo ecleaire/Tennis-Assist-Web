@@ -4728,6 +4728,91 @@ html.phone-portrait .team-import-actions .button {
   white-space: normal;
 }
 
+html.phone-portrait #screen-development {
+  padding-inline: clamp(12px, 3.6vw, 16px);
+}
+
+html.phone-portrait .admin-shell,
+html.phone-portrait .admin-settings {
+  gap: 12px;
+}
+
+html.phone-portrait .admin-connection-card {
+  padding: 10px;
+}
+
+html.phone-portrait .admin-connection-card > summary {
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .admin-connection-card > summary::after {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+html.phone-portrait .admin-status-target {
+  font-size: 0.96rem;
+  padding: 9px 10px;
+}
+
+html.phone-portrait .admin-status-chip,
+html.phone-portrait .admin-success-summary span {
+  align-items: center;
+  display: flex;
+  font-size: 0.92rem;
+  justify-content: center;
+  line-height: 1.28;
+  min-height: 54px;
+  overflow-wrap: anywhere;
+  padding: 9px 8px;
+  text-align: center;
+  word-break: keep-all;
+}
+
+html.phone-portrait .admin-connection-details,
+html.phone-portrait .admin-success-summary {
+  grid-template-columns: 1fr;
+}
+
+html.phone-portrait .admin-sheet-link {
+  justify-self: stretch;
+  width: 100%;
+}
+
+html.phone-portrait .admin-sticky-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.phone-portrait .admin-sticky-actions .button {
+  font-size: 0.96rem;
+  min-height: 54px;
+  min-width: 0;
+  padding: 10px 8px;
+}
+
+html.phone-portrait .admin-sticky-actions #gas-save {
+  grid-column: 1 / -1;
+}
+
+html.phone-portrait .admin-details > summary {
+  min-height: 48px;
+}
+
+html.phone-portrait .admin-login-context,
+html.phone-portrait .timer-setting-summary {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+html.phone-portrait .secret-input-row {
+  grid-template-columns: minmax(0, 1fr) 52px;
+}
+
 html.phone-portrait .compact-url-input {
   grid-column: 1 / -1;
   grid-row: 2;
