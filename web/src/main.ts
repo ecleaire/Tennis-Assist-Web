@@ -845,7 +845,7 @@ class TimerController {
   private coldUntil = 0;
   private subRemaining = 0;
   private subCaption = "";
-  private randomStep: number | "manual" | "tokyo" | "gas" = 5;
+  private randomStep: number | "manual" | "tokyo" | "gas" = 1;
   private manualSeconds = 120;
   private fixedSeconds: number | null = null;
   private externalTimerSetting: ExternalTimerSetting | null = null;
@@ -939,13 +939,13 @@ class TimerController {
         }
         if (!active && existing) existing.remove();
       });
-      if (!active && select.value.startsWith("preset-")) select.value = "5";
+      if (!active && select.value.startsWith("preset-")) select.value = "1";
     };
     sync(this.step);
     this.dashboardSteps.forEach(sync);
     if (!active && this.fixedSeconds !== null) {
       this.fixedSeconds = null;
-      this.randomStep = 5;
+      this.randomStep = 1;
       this.reset();
     }
   }
@@ -988,12 +988,12 @@ class TimerController {
         select.append(option);
       }
       if (!active && existing) existing.remove();
-      if (!active && select.value === "tokyo") select.value = "5";
+      if (!active && select.value === "tokyo") select.value = "1";
     };
     sync(this.step);
     this.dashboardSteps.forEach(sync);
     if (!active && this.randomStep === "tokyo") {
-      this.randomStep = 5;
+      this.randomStep = 1;
       this.reset();
     }
   }
@@ -1101,7 +1101,7 @@ class TimerController {
     }
     if (this.step.value.startsWith("preset-")) {
       this.fixedSeconds = Number(this.step.value.replace("preset-", "")) || 120;
-      this.randomStep = 5;
+      this.randomStep = 1;
       this.reset();
       return;
     }
