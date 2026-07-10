@@ -1,20 +1,32 @@
-const CACHE_NAME = "tennis-assist-general-73f51b562cf5";
+const CACHE_NAME = "tennis-assist-general-0a5d63e2f5c3";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold.woff2",
-  "./assets/index-DpQKBRiR.js",
+  "./assets/index-8Z5gZbQz.js",
   "./assets/index-ihgsMRMt.css",
   "./assets/playfield.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
 ];
 const OPTIONAL = [
-  "./assets/countdown-10.aac",
   "./assets/jsQR-BnGm8Ll0.js",
   "./assets/qr-general.png",
   "./assets/qr-judge.png",
-  "./assets/thirty-seconds.mp3",
+  "./assets/voice-count-1.wav",
+  "./assets/voice-count-10.wav",
+  "./assets/voice-count-2.wav",
+  "./assets/voice-count-3.wav",
+  "./assets/voice-count-4.wav",
+  "./assets/voice-count-5.wav",
+  "./assets/voice-count-6.wav",
+  "./assets/voice-count-7.wav",
+  "./assets/voice-count-8.wav",
+  "./assets/voice-count-9.wav",
+  "./assets/voice-elapsed-30.wav",
+  "./assets/voice-remaining-20.wav",
+  "./assets/voice-remaining-30.wav",
+  "./assets/voice-stop.wav",
   "./assist_icon_512.png",
   "./data/news.json",
   "./data/rules_sections.json",
