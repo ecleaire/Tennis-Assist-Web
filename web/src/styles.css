@@ -670,6 +670,29 @@ output.digital.dashboard-digital {
   min-width: 140px;
 }
 
+.audio-cue-settings {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.audio-cue-settings label {
+  align-items: center;
+  background: rgba(46, 168, 255, 0.08);
+  border: 1px solid rgba(46, 168, 255, 0.28);
+  border-radius: 12px;
+  color: var(--text);
+  display: flex;
+  font-weight: 850;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+}
+
+.audio-cue-settings input {
+  flex: 0 0 auto;
+}
+
 .operation-team {
   align-content: start;
   gap: clamp(22px, 3vw, 38px);
@@ -1613,6 +1636,7 @@ label {
   letter-spacing: 0;
   line-height: 1.2;
   padding: 6px 12px;
+  width: 100%;
 }
 
 #record-input .form-grid::before {
@@ -1623,13 +1647,11 @@ label {
 #record-input .score-pair::before {
   content: "2 左右チームの得点入力";
   grid-column: 1 / -1;
-  justify-self: start;
 }
 
 #record-input .toolbar::before {
   content: "3 結果確認・保存";
   flex: 0 0 100%;
-  width: max-content;
 }
 
 #record-input .form-grid::after,
@@ -1765,6 +1787,26 @@ fieldset strong {
   font-size: clamp(1.22rem, 2.4vw, 1.8rem);
   font-weight: 900;
   padding: 12px 14px;
+}
+
+.ball-rule-note {
+  background: linear-gradient(135deg, rgba(255, 178, 74, 0.22), rgba(255, 145, 38, 0.12));
+  border: 2px solid rgba(255, 178, 74, 0.7);
+  border-radius: 14px;
+  color: #ffe0aa;
+  font-size: clamp(1.12rem, 2vw, 1.42rem);
+  font-weight: 950;
+  line-height: 1.45;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+#a-score.score-error,
+#b-score.score-error,
+.winner-preview.score-error {
+  background: rgba(184, 50, 66, 0.18);
+  border-color: rgba(255, 83, 104, 0.72);
+  color: #ff8fa0;
 }
 
 #record-save {
@@ -2862,6 +2904,25 @@ tr.win td {
   min-width: min(420px, 100%);
 }
 
+.rule-search-control {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.rule-search-control .icon-button {
+  aspect-ratio: 1;
+  font-size: 1.25rem;
+  min-height: 46px;
+  min-width: 46px;
+  padding: 0;
+}
+
+#rule-search.collapsed {
+  display: none;
+}
+
 .rule-note {
   color: var(--muted);
   font-size: clamp(0.78rem, 1.4vw, 0.9rem);
@@ -3085,6 +3146,10 @@ tr.win td {
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.25fr);
 }
 
+.confirm-decision.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .confirm-decision > div {
   background: rgba(46, 168, 255, 0.14);
   border: 2px solid rgba(46, 168, 255, 0.5);
@@ -3246,6 +3311,11 @@ tr.win td {
 .confirm-auto-score strong {
   color: var(--text);
   font-size: clamp(1.35rem, 2.8vw, 2rem);
+}
+
+.confirm-reason.warning {
+  background: rgba(255, 180, 74, 0.14);
+  border-color: rgba(255, 180, 74, 0.58);
 }
 
 .confirm-reason em {

@@ -90,6 +90,14 @@ interface Summary {
   teamBViolations: number;
 }
 
+interface AudioCueSettings {
+  elapsedThirty: boolean;
+  remainingThirty: boolean;
+  remainingTwenty: boolean;
+  countdown: boolean;
+  stop: boolean;
+}
+
 interface AdminSettings {
   gasUrl: string;
   apiKey: string;
@@ -97,6 +105,7 @@ interface AdminSettings {
   accentMode: "standard" | "admin" | "light";
   matchType: MatchType;
   deviceRole: DeviceRole;
+  audioCues: AudioCueSettings;
   gasConnectedAt?: string;
   gasConnectedUrl?: string;
   dayCheckAt?: string;
@@ -192,6 +201,34 @@ const featureScopes = {
 } as const;
 
 const deviceRoleOptions: DeviceRole[] = ["", "Aコート用", "Bコート用", "Cコート用", "Dコート用", "Eコート用", "Fコート用", "Gコート用", "Hコート用", "本部用", "予備端末"];
+const adminStorageKey = "tennis-assist-admin-v1";
+const defaultAudioCueSettings: AudioCueSettings = {
+  elapsedThirty: true,
+  remainingThirty: true,
+  remainingTwenty: true,
+  countdown: true,
+  stop: true,
+};
+
+function normalizeAudioCueSettings(value: unknown): AudioCueSettings {
+  const parsed = (value && typeof value === "object" ? value : {}) as Partial<Record<keyof AudioCueSettings, unknown>>;
+  return {
+    elapsedThirty: parsed.elapsedThirty !== false,
+    remainingThirty: parsed.remainingThirty !== false,
+    remainingTwenty: parsed.remainingTwenty !== false,
+    countdown: parsed.countdown !== false,
+    stop: parsed.stop !== false,
+  };
+}
+
+function currentAudioCueSettings(): AudioCueSettings {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(adminStorageKey) ?? "{}") as { audioCues?: unknown };
+    return normalizeAudioCueSettings(parsed.audioCues);
+  } catch {
+    return { ...defaultAudioCueSettings };
+  }
+}
 
 const managedSheets = {
   hyogo: "https://docs.google.com/spreadsheets/d/1pxTMvdcpTMFeSfroOeTyh2hziLgfAvLxe0Nh79sMk_0/edit?usp=sharing",
@@ -577,23 +614,28 @@ class TimerAudioCueController {
   }
 
   playElapsedThirty(): void {
+    if (!currentAudioCueSettings().elapsedThirty) return;
     if (!this.playBuffer(this.elapsedThirtyBuffer)) this.beep(1175, 0.18, "sine", 0.32);
   }
 
   playRemainingThirty(): void {
+    if (!currentAudioCueSettings().remainingThirty) return;
     if (!this.playBuffer(this.remainingThirtyBuffer)) this.beep(1040, 0.16, "sine", 0.28);
   }
 
   playRemainingTwenty(): void {
+    if (!currentAudioCueSettings().remainingTwenty) return;
     if (!this.playBuffer(this.remainingTwentyBuffer)) this.beep(1100, 0.14, "sine", 0.28);
   }
 
   playCountdownSecond(second: number): void {
+    if (!currentAudioCueSettings().countdown) return;
     const normalized = Math.max(1, Math.min(10, Math.ceil(second)));
     if (!this.playBuffer(this.countdownBuffers.get(normalized) ?? null)) this.beep(1200, 0.08, "sine", 0.28);
   }
 
   playStop(): void {
+    if (!currentAudioCueSettings().stop) return;
     if (!this.playBuffer(this.stopBuffer)) this.beep(660, 0.22, "square", 0.24);
   }
 
@@ -636,15 +678,18 @@ class TimerAudioCueController {
     const context = this.audioContext();
     if (!context || remaining <= 0) return false;
     this.stopScheduled();
+    const cues = currentAudioCueSettings();
     const elapsed = total - remaining;
     const now = context.currentTime;
-    if (elapsed < 30 && remaining > 30) this.scheduleBuffer(this.elapsedThirtyBuffer, now + Math.max(0, 30 - elapsed));
-    if (total > 60 && remaining > 30) this.scheduleBuffer(this.remainingThirtyBuffer, now + (remaining - 30));
-    if (remaining > 20) this.scheduleBuffer(this.remainingTwentyBuffer, now + (remaining - 20));
-    for (let second = 10; second >= 1; second -= 1) {
-      if (remaining > second) this.scheduleBuffer(this.countdownBuffers.get(second) ?? null, now + (remaining - second));
+    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleBuffer(this.elapsedThirtyBuffer, now + Math.max(0, 30 - elapsed));
+    if (cues.remainingThirty && total > 60 && remaining > 30) this.scheduleBuffer(this.remainingThirtyBuffer, now + (remaining - 30));
+    if (cues.remainingTwenty && remaining > 20) this.scheduleBuffer(this.remainingTwentyBuffer, now + (remaining - 20));
+    if (cues.countdown) {
+      for (let second = 10; second >= 1; second -= 1) {
+        if (remaining > second) this.scheduleBuffer(this.countdownBuffers.get(second) ?? null, now + (remaining - second));
+      }
     }
-    if (remaining > 0) this.scheduleBuffer(this.stopBuffer, now + remaining);
+    if (cues.stop && remaining > 0) this.scheduleBuffer(this.stopBuffer, now + remaining);
     this.scheduled = this.scheduledSources.length > 0;
     return this.scheduled;
   }
@@ -1986,6 +2031,14 @@ class RecordsController {
     return { teamAOrange: leftOrange, teamAPurple: leftPurple, teamBOrange: rightOrange, teamBPurple: rightPurple };
   }
 
+  private ballInputIssue(): string {
+    const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
+    if (orangeTotal !== 8 && orangeTotal !== 9) return "オレンジボールの合計は、終了理由に関係なく8個または9個にしてください。";
+    const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
+    if (purpleTotal !== 2) return "紫ボールの合計は、終了理由に関係なく必ず2個にしてください。";
+    return "";
+  }
+
   private scoreData(): Pick<MatchRecord, "teamAScore" | "teamBScore" | "winner" | "result" | "targetTeam"> {
     const teamA = this.series?.teamA ?? "チームA";
     const teamB = this.series?.teamB ?? "チームB";
@@ -2003,10 +2056,18 @@ class RecordsController {
   }
 
   private renderScores(): void {
+    const issue = this.ballInputIssue();
     const score = this.scoreData();
     const swapped = this.resultSidesSwapped();
     const leftScore = swapped ? score.teamBScore : score.teamAScore;
     const rightScore = swapped ? score.teamAScore : score.teamBScore;
+    [el("a-score"), el("b-score"), el("winner-preview")].forEach((node) => node.classList.toggle("score-error", Boolean(issue)));
+    if (issue) {
+      el("a-score").textContent = "得点 エラー";
+      el("b-score").textContent = "得点 エラー";
+      el("winner-preview").textContent = `入力エラー: ${issue}`;
+      return;
+    }
     el("a-score").textContent = `得点 ${leftScore}`;
     el("b-score").textContent = `得点 ${rightScore}`;
     el("winner-preview").textContent = `${leftScore} VS ${rightScore} / 勝者: ${score.winner}`;
@@ -2019,14 +2080,9 @@ class RecordsController {
       el("record-status").textContent = "違反したチームを選択してください。";
       return null;
     }
-    const orangeTotal = Number(el<HTMLSelectElement>("a-orange").value) + Number(el<HTMLSelectElement>("b-orange").value);
-    if (orangeTotal !== 8 && orangeTotal !== 9) {
-      el("record-status").textContent = "オレンジボールの合計は、終了理由に関係なく8個または9個にしてください。";
-      return null;
-    }
-    const purpleTotal = Number(el<HTMLSelectElement>("a-purple").value) + Number(el<HTMLSelectElement>("b-purple").value);
-    if (purpleTotal !== 2) {
-      el("record-status").textContent = "紫ボールの合計は、終了理由に関係なく必ず2個にしてください。";
+    const issue = this.ballInputIssue();
+    if (issue) {
+      el("record-status").textContent = issue;
       return null;
     }
     const matchNumber = this.inputMatchNumber();
@@ -2071,9 +2127,9 @@ class RecordsController {
       ? `<p class="confirm-auto-score"><span>違反時の自動スコア</span><strong>${escapeText(record.targetTeam)} は自動敗北として 9点、相手チームは -4点で記録します。</strong></p>`
       : "";
     el("confirm-detail").innerHTML =
-      `<section class="confirm-decision"><div class="confirm-decision-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div class="confirm-decision-score"><span>得点</span><strong>${scoreLine}</strong></div><div class="${violation ? "confirm-decision-reason warning" : "confirm-decision-reason"}"><span>終了理由</span><strong>${escapeText(record.endReason)}</strong></div></section>` +
+      `<section class="confirm-decision compact"><div class="confirm-decision-score"><span>得点</span><strong>${scoreLine}</strong></div></section>` +
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
-      `<p class="confirm-reason"><span>終了カテゴリ</span><strong>${escapeText(record.reasonCategory)}</strong></p>` +
+      `<p class="${violation ? "confirm-reason warning" : "confirm-reason"}"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
       violationNotice +
       `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
       `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
@@ -3077,9 +3133,11 @@ class ContentController {
   private rulesRequested = false;
   private newsRequested = false;
   private ruleMenuOpen = false;
+  private ruleSearchOpen = false;
   private linksRenderedSecret: boolean | null = null;
 
   init(): void {
+    el<HTMLButtonElement>("rule-search-toggle").addEventListener("click", () => this.toggleRuleSearch());
     el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
     el<HTMLButtonElement>("rule-menu-toggle").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -3094,10 +3152,13 @@ class ContentController {
   }
 
   open(screen: Screen, secret: boolean): void {
+    if (screen === "rules") this.closeRuleSearch();
     if (screen === "rules" && !this.rulesRequested) {
       this.rulesRequested = true;
       el("rule-content").innerHTML = "<p>ルールを読み込み中...</p>";
       void this.loadRules();
+    } else if (screen === "rules") {
+      this.renderRules();
     }
     if (screen === "news" && !this.newsRequested) {
       this.newsRequested = true;
@@ -3195,9 +3256,33 @@ class ContentController {
     el<HTMLButtonElement>("rule-menu-toggle").setAttribute("aria-expanded", String(open));
   }
 
+  private toggleRuleSearch(): void {
+    if (this.ruleSearchOpen) {
+      this.closeRuleSearch();
+      this.renderRules();
+      return;
+    }
+    this.ruleSearchOpen = true;
+    const input = el<HTMLInputElement>("rule-search");
+    input.disabled = false;
+    input.classList.remove("collapsed");
+    el<HTMLButtonElement>("rule-search-toggle").setAttribute("aria-expanded", "true");
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  private closeRuleSearch(): void {
+    this.ruleSearchOpen = false;
+    const input = el<HTMLInputElement>("rule-search");
+    input.value = "";
+    input.disabled = true;
+    input.classList.add("collapsed");
+    el<HTMLButtonElement>("rule-search-toggle").setAttribute("aria-expanded", "false");
+  }
+
   private renderRules(): void {
     const host = el("rule-content");
-    const query = el<HTMLInputElement>("rule-search").value.trim().toLowerCase();
+    const searchInput = el<HTMLInputElement>("rule-search");
+    const query = this.ruleSearchOpen && !searchInput.disabled ? searchInput.value.trim().toLowerCase() : "";
     const matches = query
       ? this.rules.filter((section) => JSON.stringify(section).toLowerCase().includes(query))
       : this.rules.filter((section) => section.id === this.selectedRule);
@@ -3421,7 +3506,7 @@ class QrScanner {
 }
 
 class AdminController {
-  private static readonly storageKey = "tennis-assist-admin-v1";
+  private static readonly storageKey = adminStorageKey;
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
   private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "train", "practice", "hyogo", "mie", "mie_judge", "shukugawa"]);
@@ -3465,9 +3550,10 @@ class AdminController {
     el<HTMLSelectElement>("timer-setting-mode").addEventListener("change", () => this.updateTimerSettingModeFields());
     el<HTMLSelectElement>("device-role").addEventListener("change", () => this.save());
     el<HTMLButtonElement>("audio-test-thirty").addEventListener("click", () => void this.testAudioCue("thirty"));
-    el<HTMLButtonElement>("audio-test-countdown").addEventListener("click", () => void this.testAudioCue("countdown"));
     el<HTMLButtonElement>("audio-test-sync").addEventListener("click", () => void this.testAudioCue("sync"));
-    el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
+    ["audio-cue-elapsed-thirty", "audio-cue-remaining-thirty", "audio-cue-remaining-twenty", "audio-cue-countdown", "audio-cue-stop"].forEach((id) => {
+      el<HTMLInputElement>(id).addEventListener("change", () => this.save());
+    });
     el<HTMLButtonElement>("device-config-qr-show").addEventListener("click", () => this.showDeviceConfigQr());
     el<HTMLButtonElement>("device-config-qr-scan").addEventListener("click", () => void this.scanDeviceConfigQr());
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
@@ -3498,12 +3584,13 @@ class AdminController {
         accentMode,
         matchType,
         deviceRole: normalizeDeviceRole(parsed.deviceRole),
+        audioCues: normalizeAudioCueSettings(parsed.audioCues),
         gasConnectedAt: parsed.gasConnectedAt,
         gasConnectedUrl: parsed.gasConnectedUrl,
         dayCheckAt: parsed.dayCheckAt,
       };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合", deviceRole: "" };
+      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合", deviceRole: "", audioCues: { ...defaultAudioCueSettings } };
     }
   }
 
@@ -3535,6 +3622,11 @@ class AdminController {
     colorSelect.value = Array.from(colorSelect.options).some((option) => option.value === settings.accentMode) ? settings.accentMode : "standard";
     el<HTMLSelectElement>("match-type").value = settings.matchType;
     el<HTMLSelectElement>("device-role").value = normalizeDeviceRole(settings.deviceRole);
+    el<HTMLInputElement>("audio-cue-elapsed-thirty").checked = settings.audioCues.elapsedThirty;
+    el<HTMLInputElement>("audio-cue-remaining-thirty").checked = settings.audioCues.remainingThirty;
+    el<HTMLInputElement>("audio-cue-remaining-twenty").checked = settings.audioCues.remainingTwenty;
+    el<HTMLInputElement>("audio-cue-countdown").checked = settings.audioCues.countdown;
+    el<HTMLInputElement>("audio-cue-stop").checked = settings.audioCues.stop;
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
     this.updateConnectionCard();
@@ -3653,6 +3745,13 @@ class AdminController {
       accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
       deviceRole: normalizeDeviceRole(el<HTMLSelectElement>("device-role").value),
+      audioCues: {
+        elapsedThirty: el<HTMLInputElement>("audio-cue-elapsed-thirty").checked,
+        remainingThirty: el<HTMLInputElement>("audio-cue-remaining-thirty").checked,
+        remainingTwenty: el<HTMLInputElement>("audio-cue-remaining-twenty").checked,
+        countdown: el<HTMLInputElement>("audio-cue-countdown").checked,
+        stop: el<HTMLInputElement>("audio-cue-stop").checked,
+      },
       gasConnectedAt: AdminController.settings().gasConnectedAt,
       gasConnectedUrl: AdminController.settings().gasConnectedUrl,
       dayCheckAt: AdminController.settings().dayCheckAt,
@@ -3664,16 +3763,14 @@ class AdminController {
     el("gas-status").textContent = "この端末に設定を保存しました。";
   }
 
-  private async testAudioCue(kind: "thirty" | "countdown" | "sync" | "five"): Promise<void> {
-    const label = kind === "thirty" ? "30秒経過音" : kind === "countdown" ? "10カウント音声" : kind === "sync" ? "11秒同期確認" : "5カウント操作";
+  private async testAudioCue(kind: "thirty" | "sync"): Promise<void> {
+    const label = kind === "thirty" ? "30秒経過音" : "11秒同期確認";
     window.clearInterval(this.audioSyncStatusTimer);
     this.audioSyncStatusTimer = 0;
     el("gas-status").textContent = `${label}を再生しています。聞こえない場合は端末音量、マナーモード、ブラウザ音声許可を確認してください。`;
     try {
       if (kind === "thirty") await this.audioCheck.testThirtySeconds();
-      else if (kind === "countdown") await this.audioCheck.testCountdown();
-      else if (kind === "sync") await this.testCountdownSync();
-      else await this.audioCheck.testFiveCount();
+      else await this.testCountdownSync();
     } catch {
       el("gas-status").textContent = `${label}を再生できませんでした。ブラウザの音声許可を確認してください。`;
     }
@@ -3863,6 +3960,7 @@ class AdminController {
         accentMode: settings.accentMode,
         matchType: settings.matchType,
         deviceRole: settings.deviceRole,
+        audioCues: settings.audioCues,
       },
       timerSetting: AdminController.timerSetting(),
       records: this.portableStateProvider?.() ?? {},
@@ -3890,6 +3988,7 @@ class AdminController {
       settings.accentMode = AdminController.normalizeAccentMode(admin.accentMode);
       settings.matchType = admin.matchType === "公式試合" ? "公式試合" : "練習試合";
       settings.deviceRole = normalizeDeviceRole(admin.deviceRole);
+      settings.audioCues = normalizeAudioCueSettings(admin.audioCues);
       localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
       if (parsed.timerSetting) {
         const timerSetting = normalizeExternalTimerSetting(parsed.timerSetting, "manual");
@@ -4178,6 +4277,7 @@ class Application {
   private homeSyncState: "idle" | "running" | "success" | "warning" = "idle";
   private homeSyncAlertMarkup = "";
   private homeRiskMarkup = "";
+  private homeSyncNoticeTimer = 0;
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
   private backConfirmButton: HTMLButtonElement | null = null;
   private backConfirmTimer = 0;
@@ -4533,6 +4633,26 @@ class Application {
     });
   }
 
+  private clearTimedHomeSyncNotice(): void {
+    if (this.homeSyncNoticeTimer) {
+      window.clearTimeout(this.homeSyncNoticeTimer);
+      this.homeSyncNoticeTimer = 0;
+    }
+  }
+
+  private hideHomeSyncNoticeAfter(ms: number): void {
+    this.clearTimedHomeSyncNotice();
+    this.homeSyncNoticeTimer = window.setTimeout(() => {
+      const sync = this.records.syncSummary();
+      if (this.homeSyncState === "success" && sync.unsent === 0) {
+        this.homeSyncNotice = "";
+        this.homeSyncAlertMarkup = "";
+        this.updateHomeSyncAlert();
+      }
+      this.homeSyncNoticeTimer = 0;
+    }, ms);
+  }
+
   private updateHomeRiskPanel(): void {
     const panel = document.getElementById("home-risk-panel");
     if (!panel) return;
@@ -4623,6 +4743,7 @@ class Application {
   }
 
   private async retryHomeUnsent(): Promise<void> {
+    this.clearTimedHomeSyncNotice();
     this.homeSyncState = "running";
     this.homeSyncNotice = "ホームから再送信を実行しています。詳細は試合記録の「対戦履歴と統計」で確認してください。";
     this.updateHomeSyncAlert();
@@ -4633,6 +4754,7 @@ class Application {
       ? `再送信を実行しましたが、${sync.reason}のため未送信 ${sync.pending}件 / 送信失敗 ${sync.failed}件が残っています。詳細は試合記録の「対戦履歴と統計」で確認してください。`
       : "再送信を実行しました。未送信の対戦結果はありません。";
     this.updateHomeSyncAlert();
+    if (!sync.unsent) this.hideHomeSyncNoticeAfter(10000);
   }
 
   private setOperationDrawStage(stage: 1 | 2 | 3): void {

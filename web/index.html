@@ -267,6 +267,7 @@
                 <strong id="b-score">得点 -4</strong>
               </fieldset>
             </div>
+            <p class="ball-rule-note">オレンジボールの合計は、終了理由に関係なく8個または9個にしてください。</p>
             <p id="winner-preview" class="winner-preview">結果を入力してください。</p>
             <div class="toolbar">
               <button id="record-save" class="button primary">このマッチを保存</button>
@@ -395,7 +396,10 @@
               <h2>ルール検索</h2>
             </div>
             <div class="rule-search-box">
-              <input id="rule-search" type="search" placeholder="キーワードで検索" />
+              <div class="rule-search-control">
+                <button id="rule-search-toggle" class="button icon-button" type="button" aria-expanded="false" aria-controls="rule-search" title="キーワード検索">⌕</button>
+                <input id="rule-search" class="collapsed" type="search" name="rsa-rule-keyword" placeholder="キーワードで検索" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" disabled />
+              </div>
               <p class="rule-note">このルール表示は「WRO-2026-Japan-RoboSports-Double-Tennis-General-Rules」2026年5月31日 発行 v1.0 をもとにした簡易確認用です。詳細・正式な内容は公式ルールをご確認ください。</p>
             </div>
           </div>
@@ -555,12 +559,16 @@
               <details id="audio-check-details" class="admin-details nested-details">
                 <summary>音声</summary>
                 <p class="muted compact-note">本番前に端末音量、マナーモード、ブラウザ音声許可を確認してください。</p>
-                <p class="muted compact-note">端末本体の音量を上げ、マナーモードやブラウザの音声制限を事前に確認してください。</p>
+                <div class="audio-cue-settings">
+                  <label><input id="audio-cue-elapsed-thirty" type="checkbox" checked /> 開始から30秒経過</label>
+                  <label><input id="audio-cue-remaining-thirty" type="checkbox" checked /> 残り30秒</label>
+                  <label><input id="audio-cue-remaining-twenty" type="checkbox" checked /> 残り20秒</label>
+                  <label><input id="audio-cue-countdown" type="checkbox" checked /> 10〜1カウント音声</label>
+                  <label><input id="audio-cue-stop" type="checkbox" checked /> 0秒ストップ音声</label>
+                </div>
                 <div class="toolbar audio-check-actions">
                   <button id="audio-test-thirty" class="button" type="button">30秒経過音</button>
-                  <button id="audio-test-countdown" class="button" type="button">10カウント音声</button>
                   <button id="audio-test-sync" class="button" type="button">11秒同期確認</button>
-                  <button id="audio-test-five" class="button" type="button">5カウント操作</button>
                 </div>
               </details>
             </details>
