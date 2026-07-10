@@ -206,7 +206,7 @@ const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
   ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
   ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
   ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
-  ["judge_practice", { label: "審判練習用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
+  ["train", { label: "審判練習用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
   ["rsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
   ["gas", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
   ["wrorsam", { label: "自分", url: "https://script.google.com/macros/s/AKfycbwbs-mgIJNX-DkgtoLzpkQaTQNa75tWwijAfyudWbi4LvKJGkWSrC6y0PC_EY4kFUsa/exec", spreadsheetUrl: managedSheets.self }],
@@ -3375,7 +3375,7 @@ class AdminController {
   private static readonly storageKey = "tennis-assist-admin-v1";
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "judge_practice", "hyogo", "mie", "mie_judge", "shukugawa"]);
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "train", "hyogo", "mie", "mie_judge", "shukugawa"]);
   private mode: AdminMode = "standard";
   private connectionVerified = false;
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
