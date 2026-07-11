@@ -507,6 +507,16 @@ output.digital.dashboard-digital {
   padding-inline: clamp(34px, 8vw, 92px);
 }
 
+.operation-home .operation-prepare {
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), 0 0 0 2px rgba(46, 168, 255, 0.2) inset;
+  font-size: clamp(2.1rem, 4.2vw, 4rem);
+  letter-spacing: 0;
+  min-height: clamp(128px, 14vw, 184px);
+  min-width: min(760px, 86vw);
+  padding: clamp(26px, 4vw, 42px) clamp(42px, 8vw, 112px);
+}
+
 .home-operation-summary {
   align-items: center;
   color: var(--muted);
@@ -4638,6 +4648,14 @@ html.phone-portrait .dashboard-actions {
 
 html.phone-portrait .dashboard-actions .button {
   flex: 1 1 135px;
+}
+
+html.phone-portrait .operation-home .operation-prepare {
+  font-size: clamp(2rem, 10vw, 2.9rem);
+  min-height: clamp(104px, 24vw, 136px);
+  min-width: min(100%, calc(var(--viewport-width) - 40px));
+  padding: 24px 28px;
+  width: min(100%, 360px);
 }
 
 html.phone-portrait output.digital.dashboard-digital {
