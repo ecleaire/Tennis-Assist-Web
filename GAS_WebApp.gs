@@ -426,8 +426,11 @@ function collectGroupTeamRows(values) {
   const rowsByTeam = {};
   for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
     const row = values[rowIndex] || [];
+    const resultFlag = String(row[0] || '').trim();
     const number = String(row[1] || '').trim();
     const teamName = String(row[2] || '').trim();
+    // A列が ok/no の本表だけを更新します。下部の順位抽出エリアは数式の展開先なので直接書き込みません。
+    if (resultFlag !== 'ok' && resultFlag !== 'no') continue;
     if (!number || !teamName || teamName === 'チーム名') continue;
     if (!rowsByTeam[teamName]) rowsByTeam[teamName] = [];
     rowsByTeam[teamName].push(rowIndex + 1);
