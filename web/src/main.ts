@@ -3809,7 +3809,7 @@ class AdminController {
     const colorSelect = el<HTMLSelectElement>("venue-color");
     const lightOption = Array.from(colorSelect.options).find((option) => option.value === "light");
     if (!lightOption) return;
-    const allowLight = AdminController.variant().allowLightUi && this.mode === "rsam";
+    const allowLight = AdminController.variant().allowLightUi;
     lightOption.hidden = !allowLight;
     lightOption.disabled = !allowLight;
     if (!allowLight && colorSelect.value === "light") colorSelect.value = "standard";
@@ -3873,7 +3873,7 @@ class AdminController {
       gasUrl: el<HTMLInputElement>("gas-url").value.trim(),
       apiKey: el<HTMLInputElement>("gas-key").value,
       sendEnabled: el<HTMLInputElement>("gas-enabled").checked,
-      accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi),
+      accentMode: AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, AdminController.variant().allowLightUi),
       matchType: el<HTMLSelectElement>("match-type").value === "公式試合" ? "公式試合" : "練習試合",
       deviceRole: normalizeDeviceRole(el<HTMLSelectElement>("device-role").value),
       audioCues: {
@@ -3927,7 +3927,7 @@ class AdminController {
 
   private applyColor(): void {
     const settings = AdminController.settings();
-    settings.accentMode = AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, this.mode === "rsam" && AdminController.variant().allowLightUi);
+    settings.accentMode = AdminController.normalizeAccentMode(el<HTMLSelectElement>("venue-color").value, AdminController.variant().allowLightUi);
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
@@ -5385,7 +5385,7 @@ class Application {
   private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
     this.hyogo = mode === "hyogo";
     this.rsamMode = mode === "rsam";
-    const lightAllowed = this.variant.allowLightUi && mode === "rsam";
+    const lightAllowed = this.variant.allowLightUi;
     const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
     document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
     document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");

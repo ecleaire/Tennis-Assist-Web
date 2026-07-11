@@ -45,14 +45,14 @@
 }
 
 :root.venue-light-accent {
-  --bg: #f3f7fb;
-  --surface: #ffffff;
-  --surface-alt: #eaf2fb;
-  --border: #b8c9de;
-  --accent: #005ea8;
-  --accent-soft: #d8ecff;
-  --text: #0b1728;
-  --muted: #40546d;
+  --bg: #f2f5f8;
+  --surface: #fbfdff;
+  --surface-alt: #edf4fb;
+  --border: #9fb6d3;
+  --accent: #1f6fa8;
+  --accent-soft: #dcecf9;
+  --text: #122033;
+  --muted: #43576f;
   --success: #08733f;
   --warning: #a95700;
   --danger: #b42335;
@@ -72,6 +72,7 @@ body {
 }
 
 body {
+  line-height: 1.55;
   min-height: 100dvh;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
     max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -155,7 +156,7 @@ a {
 
 .eyebrow {
   color: var(--accent);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   margin-bottom: 5px;
@@ -581,6 +582,8 @@ output.digital.dashboard-digital {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+  min-width: 0;
+  width: 100%;
 }
 
 .home-risk-chip {
@@ -590,8 +593,11 @@ output.digital.dashboard-digital {
   color: #dce8ff;
   font-size: clamp(0.78rem, 1.25vw, 0.92rem);
   font-weight: 900;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 6px 10px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .home-risk-chip.ok {
@@ -1463,6 +1469,53 @@ progress::-moz-progress-bar {
   display: flex;
   gap: 18px;
   justify-content: space-between;
+}
+
+@media (min-width: 900px) and (min-height: 760px) {
+  .button,
+  .nav,
+  select,
+  input,
+  textarea {
+    font-size: 1.02rem;
+    min-height: 48px;
+  }
+
+  .section-card,
+  .dashboard-card {
+    gap: 18px;
+  }
+
+  .admin-status-chip,
+  .admin-success-summary span,
+  .home-risk-chip {
+    font-size: 0.96rem;
+  }
+}
+
+@media (max-height: 700px) {
+  #app {
+    gap: 10px;
+  }
+
+  .app-header {
+    padding-block: 12px;
+  }
+
+  .section-card,
+  .dashboard-card {
+    gap: 12px;
+    padding-block: 14px;
+  }
+
+  .dashboard-card {
+    min-height: auto;
+  }
+
+  .home-operation-summary,
+  .home-risk-panel {
+    margin-top: 10px;
+  }
 }
 
 .balls-title-row {
@@ -5377,6 +5430,8 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .panel,
 :root.venue-light-accent .venue-color-setting,
 :root.venue-light-accent .admin-connection-card,
+:root.venue-light-accent .admin-details,
+:root.venue-light-accent .compact-details,
 :root.venue-light-accent .result-confirm-card,
 :root.venue-light-accent .consent-panel,
 :root.venue-light-accent .history-card,
@@ -5385,7 +5440,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent fieldset {
   background: var(--surface);
   border-color: var(--border);
-  box-shadow: 0 10px 26px rgba(15, 35, 66, 0.08);
+  box-shadow: 0 8px 22px rgba(15, 35, 66, 0.07);
 }
 
 :root.venue-light-accent .admin-status-chip.ok {
@@ -5443,30 +5498,32 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .admin-sticky-actions {
-  background: rgba(247, 251, 255, 0.96);
-  border-color: #b8c9de;
+  background: rgba(242, 247, 252, 0.97);
+  border-color: #90b5d8;
+  box-shadow: 0 10px 22px rgba(0, 76, 138, 0.1);
 }
 
 :root.venue-light-accent .admin-step-field {
-  background: #e8f4ff;
-  border-color: #82b8e9;
+  background: #e2f1ff;
+  border-color: #6faee3;
   color: #062b4e;
 }
 
 :root.venue-light-accent .admin-match-type-field select {
-  border-color: #138bd8;
+  background: #f4f9ff;
+  border-color: #087ed0;
   color: #061b32;
 }
 
 :root.venue-light-accent .admin-sticky-actions .admin-action-primary {
-  background: linear-gradient(180deg, #28a7f3, #0077c8);
-  border-color: #006fb8;
+  background: linear-gradient(180deg, #2d88c8, #1f6fa8);
+  border-color: #1a6295;
   color: #ffffff;
 }
 
 :root.venue-light-accent .admin-sticky-actions .admin-action-secondary {
-  background: #d9efff;
-  border-color: #84bfe9;
+  background: #e5f1fb;
+  border-color: #94b9d9;
   color: #06345e;
 }
 
@@ -5479,7 +5536,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 :root.venue-light-accent .eyebrow {
-  color: #005ea8;
+  color: #1f6fa8;
 }
 
 :root.venue-light-accent .nav,
@@ -5487,17 +5544,18 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent select,
 :root.venue-light-accent input,
 :root.venue-light-accent textarea {
-  background: #ffffff;
-  border-color: #7f98b7;
+  background: #f1f6fb;
+  border-color: #7897ba;
   color: var(--text);
   font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 :root.venue-light-accent .nav:hover,
 :root.venue-light-accent .button:hover,
 :root.venue-light-accent select:hover,
 :root.venue-light-accent input:hover {
-  background: #eef7ff;
+  background: #eaf4fd;
   border-color: var(--accent);
 }
 
@@ -5514,18 +5572,47 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent .dialog select,
 :root.venue-light-accent .compact-url-input input,
 :root.venue-light-accent .rules-shell input {
-  background: #ffffff !important;
-  border-color: #7f98b7 !important;
+  background: #f1f6fb !important;
+  border-color: #7897ba !important;
   color: #0b1728 !important;
   text-shadow: none !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 111, 189, 0.08) !important;
+}
+
+:root.venue-light-accent select:focus,
+:root.venue-light-accent input:focus,
+:root.venue-light-accent textarea:focus {
+  outline: 3px solid rgba(31, 111, 168, 0.2);
+  border-color: #1f6fa8 !important;
+  background: #ffffff !important;
+}
+
+:root.venue-light-accent option {
+  background: #ffffff;
+  color: #0b1728;
+}
+
+:root.venue-light-accent .admin-details > summary,
+:root.venue-light-accent .compact-details summary {
+  background: #e8f3ff;
+  border-color: #9dbfe2;
+  color: #082f55;
+}
+
+:root.venue-light-accent .admin-details[open] > summary,
+:root.venue-light-accent .compact-details[open] summary {
+  background: #d8ecff;
+  border-color: #5fa7e0;
+  color: #052b50;
 }
 
 :root.venue-light-accent .button.primary,
 :root.venue-light-accent .nav.active,
 :root.venue-light-accent .button.accent {
-  background: #005ea8;
-  border-color: #004f8e;
+  background: linear-gradient(180deg, #2d88c8, #1f6fa8);
+  border-color: #1a6295;
   color: #fff;
+  box-shadow: 0 8px 18px rgba(31, 111, 168, 0.18);
 }
 
 :root.venue-light-accent #operation-team-ok,
