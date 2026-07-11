@@ -1,17 +1,21 @@
 const TEST_SHEET_NAME = '送信テスト';
 const SERIES_RESULT_SHEET_NAME = '試合結果';
-const NEW_SERIES_RESULT_SHEET_NAME = '新・試合結果';
-const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
-const HISTORY_SHEET_NAME = '対戦履歴';
+const SERIES_RESULT_ARCHIVE_SHEET_NAME = '試合結果archive';
+const LEGACY_NEW_SERIES_RESULT_SHEET_NAME = '新・試合結果';
+const MATCH_RESULT_ARCHIVE_SHEET_NAME = 'マッチ結果archive';
+const HISTORY_ARCHIVE_SHEET_NAME = '対戦履歴archive';
+const LEGACY_MATCH_RESULT_SHEET_NAME = 'マッチ結果';
+const LEGACY_HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
 // Official timer settings sheet: A column = input item, B column = value.
 const TIMER_SETTING_SHEET_NAME = 'timer_setting';
 const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_settings';
 const GROUP_PRELIM_SHEET_NAME = 'Sheet1';
+const GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8Ngk6lZwcTA';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
-const NEW_SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '勝数', '敗数', 'オレンジ', '紫', '得点', '違反数'];
+const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '勝数', '敗数', 'オレンジ', '紫', '得点', '違反数'];
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
@@ -55,7 +59,7 @@ function doGet(e) {
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
 
-    const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_SHEET_NAME;
+    const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_ARCHIVE_SHEET_NAME;
     const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
 
@@ -292,16 +296,12 @@ function doPost(e) {
 
     const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
     const records = collectRecords(body);
+    const sheets = ensureResultSheetStructure(ss);
 
-    const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
-    const newSeriesResultSheet = getOrCreateSheet(ss, NEW_SERIES_RESULT_SHEET_NAME);
-    const matchResultSheet = getOrCreateSheet(ss, MATCH_RESULT_SHEET_NAME);
-    const historySheet = getOrCreateSheet(ss, HISTORY_SHEET_NAME);
-
-    const seriesResult = appendFilteredRows(seriesResultSheet, records, eventName, body, csvColumns, '試合結果');
-    const newSeriesResult = appendNewSeriesResultRows(newSeriesResultSheet, records, csvColumns);
-    const matchResult = appendFilteredRows(matchResultSheet, records, eventName, body, csvColumns, 'マッチ');
-    const historyResult = appendRows(historySheet, records, eventName, body, csvColumns);
+    const seriesArchiveResult = appendFilteredRows(sheets.seriesArchiveSheet, records, eventName, body, csvColumns, '試合結果');
+    const seriesResult = appendSeriesResultRows(sheets.seriesResultSheet, records, csvColumns);
+    const matchArchiveResult = appendFilteredRows(sheets.matchArchiveSheet, records, eventName, body, csvColumns, 'マッチ');
+    const historyArchiveResult = appendRows(sheets.historyArchiveSheet, records, eventName, body, csvColumns);
     let groupPrelimResult = null;
     if (seriesResult.appended > 0) {
       try {
@@ -318,18 +318,18 @@ function doPost(e) {
       ok: true,
       spreadsheet_id: spreadsheetId,
       test_sheet_name: TEST_SHEET_NAME,
-      series_result_sheet_name: seriesResultSheet.getName(),
+      series_archive_sheet_name: sheets.seriesArchiveSheet.getName(),
+      series_archive_appended: seriesArchiveResult.appended,
+      series_archive_duplicates: seriesArchiveResult.duplicates,
+      series_result_sheet_name: sheets.seriesResultSheet.getName(),
       series_result_appended: seriesResult.appended,
       series_result_duplicates: seriesResult.duplicates,
-      new_series_result_sheet_name: newSeriesResultSheet.getName(),
-      new_series_result_appended: newSeriesResult.appended,
-      new_series_result_duplicates: newSeriesResult.duplicates,
-      match_result_sheet_name: matchResultSheet.getName(),
-      match_result_appended: matchResult.appended,
-      match_result_duplicates: matchResult.duplicates,
-      history_sheet_name: historySheet.getName(),
-      history_appended: historyResult.appended,
-      history_duplicates: historyResult.duplicates,
+      match_archive_sheet_name: sheets.matchArchiveSheet.getName(),
+      match_archive_appended: matchArchiveResult.appended,
+      match_archive_duplicates: matchArchiveResult.duplicates,
+      history_archive_sheet_name: sheets.historyArchiveSheet.getName(),
+      history_archive_appended: historyArchiveResult.appended,
+      history_archive_duplicates: historyArchiveResult.duplicates,
       group_prelim_result: groupPrelimResult
     });
   } catch (err) {
@@ -342,23 +342,25 @@ function doPost(e) {
 }
 
 function syncGroupPrelimSheet(ss, forceFormula) {
-  const sourceSheet = ss.getSheetByName(NEW_SERIES_RESULT_SHEET_NAME);
-  const targetSheet = ss.getSheetByName(GROUP_PRELIM_SHEET_NAME);
-  if (!targetSheet) return { group_sheet_name: GROUP_PRELIM_SHEET_NAME, updated_rows: 0, records: 0, skipped_records: 0, warning: 'Sheet1がありません。' };
+  ensureResultSheetStructure(ss);
+  const sourceSheet = ss.getSheetByName(SERIES_RESULT_SHEET_NAME);
+  const targetSheet = ss.getSheetByName(GROUP_PRELIM_SHEET_NAME) || createEmptyGroupPrelimSheet(ss);
 
   const targetValues = targetSheet.getDataRange().getValues();
   const teamRows = collectGroupTeamRows(targetValues);
-  const allRows = uniqueRowsFromTeamRows(teamRows);
+  const allRows = uniqueRowsFromTeamRows(teamRows).filter(function (rowNumber) {
+    return rowNumber >= 3 && rowNumber <= 31;
+  });
   installGroupResultFormulas(targetSheet, allRows, Boolean(forceFormula));
 
   if (!sourceSheet) {
     return {
       group_sheet_name: targetSheet.getName(),
-      source_sheet_name: NEW_SERIES_RESULT_SHEET_NAME,
+      source_sheet_name: SERIES_RESULT_SHEET_NAME,
       updated_rows: allRows.length,
       records: 0,
       skipped_records: 0,
-      warning: '新・試合結果シートがありません。Sheet1には参照数式のみ設定しました。'
+      warning: '試合結果シートがありません。Sheet1には参照数式のみ設定しました。'
     };
   }
   if (sourceSheet.getLastRow() < 2) {
@@ -368,7 +370,7 @@ function syncGroupPrelimSheet(ss, forceFormula) {
       updated_rows: allRows.length,
       records: 0,
       skipped_records: 0,
-      warning: '新・試合結果にデータがありません。Sheet1は未入力表示になります。'
+      warning: '試合結果にデータがありません。Sheet1は未入力表示になります。'
     };
   }
 
@@ -384,7 +386,7 @@ function syncGroupPrelimSheet(ss, forceFormula) {
       updated_rows: allRows.length,
       records: 0,
       skipped_records: 0,
-      warning: '新・試合結果シートに必要な列がありません: ' + missing.join(', ')
+      warning: '試合結果シートに必要な列がありません: ' + missing.join(', ')
     };
   }
 
@@ -411,12 +413,163 @@ function syncGroupPrelimSheet(ss, forceFormula) {
   };
 }
 
+function createEmptyGroupPrelimSheet(ss) {
+  try {
+    const templateSpreadsheet = SpreadsheetApp.openById(GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID);
+    const templateSheet = templateSpreadsheet.getSheetByName(GROUP_PRELIM_SHEET_NAME);
+    if (templateSheet) {
+      const copiedSheet = templateSheet.copyTo(ss).setName(GROUP_PRELIM_SHEET_NAME);
+      ss.setActiveSheet(copiedSheet);
+      ss.moveActiveSheet(1);
+      copiedSheet.getRange(3, 3, 29, 1).clearContent();
+      copiedSheet.getRange(3, 5, 29, 16).clearContent().clearDataValidations();
+      return copiedSheet;
+    }
+  } catch (err) {
+    // テンプレートにアクセスできない場合だけ、最低限の空表を作ります。
+  }
+  const sheet = ss.insertSheet(GROUP_PRELIM_SHEET_NAME);
+  const headers = [
+    '反映', 'No.', 'チーム名', '',
+    '1勝点', '1違反', '1得点', '1紫',
+    '2勝点', '2違反', '2得点', '2紫',
+    '3勝点', '3違反', '3得点', '3紫',
+    '合計勝点', '合計違反', '合計得点', '合計紫'
+  ];
+  sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
+  const body = [];
+  for (let index = 1; index <= 29; index += 1) {
+    const row = new Array(headers.length).fill('');
+    row[0] = 'ok';
+    row[1] = index;
+    row[2] = '';
+    body.push(row);
+  }
+  sheet.getRange(3, 1, body.length, headers.length).setValues(body);
+  sheet.setFrozenRows(2);
+  sheet.setFrozenColumns(3);
+  sheet.getRange(2, 1, 1, headers.length).setFontWeight('bold').setBackground('#d9ead3');
+  sheet.getRange(3, 1, body.length, 2).setBackground('#f3f6fa');
+  sheet.getRange(3, 3, body.length, 1).setBackground('#fff2cc');
+  sheet.autoResizeColumns(1, headers.length);
+  return sheet;
+}
+
 function syncGroupPrelimSheetFromDefault(forceFormula) {
   const props = PropertiesService.getScriptProperties();
   const spreadsheetId = String(props.getProperty('SPREADSHEET_ID') || '').trim();
   if (!spreadsheetId) return { ok: false, error: 'SPREADSHEET_ID is missing' };
   const ss = SpreadsheetApp.openById(spreadsheetId);
   return Object.assign({ ok: true, spreadsheet_id: spreadsheetId }, syncGroupPrelimSheet(ss, Boolean(forceFormula)));
+}
+
+function ensureResultSheetStructure(ss) {
+  archiveLegacySheet(ss, SERIES_RESULT_SHEET_NAME, SERIES_RESULT_ARCHIVE_SHEET_NAME, SERIES_RESULT_HEADER.length);
+  archiveLegacySheet(ss, LEGACY_MATCH_RESULT_SHEET_NAME, MATCH_RESULT_ARCHIVE_SHEET_NAME);
+  archiveLegacySheet(ss, LEGACY_HISTORY_SHEET_NAME, HISTORY_ARCHIVE_SHEET_NAME);
+
+  const seriesArchiveSheet = getOrCreateSheet(ss, SERIES_RESULT_ARCHIVE_SHEET_NAME);
+  const matchArchiveSheet = getOrCreateSheet(ss, MATCH_RESULT_ARCHIVE_SHEET_NAME);
+  const historyArchiveSheet = getOrCreateSheet(ss, HISTORY_ARCHIVE_SHEET_NAME);
+  const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
+  ensureExactHeader(seriesResultSheet, SERIES_RESULT_HEADER);
+  backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet);
+  backfillSeriesResultFromLegacySheet(seriesResultSheet, ss.getSheetByName(LEGACY_NEW_SERIES_RESULT_SHEET_NAME));
+  return {
+    seriesArchiveSheet: seriesArchiveSheet,
+    matchArchiveSheet: matchArchiveSheet,
+    historyArchiveSheet: historyArchiveSheet,
+    seriesResultSheet: seriesResultSheet
+  };
+}
+
+function backfillSeriesResultFromLegacySheet(seriesResultSheet, legacySheet) {
+  if (!legacySheet || legacySheet.getLastRow() < 2) return { appended: 0, duplicates: 0 };
+  if (!hasExactHeader(legacySheet, SERIES_RESULT_HEADER)) return { appended: 0, duplicates: 0 };
+  const values = legacySheet.getRange(2, 1, legacySheet.getLastRow() - 1, SERIES_RESULT_HEADER.length).getValues();
+  const existingKeys = readSeriesResultKeys(seriesResultSheet);
+  const rows = [];
+  let duplicates = 0;
+  values.forEach(function (row) {
+    const normalized = normalizeRow(row, SERIES_RESULT_HEADER.length);
+    if (!normalized.some(function (value) { return String(value || '').trim() !== ''; })) return;
+    const key = seriesResultKey(normalized);
+    if (!key || existingKeys.has(key)) {
+      duplicates += 1;
+      return;
+    }
+    existingKeys.add(key);
+    rows.push(normalized);
+  });
+  if (rows.length) {
+    seriesResultSheet.getRange(seriesResultSheet.getLastRow() + 1, 1, rows.length, SERIES_RESULT_HEADER.length).setValues(rows);
+  }
+  return { appended: rows.length, duplicates: duplicates };
+}
+
+function backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet) {
+  if (!seriesArchiveSheet || seriesArchiveSheet.getLastRow() < 2) return { appended: 0, duplicates: 0 };
+  const lastColumn = seriesArchiveSheet.getLastColumn();
+  const values = seriesArchiveSheet.getRange(1, 1, seriesArchiveSheet.getLastRow(), lastColumn).getValues();
+  const header = values[0].map(function (value) { return String(value || '').trim(); });
+  const hasPrefix = MATCH_HEADER_PREFIX.every(function (name, index) { return header[index] === name; });
+  const csvColumns = hasPrefix ? header.slice(MATCH_HEADER_PREFIX.length) : header;
+  const csvStart = hasPrefix ? MATCH_HEADER_PREFIX.length : 0;
+  const records = [];
+  for (let rowIndex = 1; rowIndex < values.length; rowIndex += 1) {
+    const csvRow = values[rowIndex].slice(csvStart);
+    if (getRecordKind(csvRow) !== '試合結果') continue;
+    records.push({
+      record_id: hasPrefix ? String(values[rowIndex][4] || '') : '',
+      csv_row: csvRow
+    });
+  }
+  return appendSeriesResultRows(seriesResultSheet, records, csvColumns);
+}
+
+function archiveLegacySheet(ss, activeName, archiveName, activeHeaderWidth) {
+  const activeSheet = ss.getSheetByName(activeName);
+  const archiveSheet = ss.getSheetByName(archiveName);
+  if (!activeSheet) return;
+  if (activeHeaderWidth && hasExactHeader(activeSheet, SERIES_RESULT_HEADER)) return;
+  if (archiveSheet) {
+    mergeSheetRowsIntoArchive(activeSheet, archiveSheet);
+    ss.deleteSheet(activeSheet);
+    return;
+  }
+  activeSheet.setName(archiveName);
+}
+
+function mergeSheetRowsIntoArchive(sourceSheet, archiveSheet) {
+  const lastRow = sourceSheet.getLastRow();
+  const lastColumn = sourceSheet.getLastColumn();
+  if (lastRow < 1 || lastColumn < 1) return;
+  const values = sourceSheet.getRange(1, 1, lastRow, lastColumn).getValues();
+  if (values.length < 2) return;
+  const header = values[0].map(function (value) { return String(value || ''); });
+  ensureExactHeader(archiveSheet, header);
+  const existingKeys = readArchiveRowKeys(archiveSheet, header.length);
+  const rows = [];
+  for (let rowIndex = 1; rowIndex < values.length; rowIndex += 1) {
+    const row = normalizeRow(values[rowIndex], header.length);
+    if (!row.some(function (value) { return String(value || '').trim() !== ''; })) continue;
+    const key = row.map(normalizeKeyValue).join('|');
+    if (existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    rows.push(row);
+  }
+  if (rows.length) {
+    archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, rows.length, header.length).setValues(rows);
+  }
+}
+
+function readArchiveRowKeys(sheet, width) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return new Set();
+  const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  return new Set(values.map(function (row) {
+    return normalizeRow(row, width).map(normalizeKeyValue).join('|');
+  }).filter(Boolean));
 }
 
 function headerIndexMap(header) {
@@ -465,6 +618,7 @@ function clearGroupResultCells(sheet, rowNumbers) {
 function installGroupResultFormulas(sheet, rowNumbers, forceFormula) {
   rowNumbers.forEach(function (rowNumber) {
     const range = sheet.getRange(rowNumber, 5, 1, 16);
+    range.clearDataValidations();
     const currentValues = range.getValues()[0];
     const currentFormulas = range.getFormulas()[0];
     const formulaRow = buildGroupResultFormulaRow(rowNumber);
@@ -481,12 +635,12 @@ function installGroupResultFormulas(sheet, rowNumbers, forceFormula) {
 
 function buildGroupResultFormulaRow(rowNumber) {
   const teamCell = '$C' + rowNumber;
-  const sourceTeam = "'" + NEW_SERIES_RESULT_SHEET_NAME + "'!$D$2:$D";
+  const sourceTeam = "'" + SERIES_RESULT_SHEET_NAME + "'!$D$2:$D";
   const columns = {
-    points: "'" + NEW_SERIES_RESULT_SHEET_NAME + "'!$F$2:$F",
-    violations: "'" + NEW_SERIES_RESULT_SHEET_NAME + "'!$L$2:$L",
-    score: "'" + NEW_SERIES_RESULT_SHEET_NAME + "'!$K$2:$K",
-    purple: "'" + NEW_SERIES_RESULT_SHEET_NAME + "'!$J$2:$J"
+    points: "'" + SERIES_RESULT_SHEET_NAME + "'!$F$2:$F",
+    violations: "'" + SERIES_RESULT_SHEET_NAME + "'!$L$2:$L",
+    score: "'" + SERIES_RESULT_SHEET_NAME + "'!$K$2:$K",
+    purple: "'" + SERIES_RESULT_SHEET_NAME + "'!$J$2:$J"
   };
   const formulas = [];
   for (let gameIndex = 1; gameIndex <= 3; gameIndex += 1) {
@@ -539,11 +693,11 @@ function toNumber(value) {
   return isFinite(number) ? number : 0;
 }
 
-function appendNewSeriesResultRows(sheet, records, csvColumns) {
+function appendSeriesResultRows(sheet, records, csvColumns) {
   const filtered = records.filter(function (record) { return getRecordKind(record.csv_row) === '試合結果'; });
   if (!filtered.length) return { appended: 0, duplicates: 0 };
-  ensureExactHeader(sheet, NEW_SERIES_RESULT_HEADER);
-  const existingKeys = readNewSeriesResultKeys(sheet);
+  ensureExactHeader(sheet, SERIES_RESULT_HEADER);
+  const existingKeys = readSeriesResultKeys(sheet);
   const csvIndex = headerIndexMap(csvColumns.map(function (value) { return String(value || '').trim(); }));
   const rows = [];
   let appended = 0;
@@ -572,7 +726,7 @@ function appendNewSeriesResultRows(sheet, records, csvColumns) {
       [common.timestamp, common.court, common.matchType, teamB, teamA, bPoints, bWins, toNumber(value('チームB敗数')), toNumber(value('チームBオレンジ')), toNumber(value('チームB紫')), toNumber(value('チームB得点')), toNumber(value('チームB違反数'))]
     ];
     teamRows.forEach(function (newRow) {
-      const key = newSeriesResultKey(newRow);
+      const key = seriesResultKey(newRow);
       if (existingKeys.has(key)) {
         duplicates += 1;
         return;
@@ -584,23 +738,23 @@ function appendNewSeriesResultRows(sheet, records, csvColumns) {
   });
 
   if (rows.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, NEW_SERIES_RESULT_HEADER.length).setValues(rows);
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, SERIES_RESULT_HEADER.length).setValues(rows);
   }
   return { appended: appended, duplicates: duplicates };
 }
 
-function readNewSeriesResultKeys(sheet) {
+function readSeriesResultKeys(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return new Set();
-  const values = sheet.getRange(2, 1, lastRow - 1, NEW_SERIES_RESULT_HEADER.length).getValues();
-  return new Set(values.map(newSeriesResultKey).filter(Boolean));
+  const values = sheet.getRange(2, 1, lastRow - 1, SERIES_RESULT_HEADER.length).getValues();
+  return new Set(values.map(seriesResultKey).filter(Boolean));
 }
 
-function newSeriesResultKey(row) {
+function seriesResultKey(row) {
   const timestamp = String(row[0] || '').trim();
   const teamName = String(row[3] || '').trim();
   if (!timestamp || !teamName) return '';
-  return row.slice(0, NEW_SERIES_RESULT_HEADER.length).map(normalizeKeyValue).join('|');
+  return row.slice(0, SERIES_RESULT_HEADER.length).map(normalizeKeyValue).join('|');
 }
 
 function appendTestRow(sheet, body, eventName) {
@@ -785,6 +939,15 @@ function ensureExactHeader(sheet, header) {
     sheet.getRange(1, 1, 1, width).setValues([header]);
     sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
   }
+}
+
+function hasExactHeader(sheet, header) {
+  const width = header.length;
+  if (sheet.getLastColumn() < width) return false;
+  const current = sheet.getRange(1, 1, 1, width).getValues()[0];
+  return current.length === width && current.every(function (value, index) {
+    return String(value || '') === String(header[index] || '');
+  });
 }
 
 function normalizeRow(row, width) {

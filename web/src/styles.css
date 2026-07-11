@@ -706,6 +706,7 @@ output.digital.dashboard-digital {
   display: grid;
   gap: clamp(18px, 4vw, 42px);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: clamp(6px, 1.5vw, 18px);
 }
 
 .operation-court-row {
