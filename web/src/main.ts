@@ -2065,7 +2065,7 @@ class RecordsController {
     if (issue) {
       el("a-score").textContent = "得点 エラー";
       el("b-score").textContent = "得点 エラー";
-      el("winner-preview").textContent = `入力エラー: ${issue}`;
+      el("winner-preview").textContent = "入力エラー: ボール数を確認してください。";
       return;
     }
     el("a-score").textContent = `得点 ${leftScore}`;
@@ -5080,7 +5080,7 @@ class Application {
     }
     if (this.operationActive && (event === "start" || event === "next")) {
       this.operationMatch = match || this.records.currentMatchNumber();
-      this.setFlow(this.operationMatch, "抽選準備中");
+      this.clearFlow();
       this.balls.beginWorkflow(this.operationMatch);
       this.timer.prepare(true);
       this.show(this.operationScreen());

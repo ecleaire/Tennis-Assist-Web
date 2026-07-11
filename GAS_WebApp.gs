@@ -6,6 +6,7 @@ const TEAM_LIST_SHEET_NAME = 'チームリスト';
 // Official timer settings sheet: A column = input item, B column = value.
 const TIMER_SETTING_SHEET_NAME = 'timer_setting';
 const LEGACY_TIMER_SETTING_SHEET_NAME = 'timer_settings';
+const GROUP_PRELIM_SHEET_NAME = 'Sheet1';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
@@ -42,7 +43,7 @@ function doGet(e) {
     if (!hasAnyApiKey(props)) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
     if (!isValidApiKey(props, params.api_key)) return jsonResponse({ ok: false, error: 'invalid_api_key' });
     const action = String(params.action || '');
-    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting') return jsonResponse({ ok: false, error: 'unknown_action' });
+    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting' && action !== 'sync_group_sheet') return jsonResponse({ ok: false, error: 'unknown_action' });
 
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
@@ -50,6 +51,15 @@ function doGet(e) {
     const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_SHEET_NAME;
     const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
+
+    if (action === 'sync_group_sheet') {
+      const result = syncGroupPrelimSheet(ss);
+      return jsonResponse(Object.assign({
+        ok: true,
+        spreadsheet_id: spreadsheetId
+      }, result));
+    }
+
     const sheet = action === 'timer_setting'
       ? getOrCreateTimerSettingSheet(ss, sheetName)
       : ss.getSheetByName(sheetName) || (action === 'teams' ? ss.getSheetByName('チーム一覧') : null);
@@ -283,6 +293,17 @@ function doPost(e) {
     const seriesResult = appendFilteredRows(seriesResultSheet, records, eventName, body, csvColumns, '試合結果');
     const matchResult = appendFilteredRows(matchResultSheet, records, eventName, body, csvColumns, 'マッチ');
     const historyResult = appendRows(historySheet, records, eventName, body, csvColumns);
+    let groupPrelimResult = null;
+    if (seriesResult.appended > 0) {
+      try {
+        groupPrelimResult = syncGroupPrelimSheet(ss);
+      } catch (syncErr) {
+        groupPrelimResult = {
+          ok: false,
+          error: String(syncErr)
+        };
+      }
+    }
 
     return jsonResponse({
       ok: true,
@@ -296,7 +317,8 @@ function doPost(e) {
       match_result_duplicates: matchResult.duplicates,
       history_sheet_name: historySheet.getName(),
       history_appended: historyResult.appended,
-      history_duplicates: historyResult.duplicates
+      history_duplicates: historyResult.duplicates,
+      group_prelim_result: groupPrelimResult
     });
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err), stack: err.stack });
@@ -305,6 +327,160 @@ function doPost(e) {
       lock.releaseLock();
     }
   }
+}
+
+function syncGroupPrelimSheet(ss) {
+  const sourceSheet = ss.getSheetByName(SERIES_RESULT_SHEET_NAME);
+  const targetSheet = ss.getSheetByName(GROUP_PRELIM_SHEET_NAME);
+  if (!sourceSheet) return { group_sheet_name: GROUP_PRELIM_SHEET_NAME, updated_rows: 0, records: 0, skipped_records: 0, warning: '試合結果シートがありません。' };
+  if (!targetSheet) return { group_sheet_name: GROUP_PRELIM_SHEET_NAME, updated_rows: 0, records: 0, skipped_records: 0, warning: 'Sheet1がありません。' };
+  if (sourceSheet.getLastRow() < 2) return { group_sheet_name: targetSheet.getName(), updated_rows: 0, records: 0, skipped_records: 0 };
+
+  const sourceValues = sourceSheet.getDataRange().getValues();
+  const header = sourceValues[0].map(function (value) { return String(value || '').trim(); });
+  const index = headerIndexMap(header);
+  const required = ['record_id', '記録種別', 'チームA', 'チームB', 'チームA勝数', 'チームB勝数', 'チームA得点', 'チームA違反数', 'チームA紫', 'チームB得点', 'チームB違反数', 'チームB紫'];
+  const missing = required.filter(function (name) { return index[name] == null; });
+  if (missing.length) {
+    return {
+      group_sheet_name: targetSheet.getName(),
+      updated_rows: 0,
+      records: 0,
+      skipped_records: 0,
+      warning: '試合結果シートに必要な列がありません: ' + missing.join(', ')
+    };
+  }
+
+  const targetValues = targetSheet.getDataRange().getValues();
+  const teamRows = collectGroupTeamRows(targetValues);
+  const teamStats = {};
+  const seen = {};
+  let records = 0;
+  let skipped = 0;
+
+  for (let rowIndex = 1; rowIndex < sourceValues.length; rowIndex += 1) {
+    const row = sourceValues[rowIndex];
+    if (String(row[index['記録種別']] || '').trim() !== '試合結果') continue;
+    const recordId = String(row[index.record_id] || '').trim();
+    const teamA = String(row[index['チームA']] || '').trim();
+    const teamB = String(row[index['チームB']] || '').trim();
+    if (!teamA || !teamB) {
+      skipped += 1;
+      continue;
+    }
+    const dedupeKey = recordId || [teamA, teamB, rowIndex].join('|');
+    if (seen[dedupeKey]) continue;
+    seen[dedupeKey] = true;
+    records += 1;
+
+    const aWins = toNumber(row[index['チームA勝数']]);
+    const bWins = toNumber(row[index['チームB勝数']]);
+    const aPoints = aWins > bWins ? 3 : aWins < bWins ? 0 : 1;
+    const bPoints = bWins > aWins ? 3 : bWins < aWins ? 0 : 1;
+
+    addGroupGame(teamStats, teamA, {
+      points: aPoints,
+      violations: toNumber(row[index['チームA違反数']]),
+      score: toNumber(row[index['チームA得点']]),
+      purple: toNumber(row[index['チームA紫']])
+    });
+    addGroupGame(teamStats, teamB, {
+      points: bPoints,
+      violations: toNumber(row[index['チームB違反数']]),
+      score: toNumber(row[index['チームB得点']]),
+      purple: toNumber(row[index['チームB紫']])
+    });
+  }
+
+  const allRows = uniqueRowsFromTeamRows(teamRows);
+  clearGroupResultCells(targetSheet, allRows);
+
+  let updatedRows = 0;
+  Object.keys(teamRows).forEach(function (teamName) {
+    const stats = teamStats[teamName];
+    if (!stats) return;
+    const rowValues = buildGroupResultRow(stats.games.slice(0, 3));
+    teamRows[teamName].forEach(function (rowNumber) {
+      targetSheet.getRange(rowNumber, 5, 1, 16).setValues([rowValues]);
+      updatedRows += 1;
+    });
+  });
+
+  return {
+    group_sheet_name: targetSheet.getName(),
+    updated_rows: updatedRows,
+    records: records,
+    skipped_records: skipped
+  };
+}
+
+function headerIndexMap(header) {
+  const index = {};
+  header.forEach(function (name, columnIndex) {
+    if (name && index[name] == null) index[name] = columnIndex;
+  });
+  return index;
+}
+
+function collectGroupTeamRows(values) {
+  const rowsByTeam = {};
+  for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
+    const row = values[rowIndex] || [];
+    const number = String(row[1] || '').trim();
+    const teamName = String(row[2] || '').trim();
+    if (!number || !teamName || teamName === 'チーム名') continue;
+    if (!rowsByTeam[teamName]) rowsByTeam[teamName] = [];
+    rowsByTeam[teamName].push(rowIndex + 1);
+  }
+  return rowsByTeam;
+}
+
+function uniqueRowsFromTeamRows(teamRows) {
+  const seen = {};
+  const rows = [];
+  Object.keys(teamRows).forEach(function (teamName) {
+    teamRows[teamName].forEach(function (rowNumber) {
+      if (seen[rowNumber]) return;
+      seen[rowNumber] = true;
+      rows.push(rowNumber);
+    });
+  });
+  return rows;
+}
+
+function clearGroupResultCells(sheet, rowNumbers) {
+  rowNumbers.forEach(function (rowNumber) {
+    sheet.getRange(rowNumber, 5, 1, 16).clearContent();
+  });
+}
+
+function addGroupGame(teamStats, teamName, game) {
+  if (!teamStats[teamName]) teamStats[teamName] = { games: [] };
+  teamStats[teamName].games.push(game);
+}
+
+function buildGroupResultRow(games) {
+  const output = [];
+  const totals = { points: 0, violations: 0, score: 0, purple: 0 };
+  for (let i = 0; i < 3; i += 1) {
+    const game = games[i];
+    if (game) {
+      output.push(game.points, game.violations, game.score, game.purple);
+      totals.points += game.points;
+      totals.violations += game.violations;
+      totals.score += game.score;
+      totals.purple += game.purple;
+    } else {
+      output.push('', '', '', '');
+    }
+  }
+  output.push(totals.points, totals.violations, totals.score, totals.purple);
+  return output;
+}
+
+function toNumber(value) {
+  const number = Number(String(value == null ? '' : value).replace(/[^\d.-]/g, ''));
+  return isFinite(number) ? number : 0;
 }
 
 function appendTestRow(sheet, body, eventName) {

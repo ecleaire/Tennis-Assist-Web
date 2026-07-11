@@ -1654,8 +1654,7 @@ label {
   flex: 0 0 100%;
 }
 
-#record-input .form-grid::after,
-#record-input .score-pair::after {
+#record-input .form-grid::after {
   color: var(--muted);
   font-size: clamp(0.88rem, 1.4vw, 1rem);
   font-weight: 800;
@@ -1664,10 +1663,6 @@ label {
 
 #record-input .form-grid::after {
   content: "終了カテゴリを選び、次に終了理由を確認してください。";
-}
-
-#record-input .score-pair::after {
-  content: "左側チーム、右側チームの順にボール数を確認してください。";
 }
 
 body.operation-record-focus #record-input .section-head h2 {
