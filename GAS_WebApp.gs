@@ -527,8 +527,6 @@ function ensureResultSheetStructure(ss) {
   const historyArchiveSheet = getOrCreateSheet(ss, HISTORY_ARCHIVE_SHEET_NAME);
   const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
   ensureSeriesResultHeader(seriesResultSheet);
-  backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet);
-  backfillSeriesResultFromLegacySheet(seriesResultSheet, ss.getSheetByName(LEGACY_NEW_SERIES_RESULT_SHEET_NAME));
   return {
     seriesArchiveSheet: seriesArchiveSheet,
     matchArchiveSheet: matchArchiveSheet,
@@ -815,7 +813,7 @@ function writeSeriesResultRows(sheet, canonicalRows) {
 function nextDataAppendRow(sheet, headers, headerMap) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 2;
-  const width = sheet.getLastColumn();
+  const width = SERIES_RESULT_HEADER.length;
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   let appendRow = 2;
   values.forEach(function (row, index) {
@@ -833,7 +831,7 @@ function readSeriesResultKeys(sheet) {
   const headerMap = ensureSeriesResultHeader(sheet);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return new Set();
-  const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, SERIES_RESULT_HEADER.length).getValues();
   return new Set(values.map(function (row) {
     return seriesResultKey(SERIES_RESULT_HEADER.map(function (headerName) {
       const columnIndex = headerMap[headerName];
@@ -845,8 +843,15 @@ function readSeriesResultKeys(sheet) {
 function seriesResultKey(row) {
   const timestamp = String(row[0] || '').trim();
   const teamName = String(row[3] || '').trim();
-  if (!timestamp || !teamName) return '';
-  return row.slice(0, SERIES_RESULT_HEADER.length).map(normalizeKeyValue).join('|');
+  const opponent = String(row[4] || '').trim();
+  if (!timestamp || !teamName || !opponent) return '';
+  return [
+    row[0], // 日時
+    row[1], // コート
+    row[2], // 種別
+    row[3], // チーム名
+    row[4]  // 対戦相手
+  ].map(normalizeKeyValue).join('|');
 }
 
 function appendTestRow(sheet, body, eventName) {
@@ -1021,14 +1026,14 @@ function appendRows(sheet, records, eventName, body, csvColumns, options) {
 }
 
 function ensureSeriesResultHeader(sheet) {
-  const existingWidth = Math.max(sheet.getLastColumn(), SERIES_RESULT_HEADER.length);
-  const current = sheet.getRange(1, 1, 1, existingWidth).getValues()[0];
+  const width = SERIES_RESULT_HEADER.length;
+  const current = sheet.getRange(1, 1, 1, width).getValues()[0];
   const hasAnyHeader = current.some(function (value) {
     return String(value || '').trim() !== '';
   });
   if (!hasAnyHeader) {
-    sheet.getRange(1, 1, 1, SERIES_RESULT_HEADER.length).setValues([SERIES_RESULT_HEADER]);
-    sheet.getRange(1, 1, 1, SERIES_RESULT_HEADER.length).setFontWeight('bold');
+    sheet.getRange(1, 1, 1, width).setValues([SERIES_RESULT_HEADER]);
+    sheet.getRange(1, 1, 1, width).setFontWeight('bold');
     return headerIndexMap(SERIES_RESULT_HEADER);
   }
   const headerMap = {};
@@ -1041,15 +1046,21 @@ function ensureSeriesResultHeader(sheet) {
     return headerMap[name] == null;
   });
   if (missingHeaders.length) {
-    const startColumn = existingWidth + 1;
-    sheet.getRange(1, startColumn, 1, missingHeaders.length).setValues([missingHeaders]);
+    const blankIndexes = [];
+    current.forEach(function (value, index) {
+      if (String(value || '').trim() === '') blankIndexes.push(index);
+    });
+    if (blankIndexes.length < missingHeaders.length) {
+      throw new Error('試合結果シートのA〜Lに必要な列がありません: ' + missingHeaders.join(', '));
+    }
     missingHeaders.forEach(function (name, index) {
-      headerMap[name] = existingWidth + index;
+      const columnIndex = blankIndexes[index];
+      sheet.getRange(1, columnIndex + 1).setValue(name);
+      headerMap[name] = columnIndex;
     });
   }
 
-  const maxColumnIndex = Math.max.apply(null, SERIES_RESULT_HEADER.map(function (name) { return headerMap[name]; }));
-  sheet.getRange(1, 1, 1, maxColumnIndex + 1).setFontWeight('bold');
+  sheet.getRange(1, 1, 1, width).setFontWeight('bold');
   return headerMap;
 }
 
