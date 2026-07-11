@@ -4768,9 +4768,9 @@ class Application {
     this.setOperationTeamStatus("");
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
-      `<div><dt>1 コート</dt><dd>${escapeText(court)}</dd></div>` +
-      `<div><dt>2 試合種別</dt><dd>${escapeText(matchType)}</dd></div>` +
-      `<div class="start-check-teams"><dt>3 チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
+      `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
+      `<div><dt>試合種別</dt><dd>${escapeText(matchType)}</dd></div>` +
+      `<div class="start-check-teams"><dt>チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
       `</dl>`;
     el<HTMLDialogElement>("operation-start-check-dialog").showModal();
   }
