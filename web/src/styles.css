@@ -4701,11 +4701,11 @@ html.phone-portrait .dashboard-actions .button {
 }
 
 html.phone-portrait .operation-home .operation-prepare {
-  font-size: clamp(2rem, 10vw, 2.9rem);
-  min-height: clamp(104px, 24vw, 136px);
-  min-width: min(100%, calc(var(--viewport-width) - 40px));
-  padding: 24px 28px;
-  width: min(100%, 360px);
+  font-size: clamp(2.7rem, 12vw, 3.7rem);
+  min-height: clamp(156px, 34vw, 204px);
+  min-width: min(100%, calc(var(--viewport-width) - 32px));
+  padding: 38px 30px;
+  width: min(100%, 460px);
 }
 
 html.phone-portrait output.digital.dashboard-digital {
