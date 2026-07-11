@@ -710,9 +710,8 @@ output.digital.dashboard-digital {
 
 .operation-court-row {
   display: grid;
-  gap: clamp(16px, 3vw, 32px);
-  justify-items: start;
-  grid-template-columns: repeat(2, minmax(0, 520px));
+  gap: clamp(18px, 4vw, 42px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .operation-court-row label {
@@ -721,7 +720,7 @@ output.digital.dashboard-digital {
   gap: 12px;
   font-size: clamp(1.42rem, 2.5vw, 1.95rem);
   font-weight: 900;
-  width: min(520px, 100%);
+  width: 100%;
 }
 
 .operation-court-row select {

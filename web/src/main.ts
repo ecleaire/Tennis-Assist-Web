@@ -264,7 +264,7 @@ function currentAppVariant(): AppVariantConfig {
 }
 
 let teams: string[] = [...defaultTeams];
-const operationMatchTypes: MatchType[] = ["予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ", "練習"];
+const operationMatchTypes: MatchType[] = ["練習", "予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"];
 const operationMatchTypeOptions = ["試合種別を選択", ...operationMatchTypes];
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
