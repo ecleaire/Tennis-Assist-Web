@@ -1,5 +1,6 @@
 const TEST_SHEET_NAME = '送信テスト';
 const SERIES_RESULT_SHEET_NAME = '試合結果';
+const NEW_SERIES_RESULT_SHEET_NAME = '新・試合結果';
 const MATCH_RESULT_SHEET_NAME = 'マッチ結果';
 const HISTORY_SHEET_NAME = '対戦履歴';
 const TEAM_LIST_SHEET_NAME = 'チームリスト';
@@ -10,6 +11,7 @@ const GROUP_PRELIM_SHEET_NAME = 'Sheet1';
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
+const NEW_SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '勝数', '敗数', 'オレンジ', '紫', '得点', '違反数'];
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
@@ -287,10 +289,12 @@ function doPost(e) {
     const records = collectRecords(body);
 
     const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
+    const newSeriesResultSheet = getOrCreateSheet(ss, NEW_SERIES_RESULT_SHEET_NAME);
     const matchResultSheet = getOrCreateSheet(ss, MATCH_RESULT_SHEET_NAME);
     const historySheet = getOrCreateSheet(ss, HISTORY_SHEET_NAME);
 
     const seriesResult = appendFilteredRows(seriesResultSheet, records, eventName, body, csvColumns, '試合結果');
+    const newSeriesResult = appendNewSeriesResultRows(newSeriesResultSheet, records, csvColumns);
     const matchResult = appendFilteredRows(matchResultSheet, records, eventName, body, csvColumns, 'マッチ');
     const historyResult = appendRows(historySheet, records, eventName, body, csvColumns);
     let groupPrelimResult = null;
@@ -312,6 +316,9 @@ function doPost(e) {
       series_result_sheet_name: seriesResultSheet.getName(),
       series_result_appended: seriesResult.appended,
       series_result_duplicates: seriesResult.duplicates,
+      new_series_result_sheet_name: newSeriesResultSheet.getName(),
+      new_series_result_appended: newSeriesResult.appended,
+      new_series_result_duplicates: newSeriesResult.duplicates,
       match_result_sheet_name: matchResultSheet.getName(),
       match_result_appended: matchResult.appended,
       match_result_duplicates: matchResult.duplicates,
@@ -484,6 +491,67 @@ function buildGroupResultRow(games) {
 function toNumber(value) {
   const number = Number(String(value == null ? '' : value).replace(/[^\d.-]/g, ''));
   return isFinite(number) ? number : 0;
+}
+
+function appendNewSeriesResultRows(sheet, records, csvColumns) {
+  const filtered = records.filter(function (record) { return getRecordKind(record.csv_row) === '試合結果'; });
+  if (!filtered.length) return { appended: 0, duplicates: 0 };
+  ensureExactHeader(sheet, NEW_SERIES_RESULT_HEADER);
+  const existingKeys = readNewSeriesResultKeys(sheet);
+  const csvIndex = headerIndexMap(csvColumns.map(function (value) { return String(value || '').trim(); }));
+  const rows = [];
+  let appended = 0;
+  let duplicates = 0;
+
+  filtered.forEach(function (record) {
+    const row = record.csv_row || [];
+    const value = function (name) {
+      const index = csvIndex[name];
+      return index == null ? '' : row[index];
+    };
+    const teamA = String(value('チームA') || '').trim();
+    const teamB = String(value('チームB') || '').trim();
+    if (!teamA || !teamB) return;
+    const aWins = toNumber(value('チームA勝数'));
+    const bWins = toNumber(value('チームB勝数'));
+    const aPoints = aWins > bWins ? 3 : aWins < bWins ? 0 : 1;
+    const bPoints = bWins > aWins ? 3 : bWins < aWins ? 0 : 1;
+    const common = {
+      timestamp: value('日時'),
+      court: value('コート'),
+      matchType: value('種別')
+    };
+    const teamRows = [
+      [common.timestamp, common.court, common.matchType, teamA, teamB, aPoints, aWins, toNumber(value('チームA敗数')), toNumber(value('チームAオレンジ')), toNumber(value('チームA紫')), toNumber(value('チームA得点')), toNumber(value('チームA違反数'))],
+      [common.timestamp, common.court, common.matchType, teamB, teamA, bPoints, bWins, toNumber(value('チームB敗数')), toNumber(value('チームBオレンジ')), toNumber(value('チームB紫')), toNumber(value('チームB得点')), toNumber(value('チームB違反数'))]
+    ];
+    teamRows.forEach(function (newRow) {
+      const key = newSeriesResultKey(newRow);
+      if (existingKeys.has(key)) {
+        duplicates += 1;
+        return;
+      }
+      existingKeys.add(key);
+      rows.push(newRow);
+      appended += 1;
+    });
+  });
+
+  if (rows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, NEW_SERIES_RESULT_HEADER.length).setValues(rows);
+  }
+  return { appended: appended, duplicates: duplicates };
+}
+
+function readNewSeriesResultKeys(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return new Set();
+  const values = sheet.getRange(2, 1, lastRow - 1, NEW_SERIES_RESULT_HEADER.length).getValues();
+  return new Set(values.map(newSeriesResultKey).filter(Boolean));
+}
+
+function newSeriesResultKey(row) {
+  return [row[0], row[1], row[2], row[3], row[4]].map(function (value) { return String(value || '').trim(); }).join('|');
 }
 
 function appendTestRow(sheet, body, eventName) {

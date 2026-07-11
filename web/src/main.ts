@@ -5,7 +5,7 @@ declare const __APP_VERSION__: string;
 type Screen = "dashboard" | "operation" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
-type MatchType = "練習試合" | "公式試合";
+type MatchType = "練習試合" | "公式試合" | "予選" | "決勝トーナメント" | "4位決定リーグ" | "優勝決定リーグ";
 type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
 type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "Dコート用" | "Eコート用" | "Fコート用" | "Gコート用" | "Hコート用" | "本部用" | "予備端末";
 
@@ -52,6 +52,7 @@ interface Series {
   id: string;
   court: string;
   seriesNumber: number;
+  matchType: MatchType;
   teamA: string;
   teamB: string;
   records: MatchRecord[];
@@ -260,6 +261,7 @@ function currentAppVariant(): AppVariantConfig {
 }
 
 let teams: string[] = [...defaultTeams];
+const operationMatchTypes: MatchType[] = ["予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"];
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
@@ -546,6 +548,11 @@ function csvRow(record: MatchRecord): string[] {
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
     record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "",
   ].map(String);
+}
+
+function normalizeMatchType(value: unknown): MatchType {
+  const text = String(value || "").trim();
+  return operationMatchTypes.includes(text as MatchType) || text === "公式試合" || text === "練習試合" ? text as MatchType : "練習試合";
 }
 
 function parseCsv(text: string): string[][] {
@@ -1886,11 +1893,11 @@ class RecordsController {
     };
   }
 
-  startSeriesForOperation(teamA: string, teamB: string, court: string): boolean {
+  startSeriesForOperation(teamA: string, teamB: string, court: string, matchType: MatchType): boolean {
     el<HTMLSelectElement>("team-a").value = teamA;
     el<HTMLSelectElement>("team-b").value = teamB;
     el<HTMLSelectElement>("court-select").value = court;
-    this.startSeries();
+    this.startSeries(matchType);
     return Boolean(this.series);
   }
 
@@ -1942,7 +1949,7 @@ class RecordsController {
     this.renderScores();
   }
 
-  private startSeries(): void {
+  private startSeries(matchType = AdminController.settings().matchType): void {
     const teamA = el<HTMLSelectElement>("team-a").value;
     const teamB = el<HTMLSelectElement>("team-b").value;
     if (teamA === teamB) {
@@ -1951,7 +1958,7 @@ class RecordsController {
     }
     const court = el<HTMLSelectElement>("court-select").value;
     const seriesNumber = this.nextSeriesNumber(court);
-    this.series = { id: `${court}_${String(seriesNumber).padStart(2, "0")}_${Date.now()}`, court, seriesNumber, teamA, teamB, records: [] };
+    this.series = { id: `${court}_${String(seriesNumber).padStart(2, "0")}_${Date.now()}`, court, seriesNumber, matchType, teamA, teamB, records: [] };
     this.editing = 0;
     this.agreedA = false;
     this.agreedB = false;
@@ -2100,7 +2107,7 @@ class RecordsController {
       court: this.series.court,
       competitionId,
       matchNumber,
-      matchType: AdminController.settings().matchType,
+      matchType: this.series.matchType,
       teamA: this.series.teamA,
       teamB: this.series.teamB,
       reasonCategory: category,
@@ -2429,7 +2436,7 @@ class RecordsController {
       court: this.series.court,
       competitionId: `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_RESULT`,
       matchNumber: 0,
-      matchType: AdminController.settings().matchType,
+      matchType: this.series.matchType,
       teamA: this.series.teamA,
       teamB: this.series.teamB,
       teamAWins: sum.teamAWins,
@@ -2875,7 +2882,7 @@ class RecordsController {
       recordId: at(row, "対戦ID") + "_" + at(row, "マッチ番号"),
       timestamp: at(row, "日時"),
       recordKind: at(row, "記録種別") === "試合結果" ? "試合結果" : "マッチ",
-      matchType: at(row, "種別") === "公式試合" ? "公式試合" : "練習試合",
+      matchType: normalizeMatchType(at(row, "種別")),
       seriesId: at(row, "対戦ID"),
       court: at(row, "コート") || "Aコート",
       seriesNumber: Number(at(row, "試合番号")) || 1,
@@ -4270,6 +4277,7 @@ class Application {
   private mobileMenuOpen = false;
   private operationActive = false;
   private operationMatch = 1;
+  private rsamMode = false;
   private operationHomeTimer = 0;
   private operationHomeCountdownTimer = 0;
   private operationTimerFinishDelay = 0;
@@ -4542,8 +4550,13 @@ class Application {
   private syncOperationTeams(): void {
     const values = this.records.teamOptions();
     options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, el<HTMLSelectElement>("court-select").value || activeCourtOptions[0]);
+    options(el<HTMLSelectElement>("operation-match-type"), operationMatchTypes, operationMatchTypes[0]);
     options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
     options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
+  }
+
+  private operationMatchType(): MatchType {
+    return this.rsamMode ? el<HTMLSelectElement>("operation-match-type").value as MatchType : AdminController.settings().matchType;
   }
 
   private openOperationStartCheck(): void {
@@ -4555,13 +4568,13 @@ class Application {
       return;
     }
     el("operation-team-status").textContent = "";
-    const settings = AdminController.settings();
     const timerSetting = AdminController.timerSetting() ?? defaultExternalTimerSetting("default");
+    const matchType = this.operationMatchType();
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
       `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
       `<div class="start-check-teams"><dt>チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
-      `<div><dt>試合種別</dt><dd>${escapeText(settings.matchType)}</dd></div>` +
+      `<div><dt>試合種別</dt><dd>${escapeText(matchType)}</dd></div>` +
       `<div><dt>タイマー</dt><dd>${escapeText(timerSettingSummary(timerSetting))}</dd></div>` +
       `</dl>`;
     el<HTMLDialogElement>("operation-start-check-dialog").showModal();
@@ -4579,7 +4592,7 @@ class Application {
     this.operationActive = true;
     this.operationMatch = 1;
     this.clearOperationHomeTimer();
-    this.records.startSeriesForOperation(teamA, teamB, court);
+    this.records.startSeriesForOperation(teamA, teamB, court, this.operationMatchType());
   }
 
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {
@@ -5146,11 +5159,13 @@ class Application {
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
     this.hyogo = mode === "hyogo";
+    this.rsamMode = mode === "rsam";
     const lightAllowed = this.variant.allowLightUi && mode === "rsam";
     const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
     document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
     document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");
     document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
+    document.documentElement.classList.toggle("rsam-admin-mode", this.rsamMode);
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
@@ -5172,12 +5187,14 @@ class Application {
   private deactivateSecret(): void {
     this.secret = false;
     this.hyogo = false;
+    this.rsamMode = false;
     this.linksClicks = 0;
     this.rulesClicks = 0;
     document.documentElement.classList.remove("secret");
     document.documentElement.classList.remove("venue-standard-accent");
     document.documentElement.classList.remove("venue-admin-accent");
     document.documentElement.classList.remove("venue-light-accent");
+    document.documentElement.classList.remove("rsam-admin-mode");
     this.updateTitle();
     el("development-nav").classList.add("hidden");
     el("admin-exit").classList.add("hidden");
