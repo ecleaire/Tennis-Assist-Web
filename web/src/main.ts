@@ -8,6 +8,8 @@ type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
 type MatchType = "練習試合" | "公式試合" | "予選" | "決勝トーナメント" | "4位決定リーグ" | "優勝決定リーグ";
 type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
 type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "Dコート用" | "Eコート用" | "Fコート用" | "Gコート用" | "Hコート用" | "本部用" | "予備端末";
+const homeUnsentAlertDelayMs = 20000;
+type SyncSummary = { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string; oldestUnsentAt: number };
 
 interface MatchRecord {
   recordId: string;
@@ -43,6 +45,7 @@ interface MatchRecord {
   notes?: string;
   sendStatus?: "pending" | "sent" | "failed" | "local-only";
   sendError?: string;
+  sendStatusChangedAt?: string;
   deviceId?: string;
   deviceRole?: DeviceRole;
   appVersion?: string;
@@ -1822,13 +1825,19 @@ class RecordsController {
     this.renderSyncAlert();
   }
 
-  syncSummary(): { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string } {
+  syncSummary(): SyncSummary {
     let pending = 0;
     let failed = 0;
+    let oldestUnsentAt = 0;
     for (const record of this.records) {
       if (isSheetPreviewRecord(record) || record.recordKind !== "試合結果") continue;
-      if (record.sendStatus === "pending") pending += 1;
-      if (record.sendStatus === "failed") failed += 1;
+      if (record.sendStatus === "pending" || record.sendStatus === "failed") {
+        if (record.sendStatus === "pending") pending += 1;
+        if (record.sendStatus === "failed") failed += 1;
+        const changedAt = Date.parse(record.sendStatusChangedAt || record.timestamp || "");
+        const effectiveAt = Number.isFinite(changedAt) ? changedAt : Date.now();
+        oldestUnsentAt = oldestUnsentAt ? Math.min(oldestUnsentAt, effectiveAt) : effectiveAt;
+      }
     }
     const settings = AdminController.settings();
     const connectionVerified = Boolean(settings.gasConnectedAt && settings.gasConnectedUrl && settings.gasConnectedUrl === settings.gasUrl && settings.apiKey);
@@ -1841,6 +1850,7 @@ class RecordsController {
       configured,
       gasText: configured ? "GAS接続: 確認済み" : "GAS接続: 未確認",
       reason: this.sendIssueReason(settings, latestFailed?.sendError),
+      oldestUnsentAt,
     };
   }
 
@@ -2653,31 +2663,37 @@ class RecordsController {
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem(this.storageKey) ?? "[]");
       if (!Array.isArray(parsed)) return [];
-      return (parsed as Array<Partial<MatchRecord>>).map((record) => ({
-        recordId: record.recordId ?? `${record.seriesId ?? "imported"}_${record.matchNumber ?? 0}`,
-        timestamp: record.timestamp ?? timestamp(),
-        recordKind: record.recordKind ?? "マッチ",
-        seriesId: record.seriesId ?? "",
-        seriesNumber: record.seriesNumber ?? 1,
-        court: record.court ?? "Aコート",
-        competitionId: record.competitionId ?? "",
-        matchNumber: record.matchNumber ?? 1,
-        matchType: record.matchType === "公式試合" ? "公式試合" : "練習試合",
-        teamA: record.teamA ?? "",
-        teamB: record.teamB ?? "",
-        result: record.result ?? "引き分け",
-        winner: record.winner ?? "",
-        targetTeam: record.targetTeam ?? "",
-        reasonCategory: record.reasonCategory ?? scoringCategory,
-        endReason: record.endReason ?? "",
-        teamAOrange: record.teamAOrange ?? 0,
-        teamAPurple: record.teamAPurple ?? 0,
-        teamBOrange: record.teamBOrange ?? 0,
-        teamBPurple: record.teamBPurple ?? 0,
-        teamAScore: record.teamAScore ?? 0,
-        teamBScore: record.teamBScore ?? 0,
-        ...record,
-      }));
+      return (parsed as Array<Partial<MatchRecord>>).map((record) => {
+        const normalized: MatchRecord = {
+          recordId: record.recordId ?? `${record.seriesId ?? "imported"}_${record.matchNumber ?? 0}`,
+          timestamp: record.timestamp ?? timestamp(),
+          recordKind: record.recordKind ?? "マッチ",
+          seriesId: record.seriesId ?? "",
+          seriesNumber: record.seriesNumber ?? 1,
+          court: record.court ?? "Aコート",
+          competitionId: record.competitionId ?? "",
+          matchNumber: record.matchNumber ?? 1,
+          matchType: normalizeMatchType(record.matchType),
+          teamA: record.teamA ?? "",
+          teamB: record.teamB ?? "",
+          result: record.result ?? "引き分け",
+          winner: record.winner ?? "",
+          targetTeam: record.targetTeam ?? "",
+          reasonCategory: record.reasonCategory ?? scoringCategory,
+          endReason: record.endReason ?? "",
+          teamAOrange: record.teamAOrange ?? 0,
+          teamAPurple: record.teamAPurple ?? 0,
+          teamBOrange: record.teamBOrange ?? 0,
+          teamBPurple: record.teamBPurple ?? 0,
+          teamAScore: record.teamAScore ?? 0,
+          teamBScore: record.teamBScore ?? 0,
+          ...record,
+        };
+        if ((normalized.sendStatus === "pending" || normalized.sendStatus === "failed") && !normalized.sendStatusChangedAt) {
+          normalized.sendStatusChangedAt = normalized.timestamp || timestamp();
+        }
+        return normalized;
+      });
     } catch {
       return [];
     }
@@ -2992,15 +3008,21 @@ class RecordsController {
   }
 
   private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>, sendError = ""): void {
+    const isUnsentStatus = status === "pending" || status === "failed";
+    const wasUnsentStatus = record.sendStatus === "pending" || record.sendStatus === "failed";
+    const changedAt = isUnsentStatus && wasUnsentStatus && record.sendStatusChangedAt ? record.sendStatusChangedAt : timestamp();
     record.sendStatus = status;
     record.sendError = sendError;
+    record.sendStatusChangedAt = changedAt;
     const stored = this.records.find((item) => item.recordId === record.recordId);
     if (stored) {
       stored.sendStatus = status;
       stored.sendError = sendError;
+      stored.sendStatusChangedAt = changedAt;
     }
     this.saveStoredRecords();
     this.refreshHistoryView();
+    document.dispatchEvent(new CustomEvent("records-storage-updated"));
   }
 
   private async retrySend(record: MatchRecord): Promise<void> {
@@ -3528,7 +3550,7 @@ class AdminController {
     private readonly onConnected?: () => Promise<TeamImportResult>,
     private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
-    private readonly syncSummaryProvider?: () => { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string },
+    private readonly syncSummaryProvider?: () => SyncSummary,
     private readonly portableStateProvider?: () => unknown,
     private readonly portableStateApplier?: (value: unknown) => void,
   ) {
@@ -4286,6 +4308,7 @@ class Application {
   private homeSyncAlertMarkup = "";
   private homeRiskMarkup = "";
   private homeSyncNoticeTimer = 0;
+  private homeUnsentAlertTimer = 0;
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
   private backConfirmButton: HTMLButtonElement | null = null;
   private backConfirmTimer = 0;
@@ -4621,6 +4644,18 @@ class Application {
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
     const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt);
+    const showDelayedUnsent = this.shouldShowHomeUnsentAlert(sync);
+    if (sync.unsent && !showDelayedUnsent && !this.homeSyncNotice) {
+      this.scheduleHomeUnsentAlert(sync);
+      panel.classList.add("hidden");
+      if (this.homeSyncAlertMarkup) {
+        panel.innerHTML = "";
+        this.homeSyncAlertMarkup = "";
+      }
+      return;
+    }
+    if (sync.unsent) this.scheduleHomeUnsentAlert(sync);
+    else this.clearHomeUnsentAlertTimer();
     panel.classList.toggle("hidden", sync.unsent === 0 && !sync.configured && !hasGasHistory);
     const gasState = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : "GAS未接続";
     panel.classList.remove("sync-running", "sync-success", "sync-warning");
@@ -4651,6 +4686,29 @@ class Application {
       window.clearTimeout(this.homeSyncNoticeTimer);
       this.homeSyncNoticeTimer = 0;
     }
+  }
+
+  private clearHomeUnsentAlertTimer(): void {
+    if (!this.homeUnsentAlertTimer) return;
+    window.clearTimeout(this.homeUnsentAlertTimer);
+    this.homeUnsentAlertTimer = 0;
+  }
+
+  private shouldShowHomeUnsentAlert(sync: SyncSummary): boolean {
+    if (!sync.unsent) return false;
+    if (!sync.oldestUnsentAt) return true;
+    return Date.now() - sync.oldestUnsentAt >= homeUnsentAlertDelayMs;
+  }
+
+  private scheduleHomeUnsentAlert(sync: SyncSummary): void {
+    this.clearHomeUnsentAlertTimer();
+    if (!sync.unsent || !sync.oldestUnsentAt) return;
+    const remaining = homeUnsentAlertDelayMs - (Date.now() - sync.oldestUnsentAt);
+    if (remaining <= 0) return;
+    this.homeUnsentAlertTimer = window.setTimeout(() => {
+      this.homeUnsentAlertTimer = 0;
+      this.updateHomeSyncAlert();
+    }, remaining + 50);
   }
 
   private hideHomeSyncNoticeAfter(ms: number): void {

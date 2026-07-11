@@ -994,6 +994,10 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   margin: 14px 0;
 }
 
+#operation-start-check-dialog {
+  max-width: min(920px, calc(100vw - 28px));
+}
+
 .start-check-list div {
   align-items: center;
   background: rgba(14, 35, 64, 0.88);
@@ -1057,9 +1061,11 @@ body:not(.operation-timer-returnable) #operation-timer-return {
 
 .start-check-team-card strong {
   color: var(--text);
-  font-size: clamp(1.55rem, 3.4vw, 2.55rem);
+  font-size: clamp(1.45rem, 2.7vw, 2.3rem);
   font-weight: 900;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .history-role-badge {
