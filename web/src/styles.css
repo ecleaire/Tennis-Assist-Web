@@ -381,6 +381,35 @@ body.compact.timer-running #timer-fullscreen {
   display: block;
 }
 
+@media (min-width: 761px) {
+  body.operation-step-home,
+  body.operation-step-team {
+    overflow-y: hidden;
+  }
+
+  body.operation-step-home #app,
+  body.operation-step-team #app {
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: calc(var(--viewport-height) - 24px);
+  }
+
+  body.operation-step-home #screen-dashboard,
+  body.operation-step-team #screen-dashboard,
+  body.operation-step-home .operation-shell,
+  body.operation-step-team .operation-shell {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.operation-step-home .operation-step.active,
+  body.operation-step-team .operation-step.active {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
 .dashboard {
   display: grid;
   gap: 14px;
@@ -510,11 +539,11 @@ output.digital.dashboard-digital {
 .operation-home .operation-prepare {
   border-radius: 20px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), 0 0 0 2px rgba(46, 168, 255, 0.2) inset;
-  font-size: clamp(2.1rem, 4.2vw, 4rem);
+  font-size: clamp(2.45rem, 4.8vw, 4.8rem);
   letter-spacing: 0;
-  min-height: clamp(154px, 16vw, 220px);
-  min-width: min(720px, 82vw);
-  padding: clamp(36px, 5vw, 58px) clamp(46px, 7vw, 104px);
+  min-height: clamp(190px, 19vw, 270px);
+  min-width: min(760px, 82vw);
+  padding: clamp(46px, 6vw, 72px) clamp(54px, 7vw, 112px);
 }
 
 .home-operation-summary {
@@ -888,11 +917,11 @@ body.operation-balls-compact .operation-court-panel .operation-court-fullscreen 
   background: #0d3a44;
   border: 4px solid #19f43c;
   border-radius: 14px;
-  font-size: clamp(1.35rem, 2.35vw, 1.9rem);
+  font-size: clamp(1.55rem, 2.7vw, 2.18rem);
   font-weight: 900;
   justify-content: flex-start;
-  min-height: clamp(86px, 10vw, 112px);
-  padding: clamp(16px, 2.4vw, 24px) clamp(20px, 3.4vw, 34px);
+  min-height: clamp(104px, 11vw, 138px);
+  padding: clamp(20px, 2.7vw, 30px) clamp(24px, 3.8vw, 42px);
   text-align: left;
   white-space: nowrap;
 }
@@ -999,7 +1028,7 @@ body:not(.operation-timer-returnable) #operation-timer-return {
 }
 
 #operation-start-check-dialog {
-  max-width: min(920px, calc(100vw - 28px));
+  max-width: min(1120px, calc(100vw - 28px));
 }
 
 .start-check-list div {
@@ -1008,20 +1037,20 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   border: 1px solid rgba(46, 168, 255, 0.35);
   border-radius: 14px;
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(112px, 0.3fr) minmax(0, 1fr);
-  padding: 15px 17px;
+  gap: 16px;
+  grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr);
+  padding: 20px 22px;
 }
 
 .start-check-list dt {
   color: var(--muted);
-  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  font-size: clamp(1.18rem, 2vw, 1.42rem);
   font-weight: 900;
 }
 
 .start-check-list dd {
   color: var(--text);
-  font-size: clamp(1.28rem, 2.7vw, 1.78rem);
+  font-size: clamp(1.65rem, 3.1vw, 2.45rem);
   font-weight: 900;
   margin: 0;
 }
@@ -1044,8 +1073,8 @@ body:not(.operation-timer-returnable) #operation-timer-return {
   color: var(--text);
   display: grid;
   gap: 4px;
-  min-height: 82px;
-  padding: 12px;
+  min-height: 112px;
+  padding: 16px 18px;
 }
 
 .start-check-team-card.left {
@@ -1053,19 +1082,19 @@ body:not(.operation-timer-returnable) #operation-timer-return {
 }
 
 .start-check-team-card.right {
-  border-right: 5px solid var(--accent);
-  text-align: right;
+  border-left: 5px solid var(--accent);
+  text-align: left;
 }
 
 .start-check-team-card b {
   color: var(--accent);
-  font-size: clamp(0.92rem, 1.6vw, 1.08rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.28rem);
   font-weight: 900;
 }
 
 .start-check-team-card strong {
   color: var(--text);
-  font-size: clamp(1.45rem, 2.7vw, 2.3rem);
+  font-size: clamp(1.75rem, 3vw, 2.7rem);
   font-weight: 900;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -3942,7 +3971,9 @@ body.compact #timer-five {
   }
 
   .operation-numbered {
-    min-height: 58px;
+    font-size: clamp(1.15rem, 4.6vw, 1.45rem);
+    min-height: 68px;
+    padding-inline: 18px;
   }
 
   .operation-court-panel {
@@ -5350,9 +5381,10 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .operation-home .operation-prepare {
-    min-height: clamp(136px, 15vw, 188px);
-    min-width: min(680px, 78vw);
-    padding-block: clamp(34px, 4.2vw, 52px);
+    font-size: clamp(2.5rem, 5.1vw, 4.1rem);
+    min-height: clamp(180px, 20vw, 230px);
+    min-width: min(720px, 80vw);
+    padding-block: clamp(42px, 5vw, 64px);
   }
 
   .operation-team {
@@ -5394,9 +5426,9 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .operation-numbered {
-    font-size: clamp(1.18rem, 1.9vw, 1.45rem);
-    min-height: 76px;
-    padding-inline: 18px;
+    font-size: clamp(1.38rem, 2.2vw, 1.76rem);
+    min-height: 94px;
+    padding-inline: 24px;
   }
 
   .operation-between h2,

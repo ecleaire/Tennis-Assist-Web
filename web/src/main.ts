@@ -267,6 +267,7 @@ function currentAppVariant(): AppVariantConfig {
 let teams: string[] = [...defaultTeams];
 const operationMatchTypes: MatchType[] = ["練習", "予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"];
 const operationMatchTypeOptions = ["試合種別を選択", ...operationMatchTypes];
+const priorityTeamMatchTypes = new Set<MatchType>(["決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"]);
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
@@ -4552,6 +4553,8 @@ class Application {
     if (screen !== "timer") void this.timer.leaveFullscreen();
     if (screen !== "referee") void this.refereeTimer.leaveFullscreen();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
+    document.body.classList.remove("operation-step-home", "operation-step-team", "operation-step-draw", "operation-step-between", "operation-step-finished");
+    if (screen === this.operationScreen()) document.body.classList.add(`operation-step-${this.operationStep}`);
     document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
     el(`screen-${screen}`).classList.add("active");
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => button.classList.toggle("active", button.dataset.screen === screen));
@@ -4722,6 +4725,12 @@ class Application {
       this.setOperationTeamStatus("");
       return;
     }
+    if (!priorityTeamMatchTypes.has(matchType)) {
+      this.records.clearTeamPriority();
+      this.syncOperationTeamSelects();
+      this.setOperationTeamStatus("");
+      return;
+    }
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       this.syncOperationTeamSelects();
@@ -4757,13 +4766,11 @@ class Application {
       return;
     }
     this.setOperationTeamStatus("");
-    const timerSetting = AdminController.timerSetting() ?? defaultExternalTimerSetting("default");
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
-      `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
-      `<div class="start-check-teams"><dt>チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
-      `<div><dt>試合種別</dt><dd>${escapeText(matchType)}</dd></div>` +
-      `<div><dt>タイマー</dt><dd>${escapeText(timerSettingSummary(timerSetting))}</dd></div>` +
+      `<div><dt>1 コート</dt><dd>${escapeText(court)}</dd></div>` +
+      `<div><dt>2 試合種別</dt><dd>${escapeText(matchType)}</dd></div>` +
+      `<div class="start-check-teams"><dt>3 チーム</dt><dd><span class="start-check-team-card left"><b>左側チーム</b><strong>${escapeText(teamA)}</strong></span><span class="start-check-team-card right"><b>右側チーム</b><strong>${escapeText(teamB)}</strong></span></dd></div>` +
       `</dl>`;
     el<HTMLDialogElement>("operation-start-check-dialog").showModal();
   }
@@ -4798,6 +4805,8 @@ class Application {
     if (step !== "finished") this.setOperationRecordFocus(false);
     if (step !== "finished") this.setOperationFinalReview(false);
     this.operationStep = step;
+    document.body.classList.remove("operation-step-home", "operation-step-team", "operation-step-draw", "operation-step-between", "operation-step-finished");
+    document.body.classList.add(`operation-step-${step}`);
     document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
     el(`operation-${step}`).classList.add("active");
     if (step === "draw" && !options.preserveDraw) {
