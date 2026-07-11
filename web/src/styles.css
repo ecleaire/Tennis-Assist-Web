@@ -712,7 +712,7 @@ output.digital.dashboard-digital {
   display: grid;
   gap: clamp(16px, 3vw, 32px);
   justify-items: start;
-  grid-template-columns: minmax(0, 520px);
+  grid-template-columns: repeat(2, minmax(0, 520px));
 }
 
 .operation-court-row label {
@@ -722,18 +722,6 @@ output.digital.dashboard-digital {
   font-size: clamp(1.42rem, 2.5vw, 1.95rem);
   font-weight: 900;
   width: min(520px, 100%);
-}
-
-.operation-match-type-field {
-  display: none;
-}
-
-:root.rsam-admin-mode .operation-court-row {
-  grid-template-columns: repeat(2, minmax(0, 520px));
-}
-
-:root.rsam-admin-mode .operation-match-type-field {
-  display: grid;
 }
 
 .operation-court-row select {
@@ -4575,7 +4563,7 @@ html.phone-portrait .operation-court-panel {
   order: 2;
 }
 
-:root.phone-portrait.rsam-admin-mode .operation-court-row {
+html.phone-portrait .operation-court-row {
   grid-template-columns: 1fr;
 }
 

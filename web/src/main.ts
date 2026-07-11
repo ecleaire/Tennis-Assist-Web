@@ -5,7 +5,7 @@ declare const __APP_VERSION__: string;
 type Screen = "dashboard" | "operation" | "timer" | "referee" | "balls" | "records" | "rules" | "news" | "links" | "development";
 type Category = "【終了・その時点で採点】（通常の試合停止）" | "【違反・自動敗北 / 失格】試合前・競技全般" | "【違反・自動敗北 / 失格】試合中の違反";
 type FlowEvent = "start" | "next" | "balls" | "timer" | "finished" | "reset";
-type MatchType = "練習試合" | "公式試合" | "予選" | "決勝トーナメント" | "4位決定リーグ" | "優勝決定リーグ";
+type MatchType = "練習" | "練習試合" | "公式試合" | "予選" | "決勝トーナメント" | "4位決定リーグ" | "優勝決定リーグ";
 type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
 type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "Dコート用" | "Eコート用" | "Fコート用" | "Gコート用" | "Hコート用" | "本部用" | "予備端末";
 const homeUnsentAlertDelayMs = 20000;
@@ -264,7 +264,8 @@ function currentAppVariant(): AppVariantConfig {
 }
 
 let teams: string[] = [...defaultTeams];
-const operationMatchTypes: MatchType[] = ["予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"];
+const operationMatchTypes: MatchType[] = ["予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ", "練習"];
+const operationMatchTypeOptions = ["試合種別を選択", ...operationMatchTypes];
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
@@ -556,6 +557,10 @@ function csvRow(record: MatchRecord): string[] {
 function normalizeMatchType(value: unknown): MatchType {
   const text = String(value || "").trim();
   return operationMatchTypes.includes(text as MatchType) || text === "公式試合" || text === "練習試合" ? text as MatchType : "練習試合";
+}
+
+function isOperationMatchType(value: string): value is MatchType {
+  return operationMatchTypes.includes(value as MatchType);
 }
 
 function parseCsv(text: string): string[][] {
@@ -1692,6 +1697,11 @@ class BallController {
     if (this.workflowMatch) el("balls-ready").classList.add("hidden");
   }
 
+  resetLayout(): void {
+    this.draw(this.defaults);
+    el("balls-status").textContent = "";
+  }
+
   randomize(): void {
     const side = this.hyogo && this.workflowMatch
       ? this.seriesOrangeSide ?? this.leftRows.map(() => Math.round(Math.random()))
@@ -1807,6 +1817,14 @@ class RecordsController {
   portableState(): { teams: string[]; courtCount: number | null } {
     const savedCourtCount = Number(localStorage.getItem(this.courtCountStorageKey) || "");
     return { teams: [...teams], courtCount: savedCourtCount || (activeCourtOptions.length < courtOptions.length ? activeCourtOptions.length : null) };
+  }
+
+  persistCurrentTeams(): void {
+    localStorage.setItem(this.teamStorageKey, JSON.stringify(teams));
+    const courtCount = activeCourtOptions.length < courtOptions.length ? activeCourtOptions.length : null;
+    if (courtCount) localStorage.setItem(this.courtCountStorageKey, String(courtCount));
+    else localStorage.removeItem(this.courtCountStorageKey);
+    el("team-status").textContent = `${teams.length}チームと${courtRangeLabel()}をこの端末に保存しました。`;
   }
 
   applyPortableState(value: unknown): void {
@@ -2335,9 +2353,9 @@ class RecordsController {
     }
     if (sum.teamAScore !== sum.teamBScore) {
       const side = sum.teamAScore > sum.teamBScore ? this.series.teamA : this.series.teamB;
-      return `決着が必要な場合の参考: 相手コートへ送り込んだボールの総スコアが高い ${side} が優先候補です。`;
+      return `決着が必要な場合の参考: 相手コートへ送り込んだボールの総得点が高い ${side} が優先候補です。`;
     }
-    return "決着が必要な場合の参考: 違反数・総スコアも同じため、追加マッチで確認してください。";
+    return "決着が必要な場合の参考: 違反数・総得点も同じため、追加マッチで確認してください。";
   }
 
   private finalSummaryHtml(sum: Summary, winner: "a" | "b" | "draw"): string {
@@ -2355,7 +2373,7 @@ class RecordsController {
     const matches = el<HTMLTableElement>("final-matches");
     matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th><th></th></tr></thead>";
     const table = el<HTMLTableElement>("final-table");
-    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総橙</th><th>総紫</th><th>違反</th><th>総スコア</th><th>状態</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総オレンジ</th><th>総紫</th><th>違反</th><th>総得点</th><th>状態</th></tr></thead>";
     if (!this.series?.records.length) {
       el("final-summary").textContent = "3マッチ終了後、最終試合結果を確認できます。";
       el("series-finished").classList.add("hidden");
@@ -3553,12 +3571,12 @@ class AdminController {
     private readonly syncSummaryProvider?: () => SyncSummary,
     private readonly portableStateProvider?: () => unknown,
     private readonly portableStateApplier?: (value: unknown) => void,
+    private readonly persistPortableState?: () => void,
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
     el<HTMLButtonElement>("gas-save").addEventListener("click", () => this.save());
     el<HTMLButtonElement>("gas-test").addEventListener("click", () => void this.test());
-    el<HTMLButtonElement>("admin-day-check").addEventListener("click", () => void this.dayCheck());
     el<HTMLButtonElement>("gas-team-load").addEventListener("click", () => void this.loadTeamList());
     el<HTMLButtonElement>("gas-key-toggle").addEventListener("click", () => this.toggleSecretInput("gas-key", "gas-key-toggle"));
     el<HTMLButtonElement>("admin-open-sheet").addEventListener("click", () => this.openManagedSpreadsheet());
@@ -3786,10 +3804,11 @@ class AdminController {
       dayCheckAt: AdminController.settings().dayCheckAt,
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    this.persistPortableState?.();
     this.onModeChanged?.(this.mode, settings);
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
     this.updateConnectionCard();
-    el("gas-status").textContent = "この端末に設定を保存しました。";
+    el("gas-status").textContent = "この端末に管理設定、チームリスト、使用コートを保存しました。";
   }
 
   private async testAudioCue(kind: "thirty" | "sync"): Promise<void> {
@@ -4073,8 +4092,8 @@ class AdminController {
       this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
       this.updateConnectionCard();
       this.setSummaryChip("admin-summary-timer", this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting()), timerResult.status === "failed" ? "danger" : timerResult.status === "cached" ? "warn" : "ok");
+      this.completeDayCheck();
       el("admin-success-summary").classList.remove("hidden");
-      el("gas-status").textContent = "";
     } catch (error) {
       this.connectionVerified = false;
       this.clearConnectionSummary();
@@ -4127,9 +4146,7 @@ class AdminController {
     return "チーム失敗";
   }
 
-  private async dayCheck(): Promise<void> {
-    el("gas-status").textContent = "当日チェックを実行しています...";
-    await this.test();
+  private completeDayCheck(): void {
     const sync = this.syncSummaryProvider?.();
     if (!sync) return;
     const settings = AdminController.settings();
@@ -4573,13 +4590,14 @@ class Application {
   private syncOperationTeams(): void {
     const values = this.records.teamOptions();
     options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, el<HTMLSelectElement>("court-select").value || activeCourtOptions[0]);
-    options(el<HTMLSelectElement>("operation-match-type"), operationMatchTypes, operationMatchTypes[0]);
+    options(el<HTMLSelectElement>("operation-match-type"), operationMatchTypeOptions, "試合種別を選択");
     options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
     options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
   }
 
-  private operationMatchType(): MatchType {
-    return this.rsamMode ? el<HTMLSelectElement>("operation-match-type").value as MatchType : AdminController.settings().matchType;
+  private operationMatchType(): MatchType | null {
+    const selected = el<HTMLSelectElement>("operation-match-type").value;
+    return isOperationMatchType(selected) ? selected : null;
   }
 
   private openOperationStartCheck(): void {
@@ -4590,9 +4608,13 @@ class Application {
       el("operation-team-status").textContent = "左右で別のチームを選択してください。";
       return;
     }
+    const matchType = this.operationMatchType();
+    if (!matchType) {
+      el("operation-team-status").textContent = "試合種別を選択してください。";
+      return;
+    }
     el("operation-team-status").textContent = "";
     const timerSetting = AdminController.timerSetting() ?? defaultExternalTimerSetting("default");
-    const matchType = this.operationMatchType();
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
       `<div><dt>コート</dt><dd>${escapeText(court)}</dd></div>` +
@@ -4611,26 +4633,31 @@ class Application {
       el("operation-team-status").textContent = "左右で別のチームを選択してください。";
       return;
     }
+    const matchType = this.operationMatchType();
+    if (!matchType) {
+      el("operation-team-status").textContent = "試合種別を選択してください。";
+      return;
+    }
     el("operation-team-status").textContent = "";
     this.operationActive = true;
     this.operationMatch = 1;
     this.clearOperationHomeTimer();
-    this.records.startSeriesForOperation(teamA, teamB, court, this.operationMatchType());
+    this.records.startSeriesForOperation(teamA, teamB, court, matchType);
   }
 
-  private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished"): void {
+  private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished", options: { preserveDraw?: boolean } = {}): void {
     if (step !== "finished") this.setOperationRecordFocus(false);
     if (step !== "finished") this.setOperationFinalReview(false);
     this.operationStep = step;
     document.querySelectorAll(".operation-step").forEach((panel) => panel.classList.remove("active"));
     el(`operation-${step}`).classList.add("active");
-    if (step === "draw") {
+    if (step === "draw" && !options.preserveDraw) {
       this.setOperationTimerActive(false);
-      this.setOperationDrawButtonsLocked(false, false);
-      this.setOperationDrawStage(1);
+      this.resetOperationDrawPreparation();
       el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
-      this.timer.setDashboardOverride("00 : 00");
-      setText(els("dashboard-time"), "00 : 00");
+    } else if (step === "draw") {
+      this.setOperationTimerActive(false);
+      el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
     }
     if (step === "home") this.updateHomeSyncAlert();
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -4905,6 +4932,13 @@ class Application {
     void this.timer.enterDisplayFullscreen();
   }
 
+  private resetOperationDrawPreparation(): void {
+    this.setOperationDrawButtonsLocked(false, false);
+    this.setOperationDrawStage(1);
+    this.timer.setDashboardOverride("00 : 00");
+    setText(els("dashboard-time"), "00 : 00");
+  }
+
   private returnOperationRecordInput(): void {
     if (!this.operationActive) return;
     this.clearOperationHomeTimer();
@@ -5005,7 +5039,7 @@ class Application {
       this.setOperationTimerActive(false);
       this.setOperationTimerReturnable(false);
       this.show(this.operationScreen());
-      this.showOperationStep("draw");
+      this.showOperationStep("draw", { preserveDraw: true });
       return;
     }
     if (this.operationStep === "between") {
@@ -5013,6 +5047,9 @@ class Application {
       return;
     }
     if (this.operationStep === "draw") {
+      this.balls.resetWorkflow();
+      this.balls.resetLayout();
+      this.resetOperationDrawPreparation();
       this.records.resetForOperation();
       this.showOperationStep("team");
       return;
@@ -5199,6 +5236,7 @@ class Application {
       () => this.records.syncSummary(),
       () => this.records.portableState(),
       (value) => this.records.applyPortableState(value),
+      () => this.records.persistCurrentTeams(),
     );
     this.secret = true;
     this.linksClicks = 0;
