@@ -2027,6 +2027,42 @@ tr.win td {
   padding: clamp(16px, 2.6vw, 26px);
 }
 
+.final-series-meta {
+  align-items: center;
+  background: rgba(46, 168, 255, 0.1);
+  border: 1px solid rgba(46, 168, 255, 0.32);
+  border-radius: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.final-meta-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-weight: 850;
+}
+
+.final-meta-display strong {
+  color: var(--text);
+  font-size: 1.08em;
+}
+
+.final-meta-editor {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr) auto;
+  width: 100%;
+}
+
+.final-meta-editor label {
+  color: var(--text);
+  font-weight: 850;
+}
+
 .final-result-label {
   color: var(--accent);
   font-size: clamp(1rem, 1.8vw, 1.28rem);
@@ -2053,6 +2089,16 @@ tr.win td {
   font-weight: 850;
 }
 
+.final-correction-note {
+  background: rgba(255, 184, 77, 0.16);
+  border: 2px solid rgba(255, 184, 77, 0.58);
+  border-radius: 12px;
+  color: #ffe6b2;
+  font-size: clamp(1.12rem, 2vw, 1.45rem);
+  font-weight: 950;
+  padding: 10px 12px;
+}
+
 #final-results .table-scroll {
   background: rgba(7, 17, 38, 0.44);
   border: 1px solid rgba(46, 168, 255, 0.22);
@@ -2062,6 +2108,7 @@ tr.win td {
 
 #final-results table {
   font-size: clamp(1rem, 1.6vw, 1.22rem);
+  table-layout: fixed;
 }
 
 #final-results th {
@@ -2078,6 +2125,67 @@ tr.win td {
 #final-results tr.win td {
   background: #144529;
   color: #f1fff5;
+}
+
+#final-matches th:nth-child(1),
+#final-matches td:nth-child(1) {
+  width: 11%;
+}
+
+#final-matches th:nth-child(2),
+#final-matches td:nth-child(2) {
+  width: 25%;
+}
+
+#final-matches th:nth-child(4),
+#final-matches td:nth-child(4) {
+  width: 15%;
+}
+
+#final-matches th:nth-child(5),
+#final-matches td:nth-child(5) {
+  width: 90px;
+}
+
+#final-table th:not(:first-child),
+#final-table td:not(:first-child) {
+  text-align: center;
+  width: 12%;
+}
+
+#final-table th:first-child,
+#final-table td:first-child {
+  width: 28%;
+}
+
+.final-match-team {
+  display: grid;
+  gap: 4px;
+}
+
+.final-match-team + .final-match-team {
+  margin-top: 8px;
+}
+
+.final-match-team strong {
+  color: var(--text);
+  font-size: 1.05em;
+}
+
+.final-match-team span {
+  color: #cfe0ff;
+  font-weight: 850;
+}
+
+.warning-message {
+  background: rgba(255, 77, 103, 0.14);
+  border: 2px solid rgba(255, 77, 103, 0.72);
+  border-radius: 12px;
+  color: #ffd9df !important;
+  font-size: clamp(1.08rem, 2vw, 1.35rem);
+  font-weight: 950;
+  margin-top: 14px;
+  padding: 12px 14px;
 }
 
 .agreement p {

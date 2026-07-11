@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist 大会用</title>
-    <script type="module" crossorigin src="./assets/index-B7rxgwNg.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-96Rz-Zqc.css">
+    <script type="module" crossorigin src="./assets/index-DTHnS5aK.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BkJkLa5d.css">
   </head>
   <body>
     <main id="app">
@@ -288,6 +288,18 @@
           <article id="final-results" class="panel section-card">
             <h2>最終試合結果</h2>
             <p id="final-summary" class="muted">3マッチ終了後、最終試合結果を確認できます。</p>
+            <div id="final-series-meta" class="final-series-meta hidden">
+              <div class="final-meta-display">
+                <span>コート: <strong id="final-court-label"></strong></span>
+                <span>試合種別: <strong id="final-match-type-label"></strong></span>
+              </div>
+              <button id="final-meta-edit" class="button tiny" type="button">再選択</button>
+              <div id="final-meta-editor" class="final-meta-editor hidden">
+                <label>コート<select id="final-court-select"></select></label>
+                <label>試合種別<select id="final-match-type-select"></select></label>
+                <button id="final-meta-save" class="button primary" type="button">反映</button>
+              </div>
+            </div>
             <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
             <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
               <strong id="completion-badge" class="completion-badge">保存済み</strong>

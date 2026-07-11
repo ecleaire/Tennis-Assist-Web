@@ -110,14 +110,17 @@ function doGet(e) {
 
     if (action === 'teams') {
       const teams = readTeams(values);
+      const matchType = String(params.match_type || params.matchType || '').trim();
+      const prioritized = prioritizeTeamsForMatchType(ss, teams, matchType);
       const courtCount = readCourtCount(values);
       return jsonResponse({
         ok: true,
         spreadsheet_id: spreadsheetId,
         sheet_name: sheet.getName(),
-        teams: Array.from(new Set(teams)),
+        teams: prioritized.teams,
+        priority_teams: prioritized.priorityTeams,
         court_count: courtCount,
-        row_count: teams.length
+        row_count: prioritized.teams.length
       });
     }
 
@@ -238,6 +241,59 @@ function readTeams(values) {
   return Array.from(new Set(values.slice(1)
     .map((row) => String(row[nameIndex] || '').trim())
     .filter(Boolean)));
+}
+
+function prioritizeTeamsForMatchType(ss, baseTeams, matchType) {
+  const teams = Array.from(new Set((baseTeams || []).map(function (team) {
+    return String(team || '').trim();
+  }).filter(Boolean)));
+  if (!isTournamentMatchType(matchType) || teams.length < 2) {
+    return { teams: teams, priorityTeams: [] };
+  }
+
+  const sheet = ss.getSheetByName('決勝トーナメント');
+  if (!sheet || sheet.getLastRow() < 1 || sheet.getLastColumn() < 1) {
+    return { teams: teams, priorityTeams: [] };
+  }
+
+  const lookup = {};
+  teams.forEach(function (team) {
+    lookup[normalizeTeamName(team)] = team;
+  });
+
+  const seen = {};
+  const priorityTeams = [];
+  sheet.getDataRange().getDisplayValues().forEach(function (row) {
+    row.forEach(function (cell) {
+      const matched = lookup[normalizeTeamName(cell)];
+      if (!matched || seen[matched]) return;
+      seen[matched] = true;
+      priorityTeams.push(matched);
+    });
+  });
+
+  if (!priorityTeams.length) {
+    return { teams: teams, priorityTeams: [] };
+  }
+
+  const prioritySet = {};
+  priorityTeams.forEach(function (team) {
+    prioritySet[team] = true;
+  });
+
+  return {
+    teams: priorityTeams.concat(teams.filter(function (team) { return !prioritySet[team]; })),
+    priorityTeams: priorityTeams
+  };
+}
+
+function isTournamentMatchType(matchType) {
+  const text = String(matchType || '').trim();
+  return text === '決勝トーナメント' || text === '4位決定リーグ' || text === '優勝決定リーグ';
+}
+
+function normalizeTeamName(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 function readCourtCount(values) {
@@ -448,9 +504,7 @@ function createEmptyGroupPrelimSheet(ss) {
   sheet.getRange(3, 1, body.length, headers.length).setValues(body);
   sheet.setFrozenRows(2);
   sheet.setFrozenColumns(3);
-  sheet.getRange(2, 1, 1, headers.length).setFontWeight('bold').setBackground('#d9ead3');
-  sheet.getRange(3, 1, body.length, 2).setBackground('#f3f6fa');
-  sheet.getRange(3, 3, body.length, 1).setBackground('#fff2cc');
+  sheet.getRange(2, 1, 1, headers.length).setFontWeight('bold');
   sheet.autoResizeColumns(1, headers.length);
   return sheet;
 }
@@ -869,13 +923,11 @@ function ensureTimerSettingSheetTemplate(sheet) {
   const width = 2;
   sheet.getRange(1, 2, Math.max(template.length, 30), 1).setNumberFormat('@');
   sheet.getRange(1, 1, template.length, width).setValues(template);
-  sheet.getRange(1, 1, 4, width).setBackground('#DFF2C7');
   sheet.getRange(1, 1, 1, width).setFontWeight('bold');
   sheet.getRange(2, 1, 3, 1).setFontWeight('bold');
-  sheet.getRange(12, 1, 3, width).setBackground('#FFF4D6');
-  sheet.getRange(17, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
-  sheet.getRange(22, 1, 1, width).setBackground('#E9F3FF').setFontWeight('bold');
-  sheet.getRange(27, 1, 1, width).setBackground('#E8F5E9').setFontWeight('bold');
+  sheet.getRange(17, 1, 1, width).setFontWeight('bold');
+  sheet.getRange(22, 1, 1, width).setFontWeight('bold');
+  sheet.getRange(27, 1, 1, width).setFontWeight('bold');
   sheet.autoResizeColumns(1, width);
 }
 
@@ -976,7 +1028,7 @@ function ensureSeriesResultHeader(sheet) {
   });
   if (!hasAnyHeader) {
     sheet.getRange(1, 1, 1, SERIES_RESULT_HEADER.length).setValues([SERIES_RESULT_HEADER]);
-    sheet.getRange(1, 1, 1, SERIES_RESULT_HEADER.length).setFontWeight('bold').setBackground('#DFF2C7');
+    sheet.getRange(1, 1, 1, SERIES_RESULT_HEADER.length).setFontWeight('bold');
     return headerIndexMap(SERIES_RESULT_HEADER);
   }
   const headerMap = {};
@@ -997,7 +1049,7 @@ function ensureSeriesResultHeader(sheet) {
   }
 
   const maxColumnIndex = Math.max.apply(null, SERIES_RESULT_HEADER.map(function (name) { return headerMap[name]; }));
-  sheet.getRange(1, 1, 1, maxColumnIndex + 1).setFontWeight('bold').setBackground('#DFF2C7');
+  sheet.getRange(1, 1, 1, maxColumnIndex + 1).setFontWeight('bold');
   return headerMap;
 }
 
@@ -1008,7 +1060,7 @@ function ensureExactHeader(sheet, header) {
   const differs = current.length !== width || current.some((value, index) => String(value || '') !== String(header[index] || ''));
   if (differs) {
     sheet.getRange(1, 1, 1, width).setValues([header]);
-    sheet.getRange(1, 1, 1, width).setFontWeight('bold').setBackground('#DFF2C7');
+    sheet.getRange(1, 1, 1, width).setFontWeight('bold');
   }
 }
 

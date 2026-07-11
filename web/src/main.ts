@@ -132,6 +132,7 @@ type TeamImportResult = {
   message: string;
   count: number;
   courtCount?: number | null;
+  priorityCount?: number;
 };
 
 type TimerSettingLoadResult = {
@@ -363,6 +364,20 @@ function toggleClass(elements: HTMLElement[], className: string, force?: boolean
 
 function options(select: HTMLSelectElement, values: readonly string[], selected = values[0]): void {
   select.replaceChildren(...values.map((value) => new Option(value, value, false, value === selected)));
+}
+
+function teamOptions(select: HTMLSelectElement, values: readonly string[], selected = values[0], priorityCount = 0): void {
+  const safePriorityCount = Math.max(0, Math.min(priorityCount, values.length));
+  const children: HTMLOptionElement[] = [];
+  values.forEach((value, index) => {
+    if (index === safePriorityCount && safePriorityCount > 0 && safePriorityCount < values.length) {
+      const separator = new Option("────────", "", false, false);
+      separator.disabled = true;
+      children.push(separator);
+    }
+    children.push(new Option(value, value, false, value === selected));
+  });
+  select.replaceChildren(...children);
 }
 
 function rangeOptions(select: HTMLSelectElement, max: number, selected: number): void {
@@ -1762,6 +1777,7 @@ class RecordsController {
   private completionResetTimer = 0;
   private retryingPendingSends = false;
   private historyViewDirty = true;
+  private teamPriorityCount = 0;
 
   constructor(private readonly flow: (event: FlowEvent, match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
@@ -1781,6 +1797,8 @@ class RecordsController {
     el<HTMLButtonElement>("agreement-accept").addEventListener("click", () => this.acceptAgreement());
     el<HTMLButtonElement>("agreement-cancel").addEventListener("click", () => this.cancelAgreement());
     el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
+    el<HTMLButtonElement>("final-meta-edit").addEventListener("click", () => this.toggleFinalMetaEditor(true));
+    el<HTMLButtonElement>("final-meta-save").addEventListener("click", () => this.applyFinalMetaSelection());
     el<HTMLButtonElement>("completion-reset").addEventListener("click", () => this.returnHomeAfterCompletion());
     el<HTMLSelectElement>("stats-team").addEventListener("change", () => this.syncTeamHistoryFilter());
     el<HTMLSelectElement>("stats-period").addEventListener("change", () => this.renderHistory());
@@ -1874,6 +1892,14 @@ class RecordsController {
 
   teamOptions(): string[] {
     return [...teams];
+  }
+
+  priorityTeamCount(): number {
+    return this.teamPriorityCount;
+  }
+
+  clearTeamPriority(): void {
+    this.teamPriorityCount = 0;
   }
 
   nextSeriesNumberForCourt(court: string): number {
@@ -2365,15 +2391,16 @@ class RecordsController {
       return `<span class="final-result-label">途中集計</span><strong class="final-result-score">${score}</strong><span class="final-result-note">引き分け ${sum.draws} / 3マッチ終了後に最終結果を確認できます。</span>`;
     }
     const result = winner === "draw" ? "引き分け" : `${winner === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
-    const note = winner === "draw" ? `${this.drawDecisionNote(sum)} 誤入力の場合、各マッチは再入力できます。` : "誤入力の場合、各マッチは再入力できます。";
-    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span><span class="final-result-note">${escapeText(note)}</span>`;
+    const drawNote = winner === "draw" ? `<span class="final-result-note">${escapeText(this.drawDecisionNote(sum))}</span>` : "";
+    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}<span class="final-correction-note">誤入力の場合、各マッチは再入力できます。</span>`;
   }
 
   private renderFinal(): void {
     const matches = el<HTMLTableElement>("final-matches");
-    matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チームA 橙/紫/得点</th><th>チームB 橙/紫/得点</th><th>勝敗結果</th><th></th></tr></thead>";
+    this.renderFinalMeta();
+    matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チーム別結果</th><th>勝敗結果</th><th></th></tr></thead>";
     const table = el<HTMLTableElement>("final-table");
-    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総オレンジ</th><th>総紫</th><th>違反</th><th>総得点</th><th>状態</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総オレンジ</th><th>総紫</th><th>違反</th><th>総得点</th><th>勝敗</th></tr></thead>";
     if (!this.series?.records.length) {
       el("final-summary").textContent = "3マッチ終了後、最終試合結果を確認できます。";
       el("series-finished").classList.add("hidden");
@@ -2384,7 +2411,7 @@ class RecordsController {
     this.series.records.forEach((record) => {
       const row = matchesBody.insertRow();
       row.className = "win";
-      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td>${record.teamAOrange} / ${record.teamAPurple} / ${record.teamAScore}</td><td>${record.teamBOrange} / ${record.teamBPurple} / ${record.teamBScore}</td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>橙 ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>橙 ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
       row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
     const sum = this.summary();
@@ -2402,6 +2429,45 @@ class RecordsController {
     add(this.series.teamB, "b");
     el("final-summary").innerHTML = this.finalSummaryHtml(sum, winner);
     el("series-finished").classList.toggle("hidden", !this.finalized);
+  }
+
+  private renderFinalMeta(): void {
+    const meta = el("final-series-meta");
+    meta.classList.toggle("hidden", !this.series);
+    if (!this.series) return;
+    el("final-court-label").textContent = this.series.court;
+    el("final-match-type-label").textContent = this.series.matchType;
+    const courtSelect = el<HTMLSelectElement>("final-court-select");
+    const typeSelect = el<HTMLSelectElement>("final-match-type-select");
+    options(courtSelect, activeCourtOptions, this.series.court);
+    const matchTypes = Array.from(new Set([this.series.matchType, ...operationMatchTypes]));
+    options(typeSelect, matchTypes, this.series.matchType);
+  }
+
+  private toggleFinalMetaEditor(active: boolean): void {
+    if (!this.series) return;
+    this.renderFinalMeta();
+    el("final-meta-editor").classList.toggle("hidden", !active);
+  }
+
+  private applyFinalMetaSelection(): void {
+    if (!this.series) return;
+    const court = el<HTMLSelectElement>("final-court-select").value;
+    const matchType = normalizeMatchType(el<HTMLSelectElement>("final-match-type-select").value);
+    this.series.court = court;
+    this.series.matchType = matchType;
+    this.series.records.forEach((record) => {
+      record.court = court;
+      record.matchType = matchType;
+      record.competitionId = record.matchNumber === 0
+        ? `${court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
+        : `${court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
+    });
+    this.saveStoredRecords();
+    this.toggleFinalMetaEditor(false);
+    this.renderFinal();
+    this.renderHistory();
+    el("record-status").textContent = "コートと試合種別を反映しました。";
   }
 
   private renderAgreement(): void {
@@ -2505,7 +2571,7 @@ class RecordsController {
     const sendStatus = await this.sendSeriesResult(record);
     this.setCompletionPanel(true);
     if (sendStatus === "sent") {
-      el("completion-status").textContent = "この結果は保存済みで、スプレッドシートへ送信済みです。";
+      this.setCompletionPanel(false);
     }
   }
 
@@ -2759,7 +2825,9 @@ class RecordsController {
     options(el<HTMLSelectElement>("history-team"), ["すべてのチーム", ...teams]);
     this.applyCourtCount(Number(localStorage.getItem(this.courtCountStorageKey) || "") || null, false);
     el<HTMLTextAreaElement>("team-editor").value = teams.join("\n");
-    el("team-status").textContent = message ?? (persist ? `${teams.length}チームをこの端末に保存しました。` : `${teams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
+    if (message !== "") {
+      el("team-status").textContent = message ?? (persist ? `${teams.length}チームをこの端末に保存しました。` : `${teams.length}チームを読み込みました。端末に残す場合は「チームリストを端末に保存」を押してください。`);
+    }
   }
 
   private saveTeams(): void {
@@ -2827,7 +2895,15 @@ class RecordsController {
     }
   }
 
-  private async importTeamsFromGas(options: { spreadsheetId?: string }): Promise<TeamImportResult> {
+  async refreshTeamsForMatchType(matchType: MatchType | null): Promise<TeamImportResult> {
+    if (!matchType) {
+      this.teamPriorityCount = 0;
+      return { status: "loaded", message: "", count: teams.length, priorityCount: 0 };
+    }
+    return this.importTeamsFromGas({ matchType, quiet: true });
+  }
+
+  private async importTeamsFromGas(options: { spreadsheetId?: string; matchType?: MatchType | null; quiet?: boolean }): Promise<TeamImportResult> {
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       throw new Error("GAS settings are missing.");
@@ -2838,20 +2914,24 @@ class RecordsController {
       sheet: "チームリスト",
     });
     if (options.spreadsheetId) params.set("spreadsheet_id", options.spreadsheetId);
+    if (options.matchType) params.set("match_type", options.matchType);
     const response = await fetch(`${settings.gasUrl}?${params.toString()}`);
-    const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; row_count?: number; sheet_name?: string; court_count?: number | null };
+    const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; priority_teams?: string[]; row_count?: number; sheet_name?: string; court_count?: number | null };
     if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
     const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
+    const priorityCount = (data.priority_teams ?? []).map(String).filter(Boolean).length;
+    this.teamPriorityCount = priorityCount;
     this.applyCourtCount(data.court_count ?? null);
     const courtMessage = `使用コート: ${courtRangeLabel()}`;
     if (nextTeams.length < 2) {
       const message = `GASから読み込みましたが、チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
       this.applyTeams([...defaultTeams], false, message);
-      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null };
+      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0 };
     }
-    const message = `GASから${data.sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
-    this.applyTeams(nextTeams, false, message);
-    return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null };
+    const priorityMessage = priorityCount > 0 ? ` ${options.matchType}候補${priorityCount}チームを上に表示します。` : "";
+    const message = `GASから${data.sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。${priorityMessage}端末に残す場合は「チームリストを端末に保存」を押してください。`;
+    this.applyTeams(nextTeams, false, options.quiet ? "" : message);
+    return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null, priorityCount };
   }
 
   private exportHistory(): void {
@@ -3131,6 +3211,10 @@ class RecordsController {
     const badge = el("completion-badge");
     panel.classList.remove("sent", "pending", "failed", "local-only");
     panel.classList.add(status);
+    if (status === "sent") {
+      this.setCompletionPanel(false);
+      return;
+    }
     const labels: Record<NonNullable<MatchRecord["sendStatus"]>, string> = {
       sent: "保存済み・送信済み",
       pending: "端末内に保存済み・送信待ち",
@@ -4511,6 +4595,7 @@ class Application {
       this.showOperationStep("team");
     });
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.openOperationStartCheck());
+    el<HTMLSelectElement>("operation-match-type").addEventListener("change", () => void this.refreshOperationTeamsForMatchType());
     el<HTMLButtonElement>("operation-start-check-confirm").addEventListener("click", () => this.startOperationSeries());
     document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.requestOperationBack(button)));
     el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.confirmOperationTimerBack());
@@ -4588,11 +4673,21 @@ class Application {
   }
 
   private syncOperationTeams(): void {
-    const values = this.records.teamOptions();
     options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, el<HTMLSelectElement>("court-select").value || activeCourtOptions[0]);
     options(el<HTMLSelectElement>("operation-match-type"), operationMatchTypeOptions, "試合種別を選択");
-    options(el<HTMLSelectElement>("operation-team-a"), values, values[0]);
-    options(el<HTMLSelectElement>("operation-team-b"), values, values[1] ?? values[0]);
+    this.records.clearTeamPriority();
+    this.syncOperationTeamSelects();
+  }
+
+  private syncOperationTeamSelects(): void {
+    const values = this.records.teamOptions();
+    const priorityCount = this.records.priorityTeamCount();
+    const teamASelect = el<HTMLSelectElement>("operation-team-a");
+    const teamBSelect = el<HTMLSelectElement>("operation-team-b");
+    const currentA = values.includes(teamASelect.value) ? teamASelect.value : values[0];
+    const currentB = values.includes(teamBSelect.value) ? teamBSelect.value : values.find((team) => team !== currentA) ?? values[1] ?? values[0];
+    teamOptions(teamASelect, values, currentA, priorityCount);
+    teamOptions(teamBSelect, values, currentB, priorityCount);
   }
 
   private operationMatchType(): MatchType | null {
@@ -4600,20 +4695,48 @@ class Application {
     return isOperationMatchType(selected) ? selected : null;
   }
 
+  private async refreshOperationTeamsForMatchType(): Promise<void> {
+    const matchType = this.operationMatchType();
+    if (!matchType) {
+      this.syncOperationTeamSelects();
+      this.setOperationTeamStatus("");
+      return;
+    }
+    const settings = AdminController.settings();
+    if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
+      this.syncOperationTeamSelects();
+      this.setOperationTeamStatus("");
+      return;
+    }
+    this.setOperationTeamStatus("試合種別に合わせてチーム候補を確認しています。");
+    try {
+      const result = await this.records.refreshTeamsForMatchType(matchType);
+      this.syncOperationTeamSelects();
+      if (result.priorityCount && result.priorityCount > 0) {
+        this.setOperationTeamStatus(`${matchType}のチーム候補を選択リストの上に表示しました。`);
+      } else {
+        this.setOperationTeamStatus("");
+      }
+    } catch {
+      this.syncOperationTeamSelects();
+      this.setOperationTeamStatus("チーム候補の更新に失敗しました。通常のチームリストを使用します。", true);
+    }
+  }
+
   private openOperationStartCheck(): void {
     const court = el<HTMLSelectElement>("operation-court").value;
     const teamA = el<HTMLSelectElement>("operation-team-a").value;
     const teamB = el<HTMLSelectElement>("operation-team-b").value;
     if (teamA === teamB) {
-      el("operation-team-status").textContent = "左右で別のチームを選択してください。";
+      this.setOperationTeamStatus("左右で別のチームを選択してください。", true);
       return;
     }
     const matchType = this.operationMatchType();
     if (!matchType) {
-      el("operation-team-status").textContent = "試合種別を選択してください。";
+      this.setOperationTeamStatus("試合種別を選択してください。", true);
       return;
     }
-    el("operation-team-status").textContent = "";
+    this.setOperationTeamStatus("");
     const timerSetting = AdminController.timerSetting() ?? defaultExternalTimerSetting("default");
     el("operation-start-check-detail").innerHTML =
       `<dl class="start-check-list">` +
@@ -4630,19 +4753,25 @@ class Application {
     const teamA = el<HTMLSelectElement>("operation-team-a").value;
     const teamB = el<HTMLSelectElement>("operation-team-b").value;
     if (teamA === teamB) {
-      el("operation-team-status").textContent = "左右で別のチームを選択してください。";
+      this.setOperationTeamStatus("左右で別のチームを選択してください。", true);
       return;
     }
     const matchType = this.operationMatchType();
     if (!matchType) {
-      el("operation-team-status").textContent = "試合種別を選択してください。";
+      this.setOperationTeamStatus("試合種別を選択してください。", true);
       return;
     }
-    el("operation-team-status").textContent = "";
+    this.setOperationTeamStatus("");
     this.operationActive = true;
     this.operationMatch = 1;
     this.clearOperationHomeTimer();
     this.records.startSeriesForOperation(teamA, teamB, court, matchType);
+  }
+
+  private setOperationTeamStatus(message: string, warning = false): void {
+    const status = el("operation-team-status");
+    status.textContent = message;
+    status.classList.toggle("warning-message", warning && Boolean(message));
   }
 
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished", options: { preserveDraw?: boolean } = {}): void {
