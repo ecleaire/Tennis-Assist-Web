@@ -1778,6 +1778,7 @@ class RecordsController {
   private retryingPendingSends = false;
   private historyViewDirty = true;
   private teamPriorityCount = 0;
+  private teamPriorityCache = new Map<string, { expiresAt: number; teams: string[]; priorityCount: number; courtCount: number | null }>();
 
   constructor(private readonly flow: (event: FlowEvent, match?: number) => void, private readonly qrScanner: QrScanner) {
     this.records = this.loadRecords();
@@ -2381,7 +2382,7 @@ class RecordsController {
       const side = sum.teamAScore > sum.teamBScore ? this.series.teamA : this.series.teamB;
       return `決着が必要な場合の参考: 相手コートへ送り込んだボールの総得点が高い ${side} が優先候補です。`;
     }
-    return "決着が必要な場合の参考: 違反数・総得点も同じため、追加マッチで確認してください。";
+    return "";
   }
 
   private finalSummaryHtml(sum: Summary, winner: "a" | "b" | "draw"): string {
@@ -2391,7 +2392,8 @@ class RecordsController {
       return `<span class="final-result-label">途中集計</span><strong class="final-result-score">${score}</strong><span class="final-result-note">引き分け ${sum.draws} / 3マッチ終了後に最終結果を確認できます。</span>`;
     }
     const result = winner === "draw" ? "引き分け" : `${winner === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
-    const drawNote = winner === "draw" ? `<span class="final-result-note">${escapeText(this.drawDecisionNote(sum))}</span>` : "";
+    const drawDecisionNote = winner === "draw" ? this.drawDecisionNote(sum) : "";
+    const drawNote = drawDecisionNote ? `<span class="final-result-note">${escapeText(drawDecisionNote)}</span>` : "";
     return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}<span class="final-correction-note">誤入力の場合、各マッチは再入力できます。</span>`;
   }
 
@@ -2480,8 +2482,8 @@ class RecordsController {
     }
     const agreeA = el<HTMLButtonElement>("agree-a");
     const agreeB = el<HTMLButtonElement>("agree-b");
-    agreeA.textContent = `${this.series.teamA}代表: ${this.agreedA ? "同意済み" : "同意する"}`;
-    agreeB.textContent = `${this.series.teamB}代表: ${this.agreedB ? "同意済み" : "同意する"}`;
+    agreeA.textContent = `${this.series.teamA} 代表: ${this.agreedA ? "同意済み" : "同意する"}`;
+    agreeB.textContent = `${this.series.teamB} 代表: ${this.agreedB ? "同意済み" : "同意する"}`;
     agreeA.classList.toggle("agreed", this.agreedA);
     agreeB.classList.toggle("agreed", this.agreedB);
     agreeA.disabled = this.agreedA || this.finalized;
@@ -2494,7 +2496,7 @@ class RecordsController {
     this.renderFinal();
     this.agreementPending = side;
     const team = side === "a" ? this.series.teamA : this.series.teamB;
-    el("agreement-confirm-team").textContent = `${team}代表が確認しています。左右チーム、各マッチ、違反時スコア、勝者をもう一度確認してください。`;
+    el("agreement-confirm-team").textContent = `${team} 代表が確認しています。左右チーム、各マッチ、違反時スコア、勝者をもう一度確認してください。`;
     el("agreement-confirm").classList.remove("hidden");
     el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -2887,6 +2889,7 @@ class RecordsController {
 
   async importTeamsFromGasConnection(): Promise<TeamImportResult> {
     try {
+      this.teamPriorityCache.clear();
       return await this.importTeamsFromGas({});
     } catch {
       const result = { status: "failed", message: "チームリストの読み込みに失敗しました。GASのdoGet更新、SPREADSHEET_ID、チームリストシートを確認してください。", count: 0 } satisfies TeamImportResult;
@@ -2900,10 +2903,19 @@ class RecordsController {
       this.teamPriorityCount = 0;
       return { status: "loaded", message: "", count: teams.length, priorityCount: 0 };
     }
-    return this.importTeamsFromGas({ matchType, quiet: true });
+    const settings = AdminController.settings();
+    const cacheKey = `${settings.gasUrl}|${settings.apiKey}|${matchType}`;
+    const cached = this.teamPriorityCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      this.teamPriorityCount = cached.priorityCount;
+      this.applyCourtCount(cached.courtCount);
+      this.applyTeams([...cached.teams], false, "");
+      return { status: "loaded", message: "", count: cached.teams.length, courtCount: cached.courtCount, priorityCount: cached.priorityCount };
+    }
+    return this.importTeamsFromGas({ matchType, quiet: true, cacheKey });
   }
 
-  private async importTeamsFromGas(options: { spreadsheetId?: string; matchType?: MatchType | null; quiet?: boolean }): Promise<TeamImportResult> {
+  private async importTeamsFromGas(options: { spreadsheetId?: string; matchType?: MatchType | null; quiet?: boolean; cacheKey?: string }): Promise<TeamImportResult> {
     const settings = AdminController.settings();
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       throw new Error("GAS settings are missing.");
@@ -2931,6 +2943,14 @@ class RecordsController {
     const priorityMessage = priorityCount > 0 ? ` ${options.matchType}候補${priorityCount}チームを上に表示します。` : "";
     const message = `GASから${data.sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。${priorityMessage}端末に残す場合は「チームリストを端末に保存」を押してください。`;
     this.applyTeams(nextTeams, false, options.quiet ? "" : message);
+    if (options.cacheKey) {
+      this.teamPriorityCache.set(options.cacheKey, {
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        teams: [...nextTeams],
+        priorityCount,
+        courtCount: data.court_count ?? null,
+      });
+    }
     return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null, priorityCount };
   }
 

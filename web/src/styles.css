@@ -512,9 +512,9 @@ output.digital.dashboard-digital {
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), 0 0 0 2px rgba(46, 168, 255, 0.2) inset;
   font-size: clamp(2.1rem, 4.2vw, 4rem);
   letter-spacing: 0;
-  min-height: clamp(128px, 14vw, 184px);
-  min-width: min(760px, 86vw);
-  padding: clamp(26px, 4vw, 42px) clamp(42px, 8vw, 112px);
+  min-height: clamp(154px, 16vw, 220px);
+  min-width: min(720px, 82vw);
+  padding: clamp(36px, 5vw, 58px) clamp(46px, 7vw, 104px);
 }
 
 .home-operation-summary {
@@ -888,11 +888,11 @@ body.operation-balls-compact .operation-court-panel .operation-court-fullscreen 
   background: #0d3a44;
   border: 4px solid #19f43c;
   border-radius: 14px;
-  font-size: clamp(1.05rem, 2vw, 1.55rem);
+  font-size: clamp(1.35rem, 2.35vw, 1.9rem);
   font-weight: 900;
   justify-content: flex-start;
-  min-height: clamp(70px, 9vw, 92px);
-  padding-inline: clamp(16px, 3vw, 28px);
+  min-height: clamp(86px, 10vw, 112px);
+  padding: clamp(16px, 2.4vw, 24px) clamp(20px, 3.4vw, 34px);
   text-align: left;
   white-space: nowrap;
 }
@@ -2053,6 +2053,7 @@ tr.win td {
 .tiny {
   min-height: 36px;
   padding: 6px 10px;
+  white-space: nowrap;
 }
 
 .agreement {
@@ -2099,19 +2100,20 @@ tr.win td {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 
 .final-meta-display {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 18px;
-  font-weight: 850;
+  gap: 12px 28px;
+  font-size: clamp(1.12rem, 2vw, 1.55rem);
+  font-weight: 900;
 }
 
 .final-meta-display strong {
   color: var(--text);
-  font-size: 1.08em;
+  font-size: 1.18em;
 }
 
 .final-meta-editor {
@@ -2221,6 +2223,10 @@ tr.win td {
   width: 28%;
 }
 
+#final-matches .button.tiny {
+  min-width: 78px;
+}
+
 .final-match-team {
   display: grid;
   gap: 4px;
@@ -2281,14 +2287,27 @@ tr.win td {
 }
 
 .agreement-confirm {
-  background: #142546;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(33, 66, 113, 0.98), rgba(20, 37, 70, 0.98));
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.18) inset;
   display: grid;
   flex-basis: 100%;
-  gap: 10px;
-  margin-top: 5px;
-  padding: 14px;
+  gap: 12px;
+  margin-top: 8px;
+  padding: clamp(16px, 2.2vw, 24px);
+}
+
+.agreement-confirm p {
+  color: #f1f7ff;
+  font-size: clamp(1.2rem, 2.3vw, 1.65rem);
+  font-weight: 950;
+  line-height: 1.45;
+  margin: 0;
+}
+
+#agreement-confirm-team {
+  color: #ffffff;
 }
 
 .agreement-confirm .toolbar {
@@ -5325,8 +5344,49 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
     padding: clamp(18px, 2.4vw, 28px);
   }
 
+  .operation-home {
+    min-height: min(68vh, calc(var(--viewport-height) - 150px));
+    padding-block: clamp(12px, 1.6vw, 20px);
+  }
+
+  .operation-home .operation-prepare {
+    min-height: clamp(136px, 15vw, 188px);
+    min-width: min(680px, 78vw);
+    padding-block: clamp(34px, 4.2vw, 52px);
+  }
+
   .operation-team {
     align-content: start;
+    gap: 14px;
+  }
+
+  .operation-team > .section-head {
+    margin-top: 36px;
+  }
+
+  .operation-court-row,
+  .operation-team-grid {
+    gap: 18px;
+  }
+
+  .operation-court-row label,
+  .operation-team-grid label {
+    gap: 8px;
+    font-size: clamp(1.18rem, 1.95vw, 1.5rem);
+  }
+
+  .operation-court-row select,
+  .operation-team-grid select {
+    font-size: clamp(1.15rem, 1.9vw, 1.45rem);
+    min-height: 64px;
+  }
+
+  .operation-actions.end {
+    margin-top: 0;
+  }
+
+  #operation-team-ok {
+    min-height: 60px;
   }
 
   .operation-draw-layout {
@@ -5334,9 +5394,9 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .operation-numbered {
-    font-size: clamp(1rem, 1.65vw, 1.22rem);
-    min-height: 62px;
-    padding-inline: 16px;
+    font-size: clamp(1.18rem, 1.9vw, 1.45rem);
+    min-height: 76px;
+    padding-inline: 18px;
   }
 
   .operation-between h2,
