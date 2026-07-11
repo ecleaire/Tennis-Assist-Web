@@ -2167,7 +2167,7 @@ class RecordsController {
       reasonCategory: category,
       endReason: el<HTMLSelectElement>("end-reason").value,
       ...counts,
-      notes: "シリーズ進行記録",
+      notes: "端末内保存・最終結果確定時にまとめて送信",
       ...this.scoreData(),
     };
   }
@@ -2219,14 +2219,14 @@ class RecordsController {
     this.renderHistory();
     const savedMatch = record.matchNumber;
     if (this.isFinished()) {
-      el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。代表同意後に結果を確定します。`;
+      el("record-status").textContent = `第${record.matchNumber}マッチを端末内に保存しました。代表同意後、最終結果確定時にまとめて送信します。`;
       this.awaitingNextMatch = false;
       this.setNextMatchPrompt(false);
       this.renderAgreement();
       this.updateRecordVisibility();
       el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
-      el("record-status").textContent = `第${record.matchNumber}マッチを保存しました。次のマッチの準備をしてください。`;
+      el("record-status").textContent = `第${record.matchNumber}マッチを端末内に保存しました。最終結果確定時にまとめて送信します。次のマッチの準備をしてください。`;
       this.awaitingNextMatch = true;
       this.setNextMatchPrompt(true);
       this.updateRecordVisibility();

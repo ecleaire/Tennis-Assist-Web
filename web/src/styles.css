@@ -1,6 +1,6 @@
 @font-face {
   font-family: "DSEG";
-  src: url("../assets/DSEG7Modern-Bold.woff2") format("woff2");
+  src: url("./assets/DSEG7Modern-Bold.woff2") format("woff2");
   font-display: swap;
 }
 
@@ -1539,7 +1539,7 @@ progress::-moz-progress-bar {
 
 .court {
   aspect-ratio: 1280 / 620;
-  background: #e2e5dd center / contain no-repeat url("../assets/playfield.jpg");
+  background: #e2e5dd center / contain no-repeat url("./assets/playfield.jpg");
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;

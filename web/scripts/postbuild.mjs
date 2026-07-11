@@ -17,8 +17,8 @@ const corePatterns = [
   /^favicon\.svg$/,
   /^apple-touch-icon\.png$/,
   /^assets\/index-[\w-]+\.(js|css)$/,
-  /^assets\/DSEG7Modern-Bold\.woff2$/,
-  /^assets\/playfield\.jpg$/,
+  /^assets\/DSEG7Modern-Bold(?:-[\w-]+)?\.woff2$/,
+  /^assets\/playfield(?:-[\w-]+)?\.jpg$/,
 ];
 
 async function listFiles(root, directory = root, prefix = "", options = {}) {
