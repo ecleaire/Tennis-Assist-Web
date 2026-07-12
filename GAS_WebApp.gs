@@ -54,7 +54,7 @@ function doGet(e) {
     if (!hasAnyApiKey(props)) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
     if (!isValidApiKey(props, params.api_key)) return jsonResponse({ ok: false, error: 'invalid_api_key' });
     const action = String(params.action || '');
-    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting' && action !== 'sync_group_sheet') return jsonResponse({ ok: false, error: 'unknown_action' });
+    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting' && action !== 'sync_group_sheet' && action !== 'bootstrap') return jsonResponse({ ok: false, error: 'unknown_action' });
 
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
@@ -62,6 +62,30 @@ function doGet(e) {
     const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_ARCHIVE_SHEET_NAME;
     const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
+
+    if (action === 'bootstrap') {
+      const teamSheet = ss.getSheetByName(TEAM_LIST_SHEET_NAME) || ss.getSheetByName('チーム一覧');
+      const timerSheet = getOrCreateTimerSettingSheet(ss, TIMER_SETTING_SHEET_NAME);
+      const matchType = String(params.match_type || params.matchType || '').trim();
+      const teamValues = teamSheet && teamSheet.getLastRow() >= 2 ? teamSheet.getDataRange().getValues() : [];
+      const teams = readTeams(teamValues);
+      const prioritized = prioritizeTeamsForMatchType(ss, teams, matchType);
+      const timerSetting = timerSheet && timerSheet.getLastRow() >= 2
+        ? readTimerSetting(timerSheet.getDataRange().getValues())
+        : defaultTimerSetting('default');
+      return jsonResponse({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        teams: prioritized.teams,
+        priority_teams: prioritized.priorityTeams,
+        team_sheet_name: teamSheet ? teamSheet.getName() : TEAM_LIST_SHEET_NAME,
+        team_row_count: prioritized.teams.length,
+        court_count: readCourtCount(teamValues),
+        timer_setting: timerSetting,
+        timer_sheet_name: timerSheet ? timerSheet.getName() : TIMER_SETTING_SHEET_NAME,
+        timer_row_count: timerSheet ? Math.max(0, timerSheet.getLastRow() - 1) : 0
+      });
+    }
 
     if (action === 'sync_group_sheet') {
       const result = syncGroupPrelimSheet(ss, isTruthy(params.force_formula));

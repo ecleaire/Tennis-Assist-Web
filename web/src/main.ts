@@ -169,6 +169,15 @@ type GasResponse = {
   message?: string;
 };
 
+type GasBootstrapResponse = GasResponse & {
+  teams?: string[];
+  priority_teams?: string[];
+  team_row_count?: number;
+  team_sheet_name?: string;
+  court_count?: number | null;
+  timer_setting?: unknown;
+};
+
 type BallLayout = ReadonlyArray<readonly [string, number, number]>;
 
 type LockableScreenOrientation = ScreenOrientation & {
@@ -2899,6 +2908,23 @@ class RecordsController {
     }
   }
 
+  importTeamsFromBootstrap(data: GasBootstrapResponse): TeamImportResult {
+    this.teamPriorityCache.clear();
+    const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
+    const priorityCount = (data.priority_teams ?? []).map(String).filter(Boolean).length;
+    this.teamPriorityCount = priorityCount;
+    this.applyCourtCount(data.court_count ?? null);
+    const courtMessage = `使用コート: ${courtRangeLabel()}`;
+    if (nextTeams.length < 2) {
+      const message = `GASから読み込みましたが、チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
+      this.applyTeams([...defaultTeams], false, message);
+      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0 };
+    }
+    const message = `GASから${data.team_sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
+    this.applyTeams(nextTeams, false, message);
+    return { status: "loaded", message, count: nextTeams.length, courtCount: data.court_count ?? null, priorityCount };
+  }
+
   async refreshTeamsForMatchType(matchType: MatchType | null): Promise<TeamImportResult> {
     if (!matchType) {
       this.teamPriorityCount = 0;
@@ -3671,6 +3697,7 @@ class AdminController {
   constructor(
     private readonly qrScanner: QrScanner,
     private readonly onConnected?: () => Promise<TeamImportResult>,
+    private readonly onBootstrap?: (data: GasBootstrapResponse) => TeamImportResult,
     private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
     private readonly syncSummaryProvider?: () => SyncSummary,
@@ -4041,6 +4068,28 @@ class AdminController {
     }
   }
 
+  private async loadBootstrapFromGas(settings: AdminSettings): Promise<{ team: TeamImportResult; timer: TimerSettingLoadResult }> {
+    if (!this.onBootstrap) {
+      return {
+        team: { status: "failed", message: "チームリスト読み込み機能を初期化できていません。", count: 0 },
+        timer: await this.loadTimerSettingFromGas(settings),
+      };
+    }
+    const url = new URL(settings.gasUrl);
+    url.searchParams.set("action", "bootstrap");
+    url.searchParams.set("api_key", settings.apiKey);
+    const response = await fetch(url);
+    const data = await response.json() as GasBootstrapResponse;
+    if (!response.ok || !data.ok) throw new Error(data.message || data.error || "bootstrap_failed");
+    const team = this.onBootstrap(data);
+    const setting = normalizeExternalTimerSetting(data.timer_setting, "sheet");
+    this.saveTimerSetting(setting);
+    return {
+      team,
+      timer: { status: "loaded", message: externalTimerSettingText(setting) },
+    };
+  }
+
   private applyManualTimerSetting(): void {
     const raw = {
       mode: el<HTMLSelectElement>("timer-setting-mode").value,
@@ -4179,20 +4228,21 @@ class AdminController {
     el("gas-status").textContent = "接続確認と設定読み込みを実行しています...";
     try {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
-      const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-      await ensureGasSuccess(response);
+      const testPromise = fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) })
+        .then((response) => ensureGasSuccess(response));
+      const bootstrapPromise = this.onBootstrap
+        ? this.loadBootstrapFromGas(settings)
+        : Promise.all([
+          this.onConnected ? this.onConnected() : Promise.resolve({ status: "failed", message: "チームリスト読み込み機能を初期化できていません。", count: 0 } satisfies TeamImportResult),
+          this.loadTimerSettingFromGas(settings),
+        ]).then(([team, timer]) => ({ team, timer }));
+      const [, bootstrap] = await Promise.all([testPromise, bootstrapPromise]);
+      const loaded = bootstrap.team;
+      const timerResult = bootstrap.timer;
       this.saveConnectionVerified();
       this.updateConnectionCard();
       this.setSummaryChip("admin-summary-test", "OK", "ok");
-      el("gas-status").textContent = "接続確認を完了しました。チームリストを読み込んでいます...";
-      if (this.onConnected) {
-        const loaded = await this.onConnected();
-        this.setSummaryChip("admin-summary-team", this.teamImportSummaryLabel(loaded), loaded.status === "loaded" ? "ok" : loaded.status === "default" ? "warn" : "danger");
-      } else {
-        this.setSummaryChip("admin-summary-team", "チーム未確認", "warn");
-      }
-      el("gas-status").textContent = "タイマー設定を読み込んでいます...";
-      const timerResult = await this.loadTimerSettingFromGas(settings);
+      this.setSummaryChip("admin-summary-team", this.teamImportSummaryLabel(loaded), loaded.status === "loaded" ? "ok" : loaded.status === "default" ? "warn" : "danger");
       el("timer-setting-status").textContent = timerResult.message;
       this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
       this.updateConnectionCard();
@@ -5389,6 +5439,7 @@ class Application {
     this.admin ??= new AdminController(
       this.qrScanner,
       () => this.records.importTeamsFromGasConnection(),
+      (data) => this.records.importTeamsFromBootstrap(data),
       (mode, settings) => this.applyAdminMode(mode, settings),
       (setting) => this.applyTimerSetting(setting),
       () => this.records.syncSummary(),
