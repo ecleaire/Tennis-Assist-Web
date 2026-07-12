@@ -2858,6 +2858,22 @@ tr.win td {
   color: #dbffe8;
 }
 
+.admin-status-message.ready-ok {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(35, 138, 78, 0.9), rgba(20, 96, 64, 0.86));
+  border: 2px solid rgba(113, 239, 143, 0.86);
+  box-shadow: 0 0 0 1px rgba(113, 239, 143, 0.18) inset, 0 12px 30px rgba(17, 105, 65, 0.24);
+  color: #f1fff6;
+  display: flex;
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  font-weight: 1000;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1.25;
+  min-height: 62px;
+  text-align: center;
+}
+
 .admin-status-message.warn,
 .admin-status-message.pending {
   background: rgba(255, 180, 74, 0.12);
@@ -5585,6 +5601,13 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   background: #eef7ff;
   border-color: #92bde5;
   color: #0b3762;
+}
+
+:root.venue-light-accent .admin-status-message.ready-ok {
+  background: linear-gradient(135deg, #d9f8e3, #c8efd8);
+  border-color: #2f9f60;
+  box-shadow: 0 0 0 1px rgba(47, 159, 96, 0.12) inset, 0 10px 24px rgba(47, 159, 96, 0.18);
+  color: #063f24;
 }
 
 :root.venue-light-accent .admin-success-summary span {

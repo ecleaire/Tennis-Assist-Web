@@ -4365,8 +4365,9 @@ class AdminController {
     const readiness = this.readinessSummary(Boolean(apiKey), Boolean(gasUrl), sync);
     const statusMessage = el("admin-status-message");
     statusMessage.textContent = readiness.text;
-    statusMessage.classList.remove("ok", "warn", "danger", "pending");
+    statusMessage.classList.remove("ok", "warn", "danger", "pending", "ready-ok");
     statusMessage.classList.add(readiness.state);
+    statusMessage.classList.toggle("ready-ok", readiness.text === "運用準備OK");
     sheetButton.classList.toggle("hidden", !managedConfig);
     sheetButton.textContent = managedConfig ? `${managedConfig.label} スプレッドシートを開く` : "対応スプレッドシートを開く";
     sheetButton.disabled = !managedConfig;
