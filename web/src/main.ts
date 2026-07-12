@@ -196,7 +196,7 @@ const defaultTeams = [
 const appVariants: Record<AppVariant, AppVariantConfig> = {
   venue: {
     id: "venue",
-    titleSuffix: "大会用",
+    titleSuffix: "",
     showNews: false,
     allowLightUi: true,
     allowTokyoClock: false,
@@ -5490,7 +5490,7 @@ class Application {
 
   private updateTitle(): void {
     const base = this.hyogo ? "RoboSports Assist HYOGO" : "RoboSports Assist";
-    const title = `${base} ${this.variant.titleSuffix}`;
+    const title = [base, this.variant.titleSuffix].filter(Boolean).join(" ");
     el("title").textContent = title;
     document.title = title;
   }

@@ -23,7 +23,7 @@ GitHub Pages で公開しています。
 
 ## バージョンの違い
 
-### RoboSports Assist 大会用
+### RoboSports Assist
 
 大会当日の審判・運営で使うことを想定した版です。
 
@@ -31,7 +31,7 @@ GitHub Pages で公開しています。
 - チーム選択、コート選択、ボール配置抽選、試合時間抽選、タイマー、リザルト入力、最終確認、代表同意、結果確定までを順番に進行
 - 試合中は不要なモード移動を抑制し、記録と送信の流れを優先
 - ニュース画面は非表示
-- タイトル表示は `RoboSports Assist 大会用`
+- タイトル表示は `RoboSports Assist`
 
 ### RoboSports Assist general
 
