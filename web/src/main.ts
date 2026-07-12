@@ -142,6 +142,9 @@ type TimerSettingLoadResult = {
 
 type AdminMode = "standard" | "hyogo" | "mie" | "rsam";
 type AppVariant = "venue" | "general";
+type AdminModeApplyOptions = {
+  applyTheme?: boolean;
+};
 
 type AppVariantConfig = {
   id: AppVariant;
@@ -3698,7 +3701,7 @@ class AdminController {
     private readonly qrScanner: QrScanner,
     private readonly onConnected?: () => Promise<TeamImportResult>,
     private readonly onBootstrap?: (data: GasBootstrapResponse) => TeamImportResult,
-    private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings) => void,
+    private readonly onModeChanged?: (mode: AdminMode, settings: AdminSettings, options?: AdminModeApplyOptions) => void,
     private readonly onTimerSettingChanged?: (setting: ExternalTimerSetting | null) => void,
     private readonly syncSummaryProvider?: () => SyncSummary,
     private readonly portableStateProvider?: () => unknown,
@@ -3886,7 +3889,7 @@ class AdminController {
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
     const managedUrlApplied = this.applyManagedGasUrl(normalizedPassword);
-    this.onModeChanged?.(this.mode, AdminController.settings());
+    this.onModeChanged?.(this.mode, AdminController.settings(), { applyTheme: false });
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
     if (!managedUrlApplied) el("gas-status").textContent = "";
@@ -5440,7 +5443,7 @@ class Application {
       this.qrScanner,
       () => this.records.importTeamsFromGasConnection(),
       (data) => this.records.importTeamsFromBootstrap(data),
-      (mode, settings) => this.applyAdminMode(mode, settings),
+      (mode, settings, options) => this.applyAdminMode(mode, settings, options),
       (setting) => this.applyTimerSetting(setting),
       () => this.records.syncSummary(),
       () => this.records.portableState(),
@@ -5462,14 +5465,17 @@ class Application {
     el<HTMLDialogElement>("admin-exit-dialog").showModal();
   }
 
-  private applyAdminMode(mode: AdminMode, settings: AdminSettings): void {
+  private applyAdminMode(mode: AdminMode, settings: AdminSettings, options: AdminModeApplyOptions = {}): void {
     this.hyogo = mode === "hyogo";
     this.rsamMode = mode === "rsam";
-    const lightAllowed = this.variant.allowLightUi;
-    const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
-    document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
-    document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");
-    document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
+    const shouldApplyTheme = options.applyTheme !== false;
+    if (shouldApplyTheme) {
+      const lightAllowed = this.variant.allowLightUi;
+      const accentMode = lightAllowed ? settings.accentMode : settings.accentMode === "admin" ? "admin" : "standard";
+      document.documentElement.classList.toggle("venue-standard-accent", accentMode === "standard");
+      document.documentElement.classList.toggle("venue-admin-accent", accentMode === "admin");
+      document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
+    }
     document.documentElement.classList.toggle("rsam-admin-mode", this.rsamMode);
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
