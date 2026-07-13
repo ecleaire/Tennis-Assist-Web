@@ -3189,6 +3189,10 @@ tr.win td {
   min-width: min(420px, 100%);
 }
 
+.rule-search-box-hidden {
+  display: none;
+}
+
 .rule-search-control {
   align-items: center;
   display: grid;
@@ -3212,6 +3216,29 @@ tr.win td {
   color: var(--muted);
   font-size: clamp(0.78rem, 1.4vw, 0.9rem);
   line-height: 1.45;
+}
+
+.rule-pdf-viewer {
+  overflow: hidden;
+  width: 100%;
+  min-height: min(74vh, 940px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.rule-pdf-viewer iframe {
+  display: block;
+  width: 100%;
+  height: min(74vh, 940px);
+  min-height: 680px;
+  border: 0;
+  background: #fff;
+}
+
+.rule-pdf-note {
+  margin-top: 12px;
+  text-align: center;
 }
 
 .rules-body {
@@ -4397,6 +4424,15 @@ body.compact #timer-five {
     padding: 9px 7px;
   }
 
+  .rule-pdf-viewer {
+    min-height: 70vh;
+  }
+
+  .rule-pdf-viewer iframe {
+    height: 70vh;
+    min-height: 560px;
+  }
+
   .rule-menu-toggle {
     display: block;
     text-align: left;
@@ -5286,6 +5322,15 @@ html.phone-portrait .rule-links {
 html.phone-portrait .rule-links .button {
   min-height: 48px;
   padding: 9px 7px;
+}
+
+html.phone-portrait .rule-pdf-viewer {
+  min-height: calc(100svh - 260px);
+}
+
+html.phone-portrait .rule-pdf-viewer iframe {
+  height: calc(100svh - 260px);
+  min-height: 520px;
 }
 
 html.phone-portrait .rules-body {

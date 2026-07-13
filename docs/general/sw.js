@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-general-af08ddb1d286";
+const CACHE_NAME = "tennis-assist-general-ba87fb64879a";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold-B_JOyP8w.woff2",
-  "./assets/index-DHJeoqwK.css",
-  "./assets/index-DsvDc3et.js",
+  "./assets/index-BROFYoLn.js",
+  "./assets/index-cz00VcNM.css",
   "./assets/playfield-BvIRyTeo.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"

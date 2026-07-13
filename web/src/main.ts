@@ -3335,7 +3335,6 @@ class ContentController {
   private rules: RuleSection[] = [];
   private news: NewsItem[] = [];
   private selectedRule = "";
-  private rulesRequested = false;
   private newsRequested = false;
   private ruleMenuOpen = false;
   private ruleSearchOpen = false;
@@ -3357,13 +3356,9 @@ class ContentController {
   }
 
   open(screen: Screen, secret: boolean): void {
-    if (screen === "rules") this.closeRuleSearch();
-    if (screen === "rules" && !this.rulesRequested) {
-      this.rulesRequested = true;
-      el("rule-content").innerHTML = "<p>ルールを読み込み中...</p>";
-      void this.loadRules();
-    } else if (screen === "rules") {
-      this.renderRules();
+    if (screen === "rules") {
+      this.closeRuleSearch();
+      this.setRuleMenu(false);
     }
     if (screen === "news" && !this.newsRequested) {
       this.newsRequested = true;
@@ -3421,38 +3416,6 @@ class ContentController {
       </article>
     `;
     el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${credits}`;
-  }
-
-  private async loadRules(): Promise<void> {
-    try {
-      const response = await fetch(`${import.meta.env.BASE_URL}data/rules_sections.json`);
-      const data = await response.json() as { sections: RuleSection[] };
-      this.rules = data.sections;
-      this.selectedRule = this.rules[0]?.id ?? "";
-      this.renderRuleNav();
-      this.renderRules();
-    } catch {
-      this.rulesRequested = false;
-      el("rule-content").innerHTML = "<p>ルールを読み込めませんでした。もう一度ルール画面を開いてください。</p>";
-    }
-  }
-
-  private renderRuleNav(): void {
-    const nav = el("rule-nav");
-    nav.replaceChildren();
-    this.rules.forEach((section) => {
-      const button = document.createElement("button");
-      button.className = `button ${section.id === this.selectedRule ? "primary" : ""}`;
-      button.textContent = section.title;
-      button.addEventListener("click", () => {
-        this.selectedRule = section.id;
-        this.renderRuleNav();
-        this.renderRules();
-        this.setRuleMenu(false);
-      });
-      nav.append(button);
-    });
-    el("rule-menu-toggle").textContent = `ルール項目を選択: ${this.rules.find((section) => section.id === this.selectedRule)?.title ?? ""}`;
   }
 
   private setRuleMenu(open: boolean): void {
