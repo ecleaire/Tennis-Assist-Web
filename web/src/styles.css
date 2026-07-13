@@ -3204,6 +3204,10 @@ tr.win td {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
+.rule-pdf-search-control {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .rule-search-control .icon-button {
   aspect-ratio: 1;
   font-size: 1.25rem;

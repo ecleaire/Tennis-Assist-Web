@@ -61,16 +61,6 @@ interface Series {
   records: MatchRecord[];
 }
 
-interface RuleSection {
-  id: string;
-  title: string;
-  subtitle: string;
-  pages: string;
-  summary: string;
-  keywords: string[];
-  points: string[];
-}
-
 interface NewsItem {
   id: string;
   title: string;
@@ -3332,17 +3322,19 @@ class RecordsController {
 }
 
 class ContentController {
-  private rules: RuleSection[] = [];
   private news: NewsItem[] = [];
-  private selectedRule = "";
   private newsRequested = false;
   private ruleMenuOpen = false;
-  private ruleSearchOpen = false;
   private linksRenderedSecret: boolean | null = null;
 
   init(): void {
-    el<HTMLButtonElement>("rule-search-toggle").addEventListener("click", () => this.toggleRuleSearch());
-    el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
+    el<HTMLButtonElement>("rule-search-toggle").addEventListener("click", () => this.searchRulePdf());
+    el<HTMLInputElement>("rule-search").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.searchRulePdf();
+      }
+    });
     document.querySelectorAll<HTMLAnchorElement>("[data-rule-pdf-src]").forEach((link) => {
       link.addEventListener("click", (event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -3375,6 +3367,29 @@ class ContentController {
     const openLink = el<HTMLAnchorElement>("rule-pdf-open-link");
     openLink.href = link.href;
     openLink.textContent = `${title}を別タブで開く`;
+    const status = document.getElementById("rule-pdf-search-status");
+    if (status) status.textContent = "表示中のPDFに検索語を渡します。検索できない場合は別タブで開いて検索してください。";
+  }
+
+  private searchRulePdf(): void {
+    const input = el<HTMLInputElement>("rule-search");
+    const query = input.value.trim();
+    const selected = document.querySelector<HTMLAnchorElement>("[data-rule-pdf-src].primary") ?? document.querySelector<HTMLAnchorElement>("[data-rule-pdf-src]");
+    const src = selected?.dataset.rulePdfSrc;
+    if (!selected || !src) return;
+    if (!query) {
+      this.selectRulePdf(selected);
+      input.focus();
+      return;
+    }
+    const frame = el<HTMLIFrameElement>("rule-pdf-frame");
+    frame.src = `${src}#search=${encodeURIComponent(query)}`;
+    const openLink = el<HTMLAnchorElement>("rule-pdf-open-link");
+    openLink.href = `${selected.href}#search=${encodeURIComponent(query)}`;
+    const title = selected.dataset.ruleTitle || selected.textContent?.trim() || "ルールPDF";
+    openLink.textContent = `${title}を別タブで開いて「${query}」を検索`;
+    const status = document.getElementById("rule-pdf-search-status");
+    if (status) status.textContent = `「${query}」を表示中のPDFで検索します。反映されない場合は、下の別タブリンク先で検索してください。`;
   }
 
   open(screen: Screen, secret: boolean): void {
@@ -3446,41 +3461,10 @@ class ContentController {
     el<HTMLButtonElement>("rule-menu-toggle").setAttribute("aria-expanded", String(open));
   }
 
-  private toggleRuleSearch(): void {
-    if (this.ruleSearchOpen) {
-      this.closeRuleSearch();
-      this.renderRules();
-      return;
-    }
-    this.ruleSearchOpen = true;
-    const input = el<HTMLInputElement>("rule-search");
-    input.disabled = false;
-    input.classList.remove("collapsed");
-    el<HTMLButtonElement>("rule-search-toggle").setAttribute("aria-expanded", "true");
-    window.setTimeout(() => input.focus(), 0);
-  }
-
   private closeRuleSearch(): void {
-    this.ruleSearchOpen = false;
     const input = el<HTMLInputElement>("rule-search");
     input.value = "";
-    input.disabled = true;
-    input.classList.add("collapsed");
     el<HTMLButtonElement>("rule-search-toggle").setAttribute("aria-expanded", "false");
-  }
-
-  private renderRules(): void {
-    const host = el("rule-content");
-    const searchInput = el<HTMLInputElement>("rule-search");
-    const query = this.ruleSearchOpen && !searchInput.disabled ? searchInput.value.trim().toLowerCase() : "";
-    const matches = query
-      ? this.rules.filter((section) => JSON.stringify(section).toLowerCase().includes(query))
-      : this.rules.filter((section) => section.id === this.selectedRule);
-    if (!matches.length) {
-      host.innerHTML = "<p>一致するルールがありません。</p>";
-      return;
-    }
-    host.innerHTML = matches.map((section) => `<article class="${query ? "rule-result" : ""}"><p class="eyebrow">PAGES ${escapeText(section.pages)} / ${escapeText(section.subtitle)}</p><h2>${escapeText(section.title)}</h2><p>${escapeText(section.summary)}</p><ul>${section.points.map((point) => `<li>${escapeText(point)}</li>`).join("")}</ul></article>`).join("");
   }
 
   private async loadNews(): Promise<void> {

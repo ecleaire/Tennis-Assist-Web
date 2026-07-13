@@ -426,12 +426,12 @@
               <p class="eyebrow">RULES VIEWER</p>
               <h2>公式ルール</h2>
             </div>
-            <div class="rule-search-box rule-search-box-hidden" aria-hidden="true">
-              <div class="rule-search-control">
-                <button id="rule-search-toggle" class="button icon-button" type="button" aria-expanded="false" aria-controls="rule-search" title="キーワード検索">⌕</button>
-                <input id="rule-search" class="collapsed" type="search" name="rsa-rule-keyword" placeholder="キーワードで検索" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" disabled />
+            <div class="rule-search-box">
+              <div class="rule-search-control rule-pdf-search-control">
+                <input id="rule-search" type="search" name="rsa-rule-pdf-query" placeholder="PDF内を検索" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" />
+                <button id="rule-search-toggle" class="button" type="button" aria-controls="rule-search" title="PDF内検索">検索</button>
               </div>
-              <p class="rule-note">公式ルールPDFを表示します。</p>
+              <p id="rule-pdf-search-status" class="rule-note">表示中のPDFに検索語を渡します。検索できない場合は別タブで開いて検索してください。</p>
             </div>
           </div>
           <div class="rule-links" aria-label="外部ルール資料">
