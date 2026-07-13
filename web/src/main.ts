@@ -4708,7 +4708,7 @@ class Application {
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
-      this.setOperationDrawButtonsLocked(true, false, false);
+      this.setOperationDrawButtonsLocked(true, false, true);
       this.setOperationDrawStage(2);
     });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
@@ -5320,6 +5320,7 @@ class Application {
       this.setOperationIntermediateReview(false);
       this.show(this.operationScreen());
       this.showOperationStep("draw", { preserveDraw: true });
+      this.setOperationDrawButtonsLocked(true, true, false);
       return;
     }
     if (el("screen-timer").classList.contains("active")) {
@@ -5329,6 +5330,7 @@ class Application {
       this.setOperationTimerReturnable(false);
       this.show(this.operationScreen());
       this.showOperationStep("draw", { preserveDraw: true });
+      this.setOperationDrawButtonsLocked(true, true, false);
       return;
     }
     if (this.operationStep === "between") {
