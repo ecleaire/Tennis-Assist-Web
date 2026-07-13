@@ -2347,7 +2347,7 @@ class RecordsController {
       row.innerHTML = `<td>第${record.matchNumber}</td><td>${escapeText(record.endReason)}</td><td>${record.teamAOrange} / ${record.teamAPurple} / ${record.teamAScore}</td><td>${record.teamBOrange} / ${record.teamBPurple} / ${record.teamBScore}</td><td>${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
       row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
-    el("intermediate-summary").textContent = entries.length ? "現在の中間結果です。各マッチは再入力できます。" : "第1マッチの保存後に中間結果が表示されます。";
+    el("intermediate-summary").textContent = entries.length ? "現在の中間結果です。誤入力の場合は再入力ボタンを押してください。" : "第1マッチの保存後に中間結果が表示されます。";
     this.renderFinal();
   }
 
@@ -5258,6 +5258,11 @@ class Application {
       return;
     }
     if (this.operationStep === "draw") {
+      if (this.operationMatch > 1) {
+        this.show("records");
+        window.setTimeout(() => el("intermediate-results").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+        return;
+      }
       this.balls.resetWorkflow();
       this.balls.resetLayout();
       this.resetOperationDrawPreparation();

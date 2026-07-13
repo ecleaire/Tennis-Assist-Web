@@ -285,6 +285,7 @@ input:hover {
 }
 
 body.operation-navigation-locked #navigation .nav[data-screen="timer"],
+body.operation-navigation-locked #navigation .nav[data-screen="referee"],
 body.operation-navigation-locked #navigation .nav[data-screen="balls"],
 body.operation-navigation-locked #navigation .nav[data-screen="news"],
 body.operation-navigation-locked #navigation .nav[data-screen="links"] {
@@ -1937,6 +1938,16 @@ body:not(.timer-started) #dashboard-timer-step {
 body.operation-record-focus #record-status {
   font-size: clamp(1rem, 1.8vw, 1.22rem);
   line-height: 1.55;
+}
+
+.intermediate-operation-note {
+  background: rgba(46, 168, 255, 0.1);
+  border: 1px solid rgba(46, 168, 255, 0.32);
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 850;
+  margin-top: 8px;
+  padding: 10px 12px;
 }
 
 .status-line {
