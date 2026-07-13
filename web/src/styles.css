@@ -825,7 +825,7 @@ output.digital.dashboard-digital {
 .operation-draw-layout {
   display: grid;
   gap: clamp(18px, 3vw, 36px);
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.36fr);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.55fr);
 }
 
 .operation-draw-main {
@@ -6207,10 +6207,10 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 .operation-draw-side .operation-numbered {
-  font-size: clamp(2.2rem, 2.25vw, 2.65rem) !important;
+  font-size: clamp(2rem, 2.1vw, 2.35rem) !important;
   font-weight: 1000;
   min-height: clamp(118px, 9vw, 150px);
-  padding-inline: clamp(16px, 1.7vw, 28px);
+  padding-inline: clamp(14px, 1.45vw, 24px);
   white-space: nowrap;
 }
 

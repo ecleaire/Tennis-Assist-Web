@@ -4683,6 +4683,7 @@ class Application {
     url.searchParams.delete("reload");
     window.history.replaceState(null, "", url.toString());
     this.updateHomeSyncAlert();
+    this.hideHomeSyncNoticeAfter(30000);
   }
 
   private operationScreen(): Screen {
@@ -4707,14 +4708,14 @@ class Application {
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
-      this.setOperationDrawButtonsLocked(true, false);
+      this.setOperationDrawButtonsLocked(true, false, false);
       this.setOperationDrawStage(2);
     });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
       this.timer.setDashboardOverride(null);
       this.timer.prepare(true);
       setText(els("dashboard-time"), this.timer.displayText());
-      this.setOperationDrawButtonsLocked(true, true);
+      this.setOperationDrawButtonsLocked(true, true, false);
       this.setOperationDrawStage(3);
     });
     el<HTMLButtonElement>("operation-ready").addEventListener("click", () => {
@@ -5014,18 +5015,19 @@ class Application {
     const gasState = sync.configured ? "ok" : hasGasHistory ? "warn" : "pending";
     const unsentState = sync.unsent ? "warn" : "ok";
     const onlineState = online ? "ok" : "warn";
+    const checkedState = settings.dayCheckAt ? "ok" : "pending";
     const teamCount = this.records.teamOptions().length;
     const markup =
       `<details class="home-risk-details">` +
       `<summary>端末・接続情報</summary>` +
       `<div class="home-risk-chips">` +
-      `<span class="home-risk-chip">使用コート: ${escapeText(courtRangeLabel())}</span>` +
-      `<span class="home-risk-chip">チーム数: ${teamCount}</span>` +
+      `<span class="home-risk-chip ok">使用コート: ${escapeText(courtRangeLabel())}</span>` +
+      `<span class="home-risk-chip ok">チーム数: ${teamCount}</span>` +
       `<span class="home-risk-chip ok">${escapeText(device)} / v${escapeText(__APP_VERSION__)}</span>` +
       (hasGasHistory || sync.configured ? `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` : "") +
       (hasGasHistory || sync.unsent ? `<span class="home-risk-chip ${unsentState}">未送信 ${sync.unsent}件${sync.unsent ? ` / ${escapeText(sync.reason)}` : ""}</span>` : "") +
       `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
-      `<span class="home-risk-chip">${escapeText(checked)}</span>` +
+      `<span class="home-risk-chip ${checkedState}">${escapeText(checked)}</span>` +
       `</div>` +
       `<div class="home-risk-actions"><button id="home-force-update" class="button tiny" type="button">強制更新</button><button id="home-sound-test" class="button tiny" type="button">音声テスト</button></div>` +
       `</details>`;
@@ -5078,9 +5080,11 @@ class Application {
       window.setTimeout(() => void context.close(), 420);
       this.homeSyncState = "success";
       this.homeSyncNotice = "音声テストを再生しました。聞こえない場合は端末音量、マナーモード、ブラウザ設定を確認してください。";
+      this.hideHomeSyncNoticeAfter(20000);
     } catch {
       this.homeSyncState = "warning";
       this.homeSyncNotice = "音声テストを再生できませんでした。端末音量、マナーモード、ブラウザの音声許可を確認してください。";
+      this.hideHomeSyncNoticeAfter(30000);
     }
     this.updateHomeSyncAlert();
   }
@@ -5120,9 +5124,10 @@ class Application {
     });
   }
 
-  private setOperationDrawButtonsLocked(ballLocked: boolean, timeLocked: boolean): void {
+  private setOperationDrawButtonsLocked(ballLocked: boolean, timeLocked: boolean, readyLocked = false): void {
     el<HTMLButtonElement>("operation-ball-random").disabled = ballLocked;
     el<HTMLButtonElement>("operation-time-random").disabled = timeLocked;
+    el<HTMLButtonElement>("operation-ready").disabled = readyLocked;
   }
 
   private scheduleOperationHomeReturn(delay = 60000): void {
@@ -5185,6 +5190,7 @@ class Application {
     this.clearOperationTimerFinishDelay();
     this.timer.setDashboardOverride(null);
     this.setOperationDrawStage(3);
+    this.setOperationDrawButtonsLocked(true, true, false);
     this.setFlow(this.operationMatch, "タイマー待機中");
     this.recordTimerPending = true;
     this.setOperationTimerReturnable(false);
@@ -5194,7 +5200,7 @@ class Application {
   }
 
   private resetOperationDrawPreparation(): void {
-    this.setOperationDrawButtonsLocked(false, false);
+    this.setOperationDrawButtonsLocked(false, true, true);
     this.setOperationDrawStage(1);
     this.timer.setDashboardOverride("00 : 00");
     setText(els("dashboard-time"), "00 : 00");
@@ -5358,7 +5364,7 @@ class Application {
     this.setOperationNavigationLocked(false);
     this.setOperationTimerActive(false);
     this.setOperationTimerReturnable(false);
-    this.setOperationDrawButtonsLocked(false, false);
+    this.setOperationDrawButtonsLocked(false, true, true);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
     this.balls.resetWorkflow();
