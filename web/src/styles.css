@@ -1670,7 +1670,7 @@ body.operation-intermediate-review #screen-records .records-layout > article:not
 }
 
 body.operation-intermediate-review #intermediate-results {
-  min-height: calc(var(--viewport-height) - 142px);
+  min-height: auto;
 }
 
 .form-row {
@@ -2274,22 +2274,32 @@ tr.win td {
 
 #final-matches th:nth-child(5),
 #final-matches td:nth-child(5) {
-  width: 90px;
+  min-width: 7.5rem;
+  text-align: center;
+  width: 7.5rem;
 }
 
 #final-table th:not(:first-child),
 #final-table td:not(:first-child) {
   text-align: center;
-  width: 12%;
+  width: 11%;
 }
 
 #final-table th:first-child,
 #final-table td:first-child {
-  width: 28%;
+  width: 24%;
+}
+
+#final-table th:last-child,
+#final-table td:last-child {
+  min-width: 12rem;
+  white-space: nowrap;
+  width: 16%;
 }
 
 #final-matches .button.tiny {
-  min-width: 88px;
+  min-width: 5rem;
+  padding-inline: 0.75rem;
   white-space: nowrap;
 }
 
@@ -6194,4 +6204,27 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 
 :root.venue-light-accent .dialog::backdrop {
   background: rgba(15, 23, 42, 0.58);
+}
+
+.operation-draw-side .operation-numbered {
+  font-size: clamp(2.2rem, 2.25vw, 2.65rem) !important;
+  font-weight: 1000;
+  min-height: clamp(118px, 9vw, 150px);
+  padding-inline: clamp(16px, 1.7vw, 28px);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .operation-draw-side .operation-numbered {
+    font-size: clamp(1.55rem, 5.6vw, 2rem) !important;
+    min-height: 86px;
+    padding-inline: 14px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
+  .operation-draw-side .operation-numbered {
+    font-size: clamp(1.65rem, 3.3vw, 2.1rem) !important;
+    min-height: 94px;
+  }
 }

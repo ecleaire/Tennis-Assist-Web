@@ -2410,6 +2410,13 @@ class RecordsController {
     return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}`;
   }
 
+  private matchViolationCount(record: MatchRecord, team: string): number {
+    if (record.reasonCategory !== scoringCategory && record.targetTeam === team) return 1;
+    if (team === record.teamA) return record.teamAViolations ?? 0;
+    if (team === record.teamB) return record.teamBViolations ?? 0;
+    return 0;
+  }
+
   private renderFinal(): void {
     const matches = el<HTMLTableElement>("final-matches");
     this.renderFinalMeta();
@@ -2425,9 +2432,11 @@ class RecordsController {
     const matchesBody = matches.createTBody();
     const canReinput = !(this.agreedA && this.agreedB) && !this.finalized;
     this.series.records.forEach((record) => {
+      const teamAViolations = this.matchViolationCount(record, record.teamA);
+      const teamBViolations = this.matchViolationCount(record, record.teamB);
       const row = matchesBody.insertRow();
       row.className = "win";
-      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>オレンジ ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>オレンジ ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td>${canReinput ? `<button class="button tiny">再入力</button>` : ""}</td>`;
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>オレンジ ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${teamAViolations}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>オレンジ ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${teamBViolations}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td>${canReinput ? `<button class="button tiny">再入力</button>` : ""}</td>`;
       if (canReinput) row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
     const sum = this.summary();
@@ -2569,7 +2578,7 @@ class RecordsController {
       teamAViolations: sum.teamAViolations,
       teamBViolations: sum.teamBViolations,
       notes: `両チーム代表同意済み / ${this.series.teamA} ${sum.teamAWins}勝 / ${this.series.teamB} ${sum.teamBWins}勝 / 引き分け${sum.draws}`,
-      sendStatus: AdminController.settings().sendEnabled ? "pending" : "local-only",
+      sendStatus: this.shouldSendToGas(AdminController.settings()) ? "pending" : "local-only",
     };
     this.records.unshift(record);
     this.saveStoredRecords();
@@ -3211,6 +3220,12 @@ class RecordsController {
       el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
       return "local-only";
     }
+    if (!this.hasGasUsageHistory(settings)) {
+      this.updateSendStatus(record, "local-only", "GAS未設定");
+      this.updateCompletionState("local-only", "GAS未設定のため端末内に保存しました。");
+      el("record-status").textContent = "試合結果を端末内に保存しました。GASを使用する場合は管理画面で接続してください。";
+      return "local-only";
+    }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       const reason = !settings.gasUrl.endsWith("/exec") ? "GAS URL未設定" : "APIキー未入力";
       this.updateSendStatus(record, "failed", reason);
@@ -3255,6 +3270,14 @@ class RecordsController {
       el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`;
       return "failed";
     }
+  }
+
+  private hasGasUsageHistory(settings: AdminSettings): boolean {
+    return Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt || settings.gasConnectedUrl);
+  }
+
+  private shouldSendToGas(settings: AdminSettings): boolean {
+    return settings.sendEnabled && this.hasGasUsageHistory(settings);
   }
 
   private updateCompletionState(status: NonNullable<MatchRecord["sendStatus"]>, detail = ""): void {
@@ -4515,6 +4538,10 @@ class Application {
     document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
       button.addEventListener("click", () => {
         const screen = button.dataset.screen as Screen;
+        if (this.handleOperationNavGuard(screen)) {
+          this.closeMobileMenu();
+          return;
+        }
         if (screen === "links") this.visitSecretScreen("links");
         else if (screen === "rules") this.visitSecretScreen("rules");
         else this.show(screen);
@@ -4887,7 +4914,13 @@ class Application {
     if (!panel) return;
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
-    const hasGasHistory = Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt);
+    const hasGasHistory = this.hasGasUsageHistory(settings);
+    if (sync.unsent && !hasGasHistory) {
+      panel.classList.add("hidden");
+      this.homeSyncAlertMarkup = "";
+      this.clearHomeUnsentAlertTimer();
+      return;
+    }
     const showDelayedUnsent = this.shouldShowHomeUnsentAlert(sync);
     if (sync.unsent && !showDelayedUnsent && !this.homeSyncNotice) {
       this.scheduleHomeUnsentAlert(sync);
@@ -4973,11 +5006,12 @@ class Application {
     if (!panel) return;
     const sync = this.records.syncSummary();
     const settings = AdminController.settings();
+    const hasGasHistory = this.hasGasUsageHistory(settings);
     const device = deviceLabel(settings);
     const online = navigator.onLine;
     const checked = settings.dayCheckAt ? `最終チェック ${settings.dayCheckAt.slice(5, 16).replace("-", "/")}` : "当日チェック未実行";
-    const gas = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : "GAS未接続";
-    const gasState = sync.configured ? "ok" : "warn";
+    const gas = sync.configured ? "GAS接続OK" : settings.sendEnabled === false ? "送信OFF" : hasGasHistory ? "GAS未接続" : "GAS未設定";
+    const gasState = sync.configured ? "ok" : hasGasHistory ? "warn" : "pending";
     const unsentState = sync.unsent ? "warn" : "ok";
     const onlineState = online ? "ok" : "warn";
     const teamCount = this.records.teamOptions().length;
@@ -4988,8 +5022,8 @@ class Application {
       `<span class="home-risk-chip">使用コート: ${escapeText(courtRangeLabel())}</span>` +
       `<span class="home-risk-chip">チーム数: ${teamCount}</span>` +
       `<span class="home-risk-chip ok">${escapeText(device)} / v${escapeText(__APP_VERSION__)}</span>` +
-      `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` +
-      `<span class="home-risk-chip ${unsentState}">未送信 ${sync.unsent}件${sync.unsent ? ` / ${escapeText(sync.reason)}` : ""}</span>` +
+      (hasGasHistory || sync.configured ? `<span class="home-risk-chip ${gasState}">${escapeText(gas)}</span>` : "") +
+      (hasGasHistory || sync.unsent ? `<span class="home-risk-chip ${unsentState}">未送信 ${sync.unsent}件${sync.unsent ? ` / ${escapeText(sync.reason)}` : ""}</span>` : "") +
       `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
       `<span class="home-risk-chip">${escapeText(checked)}</span>` +
       `</div>` +
@@ -5049,6 +5083,10 @@ class Application {
       this.homeSyncNotice = "音声テストを再生できませんでした。端末音量、マナーモード、ブラウザの音声許可を確認してください。";
     }
     this.updateHomeSyncAlert();
+  }
+
+  private hasGasUsageHistory(settings = AdminController.settings()): boolean {
+    return Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt || settings.gasConnectedUrl);
   }
 
   private updateHomeOperationSummary(): void {
@@ -5240,6 +5278,21 @@ class Application {
     }
   }
 
+  private handleOperationNavGuard(screen: Screen): boolean {
+    if (!this.operationActive) return false;
+    if (screen === "dashboard" && (document.body.classList.contains("operation-record-focus") || !el("record-input").classList.contains("hidden"))) {
+      return true;
+    }
+    if (screen === "records" && this.operationStep === "draw") {
+      if (this.operationMatch > 1) {
+        this.setOperationIntermediateReview(true);
+        this.show("records");
+      }
+      return true;
+    }
+    return false;
+  }
+
   private goOperationBack(): void {
     this.clearBackConfirmation();
     this.clearOperationHomeTimer();
@@ -5280,7 +5333,6 @@ class Application {
       if (this.operationMatch > 1) {
         this.setOperationIntermediateReview(true);
         this.show("records");
-        window.setTimeout(() => el("intermediate-results").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
         return;
       }
       this.balls.resetWorkflow();
