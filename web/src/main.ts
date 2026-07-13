@@ -2423,11 +2423,12 @@ class RecordsController {
       return;
     }
     const matchesBody = matches.createTBody();
+    const canReinput = !(this.agreedA && this.agreedB) && !this.finalized;
     this.series.records.forEach((record) => {
       const row = matchesBody.insertRow();
       row.className = "win";
-      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>オレンジ ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>オレンジ ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
-      row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>オレンジ ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>オレンジ ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td>${canReinput ? `<button class="button tiny">再入力</button>` : ""}</td>`;
+      if (canReinput) row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
     const sum = this.summary();
     const winner = this.overallWinner(sum);
@@ -2518,6 +2519,7 @@ class RecordsController {
     if (this.agreementPending === "a") this.agreedA = true;
     else this.agreedB = true;
     this.cancelAgreement();
+    this.renderFinal();
     this.renderAgreement();
   }
 
@@ -4704,6 +4706,7 @@ class Application {
     document.addEventListener("series-match-saved", (event) => {
       const detail = (event as CustomEvent<{ match: number; finished: boolean }>).detail;
       this.setOperationRecordFocus(false);
+      this.setOperationIntermediateReview(false);
       if (!this.operationActive) return;
       if (detail.finished) {
         this.setOperationFinalReview(true);
@@ -4721,6 +4724,7 @@ class Application {
       if (!this.operationActive) return;
       this.setOperationRecordFocus(false);
       this.setOperationFinalReview(false);
+      this.setOperationIntermediateReview(false);
       const detail = (event as CustomEvent<{ lead: string; winner: string }>).detail;
       this.setOperationNavigationLocked(false);
       this.show(this.operationScreen());
@@ -4742,6 +4746,7 @@ class Application {
     document.addEventListener("series-match-edit", () => {
       if (!this.operationActive) return;
       this.setOperationFinalReview(false);
+      this.setOperationIntermediateReview(false);
       this.setOperationRecordFocus(true);
       this.show("records");
     });
@@ -4857,6 +4862,7 @@ class Application {
   private showOperationStep(step: "home" | "team" | "draw" | "between" | "finished", options: { preserveDraw?: boolean } = {}): void {
     if (step !== "finished") this.setOperationRecordFocus(false);
     if (step !== "finished") this.setOperationFinalReview(false);
+    if (step !== "finished") this.setOperationIntermediateReview(false);
     this.operationStep = step;
     document.body.classList.remove("operation-step-home", "operation-step-team", "operation-step-draw", "operation-step-between", "operation-step-finished");
     document.body.classList.add(`operation-step-${step}`);
@@ -5112,10 +5118,16 @@ class Application {
 
   private setOperationRecordFocus(active: boolean): void {
     document.body.classList.toggle("operation-record-focus", active);
+    if (active) this.setOperationIntermediateReview(false);
   }
 
   private setOperationFinalReview(active: boolean): void {
     document.body.classList.toggle("operation-final-review", active);
+    if (active) this.setOperationIntermediateReview(false);
+  }
+
+  private setOperationIntermediateReview(active: boolean): void {
+    document.body.classList.toggle("operation-intermediate-review", active);
   }
 
   private setOperationNavigationLocked(active: boolean): void {
@@ -5156,6 +5168,7 @@ class Application {
     void this.timer.leaveFullscreen();
     this.setOperationTimerReturnable(false);
     this.setOperationTimerActive(false);
+    this.setOperationIntermediateReview(false);
     this.setOperationRecordFocus(true);
     this.show("records");
   }
@@ -5244,6 +5257,12 @@ class Application {
       this.show("records");
       return;
     }
+    if (document.body.classList.contains("operation-intermediate-review")) {
+      this.setOperationIntermediateReview(false);
+      this.show(this.operationScreen());
+      this.showOperationStep("draw", { preserveDraw: true });
+      return;
+    }
     if (el("screen-timer").classList.contains("active")) {
       void this.timer.leaveFullscreen();
       this.recordTimerPending = false;
@@ -5259,6 +5278,7 @@ class Application {
     }
     if (this.operationStep === "draw") {
       if (this.operationMatch > 1) {
+        this.setOperationIntermediateReview(true);
         this.show("records");
         window.setTimeout(() => el("intermediate-results").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
         return;
@@ -5282,6 +5302,7 @@ class Application {
     this.operationMatch = 1;
     this.setOperationRecordFocus(false);
     this.setOperationFinalReview(false);
+    this.setOperationIntermediateReview(false);
     this.setOperationNavigationLocked(false);
     this.setOperationTimerActive(false);
     this.setOperationTimerReturnable(false);
