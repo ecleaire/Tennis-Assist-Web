@@ -3343,6 +3343,13 @@ class ContentController {
   init(): void {
     el<HTMLButtonElement>("rule-search-toggle").addEventListener("click", () => this.toggleRuleSearch());
     el<HTMLInputElement>("rule-search").addEventListener("input", () => this.renderRules());
+    document.querySelectorAll<HTMLAnchorElement>("[data-rule-pdf-src]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        this.selectRulePdf(link);
+      });
+    });
     el<HTMLButtonElement>("rule-menu-toggle").addEventListener("click", (event) => {
       event.stopPropagation();
       this.setRuleMenu(!this.ruleMenuOpen);
@@ -3353,6 +3360,21 @@ class ContentController {
     });
     document.getElementById("news-filter")?.addEventListener("change", () => this.renderNews());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => el<HTMLDialogElement>((button as HTMLElement).dataset.close ?? "").close()));
+  }
+
+  private selectRulePdf(link: HTMLAnchorElement): void {
+    const src = link.dataset.rulePdfSrc;
+    if (!src) return;
+    const title = link.dataset.ruleTitle || link.textContent?.trim() || "ルールPDF";
+    const frame = el<HTMLIFrameElement>("rule-pdf-frame");
+    if (frame.src !== src) frame.src = src;
+    frame.title = title;
+    document.querySelectorAll<HTMLAnchorElement>("[data-rule-pdf-src]").forEach((button) => {
+      button.classList.toggle("primary", button === link);
+    });
+    const openLink = el<HTMLAnchorElement>("rule-pdf-open-link");
+    openLink.href = link.href;
+    openLink.textContent = `${title}を別タブで開く`;
   }
 
   open(screen: Screen, secret: boolean): void {

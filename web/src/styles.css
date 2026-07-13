@@ -3182,6 +3182,10 @@ tr.win td {
   text-align: center;
 }
 
+.rule-links .button.primary {
+  box-shadow: 0 0 0 3px rgba(48, 168, 255, 0.24);
+}
+
 .rule-search-box {
   display: grid;
   gap: 7px;
@@ -3239,6 +3243,11 @@ tr.win td {
 .rule-pdf-note {
   margin-top: 12px;
   text-align: center;
+}
+
+.rule-pdf-note a {
+  color: var(--accent);
+  font-weight: 900;
 }
 
 .rules-body {
