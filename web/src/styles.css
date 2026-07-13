@@ -6207,7 +6207,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 .operation-draw-side .operation-numbered {
-  font-size: clamp(2rem, 2.1vw, 2.35rem) !important;
+  font-size: clamp(2.2rem, 2.28vw, 2.5rem) !important;
   font-weight: 1000;
   min-height: clamp(118px, 9vw, 150px);
   padding-inline: clamp(14px, 1.45vw, 24px);
