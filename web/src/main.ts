@@ -2407,7 +2407,7 @@ class RecordsController {
     const result = winner === "draw" ? "引き分け" : `${winner === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
     const drawDecisionNote = winner === "draw" ? this.drawDecisionNote(sum) : "";
     const drawNote = drawDecisionNote ? `<span class="final-result-note">${escapeText(drawDecisionNote)}</span>` : "";
-    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}<span class="final-correction-note">誤入力の場合、各マッチは再入力できます。</span>`;
+    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}`;
   }
 
   private renderFinal(): void {
@@ -2415,7 +2415,7 @@ class RecordsController {
     this.renderFinalMeta();
     matches.innerHTML = "<thead><tr><th>マッチ</th><th>終了理由</th><th>チーム別結果</th><th>勝敗結果</th><th></th></tr></thead>";
     const table = el<HTMLTableElement>("final-table");
-    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総オレンジ</th><th>総紫</th><th>違反</th><th>総得点</th><th>勝敗</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>チーム</th><th>勝利数</th><th>総オレンジ</th><th>総紫</th><th>違反</th><th>総得点</th><th>勝敗（3マッチ合計）</th></tr></thead>";
     if (!this.series?.records.length) {
       el("final-summary").textContent = "3マッチ終了後、最終試合結果を確認できます。";
       el("series-finished").classList.add("hidden");
@@ -2426,7 +2426,7 @@ class RecordsController {
     this.series.records.forEach((record) => {
       const row = matchesBody.insertRow();
       row.className = "win";
-      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>橙 ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>橙 ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
+      row.innerHTML = `<td>第${record.matchNumber}マッチ</td><td>${escapeText(record.endReason)}</td><td><div class="final-match-team"><strong>${escapeText(record.teamA)}</strong><span>オレンジ ${record.teamAOrange} / 紫 ${record.teamAPurple} / 得点 ${record.teamAScore} / 違反 ${record.teamAViolations ?? 0}</span></div><div class="final-match-team"><strong>${escapeText(record.teamB)}</strong><span>オレンジ ${record.teamBOrange} / 紫 ${record.teamBPurple} / 得点 ${record.teamBScore} / 違反 ${record.teamBViolations ?? 0}</span></div></td><td>勝者: ${escapeText(record.winner)}</td><td><button class="button tiny">再入力</button></td>`;
       row.querySelector("button")?.addEventListener("click", () => this.editRecord(record.matchNumber));
     });
     const sum = this.summary();
@@ -2495,8 +2495,8 @@ class RecordsController {
     }
     const agreeA = el<HTMLButtonElement>("agree-a");
     const agreeB = el<HTMLButtonElement>("agree-b");
-    agreeA.textContent = `${this.series.teamA} 代表: ${this.agreedA ? "同意済み" : "同意する"}`;
-    agreeB.textContent = `${this.series.teamB} 代表: ${this.agreedB ? "同意済み" : "同意する"}`;
+    agreeA.textContent = `${this.series.teamA} 代表：${this.agreedA ? "同意済み" : "同意する"}`;
+    agreeB.textContent = `${this.series.teamB} 代表：${this.agreedB ? "同意済み" : "同意する"}`;
     agreeA.classList.toggle("agreed", this.agreedA);
     agreeB.classList.toggle("agreed", this.agreedB);
     agreeA.disabled = this.agreedA || this.finalized;
@@ -2511,7 +2511,6 @@ class RecordsController {
     const team = side === "a" ? this.series.teamA : this.series.teamB;
     el("agreement-confirm-team").textContent = `${team} 代表が確認しています。左右チーム、各マッチ、違反時スコア、勝者をもう一度確認してください。`;
     el("agreement-confirm").classList.remove("hidden");
-    el("final-results").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   private acceptAgreement(): void {

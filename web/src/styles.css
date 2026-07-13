@@ -921,11 +921,11 @@ body.operation-balls-compact .operation-court-panel .operation-court-fullscreen 
   background: #0d3a44;
   border: 4px solid #19f43c;
   border-radius: 14px;
-  font-size: clamp(1.55rem, 2.7vw, 2.18rem);
+  font-size: clamp(1.8rem, 2.9vw, 2.48rem);
   font-weight: 900;
   justify-content: flex-start;
   min-height: clamp(104px, 11vw, 138px);
-  padding: clamp(20px, 2.7vw, 30px) clamp(24px, 3.8vw, 42px);
+  padding: clamp(20px, 2.7vw, 30px) clamp(20px, 3.2vw, 38px);
   text-align: left;
   white-space: nowrap;
 }
@@ -2197,6 +2197,10 @@ tr.win td {
   padding: 10px 12px;
 }
 
+#final-correction-message {
+  margin: 0;
+}
+
 #final-results .table-scroll {
   background: rgba(7, 17, 38, 0.44);
   border: 1px solid rgba(46, 168, 255, 0.22);
@@ -2257,7 +2261,8 @@ tr.win td {
 }
 
 #final-matches .button.tiny {
-  min-width: 78px;
+  min-width: 88px;
+  white-space: nowrap;
 }
 
 .final-match-team {
@@ -3991,8 +3996,8 @@ body.compact #timer-five {
   }
 
   .operation-numbered {
-    font-size: clamp(1.15rem, 4.6vw, 1.45rem);
-    min-height: 68px;
+    font-size: clamp(1.38rem, 5.4vw, 1.75rem);
+    min-height: 78px;
     padding-inline: 18px;
   }
 
@@ -5446,7 +5451,7 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .operation-numbered {
-    font-size: clamp(1.38rem, 2.2vw, 1.76rem);
+    font-size: clamp(1.55rem, 2.6vw, 2rem);
     min-height: 94px;
     padding-inline: 24px;
   }
@@ -5530,8 +5535,8 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   }
 
   .operation-numbered {
-    font-size: clamp(0.96rem, 2.2vw, 1.1rem);
-    min-height: 58px;
+    font-size: clamp(1.36rem, 2.8vw, 1.8rem);
+    min-height: 82px;
   }
 
   .confirm-judge-summary,
