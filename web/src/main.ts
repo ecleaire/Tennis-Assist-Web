@@ -86,10 +86,8 @@ interface Summary {
 
 interface AudioCueSettings {
   elapsedThirty: boolean;
-  remainingThirty: boolean;
-  remainingTwenty: boolean;
-  countdown: boolean;
-  stop: boolean;
+  remainingTen: boolean;
+  remainingFiveSequence: boolean;
 }
 
 interface AdminSettings {
@@ -211,20 +209,16 @@ const deviceRoleOptions: DeviceRole[] = ["", "Aコート用", "Bコート用", "
 const adminStorageKey = "tennis-assist-admin-v1";
 const defaultAudioCueSettings: AudioCueSettings = {
   elapsedThirty: true,
-  remainingThirty: true,
-  remainingTwenty: true,
-  countdown: true,
-  stop: true,
+  remainingTen: true,
+  remainingFiveSequence: true,
 };
 
 function normalizeAudioCueSettings(value: unknown): AudioCueSettings {
-  const parsed = (value && typeof value === "object" ? value : {}) as Partial<Record<keyof AudioCueSettings, unknown>>;
+  const parsed = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   return {
     elapsedThirty: parsed.elapsedThirty !== false,
-    remainingThirty: parsed.remainingThirty !== false,
-    remainingTwenty: parsed.remainingTwenty !== false,
-    countdown: parsed.countdown !== false,
-    stop: parsed.stop !== false,
+    remainingTen: parsed.remainingTen !== false,
+    remainingFiveSequence: parsed.remainingFiveSequence !== false,
   };
 }
 
@@ -628,59 +622,29 @@ async function ensureGasSuccess(response: Response): Promise<void> {
 
 class TimerAudioCueController {
   private context: AudioContext | null = null;
+  private master: DynamicsCompressorNode | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
-  private readonly delayedCueTimers: number[] = [];
-  private readonly volumeBoost = 2;
-  private readonly countdownBuffers = new Map<number, AudioBuffer | null>();
-  private elapsedThirtyBuffer: AudioBuffer | null = null;
-  private remainingThirtyBuffer: AudioBuffer | null = null;
-  private remainingTwentyBuffer: AudioBuffer | null = null;
-  private stopBuffer: AudioBuffer | null = null;
-  private loading: Promise<void> | null = null;
   private scheduled = false;
 
   async prepare(): Promise<void> {
     const context = this.audioContext();
     if (context?.state === "suspended") void context.resume();
-    await this.loadBuffers();
     if (context?.state === "suspended") await context.resume().catch(() => {});
   }
 
   playElapsedThirty(): void {
     if (!currentAudioCueSettings().elapsedThirty) return;
-    if (!this.playBuffer(this.elapsedThirtyBuffer)) this.beep(1175, 0.18, "sine", 0.32);
+    this.chime(1568, 0, 1.35, 1.18);
   }
 
-  playRemainingThirty(): void {
-    if (!currentAudioCueSettings().remainingThirty) return;
-    if (!this.playBuffer(this.remainingThirtyBuffer)) this.beep(1040, 0.16, "sine", 0.28);
+  playRemainingTen(): void {
+    if (!currentAudioCueSettings().remainingTen) return;
+    this.chime(1760, 0, 0.95, 1.16);
   }
 
-  playRemainingTwenty(): void {
-    if (!currentAudioCueSettings().remainingTwenty) return;
-    if (!this.playBuffer(this.remainingTwentyBuffer)) this.beep(1100, 0.14, "sine", 0.28);
-  }
-
-  playCountdownSecond(second: number): void {
-    if (!currentAudioCueSettings().countdown) return;
-    const normalized = Math.max(1, Math.min(10, Math.ceil(second)));
-    if (!this.playBuffer(this.countdownBuffers.get(normalized) ?? null)) this.beep(1200, 0.08, "sine", 0.28);
-  }
-
-  playStop(): void {
-    if (!currentAudioCueSettings().stop) return;
-    if (!this.playBuffer(this.stopBuffer)) this.beep(660, 0.22, "square", 0.24);
-  }
-
-  playFiveCountTest(): void {
-    [0, 0.18, 0.36, 0.54, 0.72].forEach((delay, index) => {
-      const timer = window.setTimeout(() => {
-        const timerIndex = this.delayedCueTimers.indexOf(timer);
-        if (timerIndex >= 0) this.delayedCueTimers.splice(timerIndex, 1);
-        this.beep(880 + index * 45, 0.1, "sine", 0.3);
-      }, delay * 1000);
-      this.delayedCueTimers.push(timer);
-    });
+  playRemainingFiveSequence(): void {
+    if (!currentAudioCueSettings().remainingFiveSequence) return;
+    this.scheduleFiveSecondSequence(0);
   }
 
   async testThirtySeconds(): Promise<void> {
@@ -689,22 +653,16 @@ class TimerAudioCueController {
     this.playElapsedThirty();
   }
 
-  async testCountdown(): Promise<void> {
+  async testRemainingTen(): Promise<void> {
     this.stopScheduled();
     await this.prepare();
-    this.playCountdownSecond(10);
+    this.playRemainingTen();
   }
 
-  async testCountdownSync(): Promise<void> {
+  async testRemainingFiveSequence(): Promise<void> {
     this.stopScheduled();
     await this.prepare();
-    this.scheduleMainCues(11, 11);
-  }
-
-  async testFiveCount(): Promise<void> {
-    this.stopScheduled();
-    await this.prepare();
-    this.playFiveCountTest();
+    this.scheduleFiveSecondSequence(0);
   }
 
   scheduleMainCues(remaining: number, total: number): boolean {
@@ -714,15 +672,9 @@ class TimerAudioCueController {
     const cues = currentAudioCueSettings();
     const elapsed = total - remaining;
     const now = context.currentTime;
-    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleBuffer(this.elapsedThirtyBuffer, now + Math.max(0, 30 - elapsed));
-    if (cues.remainingThirty && total > 60 && remaining > 30) this.scheduleBuffer(this.remainingThirtyBuffer, now + (remaining - 30));
-    if (cues.remainingTwenty && remaining > 20) this.scheduleBuffer(this.remainingTwentyBuffer, now + (remaining - 20));
-    if (cues.countdown) {
-      for (let second = 10; second >= 1; second -= 1) {
-        if (remaining > second) this.scheduleBuffer(this.countdownBuffers.get(second) ?? null, now + (remaining - second));
-      }
-    }
-    if (cues.stop && remaining > 0) this.scheduleBuffer(this.stopBuffer, now + remaining);
+    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.35, 1.18);
+    if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 0.95, 1.16);
+    if (cues.remainingFiveSequence && remaining > 5) this.scheduleFiveSecondSequence(now + (remaining - 5));
     this.scheduled = this.scheduledSources.length > 0;
     return this.scheduled;
   }
@@ -732,9 +684,6 @@ class TimerAudioCueController {
   }
 
   stopScheduled(): void {
-    for (const timer of this.delayedCueTimers.splice(0)) {
-      window.clearTimeout(timer);
-    }
     for (const source of this.scheduledSources.splice(0)) {
       try {
         source.stop();
@@ -751,93 +700,66 @@ class TimerAudioCueController {
     if (!AudioContextCtor) return null;
     try {
       this.context = new AudioContextCtor();
+      this.master = this.context.createDynamicsCompressor();
+      this.master.threshold.value = -18;
+      this.master.knee.value = 12;
+      this.master.ratio.value = 8;
+      this.master.attack.value = 0.002;
+      this.master.release.value = 0.18;
+      this.master.connect(this.context.destination);
     } catch {
       this.context = null;
+      this.master = null;
     }
     return this.context;
   }
 
-  private async loadBuffers(): Promise<void> {
-    if (this.elapsedThirtyBuffer && this.remainingTwentyBuffer && this.stopBuffer && this.countdownBuffers.size >= 10) return;
-    if (this.loading) return this.loading;
-    this.loading = (async () => {
-      const [elapsedThirty, remainingThirty, remainingTwenty, stop, ...countdown] = await Promise.all([
-        this.fetchBuffer(`${import.meta.env.BASE_URL}assets/voice-elapsed-30.wav`),
-        this.fetchBuffer(`${import.meta.env.BASE_URL}assets/voice-remaining-30.wav`),
-        this.fetchBuffer(`${import.meta.env.BASE_URL}assets/voice-remaining-20.wav`),
-        this.fetchBuffer(`${import.meta.env.BASE_URL}assets/voice-stop.wav`),
-        ...Array.from({ length: 10 }, (_, index) => this.fetchBuffer(`${import.meta.env.BASE_URL}assets/voice-count-${10 - index}.wav`)),
-      ]);
-      this.elapsedThirtyBuffer = elapsedThirty;
-      this.remainingThirtyBuffer = remainingThirty;
-      this.remainingTwentyBuffer = remainingTwenty;
-      this.stopBuffer = stop;
-      countdown.forEach((buffer, index) => {
-        this.countdownBuffers.set(10 - index, buffer);
-      });
-    })().catch(() => {
-      this.countdownBuffers.clear();
-      this.elapsedThirtyBuffer = null;
-      this.remainingThirtyBuffer = null;
-      this.remainingTwentyBuffer = null;
-      this.stopBuffer = null;
-    }).finally(() => {
-      this.loading = null;
-    });
-    await this.loading;
-  }
-
-  private async fetchBuffer(url: string): Promise<AudioBuffer | null> {
-    const context = this.audioContext();
-    if (!context) return null;
-    const response = await fetch(url);
-    const data = await response.arrayBuffer();
-    return context.decodeAudioData(data.slice(0));
-  }
-
-  private playBuffer(buffer: AudioBuffer | null): boolean {
-    const context = this.audioContext();
-    if (!context || !buffer) return false;
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    source.buffer = buffer;
-    gain.gain.value = this.volumeBoost;
-    source.connect(gain);
-    gain.connect(context.destination);
-    this.trackSource(source);
-    source.start(0);
-    return true;
-  }
-
-  private scheduleBuffer(buffer: AudioBuffer | null, when: number): void {
-    const context = this.audioContext();
-    if (!context || !buffer) return;
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    source.buffer = buffer;
-    gain.gain.value = this.volumeBoost;
-    source.connect(gain);
-    gain.connect(context.destination);
-    this.trackSource(source);
-    source.start(Math.max(context.currentTime, when));
-  }
-
-  private beep(frequency: number, duration: number, type: OscillatorType, volume: number): void {
+  private scheduleFiveSecondSequence(startAt: number): void {
     const context = this.audioContext();
     if (!context) return;
+    const start = Math.max(context.currentTime, startAt);
+    for (let index = 0; index < 5; index += 1) {
+      this.scheduleChime(1397, start + index, 0.16, 1.05);
+    }
+    this.scheduleChime(2093, start + 5, 1.75, 1.18);
+  }
+
+  private chime(frequency: number, delay: number, duration: number, volume: number): void {
+    const context = this.audioContext();
+    if (!context) return;
+    this.scheduleChime(frequency, context.currentTime + delay, duration, volume);
+  }
+
+  private scheduleChime(frequency: number, when: number, duration: number, volume: number): void {
+    const context = this.audioContext();
+    if (!context || !this.master) return;
+    const startAt = Math.max(context.currentTime, when);
     const oscillator = context.createOscillator();
+    const overtone = context.createOscillator();
+    const upper = context.createOscillator();
     const gain = context.createGain();
-    const now = context.currentTime;
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    oscillator.type = "triangle";
+    overtone.type = "sine";
+    upper.type = "square";
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    overtone.frequency.setValueAtTime(frequency * 2, startAt);
+    upper.frequency.setValueAtTime(frequency * 1.5, startAt);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
     oscillator.connect(gain);
-    gain.connect(context.destination);
+    overtone.connect(gain);
+    upper.connect(gain);
+    gain.connect(this.master);
     this.trackSource(oscillator);
-    oscillator.start(now);
-    oscillator.stop(now + duration + 0.02);
+    this.trackSource(overtone);
+    this.trackSource(upper);
+    oscillator.start(startAt);
+    overtone.start(startAt);
+    upper.start(startAt);
+    oscillator.stop(startAt + duration + 0.03);
+    overtone.stop(startAt + duration + 0.03);
+    upper.stop(startAt + duration + 0.03);
   }
 
   private trackSource(source: AudioScheduledSourceNode): void {
@@ -892,10 +814,8 @@ class TimerController {
   private readonly audioCues = new TimerAudioCueController();
   private wakeLock: WakeLockSentinelLike | null = null;
   private thirtyCuePlayed = false;
-  private remainingThirtyCuePlayed = false;
-  private remainingTwentyCuePlayed = false;
-  private lastCountdownCueSecond = 0;
-  private finishCuePlayed = false;
+  private remainingTenCuePlayed = false;
+  private remainingFiveSequencePlayed = false;
   private endWarningArmed = false;
   private stopWarningArmed = false;
   private stopWarningTimer = 0;
@@ -1047,10 +967,8 @@ class TimerController {
     this.endAt = 0;
     this.audioCues.stopScheduled();
     this.thirtyCuePlayed = false;
-    this.remainingThirtyCuePlayed = false;
-    this.remainingTwentyCuePlayed = false;
-    this.lastCountdownCueSecond = 0;
-    this.finishCuePlayed = false;
+    this.remainingTenCuePlayed = false;
+    this.remainingFiveSequencePlayed = false;
     this.total = 120;
     this.remaining = 120;
     this.mode.textContent = "試合準備完了";
@@ -1187,10 +1105,8 @@ class TimerController {
     this.endAt = 0;
     this.audioCues.stopScheduled();
     this.thirtyCuePlayed = false;
-    this.remainingThirtyCuePlayed = false;
-    this.remainingTwentyCuePlayed = false;
-    this.lastCountdownCueSecond = 0;
-    this.finishCuePlayed = false;
+    this.remainingTenCuePlayed = false;
+    this.remainingFiveSequencePlayed = false;
     if (this.randomStep === "tokyo") {
       this.total = 120;
       this.remaining = 120;
@@ -1311,7 +1227,6 @@ class TimerController {
     this.mode.textContent = "終了";
     this.notice.textContent = "";
     this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
-    this.playFinishCue();
     this.scheduleAutoReset();
     this.syncControls();
     this.render();
@@ -1336,9 +1251,8 @@ class TimerController {
         this.coldUntil = now + 10000;
         this.playThirtySecondCue();
       }
-      this.playRemainingThirtyCue();
-      this.playRemainingTwentyCue();
-      this.playCountdownCue();
+      this.playRemainingTenCue();
+      this.playRemainingFiveSequenceCue();
       if (this.coldUntil > now) this.notice.textContent = "ここからコールドが適応されます";
       else if (this.endWarningArmed) this.notice.textContent = "タイマー作動中です。終了する場合はもう一度「終了」を押してください。";
       else if (this.stopWarningArmed) this.notice.textContent = "タイマー作動中です。停止する場合はもう一度「停止」を押してください。";
@@ -1352,7 +1266,6 @@ class TimerController {
         this.endAt = 0;
         this.mode.textContent = "終了";
         this.caption.textContent = "ランダム再生成で新しいタイマーを作れます。";
-        this.playFinishCue();
         this.scheduleAutoReset();
         this.syncControls();
         this.emitFinish(false, true);
@@ -1436,34 +1349,18 @@ class TimerController {
     this.audioCues.playElapsedThirty();
   }
 
-  private playRemainingThirtyCue(): void {
-    if (this.total <= 60 || this.remaining > 30 || this.remaining <= 29 || this.remainingThirtyCuePlayed) return;
-    this.remainingThirtyCuePlayed = true;
+  private playRemainingTenCue(): void {
+    if (this.remaining > 10 || this.remaining <= 9 || this.remainingTenCuePlayed) return;
+    this.remainingTenCuePlayed = true;
     if (this.audioCues.hasScheduledMainCues()) return;
-    this.audioCues.playRemainingThirty();
+    this.audioCues.playRemainingTen();
   }
 
-  private playRemainingTwentyCue(): void {
-    if (this.remaining > 20 || this.remaining <= 19 || this.remainingTwentyCuePlayed) return;
-    this.remainingTwentyCuePlayed = true;
+  private playRemainingFiveSequenceCue(): void {
+    if (this.remaining > 5 || this.remaining <= 4 || this.remainingFiveSequencePlayed) return;
+    this.remainingFiveSequencePlayed = true;
     if (this.audioCues.hasScheduledMainCues()) return;
-    this.audioCues.playRemainingTwenty();
-  }
-
-  private playCountdownCue(): void {
-    if (!this.started || this.remaining <= 0 || this.remaining > 10) return;
-    const second = Math.ceil(this.remaining);
-    if (second < 1 || second > 10 || second === this.lastCountdownCueSecond) return;
-    this.lastCountdownCueSecond = second;
-    if (this.audioCues.hasScheduledMainCues()) return;
-    this.audioCues.playCountdownSecond(second);
-  }
-
-  private playFinishCue(): void {
-    if (this.finishCuePlayed) return;
-    this.finishCuePlayed = true;
-    if (this.audioCues.hasScheduledMainCues()) return;
-    this.audioCues.playStop();
+    this.audioCues.playRemainingFiveSequence();
   }
 
   private syncControls(): void {
@@ -3725,8 +3622,9 @@ class AdminController {
     el<HTMLSelectElement>("timer-setting-mode").addEventListener("change", () => this.updateTimerSettingModeFields());
     el<HTMLSelectElement>("device-role").addEventListener("change", () => this.save());
     el<HTMLButtonElement>("audio-test-thirty").addEventListener("click", () => void this.testAudioCue("thirty"));
-    el<HTMLButtonElement>("audio-test-sync").addEventListener("click", () => void this.testAudioCue("sync"));
-    ["audio-cue-elapsed-thirty", "audio-cue-remaining-thirty", "audio-cue-remaining-twenty", "audio-cue-countdown", "audio-cue-stop"].forEach((id) => {
+    el<HTMLButtonElement>("audio-test-ten").addEventListener("click", () => void this.testAudioCue("ten"));
+    el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
+    ["audio-cue-elapsed-thirty", "audio-cue-remaining-ten", "audio-cue-remaining-five-sequence"].forEach((id) => {
       el<HTMLInputElement>(id).addEventListener("change", () => this.save());
     });
     el<HTMLButtonElement>("device-config-qr-show").addEventListener("click", () => this.showDeviceConfigQr());
@@ -3798,10 +3696,8 @@ class AdminController {
     el<HTMLSelectElement>("match-type").value = settings.matchType;
     el<HTMLSelectElement>("device-role").value = normalizeDeviceRole(settings.deviceRole);
     el<HTMLInputElement>("audio-cue-elapsed-thirty").checked = settings.audioCues.elapsedThirty;
-    el<HTMLInputElement>("audio-cue-remaining-thirty").checked = settings.audioCues.remainingThirty;
-    el<HTMLInputElement>("audio-cue-remaining-twenty").checked = settings.audioCues.remainingTwenty;
-    el<HTMLInputElement>("audio-cue-countdown").checked = settings.audioCues.countdown;
-    el<HTMLInputElement>("audio-cue-stop").checked = settings.audioCues.stop;
+    el<HTMLInputElement>("audio-cue-remaining-ten").checked = settings.audioCues.remainingTen;
+    el<HTMLInputElement>("audio-cue-remaining-five-sequence").checked = settings.audioCues.remainingFiveSequence;
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
     this.updateConnectionCard();
@@ -3922,10 +3818,8 @@ class AdminController {
       deviceRole: normalizeDeviceRole(el<HTMLSelectElement>("device-role").value),
       audioCues: {
         elapsedThirty: el<HTMLInputElement>("audio-cue-elapsed-thirty").checked,
-        remainingThirty: el<HTMLInputElement>("audio-cue-remaining-thirty").checked,
-        remainingTwenty: el<HTMLInputElement>("audio-cue-remaining-twenty").checked,
-        countdown: el<HTMLInputElement>("audio-cue-countdown").checked,
-        stop: el<HTMLInputElement>("audio-cue-stop").checked,
+        remainingTen: el<HTMLInputElement>("audio-cue-remaining-ten").checked,
+        remainingFiveSequence: el<HTMLInputElement>("audio-cue-remaining-five-sequence").checked,
       },
       gasConnectedAt: AdminController.settings().gasConnectedAt,
       gasConnectedUrl: AdminController.settings().gasConnectedUrl,
@@ -3939,29 +3833,30 @@ class AdminController {
     el("gas-status").textContent = "この端末に管理設定、チームリスト、使用コートを保存しました。";
   }
 
-  private async testAudioCue(kind: "thirty" | "sync"): Promise<void> {
-    const label = kind === "thirty" ? "30秒経過音" : "11秒同期確認";
+  private async testAudioCue(kind: "thirty" | "ten" | "five"): Promise<void> {
+    const label = kind === "thirty" ? "開始30秒音" : kind === "ten" ? "残り10秒音" : "残り5秒〜0秒音";
     window.clearInterval(this.audioSyncStatusTimer);
     this.audioSyncStatusTimer = 0;
     el("gas-status").textContent = `${label}を再生しています。聞こえない場合は端末音量、マナーモード、ブラウザ音声許可を確認してください。`;
     try {
       if (kind === "thirty") await this.audioCheck.testThirtySeconds();
-      else await this.testCountdownSync();
+      else if (kind === "ten") await this.audioCheck.testRemainingTen();
+      else await this.testRemainingFiveSequence();
     } catch {
       el("gas-status").textContent = `${label}を再生できませんでした。ブラウザの音声許可を確認してください。`;
     }
   }
 
-  private async testCountdownSync(): Promise<void> {
-    await this.audioCheck.testCountdownSync();
-    let remaining = 11;
+  private async testRemainingFiveSequence(): Promise<void> {
+    await this.audioCheck.testRemainingFiveSequence();
+    let remaining = 5;
     const status = el("gas-status");
-    status.textContent = `音声同期確認: ${remaining}秒。10秒から音声、0秒でストップ音声が鳴ります。`;
+    status.textContent = `音声同期確認: 残り${remaining}秒。0秒の長音まで表示と音のタイミングを確認してください。`;
     this.audioSyncStatusTimer = window.setInterval(() => {
       remaining -= 1;
       status.textContent = remaining > 0
-        ? `音声同期確認: ${remaining}秒。表示と音声のタイミングを確認してください。`
-        : "音声同期確認: 0秒。ストップ音声を確認してください。";
+        ? `音声同期確認: 残り${remaining}秒。表示と音のタイミングを確認してください。`
+        : "音声同期確認: 0秒。長めの高音を確認してください。";
       if (remaining <= 0) {
         window.clearInterval(this.audioSyncStatusTimer);
         this.audioSyncStatusTimer = 0;

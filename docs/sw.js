@@ -1,10 +1,10 @@
-const CACHE_NAME = "tennis-assist-web-63252b73471b";
+const CACHE_NAME = "tennis-assist-web-ececb80f8dcf";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold-B_JOyP8w.woff2",
+  "./assets/index-CtHUFX4R.js",
   "./assets/index-CyO7IjV6.css",
-  "./assets/index-kF__4hri.js",
   "./assets/playfield-BvIRyTeo.jpg",
   "./favicon.svg",
   "./manifest.webmanifest"
@@ -13,20 +13,6 @@ const OPTIONAL = [
   "./assets/jsQR-BnGm8Ll0.js",
   "./assets/qr-general.png",
   "./assets/qr-judge.png",
-  "./assets/voice-count-1.wav",
-  "./assets/voice-count-10.wav",
-  "./assets/voice-count-2.wav",
-  "./assets/voice-count-3.wav",
-  "./assets/voice-count-4.wav",
-  "./assets/voice-count-5.wav",
-  "./assets/voice-count-6.wav",
-  "./assets/voice-count-7.wav",
-  "./assets/voice-count-8.wav",
-  "./assets/voice-count-9.wav",
-  "./assets/voice-elapsed-30.wav",
-  "./assets/voice-remaining-20.wav",
-  "./assets/voice-remaining-30.wav",
-  "./assets/voice-stop.wav",
   "./assist_icon_512.png",
   "./data/news.json",
   "./data/rules_sections.json",

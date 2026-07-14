@@ -621,15 +621,14 @@
                 <summary>音声</summary>
                 <p class="muted compact-note">本番前に端末音量、マナーモード、ブラウザ音声許可を確認してください。</p>
                 <div class="audio-cue-settings">
-                  <label><input id="audio-cue-elapsed-thirty" type="checkbox" checked /> 開始から30秒経過</label>
-                  <label><input id="audio-cue-remaining-thirty" type="checkbox" checked /> 残り30秒</label>
-                  <label><input id="audio-cue-remaining-twenty" type="checkbox" checked /> 残り20秒</label>
-                  <label><input id="audio-cue-countdown" type="checkbox" checked /> 10〜1カウント音声</label>
-                  <label><input id="audio-cue-stop" type="checkbox" checked /> 0秒ストップ音声</label>
+                  <label><input id="audio-cue-elapsed-thirty" type="checkbox" checked /> 開始30秒の高音</label>
+                  <label><input id="audio-cue-remaining-ten" type="checkbox" checked /> 残り10秒の高音</label>
+                  <label><input id="audio-cue-remaining-five-sequence" type="checkbox" checked /> 残り5秒から0秒の時報音</label>
                 </div>
                 <div class="toolbar audio-check-actions">
-                  <button id="audio-test-thirty" class="button" type="button">30秒経過音</button>
-                  <button id="audio-test-sync" class="button" type="button">11秒同期確認</button>
+                  <button id="audio-test-thirty" class="button" type="button">開始30秒音</button>
+                  <button id="audio-test-ten" class="button" type="button">残り10秒音</button>
+                  <button id="audio-test-five" class="button" type="button">残り5秒〜0秒音</button>
                 </div>
               </details>
             </details>
