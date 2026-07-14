@@ -3626,6 +3626,9 @@ class AdminController {
     el<HTMLButtonElement>("audio-test-ten").addEventListener("click", () => void this.testAudioCue("ten"));
     el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
     el<HTMLButtonElement>("audio-test-sync").addEventListener("click", () => void this.testAudioSyncPreview());
+    el<HTMLDetailsElement>("audio-check-details").addEventListener("toggle", () => {
+      if (!el<HTMLDetailsElement>("audio-check-details").open) this.stopAudioSyncPreview();
+    });
     ["audio-cue-elapsed-thirty", "audio-cue-remaining-ten", "audio-cue-remaining-five-sequence"].forEach((id) => {
       el<HTMLInputElement>(id).addEventListener("change", () => this.save());
     });
@@ -3911,6 +3914,10 @@ class AdminController {
     this.audioCheck.stopScheduled();
     const button = el<HTMLButtonElement>("audio-test-sync");
     if (button) button.disabled = false;
+  }
+
+  stopTransientChecks(): void {
+    this.stopAudioSyncPreview();
   }
 
   private audioSyncDisplay(remaining: number): string {
@@ -4550,6 +4557,7 @@ class Application {
 
   private show(screen: Screen): void {
     this.timer.noteActivity();
+    if (screen !== "development") this.admin?.stopTransientChecks();
     if (screen !== "timer") void this.timer.leaveFullscreen();
     if (screen !== "referee") void this.refereeTimer.leaveFullscreen();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
@@ -5518,6 +5526,7 @@ class Application {
     this.timer.setExternalTimerSetting(AdminController.timerSetting());
     this.timer.setTokyoClockModeAvailable(false);
     this.balls.setHyogoMode(false);
+    this.admin?.stopTransientChecks();
     this.admin?.lock();
     this.content.renderLinks(false);
     this.show("dashboard");
