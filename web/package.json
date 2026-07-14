@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "playwright": "playwright"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^25.9.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
@@ -17,4 +19,3 @@
     "jsqr": "^1.4.0"
   }
 }
-
