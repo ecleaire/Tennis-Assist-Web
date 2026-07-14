@@ -415,6 +415,47 @@ body.compact.timer-running #timer-fullscreen {
   }
 }
 
+@media (min-width: 900px) and (max-height: 920px) and (orientation: landscape) {
+  body.operation-step-home #app,
+  body.operation-step-team #app {
+    gap: 10px;
+    height: calc(var(--viewport-height) - 18px);
+  }
+
+  body.operation-step-home .app-header,
+  body.operation-step-team .app-header {
+    min-height: 0;
+    padding-block: 14px;
+  }
+
+  body.operation-step-home .operation-step,
+  body.operation-step-team .operation-step {
+    padding-block: clamp(12px, 2vw, 20px);
+  }
+
+  body.operation-step-home .operation-home.active {
+    min-height: min(520px, calc(var(--viewport-height) - 190px));
+  }
+
+  body.operation-step-home .operation-prepare {
+    min-height: clamp(160px, 21vh, 230px);
+  }
+
+  body.operation-step-team .operation-team {
+    gap: clamp(14px, 2vw, 24px);
+  }
+
+  body.operation-step-team .operation-court-row,
+  body.operation-step-team .operation-team-grid {
+    gap: clamp(14px, 2vw, 28px);
+  }
+
+  body.operation-step-team .operation-court-row select,
+  body.operation-step-team .operation-team-grid select {
+    min-height: clamp(62px, 8vh, 80px);
+  }
+}
+
 .dashboard {
   display: grid;
   gap: 14px;
@@ -3499,7 +3540,7 @@ tr.win td {
 }
 
 .confirm-decision.compact {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .confirm-decision > div {
@@ -4041,6 +4082,10 @@ body.compact #timer-five {
 }
 
 @media (max-width: 760px) {
+  .confirm-decision.compact {
+    grid-template-columns: 1fr;
+  }
+
   .audio-check-actions {
     grid-template-columns: 1fr;
   }

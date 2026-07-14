@@ -1809,12 +1809,12 @@ class RecordsController {
 
   private sendIssueReason(settings: AdminSettings, latestError = ""): string {
     if (!settings.sendEnabled) return "送信OFF";
-    if (!settings.gasUrl.endsWith("/exec")) return "GAS未接続";
+    if (!settings.gasUrl.endsWith("/exec")) return "GAS URL未設定";
     if (!settings.apiKey) return "APIキー未入力";
-    if (!settings.gasConnectedAt || settings.gasConnectedUrl !== settings.gasUrl) return "GAS未接続";
-    if (!navigator.onLine) return "ネットワーク";
     if (/invalid_api_key|api|key|認証|unauthorized|forbidden|invalid/i.test(latestError)) return "APIキー不一致";
+    if (!navigator.onLine) return "ネットワーク";
     if (/failed to fetch|network|ネットワーク|fetch/i.test(latestError)) return "ネットワーク";
+    if (!settings.gasConnectedAt || settings.gasConnectedUrl !== settings.gasUrl) return "GAS未接続";
     if (/gas|script|spreadsheet|sheet/i.test(latestError)) return "GASエラー";
     return latestError ? "送信エラー" : "原因確認中";
   }
@@ -2089,12 +2089,11 @@ class RecordsController {
       ? `<p class="confirm-auto-score"><span>違反時の自動スコア</span><strong>${escapeText(record.targetTeam)} は自動敗北として 9点、相手チームは -4点で記録します。</strong></p>`
       : "";
     el("confirm-detail").innerHTML =
-      `<section class="confirm-decision compact"><div class="confirm-decision-score"><span>得点</span><strong>${scoreLine}</strong></div></section>` +
+      `<section class="confirm-decision compact"><div class="confirm-decision-winner"><span>勝者</span><strong>${escapeText(record.winner)}</strong></div><div class="confirm-decision-score"><span>得点</span><strong>${scoreLine}</strong></div></section>` +
       `<p class="confirm-match">第${record.matchNumber}マッチ / ${escapeText(record.teamA)} vs ${escapeText(record.teamB)}</p>` +
       `<p class="${violation ? "confirm-reason warning" : "confirm-reason"}"><span>終了カテゴリ / 終了理由</span><strong>${escapeText(record.reasonCategory)}</strong><em>${escapeText(record.endReason)}</em></p>` +
       violationNotice +
-      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>` +
-      `<p class="confirm-winner"><span>勝者チーム</span><strong>${escapeText(record.winner)}</strong></p>`;
+      `<div class="confirm-score-grid"><p><span>${escapeText(record.teamA)}</span><strong>${record.teamAScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamAOrange}個</b><b class="confirm-purple">紫 ${record.teamAPurple}個</b></small></p><p><span>${escapeText(record.teamB)}</span><strong>${record.teamBScore}点</strong><small><b class="confirm-orange">オレンジ ${record.teamBOrange}個</b><b class="confirm-purple">紫 ${record.teamBPurple}個</b></small></p></div>`;
     el<HTMLDialogElement>("confirm-dialog").showModal();
   }
 
@@ -3340,9 +3339,8 @@ class ContentController {
             <p><a target="_blank" rel="noopener" href="https://www.keshikan.net/fonts.html">公式サイト</a> / <a target="_blank" rel="noopener" href="https://github.com/keshikan/DSEG">GitHub</a></p>
           </div>
           <div>
-            <strong>効果音ラボ（システム音声・効果音）</strong>
-            <p>案内音声やシステム効果音の一部に使用しています。</p>
-            <p><a target="_blank" rel="noopener" href="https://soundeffect-lab.info/">公式サイト</a></p>
+            <strong>タイマー通知音</strong>
+            <p>ブラウザの Web Audio API で生成しています。声入り音声素材は使用していません。</p>
           </div>
           <p>WRO、RoboSports、競技ルールに関する正式な情報は WRO 公式サイトを参照してください。</p>
           <p>開発支援: OpenAI ChatGPT / Codex</p>
@@ -5212,6 +5210,9 @@ class Application {
 
   private handleOperationNavGuard(screen: Screen): boolean {
     if (!this.operationActive) return false;
+    if (screen === "timer" || screen === "referee" || screen === "balls" || screen === "links" || screen === "news") {
+      return true;
+    }
     if (screen === "dashboard" && (document.body.classList.contains("operation-record-focus") || !el("record-input").classList.contains("hidden"))) {
       return true;
     }
