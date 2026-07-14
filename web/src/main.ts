@@ -634,12 +634,12 @@ class TimerAudioCueController {
 
   playElapsedThirty(): void {
     if (!currentAudioCueSettings().elapsedThirty) return;
-    this.chime(1568, 0, 1.35, 1.18);
+    this.chime(1568, 0, 1.35, 1.65);
   }
 
   playRemainingTen(): void {
     if (!currentAudioCueSettings().remainingTen) return;
-    this.chime(1760, 0, 0.95, 1.16);
+    this.chime(1760, 0, 0.95, 1.55);
   }
 
   playRemainingFiveSequence(): void {
@@ -672,8 +672,8 @@ class TimerAudioCueController {
     const cues = currentAudioCueSettings();
     const elapsed = total - remaining;
     const now = context.currentTime;
-    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.35, 1.18);
-    if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 0.95, 1.16);
+    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.35, 1.65);
+    if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 0.95, 1.55);
     if (cues.remainingFiveSequence && remaining > 5) this.scheduleFiveSecondSequence(now + (remaining - 5));
     this.scheduled = this.scheduledSources.length > 0;
     return this.scheduled;
@@ -701,9 +701,9 @@ class TimerAudioCueController {
     try {
       this.context = new AudioContextCtor();
       this.master = this.context.createDynamicsCompressor();
-      this.master.threshold.value = -18;
-      this.master.knee.value = 12;
-      this.master.ratio.value = 8;
+      this.master.threshold.value = -24;
+      this.master.knee.value = 10;
+      this.master.ratio.value = 12;
       this.master.attack.value = 0.002;
       this.master.release.value = 0.18;
       this.master.connect(this.context.destination);
@@ -719,9 +719,9 @@ class TimerAudioCueController {
     if (!context) return;
     const start = Math.max(context.currentTime, startAt);
     for (let index = 0; index < 5; index += 1) {
-      this.scheduleChime(1397, start + index, 0.16, 1.05);
+      this.scheduleChime(1397, start + index, 0.16, 1.38);
     }
-    this.scheduleChime(2093, start + 5, 1.75, 1.18);
+    this.scheduleChime(2093, start + 5, 1.75, 1.7);
   }
 
   private chime(frequency: number, delay: number, duration: number, volume: number): void {
