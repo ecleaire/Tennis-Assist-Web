@@ -2742,6 +2742,33 @@ tr.win td {
   min-height: 48px;
 }
 
+.audio-sync-preview {
+  background: rgba(5, 12, 28, 0.52);
+  border: 1px solid rgba(46, 168, 255, 0.36);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.audio-sync-time {
+  background: rgba(5, 12, 28, 0.72);
+  border: 2px solid rgba(79, 137, 255, 0.78);
+  border-radius: 14px;
+  font-size: clamp(2.8rem, 13vw, 5.8rem);
+  line-height: 1;
+  padding: 16px 10px 10px;
+}
+
+.audio-sync-time.warning {
+  color: var(--danger);
+}
+
+.audio-sync-preview .button {
+  min-height: 54px;
+}
+
 .admin-login-context {
   background: rgba(46, 168, 255, 0.13);
   border: 1px solid rgba(46, 168, 255, 0.48);

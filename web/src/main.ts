@@ -3586,6 +3586,7 @@ class AdminController {
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
   private readonly audioCheck = new TimerAudioCueController();
   private audioSyncStatusTimer = 0;
+  private audioSyncFrame = 0;
 
   constructor(
     private readonly qrScanner: QrScanner,
@@ -3624,6 +3625,7 @@ class AdminController {
     el<HTMLButtonElement>("audio-test-thirty").addEventListener("click", () => void this.testAudioCue("thirty"));
     el<HTMLButtonElement>("audio-test-ten").addEventListener("click", () => void this.testAudioCue("ten"));
     el<HTMLButtonElement>("audio-test-five").addEventListener("click", () => void this.testAudioCue("five"));
+    el<HTMLButtonElement>("audio-test-sync").addEventListener("click", () => void this.testAudioSyncPreview());
     ["audio-cue-elapsed-thirty", "audio-cue-remaining-ten", "audio-cue-remaining-five-sequence"].forEach((id) => {
       el<HTMLInputElement>(id).addEventListener("change", () => this.save());
     });
@@ -3835,8 +3837,7 @@ class AdminController {
 
   private async testAudioCue(kind: "thirty" | "ten" | "five"): Promise<void> {
     const label = kind === "thirty" ? "開始30秒音" : kind === "ten" ? "残り10秒音" : "残り5秒〜0秒音";
-    window.clearInterval(this.audioSyncStatusTimer);
-    this.audioSyncStatusTimer = 0;
+    this.stopAudioSyncPreview();
     el("gas-status").textContent = `${label}を再生しています。聞こえない場合は端末音量、マナーモード、ブラウザ音声許可を確認してください。`;
     try {
       if (kind === "thirty") await this.audioCheck.testThirtySeconds();
@@ -3862,6 +3863,59 @@ class AdminController {
         this.audioSyncStatusTimer = 0;
       }
     }, 1000);
+  }
+
+  private async testAudioSyncPreview(): Promise<void> {
+    this.stopAudioSyncPreview();
+    const totalSeconds = 11;
+    const time = el<HTMLOutputElement>("audio-sync-time");
+    const status = el("audio-sync-status");
+    const button = el<HTMLButtonElement>("audio-test-sync");
+    time.classList.remove("warning");
+    time.textContent = this.audioSyncDisplay(totalSeconds);
+    status.textContent = "11秒から開始します。10秒音、5秒前からの短音、0秒長音と表示を確認してください。";
+    button.disabled = true;
+    try {
+      await this.audioCheck.prepare();
+      const startAt = performance.now();
+      const endAt = startAt + totalSeconds * 1000;
+      this.audioCheck.scheduleMainCues(totalSeconds, totalSeconds);
+      const frame = () => {
+        const remaining = Math.max(0, (endAt - performance.now()) / 1000);
+        time.textContent = this.audioSyncDisplay(remaining);
+        time.classList.toggle("warning", remaining <= 10);
+        status.textContent = remaining > 0
+          ? `同期確認中: 残り${Math.ceil(remaining)}秒。画面の数字と音のタイミングを確認してください。`
+          : "同期確認完了: 0秒の長音まで確認してください。";
+        if (remaining > 0) {
+          this.audioSyncFrame = window.requestAnimationFrame(frame);
+          return;
+        }
+        this.audioSyncFrame = 0;
+        button.disabled = false;
+      };
+      this.audioSyncFrame = window.requestAnimationFrame(frame);
+    } catch {
+      button.disabled = false;
+      status.textContent = "同期確認を開始できませんでした。ブラウザの音声許可を確認してください。";
+    }
+  }
+
+  private stopAudioSyncPreview(): void {
+    window.clearInterval(this.audioSyncStatusTimer);
+    this.audioSyncStatusTimer = 0;
+    if (this.audioSyncFrame) {
+      window.cancelAnimationFrame(this.audioSyncFrame);
+      this.audioSyncFrame = 0;
+    }
+    this.audioCheck.stopScheduled();
+    const button = el<HTMLButtonElement>("audio-test-sync");
+    if (button) button.disabled = false;
+  }
+
+  private audioSyncDisplay(remaining: number): string {
+    const seconds = Math.max(0, Math.ceil(remaining));
+    return `00 : ${String(seconds).padStart(2, "0")}`;
   }
 
   private applyColor(): void {
