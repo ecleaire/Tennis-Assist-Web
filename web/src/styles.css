@@ -2315,15 +2315,28 @@ tr.win td {
 
 #final-matches th:nth-child(5),
 #final-matches td:nth-child(5) {
-  min-width: 7.5rem;
+  min-width: 9rem;
   text-align: center;
-  width: 7.5rem;
+  width: 9rem;
+}
+
+#final-matches td:nth-child(5) .button {
+  max-width: 100%;
+  min-width: 5.8rem;
+  white-space: nowrap;
 }
 
 #final-table th:not(:first-child),
 #final-table td:not(:first-child) {
   text-align: center;
   width: 11%;
+}
+
+#final-table th:last-child,
+#final-table td:last-child {
+  min-width: 10.5rem;
+  white-space: nowrap;
+  width: 14%;
 }
 
 #final-table th:first-child,
@@ -3294,6 +3307,19 @@ tr.win td {
   line-height: 1.45;
 }
 
+.rule-pdf-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.rule-pdf-toolbar .button {
+  min-height: 46px;
+  padding-inline: 20px;
+  font-weight: 900;
+}
+
 .rule-pdf-viewer {
   overflow: hidden;
   width: 100%;
@@ -3310,6 +3336,23 @@ tr.win td {
   min-height: 680px;
   border: 0;
   background: #fff;
+}
+
+.rule-pdf-viewer:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  background: #050b18;
+}
+
+.rule-pdf-viewer:fullscreen iframe {
+  width: 100%;
+  height: calc(100vh - 16px);
+  min-height: calc(100vh - 16px);
+  border-radius: 4px;
 }
 
 .rule-pdf-note {
@@ -6337,17 +6380,17 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 .operation-draw-side .operation-numbered {
-  font-size: clamp(2.2rem, 2.28vw, 2.5rem) !important;
+  font-size: clamp(2.45rem, 2.55vw, 2.82rem) !important;
   font-weight: 1000;
   min-height: clamp(118px, 9vw, 150px);
-  padding-inline: clamp(14px, 1.45vw, 24px);
+  padding-inline: clamp(12px, 1.35vw, 22px);
   white-space: nowrap;
 }
 
 @media (max-width: 760px) {
   .operation-draw-side .operation-numbered {
-    font-size: clamp(1.55rem, 5.6vw, 2rem) !important;
-    min-height: 86px;
+    font-size: clamp(1.68rem, 6.1vw, 2.15rem) !important;
+    min-height: 96px;
     padding-inline: 14px;
   }
 }

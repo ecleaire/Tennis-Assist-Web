@@ -99,6 +99,7 @@
             <button id="operation-prepare" class="button primary operation-prepare">試合開始</button>
             <div id="home-operation-summary" class="home-operation-summary" aria-live="polite"></div>
             <div id="home-risk-panel" class="home-risk-panel" aria-live="polite"></div>
+            <div id="home-sync-alert" class="home-sync-alert hidden" aria-live="polite"></div>
           </article>
 
           <article id="operation-team" class="panel operation-step operation-team">
@@ -111,6 +112,7 @@
             </div>
             <div class="operation-court-row">
               <label>コート選択<select id="operation-court"></select></label>
+              <label class="operation-match-type-field">試合種別<select id="operation-match-type"></select></label>
             </div>
             <div class="operation-team-grid">
               <label>左側チーム名<select id="operation-team-a"></select></label>
@@ -135,8 +137,8 @@
               </div>
               <aside class="operation-draw-side">
                 <output id="dashboard-time" class="digital dashboard-digital">00 : 00</output>
-                <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置ランダム</button>
-                <button id="operation-time-random" class="button primary operation-numbered">② 試合時間ランダム</button>
+                <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置 抽選</button>
+                <button id="operation-time-random" class="button primary operation-numbered">② 試合時間 抽選</button>
                 <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
               </aside>
             </div>
@@ -315,7 +317,18 @@
           </article>
           <article id="final-results" class="panel section-card">
             <h2>最終試合結果</h2>
-            <p id="final-summary" class="muted">3マッチ終了後、最終試合結果を確認できます。</p>
+            <div id="final-series-meta" class="final-series-meta hidden">
+              <div class="final-meta-display">
+                <span>コート: <strong id="final-court-label"></strong></span>
+                <span>試合種別: <strong id="final-match-type-label"></strong></span>
+              </div>
+              <button id="final-meta-edit" class="button tiny" type="button">再選択</button>
+              <div id="final-meta-editor" class="final-meta-editor hidden">
+                <label>コート<select id="final-court-select"></select></label>
+                <label>試合種別<select id="final-match-type-select"></select></label>
+                <button id="final-meta-save" class="button primary" type="button">反映</button>
+              </div>
+            </div>
             <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
             <div id="completion-panel" class="completion-panel hidden" aria-live="polite">
               <strong id="completion-badge" class="completion-badge">保存済み</strong>
@@ -323,7 +336,9 @@
               <button id="completion-reset" class="button primary">ホームへ戻る</button>
             </div>
             <div class="table-scroll"><table id="final-matches"></table></div>
+            <p id="final-correction-message" class="final-correction-note">誤入力の場合、再入力できます。</p>
             <div class="table-scroll"><table id="final-table"></table></div>
+            <p id="final-summary" class="muted">3マッチ終了後、最終試合結果を確認できます。</p>
             <div id="agreement" class="agreement hidden">
               <p>各チーム代表が結果を確認して同意してください。</p>
               <button id="agree-a" class="button"></button>
@@ -441,7 +456,10 @@
             <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view" data-rule-pdf-src="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/preview" data-rule-title="DeepL翻訳ルール">DeepL翻訳ルール</a>
             <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>
           </div>
-          <div class="rule-pdf-viewer">
+          <div class="rule-pdf-toolbar">
+            <button id="rule-pdf-fullscreen" class="button primary" type="button">PDFを全画面表示</button>
+          </div>
+          <div id="rule-pdf-viewer" class="rule-pdf-viewer">
             <iframe
               id="rule-pdf-frame"
               title="WRO 2026 Japan 決勝大会 ROBO SPORTS 競技ルール"

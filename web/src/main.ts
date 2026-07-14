@@ -2298,6 +2298,10 @@ class RecordsController {
 
   private matchViolationCount(record: MatchRecord, team: string): number {
     if (record.reasonCategory !== scoringCategory && record.targetTeam === team) return 1;
+    if (record.reasonCategory !== scoringCategory) {
+      if (team === record.teamA && record.teamAScore === 9 && record.teamBScore === -4) return 1;
+      if (team === record.teamB && record.teamBScore === 9 && record.teamAScore === -4) return 1;
+    }
     if (team === record.teamA) return record.teamAViolations ?? 0;
     if (team === record.teamB) return record.teamBViolations ?? 0;
     return 0;
@@ -3225,6 +3229,7 @@ class ContentController {
 
   init(): void {
     el<HTMLButtonElement>("rule-search-toggle").addEventListener("click", () => this.searchRulePdf());
+    el<HTMLButtonElement>("rule-pdf-fullscreen").addEventListener("click", () => void this.openRulePdfFullscreen());
     el<HTMLInputElement>("rule-search").addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -3286,6 +3291,20 @@ class ContentController {
     openLink.textContent = `${title}を別タブで開いて「${query}」を検索`;
     const status = document.getElementById("rule-pdf-search-status");
     if (status) status.textContent = `「${query}」を表示中のPDFで検索します。反映されない場合は、下の別タブリンク先で検索してください。`;
+  }
+
+  private async openRulePdfFullscreen(): Promise<void> {
+    const viewer = el<HTMLElement>("rule-pdf-viewer");
+    const openLink = el<HTMLAnchorElement>("rule-pdf-open-link");
+    try {
+      if (viewer.requestFullscreen) {
+        await viewer.requestFullscreen();
+        return;
+      }
+    } catch {
+      // Fullscreen may be blocked on some mobile browsers. Fall back to the PDF URL.
+    }
+    window.open(openLink.href, "_blank", "noopener");
   }
 
   open(screen: Screen, secret: boolean): void {
@@ -4422,6 +4441,8 @@ class Application {
   private mobileMenuOpen = false;
   private operationActive = false;
   private operationMatch = 1;
+  private operationBallDrawn = false;
+  private operationTimeDrawn = false;
   private rsamMode = false;
   private operationHomeTimer = 0;
   private operationHomeCountdownTimer = 0;
@@ -4514,6 +4535,7 @@ class Application {
     el<HTMLButtonElement>("admin-exit-confirm").addEventListener("click", () => this.deactivateSecret());
     el<HTMLButtonElement>("admin-exit-cancel").addEventListener("click", () => el<HTMLDialogElement>("admin-exit-dialog").close());
     this.content.init();
+    this.show(this.currentScreen());
     this.showUpdateCompleteNotice();
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       let refreshing = false;
@@ -4632,17 +4654,22 @@ class Application {
     el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.returnOperationRecordInput());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
       this.balls.randomize();
+      this.operationBallDrawn = true;
+      this.operationTimeDrawn = false;
       this.setOperationDrawButtonsLocked(true, false, true);
       this.setOperationDrawStage(2);
     });
     el<HTMLButtonElement>("operation-time-random").addEventListener("click", () => {
+      if (!this.operationBallDrawn) return;
       this.timer.setDashboardOverride(null);
       this.timer.prepare(true);
       setText(els("dashboard-time"), this.timer.displayText());
+      this.operationTimeDrawn = true;
       this.setOperationDrawButtonsLocked(true, true, false);
       this.setOperationDrawStage(3);
     });
     el<HTMLButtonElement>("operation-ready").addEventListener("click", () => {
+      if (!this.operationBallDrawn || !this.operationTimeDrawn) return;
       el<HTMLDialogElement>("operation-ready-dialog").showModal();
     });
     el<HTMLButtonElement>("operation-ready-confirm").addEventListener("click", () => this.startOperationTimer());
@@ -5014,7 +5041,7 @@ class Application {
   }
 
   private hasGasUsageHistory(settings = AdminController.settings()): boolean {
-    return Boolean(settings.gasUrl || settings.apiKey || settings.gasConnectedAt || settings.gasConnectedUrl);
+    return Boolean(settings.apiKey || settings.gasConnectedAt || settings.gasConnectedUrl);
   }
 
   private updateHomeOperationSummary(): void {
@@ -5114,6 +5141,8 @@ class Application {
     this.clearOperationTimerFinishDelay();
     this.timer.setDashboardOverride(null);
     this.setOperationDrawStage(3);
+    this.operationBallDrawn = true;
+    this.operationTimeDrawn = true;
     this.setOperationDrawButtonsLocked(true, true, false);
     this.setFlow(this.operationMatch, "タイマー待機中");
     this.recordTimerPending = true;
@@ -5124,6 +5153,8 @@ class Application {
   }
 
   private resetOperationDrawPreparation(): void {
+    this.operationBallDrawn = false;
+    this.operationTimeDrawn = false;
     this.setOperationDrawButtonsLocked(false, true, true);
     this.setOperationDrawStage(1);
     this.timer.setDashboardOverride("00 : 00");
@@ -5247,6 +5278,8 @@ class Application {
       this.setOperationIntermediateReview(false);
       this.show(this.operationScreen());
       this.showOperationStep("draw", { preserveDraw: true });
+      this.operationBallDrawn = true;
+      this.operationTimeDrawn = true;
       this.setOperationDrawButtonsLocked(true, true, false);
       return;
     }
@@ -5257,10 +5290,13 @@ class Application {
       this.setOperationTimerReturnable(false);
       this.show(this.operationScreen());
       this.showOperationStep("draw", { preserveDraw: true });
+      this.operationBallDrawn = true;
+      this.operationTimeDrawn = true;
       this.setOperationDrawButtonsLocked(true, true, false);
       return;
     }
     if (this.operationStep === "between") {
+      this.setOperationIntermediateReview(true);
       this.show("records");
       return;
     }
@@ -5293,6 +5329,8 @@ class Application {
     this.setOperationNavigationLocked(false);
     this.setOperationTimerActive(false);
     this.setOperationTimerReturnable(false);
+    this.operationBallDrawn = false;
+    this.operationTimeDrawn = false;
     this.setOperationDrawButtonsLocked(false, true, true);
     if (resetSeries) this.records.resetForOperation();
     this.clearFlow();
