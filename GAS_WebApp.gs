@@ -15,7 +15,7 @@ const GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
-const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '勝数', '敗数', 'オレンジ', '紫', '得点', '違反数'];
+const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '違反', '得点', '紫'];
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
@@ -457,7 +457,7 @@ function syncGroupPrelimSheet(ss, forceFormula) {
   const sourceValues = sourceSheet.getDataRange().getValues();
   const header = sourceValues[0].map(function (value) { return String(value || '').trim(); });
   const index = headerIndexMap(header);
-  const required = ['チーム名', '勝ち点', '違反数', '得点', '紫'];
+  const required = ['チーム名', '勝ち点', '違反', '得点', '紫'];
   const missing = required.filter(function (name) { return index[name] == null; });
   if (missing.length) {
     return {
@@ -542,7 +542,8 @@ function syncGroupPrelimSheetFromDefault(forceFormula) {
 }
 
 function ensureResultSheetStructure(ss) {
-  archiveLegacySheet(ss, SERIES_RESULT_SHEET_NAME, SERIES_RESULT_ARCHIVE_SHEET_NAME, SERIES_RESULT_HEADER.length);
+  // 「試合結果」は運営側が列順や表示を手動調整するため、既存シートをarchive化・削除しません。
+  // システム送信はヘッダー名で列を探して追記し、既存行や不要列には触れません。
   archiveLegacySheet(ss, LEGACY_MATCH_RESULT_SHEET_NAME, MATCH_RESULT_ARCHIVE_SHEET_NAME);
   archiveLegacySheet(ss, LEGACY_HISTORY_SHEET_NAME, HISTORY_ARCHIVE_SHEET_NAME);
 
@@ -605,15 +606,11 @@ function backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet) 
 
 function archiveLegacySheet(ss, activeName, archiveName, activeHeaderWidth) {
   const activeSheet = ss.getSheetByName(activeName);
-  const archiveSheet = ss.getSheetByName(archiveName);
   if (!activeSheet) return;
   if (activeHeaderWidth && hasExactHeader(activeSheet, SERIES_RESULT_HEADER)) return;
-  if (archiveSheet) {
-    mergeSheetRowsIntoArchive(activeSheet, archiveSheet);
-    ss.deleteSheet(activeSheet);
-    return;
-  }
-  activeSheet.setName(archiveName);
+  const archiveSheet = getOrCreateSheet(ss, archiveName);
+  mergeSheetRowsIntoArchive(activeSheet, archiveSheet);
+  // 既存シートは現場で手動修正される可能性があるため、削除・リネームしません。
 }
 
 function mergeSheetRowsIntoArchive(sourceSheet, archiveSheet) {
@@ -694,7 +691,6 @@ function clearGroupResultCells(sheet, rowNumbers) {
 function installGroupResultFormulas(sheet, rowNumbers, forceFormula) {
   rowNumbers.forEach(function (rowNumber) {
     const range = sheet.getRange(rowNumber, 5, 1, 16);
-    range.clearDataValidations();
     const currentValues = range.getValues()[0];
     const currentFormulas = range.getFormulas()[0];
     const formulaRow = buildGroupResultFormulaRow(rowNumber);
@@ -702,7 +698,7 @@ function installGroupResultFormulas(sheet, rowNumbers, forceFormula) {
       const currentValue = currentValues[columnIndex];
       const currentFormula = currentFormulas[columnIndex];
       // 空欄または既存の参照数式だけを更新します。手入力値は現場修正として保持します。
-      if (forceFormula || currentFormula || currentValue === '' || currentValue == null) {
+      if (currentFormula || currentValue === '' || currentValue == null) {
         sheet.getRange(rowNumber, 5 + columnIndex).setFormula(formula);
       }
     });
@@ -714,7 +710,7 @@ function buildGroupResultFormulaRow(rowNumber) {
   const sourceTeam = seriesResultFormulaColumn('チーム名');
   const columns = {
     points: seriesResultFormulaColumn('勝ち点'),
-    violations: seriesResultFormulaColumn('違反数'),
+    violations: seriesResultFormulaColumn('違反'),
     score: seriesResultFormulaColumn('得点'),
     purple: seriesResultFormulaColumn('紫')
   };
@@ -802,8 +798,8 @@ function appendSeriesResultRows(sheet, records, csvColumns) {
       matchType: value('種別')
     };
     const teamRows = [
-      [common.timestamp, common.court, common.matchType, teamA, teamB, aPoints, aWins, toNumber(value('チームA敗数')), toNumber(value('チームAオレンジ')), toNumber(value('チームA紫')), toNumber(value('チームA得点')), toNumber(value('チームA違反数'))],
-      [common.timestamp, common.court, common.matchType, teamB, teamA, bPoints, bWins, toNumber(value('チームB敗数')), toNumber(value('チームBオレンジ')), toNumber(value('チームB紫')), toNumber(value('チームB得点')), toNumber(value('チームB違反数'))]
+      [common.timestamp, common.court, common.matchType, teamA, teamB, aPoints, toNumber(value('チームA違反数')), toNumber(value('チームA得点')), toNumber(value('チームA紫'))],
+      [common.timestamp, common.court, common.matchType, teamB, teamA, bPoints, toNumber(value('チームB違反数')), toNumber(value('チームB得点')), toNumber(value('チームB紫'))]
     ];
     teamRows.forEach(function (newRow) {
       const key = seriesResultKey(newRow);
@@ -837,7 +833,7 @@ function writeSeriesResultRows(sheet, canonicalRows) {
 function nextDataAppendRow(sheet, headers, headerMap) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 2;
-  const width = SERIES_RESULT_HEADER.length;
+  const width = Math.max(sheet.getLastColumn(), maxHeaderColumnIndex(headerMap) + 1, SERIES_RESULT_HEADER.length);
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   let appendRow = 2;
   values.forEach(function (row, index) {
@@ -855,13 +851,21 @@ function readSeriesResultKeys(sheet) {
   const headerMap = ensureSeriesResultHeader(sheet);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return new Set();
-  const values = sheet.getRange(2, 1, lastRow - 1, SERIES_RESULT_HEADER.length).getValues();
+  const width = Math.max(sheet.getLastColumn(), maxHeaderColumnIndex(headerMap) + 1, SERIES_RESULT_HEADER.length);
+  const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   return new Set(values.map(function (row) {
     return seriesResultKey(SERIES_RESULT_HEADER.map(function (headerName) {
       const columnIndex = headerMap[headerName];
       return columnIndex == null ? '' : row[columnIndex];
     }));
   }).filter(Boolean));
+}
+
+function maxHeaderColumnIndex(headerMap) {
+  return Object.keys(headerMap).reduce(function (max, name) {
+    const index = headerMap[name];
+    return typeof index === 'number' && index > max ? index : max;
+  }, -1);
 }
 
 function seriesResultKey(row) {
@@ -1050,7 +1054,7 @@ function appendRows(sheet, records, eventName, body, csvColumns, options) {
 }
 
 function ensureSeriesResultHeader(sheet) {
-  const width = SERIES_RESULT_HEADER.length;
+  const width = Math.max(sheet.getLastColumn(), SERIES_RESULT_HEADER.length);
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
   const hasAnyHeader = current.some(function (value) {
     return String(value || '').trim() !== '';
@@ -1074,11 +1078,8 @@ function ensureSeriesResultHeader(sheet) {
     current.forEach(function (value, index) {
       if (String(value || '').trim() === '') blankIndexes.push(index);
     });
-    if (blankIndexes.length < missingHeaders.length) {
-      throw new Error('試合結果シートのA〜Lに必要な列がありません: ' + missingHeaders.join(', '));
-    }
     missingHeaders.forEach(function (name, index) {
-      const columnIndex = blankIndexes[index];
+      const columnIndex = index < blankIndexes.length ? blankIndexes[index] : sheet.getLastColumn();
       sheet.getRange(1, columnIndex + 1).setValue(name);
       headerMap[name] = columnIndex;
     });
