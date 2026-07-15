@@ -63,6 +63,7 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
+  touch-action: manipulation;
 }
 
 body {
@@ -904,7 +905,16 @@ output.digital.dashboard-digital {
   width: 100%;
 }
 
-.operation-court-panel:fullscreen,
+html.operation-balls-compact,
+body.operation-balls-compact {
+  overflow: hidden;
+}
+
+body.operation-balls-compact #app {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 body.operation-balls-compact .operation-court-panel {
   align-content: center;
   background: var(--bg);
@@ -914,28 +924,32 @@ body.operation-balls-compact .operation-court-panel {
   gap: clamp(12px, 2vw, 22px);
   inset: 0;
   justify-items: center;
-  min-height: 100vh;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100dvh;
   padding: clamp(12px, 2vw, 24px);
   width: 100vw;
-  z-index: 100;
+  z-index: 500;
 }
 
 body.operation-balls-compact .operation-court-panel {
   position: fixed;
 }
 
-.operation-court-panel:fullscreen > p,
 body.operation-balls-compact .operation-court-panel > p {
   display: none;
 }
 
-.operation-court-panel:fullscreen .dashboard-court,
 body.operation-balls-compact .operation-court-panel .dashboard-court {
-  max-height: calc(100vh - 92px);
-  width: min(100vw - 24px, 1400px);
+  align-self: center;
+  aspect-ratio: 1280 / 620;
+  justify-self: center;
+  max-height: calc(100dvh - 96px);
+  max-width: calc(100vw - 24px);
+  min-height: 0;
+  object-fit: contain;
+  width: min(calc(100vw - 24px), calc((100dvh - 96px) * 2.0645), 1440px);
 }
 
-.operation-court-panel:fullscreen .operation-court-fullscreen,
 body.operation-balls-compact .operation-court-panel .operation-court-fullscreen {
   align-self: end;
   justify-self: center;

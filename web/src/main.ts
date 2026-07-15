@@ -5407,11 +5407,6 @@ class Application {
       return;
     }
     this.setOperationBallsFullscreen(true);
-    try {
-      await el("operation-court-panel").requestFullscreen?.();
-    } catch {
-      // The in-page focused layout still keeps the draw screen active.
-    }
   }
 
   private async leaveOperationBallsFullscreen(): Promise<void> {
@@ -5428,6 +5423,7 @@ class Application {
   private setOperationBallsFullscreen(active: boolean): void {
     this.operationBallsFullscreen = active;
     document.body.classList.toggle("operation-balls-compact", active);
+    document.documentElement.classList.toggle("operation-balls-compact", active);
     el<HTMLButtonElement>("operation-balls-fullscreen").textContent = active ? "全画面解除" : "ボール配置を全画面表示";
   }
 
