@@ -15,7 +15,8 @@ const GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8
 
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
-const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '違反', '得点', '紫'];
+const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '違反数', '得点', '紫'];
+const SERIES_RESULT_MANAGED_WIDTH = SERIES_RESULT_HEADER.length; // 試合結果はA〜Iのみ触ります。
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
@@ -457,7 +458,7 @@ function syncGroupPrelimSheet(ss, forceFormula) {
   const sourceValues = sourceSheet.getDataRange().getValues();
   const header = sourceValues[0].map(function (value) { return String(value || '').trim(); });
   const index = headerIndexMap(header);
-  const required = ['チーム名', '勝ち点', '違反', '得点', '紫'];
+  const required = ['チーム名', '勝ち点', '違反数', '得点', '紫'];
   const missing = required.filter(function (name) { return index[name] == null; });
   if (missing.length) {
     return {
@@ -494,20 +495,8 @@ function syncGroupPrelimSheet(ss, forceFormula) {
 }
 
 function createEmptyGroupPrelimSheet(ss) {
-  try {
-    const templateSpreadsheet = SpreadsheetApp.openById(GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID);
-    const templateSheet = templateSpreadsheet.getSheetByName(GROUP_PRELIM_SHEET_NAME);
-    if (templateSheet) {
-      const copiedSheet = templateSheet.copyTo(ss).setName(GROUP_PRELIM_SHEET_NAME);
-      ss.setActiveSheet(copiedSheet);
-      ss.moveActiveSheet(1);
-      copiedSheet.getRange(3, 3, 29, 1).clearContent();
-      copiedSheet.getRange(3, 5, 29, 16).clearContent().clearDataValidations();
-      return copiedSheet;
-    }
-  } catch (err) {
-    // テンプレートにアクセスできない場合だけ、最低限の空表を作ります。
-  }
+  // 既存データ保護を優先し、テンプレートコピー後にセルを消す処理は行いません。
+  // Sheet1 が無い場合だけ、最低限の空表を新規作成します。
   const sheet = ss.insertSheet(GROUP_PRELIM_SHEET_NAME);
   const headers = [
     '反映', 'No.', 'チーム名', '',
@@ -544,8 +533,7 @@ function syncGroupPrelimSheetFromDefault(forceFormula) {
 function ensureResultSheetStructure(ss) {
   // 「試合結果」は運営側が列順や表示を手動調整するため、既存シートをarchive化・削除しません。
   // システム送信はヘッダー名で列を探して追記し、既存行や不要列には触れません。
-  archiveLegacySheet(ss, LEGACY_MATCH_RESULT_SHEET_NAME, MATCH_RESULT_ARCHIVE_SHEET_NAME);
-  archiveLegacySheet(ss, LEGACY_HISTORY_SHEET_NAME, HISTORY_ARCHIVE_SHEET_NAME);
+  // 旧シートも現場で手動確認・復旧に使う可能性があるため、この関数では触りません。
 
   const seriesArchiveSheet = getOrCreateSheet(ss, SERIES_RESULT_ARCHIVE_SHEET_NAME);
   const matchArchiveSheet = getOrCreateSheet(ss, MATCH_RESULT_ARCHIVE_SHEET_NAME);
@@ -605,12 +593,9 @@ function backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet) 
 }
 
 function archiveLegacySheet(ss, activeName, archiveName, activeHeaderWidth) {
-  const activeSheet = ss.getSheetByName(activeName);
-  if (!activeSheet) return;
-  if (activeHeaderWidth && hasExactHeader(activeSheet, SERIES_RESULT_HEADER)) return;
-  const archiveSheet = getOrCreateSheet(ss, archiveName);
-  mergeSheetRowsIntoArchive(activeSheet, archiveSheet);
-  // 既存シートは現場で手動修正される可能性があるため、削除・リネームしません。
+  // 既存シートを勝手にarchive化・コピー・削除・リネームしません。
+  // archive系シートへの書き込みは、新規送信データの追記だけで行います。
+  return;
 }
 
 function mergeSheetRowsIntoArchive(sourceSheet, archiveSheet) {
@@ -683,9 +668,8 @@ function uniqueRowsFromTeamRows(teamRows) {
 }
 
 function clearGroupResultCells(sheet, rowNumbers) {
-  rowNumbers.forEach(function (rowNumber) {
-    sheet.getRange(rowNumber, 5, 1, 16).clearContent();
-  });
+  // 現場で手動修正された値を消さないため、この関数は no-op にします。
+  return;
 }
 
 function installGroupResultFormulas(sheet, rowNumbers, forceFormula) {
@@ -710,7 +694,7 @@ function buildGroupResultFormulaRow(rowNumber) {
   const sourceTeam = seriesResultFormulaColumn('チーム名');
   const columns = {
     points: seriesResultFormulaColumn('勝ち点'),
-    violations: seriesResultFormulaColumn('違反'),
+    violations: seriesResultFormulaColumn('違反数'),
     score: seriesResultFormulaColumn('得点'),
     purple: seriesResultFormulaColumn('紫')
   };
@@ -825,6 +809,7 @@ function writeSeriesResultRows(sheet, canonicalRows) {
   SERIES_RESULT_HEADER.forEach(function (headerName, headerIndex) {
     const columnIndex = headerMap[headerName];
     if (columnIndex == null) return;
+    if (columnIndex >= SERIES_RESULT_MANAGED_WIDTH) return;
     const values = canonicalRows.map(function (row) { return [row[headerIndex]]; });
     sheet.getRange(startRow, columnIndex + 1, values.length, 1).setValues(values);
   });
@@ -833,7 +818,7 @@ function writeSeriesResultRows(sheet, canonicalRows) {
 function nextDataAppendRow(sheet, headers, headerMap) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 2;
-  const width = Math.max(sheet.getLastColumn(), maxHeaderColumnIndex(headerMap) + 1, SERIES_RESULT_HEADER.length);
+  const width = SERIES_RESULT_MANAGED_WIDTH;
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   let appendRow = 2;
   values.forEach(function (row, index) {
@@ -851,7 +836,7 @@ function readSeriesResultKeys(sheet) {
   const headerMap = ensureSeriesResultHeader(sheet);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return new Set();
-  const width = Math.max(sheet.getLastColumn(), maxHeaderColumnIndex(headerMap) + 1, SERIES_RESULT_HEADER.length);
+  const width = SERIES_RESULT_MANAGED_WIDTH;
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   return new Set(values.map(function (row) {
     return seriesResultKey(SERIES_RESULT_HEADER.map(function (headerName) {
@@ -1054,14 +1039,13 @@ function appendRows(sheet, records, eventName, body, csvColumns, options) {
 }
 
 function ensureSeriesResultHeader(sheet) {
-  const width = Math.max(sheet.getLastColumn(), SERIES_RESULT_HEADER.length);
+  const width = SERIES_RESULT_MANAGED_WIDTH;
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
   const hasAnyHeader = current.some(function (value) {
     return String(value || '').trim() !== '';
   });
   if (!hasAnyHeader) {
     sheet.getRange(1, 1, 1, width).setValues([SERIES_RESULT_HEADER]);
-    sheet.getRange(1, 1, 1, width).setFontWeight('bold');
     return headerIndexMap(SERIES_RESULT_HEADER);
   }
   const headerMap = {};
@@ -1078,23 +1062,28 @@ function ensureSeriesResultHeader(sheet) {
     current.forEach(function (value, index) {
       if (String(value || '').trim() === '') blankIndexes.push(index);
     });
+    if (blankIndexes.length < missingHeaders.length) {
+      throw new Error('試合結果シートのA〜Iに必要な列がありません: ' + missingHeaders.join(', '));
+    }
     missingHeaders.forEach(function (name, index) {
-      const columnIndex = index < blankIndexes.length ? blankIndexes[index] : sheet.getLastColumn();
+      const columnIndex = blankIndexes[index];
       sheet.getRange(1, columnIndex + 1).setValue(name);
       headerMap[name] = columnIndex;
     });
   }
 
-  sheet.getRange(1, 1, 1, width).setFontWeight('bold');
   return headerMap;
 }
 
 function ensureExactHeader(sheet, header) {
-  // 列ずれ防止のため、アプリから送られたCSV列順にヘッダーを揃えます。
+  // 既存のヘッダーや列順を勝手に上書きしません。
+  // 空シートの場合だけ初期ヘッダーを作成します。
   const width = header.length;
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
-  const differs = current.length !== width || current.some((value, index) => String(value || '') !== String(header[index] || ''));
-  if (differs) {
+  const hasAnyHeader = current.some(function (value) {
+    return String(value || '').trim() !== '';
+  });
+  if (!hasAnyHeader) {
     sheet.getRange(1, 1, 1, width).setValues([header]);
     sheet.getRange(1, 1, 1, width).setFontWeight('bold');
   }
