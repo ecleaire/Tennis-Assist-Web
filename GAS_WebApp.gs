@@ -533,7 +533,10 @@ function ensureResultSheetStructure(ss) {
   const seriesArchiveSheet = getOrCreateSheet(ss, SERIES_RESULT_ARCHIVE_SHEET_NAME);
   const matchArchiveSheet = getOrCreateSheet(ss, MATCH_RESULT_ARCHIVE_SHEET_NAME);
   const historyArchiveSheet = getOrCreateSheet(ss, HISTORY_ARCHIVE_SHEET_NAME);
-  const seriesResultSheet = getOrCreateSheet(ss, SERIES_RESULT_SHEET_NAME);
+  const seriesResultSheet = ss.getSheetByName(SERIES_RESULT_SHEET_NAME);
+  if (!seriesResultSheet) {
+    throw new Error('試合結果シートがありません。既存データ保護のためGASから自動作成しません。');
+  }
   ensureSeriesResultHeader(seriesResultSheet);
   return {
     seriesArchiveSheet: seriesArchiveSheet,
@@ -1036,13 +1039,6 @@ function appendRows(sheet, records, eventName, body, csvColumns, options) {
 function ensureSeriesResultHeader(sheet) {
   const width = SERIES_RESULT_MANAGED_WIDTH;
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
-  const hasAnyHeader = current.some(function (value) {
-    return String(value || '').trim() !== '';
-  });
-  if (!hasAnyHeader) {
-    sheet.getRange(1, 1, 1, width).setValues([SERIES_RESULT_HEADER]);
-    return headerIndexMap(SERIES_RESULT_HEADER);
-  }
   const headerMap = {};
   current.forEach(function (value, index) {
     const name = String(value || '').trim();
@@ -1053,18 +1049,7 @@ function ensureSeriesResultHeader(sheet) {
     return headerMap[name] == null;
   });
   if (missingHeaders.length) {
-    const blankIndexes = [];
-    current.forEach(function (value, index) {
-      if (String(value || '').trim() === '') blankIndexes.push(index);
-    });
-    if (blankIndexes.length < missingHeaders.length) {
-      throw new Error('試合結果シートのA〜Iに必要な列がありません: ' + missingHeaders.join(', '));
-    }
-    missingHeaders.forEach(function (name, index) {
-      const columnIndex = blankIndexes[index];
-      sheet.getRange(1, columnIndex + 1).setValue(name);
-      headerMap[name] = columnIndex;
-    });
+    throw new Error('試合結果シートのA〜Iに必要な列がありません: ' + missingHeaders.join(', '));
   }
 
   return headerMap;
