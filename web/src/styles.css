@@ -420,7 +420,7 @@ body.compact.timer-running #timer-fullscreen {
   body.operation-step-home #app,
   body.operation-step-team #app {
     gap: 10px;
-    height: calc(var(--viewport-height) - 18px);
+    height: calc(var(--viewport-height) - 32px);
   }
 
   body.operation-step-home .app-header,

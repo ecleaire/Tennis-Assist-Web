@@ -4437,6 +4437,7 @@ class Application {
   private admin: AdminController | null = null;
   private ballsFullscreen = false;
   private operationBallsFullscreen = false;
+  private operationBallsScroll: { x: number; y: number } | null = null;
   private fullscreenReturnScreen: Screen | null = null;
   private mobileMenuOpen = false;
   private operationActive = false;
@@ -5406,6 +5407,7 @@ class Application {
       await this.leaveOperationBallsFullscreen();
       return;
     }
+    this.operationBallsScroll = { x: window.scrollX, y: window.scrollY };
     this.setOperationBallsFullscreen(true);
   }
 
@@ -5418,6 +5420,13 @@ class Application {
       }
     }
     this.setOperationBallsFullscreen(false);
+    const scroll = this.operationBallsScroll;
+    this.operationBallsScroll = null;
+    if (scroll) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ left: scroll.x, top: scroll.y, behavior: "instant" });
+      });
+    }
   }
 
   private setOperationBallsFullscreen(active: boolean): void {
