@@ -383,17 +383,12 @@ function doPost(e) {
     const seriesResult = appendSeriesResultRows(sheets.seriesResultSheet, records, csvColumns);
     const matchArchiveResult = appendFilteredRows(sheets.matchArchiveSheet, records, eventName, body, csvColumns, 'マッチ');
     const historyArchiveResult = appendRows(sheets.historyArchiveSheet, records, eventName, body, csvColumns);
-    let groupPrelimResult = null;
-    if (seriesResult.appended > 0) {
-      try {
-        groupPrelimResult = syncGroupPrelimSheet(ss);
-      } catch (syncErr) {
-        groupPrelimResult = {
-          ok: false,
-          error: String(syncErr)
-        };
-      }
-    }
+    // 通常送信では Sheet1 や決勝トーナメント系の表を自動更新しません。
+    // システムが触るのは archive 追記と「試合結果」A〜I の追記だけに限定します。
+    const groupPrelimResult = {
+      skipped: true,
+      reason: '通常送信ではSheet1を自動更新しません。必要な場合のみ管理操作で同期します。'
+    };
 
     return jsonResponse({
       ok: true,
