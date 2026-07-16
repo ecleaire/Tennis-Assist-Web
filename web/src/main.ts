@@ -61,6 +61,18 @@ interface Series {
   records: MatchRecord[];
 }
 
+interface PersistedSeriesProgress {
+  series: Series;
+  editing: number;
+  agreedA: boolean;
+  agreedB: boolean;
+  finalized: boolean;
+  awaitingNextMatch: boolean;
+  awaitingResultInput: boolean;
+  operationManaged: boolean;
+  savedAt: string;
+}
+
 interface NewsItem {
   id: string;
   title: string;
@@ -1664,6 +1676,7 @@ class BallController {
 
 class RecordsController {
   private readonly storageKey = "tennis-assist-records-v1";
+  private readonly progressStorageKey = `tennis-assist-series-progress-v1-${currentAppVariant().id}`;
   private readonly teamStorageKey = "tennis-assist-teams-v1";
   private readonly courtCountStorageKey = "tennis-assist-court-count-v1";
   private records: MatchRecord[] = [];
@@ -1674,6 +1687,8 @@ class RecordsController {
   private finalized = false;
   private agreementPending: "a" | "b" | null = null;
   private awaitingNextMatch = false;
+  private awaitingResultInput = false;
+  private operationManaged = false;
   private completionResetTimer = 0;
   private retryingPendingSends = false;
   private historyViewDirty = true;
@@ -1723,7 +1738,7 @@ class RecordsController {
     el<HTMLButtonElement>("history-retry-all").addEventListener("click", () => void this.retryPendingSends("manual"));
     el<HTMLButtonElement>("history-clear-confirm").addEventListener("click", () => this.clearHistory());
     window.addEventListener("online", () => void this.retryPendingSends("online"));
-    this.resetSeries(false);
+    if (!this.restoreSeriesProgress()) this.resetSeries(false);
     this.renderSyncAlert();
     if (navigator.onLine && this.syncSummary().unsent) window.setTimeout(() => void this.retryPendingSends("startup"), 1200);
   }
@@ -1828,6 +1843,14 @@ class RecordsController {
     return `${this.series.teamA} vs ${this.series.teamB}`;
   }
 
+  operationResumeState(): { match: number; step: "draw" | "result" | "between" | "final"; finalized: boolean } | null {
+    if (!this.series || !this.operationManaged) return null;
+    if (this.series.records.length >= 3) return { match: 3, step: "final", finalized: this.finalized };
+    const match = Math.min(this.series.records.length + 1, 3);
+    if (this.awaitingResultInput) return { match, step: "result", finalized: false };
+    return { match, step: this.awaitingNextMatch ? "between" : "draw", finalized: false };
+  }
+
   completionMessage(): string {
     if (!this.series) return "ただいまの試合結果を保存しました。";
     const sum = this.summary();
@@ -1852,6 +1875,7 @@ class RecordsController {
     el<HTMLSelectElement>("team-a").value = teamA;
     el<HTMLSelectElement>("team-b").value = teamB;
     el<HTMLSelectElement>("court-select").value = court;
+    this.operationManaged = true;
     this.startSeries(matchType);
     return Boolean(this.series);
   }
@@ -1873,6 +1897,8 @@ class RecordsController {
   timerFinished(): void {
     if (!this.series || this.isFinished()) return;
     this.awaitingNextMatch = false;
+    this.awaitingResultInput = true;
+    this.persistSeriesProgress();
     this.setNextMatchPrompt(false);
     this.updateRecordVisibility();
     el("record-status").textContent = "試合結果を入力して、「このマッチを保存」から確認してください。";
@@ -1920,6 +1946,7 @@ class RecordsController {
     this.finalized = false;
     this.agreementPending = null;
     this.awaitingNextMatch = false;
+    this.awaitingResultInput = false;
     this.clearCompletionResetTimer();
     this.setCompletionPanel(false);
     this.setNextMatchPrompt(false);
@@ -1928,6 +1955,7 @@ class RecordsController {
     this.updateRecordVisibility();
     el("record-status").textContent = "対戦カードを開始しました。ボール配置から進行します。";
     this.flow("start", 1);
+    this.persistSeriesProgress();
   }
 
   private resetSeries(notify = true): void {
@@ -1938,6 +1966,9 @@ class RecordsController {
     this.finalized = false;
     this.agreementPending = null;
     this.awaitingNextMatch = false;
+    this.awaitingResultInput = false;
+    this.operationManaged = false;
+    localStorage.removeItem(this.progressStorageKey);
     this.clearCompletionResetTimer();
     this.setCompletionPanel(false);
     this.setNextMatchPrompt(false);
@@ -2100,6 +2131,16 @@ class RecordsController {
   private save(): void {
     const record = this.buildRecord();
     if (!record || !this.series) return;
+    if (!this.storageWriteAvailable()) {
+      this.showStorageFailure();
+      return;
+    }
+    const previousRecords = [...this.records];
+    const previousSeriesRecords = [...this.series.records];
+    const previousEditing = this.editing;
+    const previousAgreedA = this.agreedA;
+    const previousAgreedB = this.agreedB;
+    const previousAwaitingResultInput = this.awaitingResultInput;
     if (this.editing) {
       const index = this.series.records.findIndex((item) => item.matchNumber === this.editing);
       if (index >= 0) this.series.records[index] = record;
@@ -2113,7 +2154,19 @@ class RecordsController {
       this.series.records.push(record);
       this.records.unshift(record);
     }
-    this.saveStoredRecords();
+    this.awaitingResultInput = false;
+    if (!this.saveStoredRecords() || !this.persistSeriesProgress()) {
+      this.records = previousRecords;
+      this.series.records = previousSeriesRecords;
+      this.editing = previousEditing;
+      this.agreedA = previousAgreedA;
+      this.agreedB = previousAgreedB;
+      this.awaitingResultInput = previousAwaitingResultInput;
+      this.restoreStoredRecords(previousRecords);
+      this.showStorageFailure();
+      this.renderSeries();
+      return;
+    }
     this.resetInput();
     this.renderSeries();
     this.renderHistory();
@@ -2132,6 +2185,7 @@ class RecordsController {
       this.updateRecordVisibility();
       el("next-match-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
+    this.persistSeriesProgress();
     document.dispatchEvent(new CustomEvent("series-match-saved", { detail: { match: savedMatch, finished: this.isFinished() } }));
   }
 
@@ -2146,6 +2200,8 @@ class RecordsController {
   private continueToNextMatch(): void {
     if (!this.series || this.isFinished()) return;
     this.awaitingNextMatch = false;
+    this.awaitingResultInput = false;
+    this.persistSeriesProgress();
     this.setNextMatchPrompt(false);
     this.updateRecordVisibility();
     this.flow("next", this.nextMatch());
@@ -2156,8 +2212,10 @@ class RecordsController {
     const match = this.nextMatch();
     if (!window.confirm("本当に不戦勝にしますか？")) return;
     this.awaitingNextMatch = false;
+    this.awaitingResultInput = true;
     this.setNextMatchPrompt(false);
     this.editing = 0;
+    this.persistSeriesProgress();
     this.resetInput();
     el<HTMLSelectElement>("reason-category").value = prematchCategory;
     this.refreshEndReasons();
@@ -2199,6 +2257,7 @@ class RecordsController {
     if (!record) return;
     this.editing = matchNumber;
     this.awaitingNextMatch = false;
+    this.persistSeriesProgress();
     this.setNextMatchPrompt(false);
     el<HTMLSelectElement>("reason-category").value = record.reasonCategory;
     this.refreshEndReasons();
@@ -2367,6 +2426,14 @@ class RecordsController {
 
   private applyFinalMetaSelection(): void {
     if (!this.series) return;
+    const previousCourt = this.series.court;
+    const previousMatchType = this.series.matchType;
+    const previousRecordMeta = this.series.records.map((record) => ({
+      record,
+      court: record.court,
+      matchType: record.matchType,
+      competitionId: record.competitionId,
+    }));
     const court = el<HTMLSelectElement>("final-court-select").value;
     const matchType = normalizeMatchType(el<HTMLSelectElement>("final-match-type-select").value);
     this.series.court = court;
@@ -2378,7 +2445,19 @@ class RecordsController {
         ? `${court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
         : `${court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
     });
-    this.saveStoredRecords();
+    if (!this.saveStoredRecords() || !this.persistSeriesProgress()) {
+      this.series.court = previousCourt;
+      this.series.matchType = previousMatchType;
+      previousRecordMeta.forEach(({ record, court: oldCourt, matchType: oldMatchType, competitionId }) => {
+        record.court = oldCourt;
+        record.matchType = oldMatchType;
+        record.competitionId = competitionId;
+      });
+      this.restoreStoredRecords(this.records);
+      this.showStorageFailure();
+      this.renderFinal();
+      return;
+    }
     this.toggleFinalMetaEditor(false);
     this.renderFinal();
     this.renderHistory();
@@ -2415,8 +2494,14 @@ class RecordsController {
 
   private acceptAgreement(): void {
     if (!this.agreementPending) return;
-    if (this.agreementPending === "a") this.agreedA = true;
+    const side = this.agreementPending;
+    if (side === "a") this.agreedA = true;
     else this.agreedB = true;
+    if (!this.persistSeriesProgress()) {
+      if (side === "a") this.agreedA = false;
+      else this.agreedB = false;
+      this.showStorageFailure();
+    }
     this.cancelAgreement();
     this.renderFinal();
     this.renderAgreement();
@@ -2429,6 +2514,10 @@ class RecordsController {
 
   private async finalize(): Promise<void> {
     if (!this.agreedA || !this.agreedB || !this.series) return;
+    if (!this.storageWriteAvailable()) {
+      this.showStorageFailure();
+      return;
+    }
     this.finalized = true;
     const sum = this.summary();
     const resultSide = this.overallWinner(sum);
@@ -2471,7 +2560,15 @@ class RecordsController {
       sendStatus: this.shouldSendToGas(AdminController.settings()) ? "pending" : "local-only",
     };
     this.records.unshift(record);
-    this.saveStoredRecords();
+    if (!this.saveStoredRecords() || !this.persistSeriesProgress()) {
+      this.records = this.records.filter((item) => item.recordId !== record.recordId);
+      this.finalized = false;
+      this.restoreStoredRecords(this.records);
+      this.showStorageFailure();
+      this.renderFinal();
+      this.renderAgreement();
+      return;
+    }
     this.renderFinal();
     this.renderHistory();
     el("record-status").textContent = "試合が終了しました。おつかれさまでした。結果を保存しています。";
@@ -3092,8 +3189,9 @@ class RecordsController {
     this.renderSyncAlert();
     el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : reason === "manual" ? `未送信・送信失敗 ${pending.length}件を一斉再送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
     try {
-      for (const record of pending) {
+      for (const [index, record] of pending.entries()) {
         await this.sendSeriesResult(record);
+        if (index < pending.length - 1) await this.waitForRetry(650);
       }
     } finally {
       this.retryingPendingSends = false;
@@ -3146,20 +3244,38 @@ class RecordsController {
       detail_rows: details,
     };
     el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
-    try {
-      const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-      await ensureGasSuccess(response);
-      this.updateSendStatus(record, "sent");
-      this.updateCompletionState("sent", "スプレッドシートへ送信できました。");
-      el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
-      return "sent";
-    } catch (error) {
-      const reason = this.sendIssueReason(settings, error instanceof Error ? error.message : "");
-      this.updateSendStatus(record, "failed", reason);
-      this.updateCompletionState("failed", reason);
-      el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`;
-      return "failed";
+    let latestError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+        await ensureGasSuccess(response);
+        this.updateSendStatus(record, "sent");
+        this.updateCompletionState("sent", "スプレッドシートへ送信できました。");
+        el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
+        return "sent";
+      } catch (error) {
+        latestError = error;
+        const message = error instanceof Error ? error.message : "";
+        if (attempt >= 2 || !this.isRetryableSendError(message)) break;
+        el("record-status").textContent = `通信が不安定なため再送しています（${attempt + 1}/2）...`;
+        await this.waitForRetry(800 * 2 ** attempt);
+      }
     }
+    const reason = this.sendIssueReason(settings, latestError instanceof Error ? latestError.message : "");
+    this.updateSendStatus(record, "failed", reason);
+    this.updateCompletionState("failed", reason);
+    el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`;
+    return "failed";
+  }
+
+  private isRetryableSendError(message: string): boolean {
+    if (!navigator.onLine) return false;
+    return !/invalid_api_key|unauthorized|forbidden|APIキー不一致|認証/i.test(message);
+  }
+
+  private waitForRetry(delay: number): Promise<void> {
+    const jitter = Math.floor(Math.random() * 350);
+    return new Promise((resolve) => window.setTimeout(resolve, delay + jitter));
   }
 
   private hasGasUsageHistory(settings: AdminSettings): boolean {
@@ -3206,14 +3322,96 @@ class RecordsController {
     return seriesIds.size + 1;
   }
 
-  private saveStoredRecords(): void {
+  private saveStoredRecords(): boolean {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.records.filter((record) => !isSheetPreviewRecord(record))));
+      this.historyViewDirty = true;
+      document.dispatchEvent(new CustomEvent("records-storage-updated"));
+      return true;
     } catch {
       el("history-status").textContent = "端末内保存に失敗しました。ブラウザの空き容量、プライベートモード、サイトデータ設定を確認してください。";
+      return false;
     }
-    this.historyViewDirty = true;
-    document.dispatchEvent(new CustomEvent("records-storage-updated"));
+  }
+
+  private restoreStoredRecords(records: MatchRecord[]): void {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(records.filter((record) => !isSheetPreviewRecord(record))));
+    } catch {
+      // The blocking alert below is the reliable recovery path when storage is unavailable.
+    }
+  }
+
+  private storageWriteAvailable(): boolean {
+    const key = `${this.progressStorageKey}-check`;
+    try {
+      localStorage.setItem(key, "1");
+      localStorage.removeItem(key);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private showStorageFailure(): void {
+    const message = "端末内に保存できないため操作を中止しました。ブラウザの空き容量、プライベートモード、サイトデータ設定を確認し、履歴CSVをバックアップしてください。";
+    el("record-status").textContent = message;
+    el("history-status").textContent = message;
+    window.alert(message);
+  }
+
+  private persistSeriesProgress(): boolean {
+    if (!this.series) {
+      localStorage.removeItem(this.progressStorageKey);
+      return true;
+    }
+    const progress: PersistedSeriesProgress = {
+      series: this.series,
+      editing: this.editing,
+      agreedA: this.agreedA,
+      agreedB: this.agreedB,
+      finalized: this.finalized,
+      awaitingNextMatch: this.awaitingNextMatch,
+      awaitingResultInput: this.awaitingResultInput,
+      operationManaged: this.operationManaged,
+      savedAt: timestamp(),
+    };
+    try {
+      localStorage.setItem(this.progressStorageKey, JSON.stringify(progress));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private restoreSeriesProgress(): boolean {
+    try {
+      const raw = localStorage.getItem(this.progressStorageKey);
+      if (!raw) return false;
+      const progress = JSON.parse(raw) as Partial<PersistedSeriesProgress>;
+      const series = progress.series;
+      if (!series || !series.id || !series.teamA || !series.teamB || !Array.isArray(series.records)) {
+        localStorage.removeItem(this.progressStorageKey);
+        return false;
+      }
+      this.series = series;
+      this.editing = Number(progress.editing) || 0;
+      this.agreedA = progress.agreedA === true;
+      this.agreedB = progress.agreedB === true;
+      this.finalized = progress.finalized === true;
+      this.awaitingNextMatch = progress.awaitingNextMatch === true;
+      this.awaitingResultInput = progress.awaitingResultInput === true;
+      this.operationManaged = progress.operationManaged === true;
+      this.resetInput();
+      this.renderSeries();
+      this.renderAgreement();
+      this.updateRecordVisibility();
+      el("record-status").textContent = "再読み込み前の試合進行を復元しました。内容を確認して再開してください。";
+      return true;
+    } catch {
+      localStorage.removeItem(this.progressStorageKey);
+      return false;
+    }
   }
 
   private isFinished(): boolean {
@@ -4457,6 +4655,8 @@ class Application {
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
   private backConfirmButton: HTMLButtonElement | null = null;
   private backConfirmTimer = 0;
+  private waitingServiceWorker: ServiceWorker | null = null;
+  private serviceWorkerReloadPending = false;
 
   constructor() {
     syncViewportMetrics();
@@ -4537,11 +4737,23 @@ class Application {
     el<HTMLButtonElement>("admin-exit-cancel").addEventListener("click", () => el<HTMLDialogElement>("admin-exit-dialog").close());
     this.content.init();
     this.show(this.currentScreen());
+    this.restoreOperationProgress();
     this.showUpdateCompleteNotice();
+    void navigator.storage?.persist?.().catch(() => false);
+    window.addEventListener("beforeunload", (event) => {
+      if (!this.operationActive) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
       let refreshing = false;
       const activateWaitingWorker = (registration: ServiceWorkerRegistration): void => {
-        registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+        if (!registration.waiting) return;
+        if (this.operationActive) {
+          this.waitingServiceWorker = registration.waiting;
+          return;
+        }
+        registration.waiting.postMessage({ type: "SKIP_WAITING" });
       };
       const watchRegistration = (registration: ServiceWorkerRegistration): void => {
         activateWaitingWorker(registration);
@@ -4557,6 +4769,10 @@ class Application {
       };
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
+        if (this.operationActive) {
+          this.serviceWorkerReloadPending = true;
+          return;
+        }
         refreshing = true;
         window.location.reload();
       });
@@ -4635,6 +4851,49 @@ class Application {
 
   private operationScreen(): Screen {
     return document.getElementById("screen-operation") ? "operation" : "dashboard";
+  }
+
+  private restoreOperationProgress(): void {
+    const resume = this.records.operationResumeState();
+    if (!resume) return;
+    this.operationActive = true;
+    this.operationMatch = resume.match;
+    this.setOperationNavigationLocked(true);
+    if (resume.step === "final") {
+      this.setOperationFinalReview(true);
+      this.show("records");
+      return;
+    }
+    if (resume.step === "result") {
+      this.show("records");
+      el("record-status").textContent = `第${resume.match}マッチのリザルト入力へ復帰しました。結果を確認して保存してください。`;
+      return;
+    }
+    if (resume.step === "between") {
+      this.show(this.operationScreen());
+      this.showOperationStep("between");
+      const endedMatch = Math.max(1, resume.match - 1);
+      el("operation-ended-match").textContent = `第${endedMatch}マッチが終了しました`;
+      el("operation-between-message").innerHTML = `<span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第${resume.match}マッチの準備をお願いします。</span><span class="operation-between-note">（コートチェンジ後）ロボットのボタンを一度押したらスタートできる状態にしてください。準備ができ次第、抽選を行います。</span>`;
+      el<HTMLButtonElement>("operation-next-match").textContent = `第${resume.match}マッチへ進む`;
+      return;
+    }
+    this.balls.beginWorkflow(resume.match);
+    this.timer.prepare(true);
+    this.show(this.operationScreen());
+    this.showOperationStep("draw");
+    el("record-status").textContent = `第${resume.match}マッチの安全な再開位置へ戻りました。ボール配置と試合時間を再抽選してください。`;
+  }
+
+  private applyDeferredServiceWorkerUpdate(): void {
+    if (this.operationActive) return;
+    if (this.waitingServiceWorker) {
+      const worker = this.waitingServiceWorker;
+      this.waitingServiceWorker = null;
+      worker.postMessage({ type: "SKIP_WAITING" });
+      return;
+    }
+    if (this.serviceWorkerReloadPending) window.location.reload();
   }
 
   private setupOperationFlow(): void {
@@ -5339,6 +5598,7 @@ class Application {
     this.timer.resetDefault();
     this.show(this.operationScreen());
     this.showOperationStep("home");
+    this.applyDeferredServiceWorkerUpdate();
   }
 
   private setMobileMenu(open: boolean): void {

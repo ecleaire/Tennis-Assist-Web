@@ -1,10 +1,13 @@
-const CACHE_NAME = "tennis-assist-web-v20";
+const CACHE_NAME = "tennis-assist-web-v21";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./favicon.svg", "./assets/DSEG7Modern-Bold.woff2", "./assets/playfield.jpg"];
 const OPTIONAL = ["./data/news.json", "./data/rules_sections.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
-  self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
