@@ -2454,12 +2454,50 @@ tr.win td {
   color: #ffffff;
 }
 
+.agreement-hold-guide {
+  background: rgba(4, 21, 37, 0.55);
+  border-left: 5px solid var(--accent);
+  border-radius: 8px;
+  font-size: clamp(1.05rem, 2vw, 1.35rem) !important;
+  padding: 12px 14px;
+}
+
 .agreement-confirm .toolbar {
   margin-top: 4px;
 }
 
+#agreement-accept {
+  min-height: 64px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+#agreement-accept::after {
+  background: rgba(255, 255, 255, 0.42);
+  bottom: 0;
+  content: "";
+  height: 6px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: left center;
+  width: 100%;
+}
+
+#agreement-accept.is-holding::after {
+  animation: agreement-hold-progress 1s linear forwards;
+}
+
+@keyframes agreement-hold-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
 #agreement-cancel {
-  display: none;
+  min-height: 64px;
 }
 
 .finished-message {

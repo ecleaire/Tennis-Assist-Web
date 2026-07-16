@@ -1686,6 +1686,7 @@ class RecordsController {
   private agreedB = false;
   private finalized = false;
   private agreementPending: "a" | "b" | null = null;
+  private agreementHoldTimer = 0;
   private awaitingNextMatch = false;
   private awaitingResultInput = false;
   private operationManaged = false;
@@ -1710,7 +1711,28 @@ class RecordsController {
     el<HTMLButtonElement>("back-timer").addEventListener("click", () => { if (this.series && !this.isFinished()) this.flow("timer", this.nextMatch()); });
     el<HTMLButtonElement>("agree-a").addEventListener("click", () => this.requestAgreement("a"));
     el<HTMLButtonElement>("agree-b").addEventListener("click", () => this.requestAgreement("b"));
-    el<HTMLButtonElement>("agreement-accept").addEventListener("click", () => this.acceptAgreement());
+    const agreementAccept = el<HTMLButtonElement>("agreement-accept");
+    agreementAccept.addEventListener("click", (event) => event.preventDefault());
+    agreementAccept.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      this.startAgreementHold();
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
+      agreementAccept.addEventListener(eventName, () => this.cancelAgreementHold());
+    });
+    agreementAccept.addEventListener("keydown", (event) => {
+      if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+        event.preventDefault();
+        this.startAgreementHold();
+      }
+    });
+    agreementAccept.addEventListener("keyup", (event) => {
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        this.cancelAgreementHold();
+      }
+    });
     el<HTMLButtonElement>("agreement-cancel").addEventListener("click", () => this.cancelAgreement());
     el<HTMLButtonElement>("finalize").addEventListener("click", () => void this.finalize());
     el<HTMLButtonElement>("final-meta-edit").addEventListener("click", () => this.toggleFinalMetaEditor(true));
@@ -2488,8 +2510,30 @@ class RecordsController {
     this.renderFinal();
     this.agreementPending = side;
     const team = side === "a" ? this.series.teamA : this.series.teamB;
-    el("agreement-confirm-team").textContent = `${team} 代表が確認しています。左右チーム、各マッチ、違反時スコア、勝者をもう一度確認してください。`;
+    el("agreement-confirm-team").textContent = `${team} 代表が確認しています。各マッチの得点・違反数・勝者をもう一度確認してください。`;
+    el<HTMLButtonElement>("agreement-accept").textContent = "1秒長押しで結果に同意";
     el("agreement-confirm").classList.remove("hidden");
+  }
+
+  private startAgreementHold(): void {
+    if (!this.agreementPending || this.agreementHoldTimer) return;
+    const button = el<HTMLButtonElement>("agreement-accept");
+    button.classList.add("is-holding");
+    this.agreementHoldTimer = window.setTimeout(() => {
+      this.agreementHoldTimer = 0;
+      button.classList.remove("is-holding");
+      this.acceptAgreement();
+    }, 1000);
+  }
+
+  private cancelAgreementHold(): void {
+    if (this.agreementHoldTimer) {
+      window.clearTimeout(this.agreementHoldTimer);
+      this.agreementHoldTimer = 0;
+    }
+    const button = el<HTMLButtonElement>("agreement-accept");
+    button.classList.remove("is-holding");
+    if (this.agreementPending) button.textContent = "1秒長押しで結果に同意";
   }
 
   private acceptAgreement(): void {
@@ -2508,6 +2552,7 @@ class RecordsController {
   }
 
   private cancelAgreement(): void {
+    this.cancelAgreementHold();
     this.agreementPending = null;
     el("agreement-confirm").classList.add("hidden");
   }
@@ -3451,6 +3496,16 @@ class ContentController {
     });
     document.getElementById("news-filter")?.addEventListener("change", () => this.renderNews());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => el<HTMLDialogElement>((button as HTMLElement).dataset.close ?? "").close()));
+  }
+
+  setRestrictedRulesVisible(visible: boolean): void {
+    const restrictedLinks = document.querySelectorAll<HTMLAnchorElement>("[data-admin-rule]");
+    restrictedLinks.forEach((link) => link.classList.toggle("hidden", !visible));
+    if (visible) return;
+    const selectedRestricted = document.querySelector<HTMLAnchorElement>("[data-admin-rule].primary");
+    if (!selectedRestricted) return;
+    const defaultRule = document.querySelector<HTMLAnchorElement>("[data-rule-pdf-src]:not([data-admin-rule])");
+    if (defaultRule) this.selectRulePdf(defaultRule);
   }
 
   private selectRulePdf(link: HTMLAnchorElement): void {
@@ -5793,6 +5848,7 @@ class Application {
       document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
     }
     document.documentElement.classList.toggle("rsam-admin-mode", this.rsamMode);
+    this.content.setRestrictedRulesVisible(this.hyogo || this.rsamMode);
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
@@ -5833,6 +5889,7 @@ class Application {
     this.admin?.stopTransientChecks();
     this.admin?.lock();
     this.content.renderLinks(false);
+    this.content.setRestrictedRulesVisible(false);
     this.show("dashboard");
   }
 }
