@@ -56,6 +56,11 @@ const editions = [
   { name: "venue", path: "/" },
   { name: "general", path: "/general/" },
 ];
+const drawTargets = [
+  { name: "desktop", width: 1440, height: 900 },
+  { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
+  { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
+];
 const screens = ["dashboard", "timer", "referee", "balls", "records", "rules", "links"];
 
 const browser = await chromium.launch({ headless: true });
@@ -135,45 +140,68 @@ try {
   }
 
   for (const edition of editions) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    await context.addInitScript(() => {
+    for (const target of drawTargets) {
+      const context = await browser.newContext({
+        viewport: { width: target.width, height: target.height },
+        hasTouch: Boolean(target.mobile),
+        isMobile: Boolean(target.mobile),
+      });
+      await context.addInitScript(() => {
+        try {
+          delete Navigator.prototype.serviceWorker;
+        } catch {
+          // Service Worker behavior is verified separately below.
+        }
+      });
+      const page = await context.newPage();
+      const label = `${edition.name}/draw-sequence/${target.name}`;
       try {
-        delete Navigator.prototype.serviceWorker;
-      } catch {
-        // Service Worker behavior is verified separately below.
-      }
-    });
-    const page = await context.newPage();
-    const label = `${edition.name}/draw-sequence`;
-    try {
-      await page.goto(`${baseUrl}${edition.path}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      if (edition.name === "general") {
-        await page.evaluate(() => {
-          const button = document.querySelector('[data-screen="operation"]');
-          if (button instanceof HTMLElement) button.click();
-        });
-      }
-      await page.locator("#operation-prepare").click();
-      await page.locator("#operation-match-type").selectOption({ index: 1 });
-      await page.locator("#operation-team-a").selectOption({ index: 0 });
-      await page.locator("#operation-team-b").selectOption({ index: 1 });
-      await page.locator("#operation-team-ok").click();
-      await page.locator("#operation-start-check-dialog").waitFor({ state: "visible" });
-      await page.locator("#operation-start-check-confirm").click();
-      await page.locator("#operation-draw").waitFor({ state: "visible" });
+        await page.goto(`${baseUrl}${edition.path}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        if (edition.name === "general") {
+          await page.evaluate(() => {
+            const button = document.querySelector('[data-screen="operation"]');
+            if (button instanceof HTMLElement) button.click();
+          });
+        }
+        await page.locator("#operation-prepare").click();
+        await page.locator("#operation-match-type").selectOption({ index: 1 });
+        await page.locator("#operation-team-a").selectOption({ index: 0 });
+        await page.locator("#operation-team-b").selectOption({ index: 1 });
+        await page.locator("#operation-team-ok").click();
+        await page.locator("#operation-start-check-dialog").waitFor({ state: "visible" });
+        await page.locator("#operation-start-check-confirm").click();
+        await page.locator("#operation-draw").waitFor({ state: "visible" });
 
-      if (!(await page.locator("#operation-time-random").isDisabled())) failures.push(`${label}: time draw enabled before ball draw`);
-      if (!(await page.locator("#operation-ready").isDisabled())) failures.push(`${label}: ready enabled before draws`);
-      await page.locator("#operation-ball-random").click();
-      if (await page.locator("#operation-time-random").isDisabled()) failures.push(`${label}: time draw stayed disabled after ball draw`);
-      if (!(await page.locator("#operation-ready").isDisabled())) failures.push(`${label}: ready enabled before time draw`);
-      await page.locator("#operation-time-random").click();
-      if (await page.locator("#operation-ready").isDisabled()) failures.push(`${label}: ready stayed disabled after both draws`);
-      process.stdout.write(`PASS ${label}\n`);
-    } catch (error) {
-      failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      await context.close();
+        const heightState = await page.evaluate(() => ({
+          bodyClass: document.body.className,
+          client: document.documentElement.clientHeight,
+          drawHeight: document.querySelector("#operation-draw")?.getBoundingClientRect().height || 0,
+          headerHeight: document.querySelector("#app-header")?.getBoundingClientRect().height || 0,
+          shellMinHeight: getComputedStyle(document.querySelector(".operation-shell")).minHeight,
+          scroll: document.documentElement.scrollHeight,
+        }));
+        if (heightState.scroll > heightState.client + 2) {
+          failures.push(`${label}: draw vertical overflow ${heightState.scroll}/${heightState.client} (header ${heightState.headerHeight}, draw ${heightState.drawHeight}, shell min ${heightState.shellMinHeight}, body ${heightState.bodyClass})`);
+        }
+        for (const selector of ["#operation-ball-random", "#operation-time-random", "#operation-ready"]) {
+          const box = await page.locator(selector).boundingBox();
+          if (!box || box.x < -1 || box.y < -1 || box.x + box.width > target.width + 1 || box.y + box.height > target.height + 1) {
+            failures.push(`${label}: draw control outside viewport: ${selector}`);
+          }
+        }
+        if (!(await page.locator("#operation-time-random").isDisabled())) failures.push(`${label}: time draw enabled before ball draw`);
+        if (!(await page.locator("#operation-ready").isDisabled())) failures.push(`${label}: ready enabled before draws`);
+        await page.locator("#operation-ball-random").click();
+        if (await page.locator("#operation-time-random").isDisabled()) failures.push(`${label}: time draw stayed disabled after ball draw`);
+        if (!(await page.locator("#operation-ready").isDisabled())) failures.push(`${label}: ready enabled before time draw`);
+        await page.locator("#operation-time-random").click();
+        if (await page.locator("#operation-ready").isDisabled()) failures.push(`${label}: ready stayed disabled after both draws`);
+        process.stdout.write(`PASS ${label}\n`);
+      } catch (error) {
+        failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        await context.close();
+      }
     }
   }
 
