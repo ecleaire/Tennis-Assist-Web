@@ -6533,3 +6533,95 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
     min-height: 94px;
   }
 }
+
+/* Match-flow timer: keep the main clock and the two essential actions dominant. */
+body.operation-timer-active #timer-ten,
+body.operation-timer-active #timer-five,
+body.operation-timer-active .sub-slot {
+  display: none !important;
+}
+
+body.operation-timer-active .timer-shell {
+  gap: clamp(10px, 1.8vh, 18px);
+}
+
+body.operation-timer-active .timer-center {
+  min-height: min(430px, calc(var(--viewport-height) * 0.6));
+}
+
+body.operation-timer-active .timer-face,
+body.operation-timer-active.compact .timer-face {
+  padding-bottom: 0;
+  transform: translateY(clamp(-14px, -1.5vh, -4px));
+}
+
+body.operation-timer-active #timer-time,
+body.operation-timer-active.compact #timer-time {
+  font-size: min(clamp(6rem, 20vw, 19rem), calc((var(--viewport-width) - 38px) / 5.75), calc(var(--viewport-height) * 0.48));
+}
+
+body.operation-timer-active .timer-bottom {
+  margin-inline: auto;
+  max-width: 1180px;
+  transform: none;
+  width: 100%;
+}
+
+body.operation-timer-active .controls,
+body.operation-timer-active.compact .controls {
+  display: grid;
+  gap: clamp(10px, 1.6vw, 16px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.operation-timer-active .controls .button,
+body.operation-timer-active.compact .controls .button {
+  font-size: clamp(1.35rem, 2.6vw, 2.15rem);
+  font-weight: 950;
+  min-height: clamp(76px, 10vh, 108px);
+  padding: clamp(14px, 2vw, 22px);
+  width: 100%;
+}
+
+body.operation-timer-active #timer-start,
+body.operation-timer-active #timer-end,
+body.operation-timer-active.compact #timer-start,
+body.operation-timer-active.compact #timer-end {
+  grid-column: auto;
+  margin-left: 0;
+}
+
+@media (max-width: 760px) {
+  body.operation-timer-active .timer-center {
+    min-height: min(350px, calc(var(--viewport-height) * 0.56));
+  }
+
+  body.operation-timer-active .controls .button,
+  body.operation-timer-active.compact .controls .button {
+    font-size: clamp(1.18rem, 5vw, 1.55rem);
+    min-height: 72px;
+    padding: 12px 8px;
+  }
+}
+
+html.phone-portrait body.operation-timer-active.compact #timer-time {
+  font-size: min(clamp(5.4rem, 25vw, 12rem), calc((var(--viewport-width) - 24px) / 4.9), calc(var(--viewport-height) * 0.3));
+}
+
+html.phone-portrait body.operation-timer-active.compact .timer-center {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+html.phone-portrait body.operation-timer-active.compact .timer-bottom {
+  gap: 10px;
+  margin-top: auto;
+}
+
+html.phone-portrait body.operation-timer-active.compact .controls .button {
+  font-size: clamp(1.2rem, 5.4vw, 1.55rem);
+  min-height: 72px;
+  padding: 12px 8px;
+}

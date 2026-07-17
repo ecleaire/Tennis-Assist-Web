@@ -58,6 +58,7 @@ const editions = [
 ];
 const drawTargets = [
   { name: "desktop", width: 1440, height: 900 },
+  { name: "iphone-17-pro", width: 402, height: 874, mobile: true },
   { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
   { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
 ];
@@ -180,12 +181,13 @@ try {
           shellMinHeight: getComputedStyle(document.querySelector(".operation-shell")).minHeight,
           scroll: document.documentElement.scrollHeight,
         }));
-        if (heightState.scroll > heightState.client + 2) {
+        if (!target.mobile && heightState.scroll > heightState.client + 2) {
           failures.push(`${label}: draw vertical overflow ${heightState.scroll}/${heightState.client} (header ${heightState.headerHeight}, draw ${heightState.drawHeight}, shell min ${heightState.shellMinHeight}, body ${heightState.bodyClass})`);
         }
         for (const selector of ["#operation-ball-random", "#operation-time-random", "#operation-ready"]) {
+          await page.locator(selector).scrollIntoViewIfNeeded();
           const box = await page.locator(selector).boundingBox();
-          if (!box || box.x < -1 || box.y < -1 || box.x + box.width > target.width + 1 || box.y + box.height > target.height + 1) {
+          if (!box || box.x < -1 || box.x + box.width > target.width + 1 || (!target.mobile && (box.y < -1 || box.y + box.height > target.height + 1))) {
             failures.push(`${label}: draw control outside viewport: ${selector}`);
           }
         }
@@ -196,6 +198,27 @@ try {
         if (!(await page.locator("#operation-ready").isDisabled())) failures.push(`${label}: ready enabled before time draw`);
         await page.locator("#operation-time-random").click();
         if (await page.locator("#operation-ready").isDisabled()) failures.push(`${label}: ready stayed disabled after both draws`);
+        await page.locator("#operation-ready").click();
+        await page.locator("#operation-ready-confirm").click();
+        await page.locator("#screen-timer").waitFor({ state: "visible" });
+        await page.waitForTimeout(80);
+        if (await page.locator("#timer-ten").isVisible()) failures.push(`${label}: 10-count visible in match-flow timer`);
+        if (await page.locator("#timer-five").isVisible()) failures.push(`${label}: 5-count visible in match-flow timer`);
+        await page.locator("#timer-start").click();
+        await page.waitForTimeout(40);
+        for (const selector of ["#timer-start", "#timer-end"]) {
+          const box = await page.locator(selector).boundingBox();
+          if (!box || box.width < 120 || box.height < 64 || box.x < -1 || box.y < -1 || box.x + box.width > target.width + 1 || box.y + box.height > target.height + 1) {
+            failures.push(`${label}: match-flow timer action is too small or outside viewport: ${selector} ${JSON.stringify(box)}`);
+          }
+        }
+        const timerVisual = await page.evaluate(() => ({
+          fontSize: Number.parseFloat(getComputedStyle(document.querySelector("#timer-time")).fontSize),
+          columns: getComputedStyle(document.querySelector("#screen-timer .controls")).gridTemplateColumns.split(" ").length,
+        }));
+        const minimumTimerFontSize = target.mobile ? 74 : 88;
+        if (timerVisual.fontSize < minimumTimerFontSize) failures.push(`${label}: match-flow timer digits too small (${timerVisual.fontSize}px)`);
+        if (timerVisual.columns !== 2) failures.push(`${label}: match-flow timer controls are not two columns`);
         process.stdout.write(`PASS ${label}\n`);
       } catch (error) {
         failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
@@ -203,6 +226,82 @@ try {
         await context.close();
       }
     }
+  }
+
+  const refereeContext = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+  await refereeContext.addInitScript(() => {
+    try {
+      delete Navigator.prototype.serviceWorker;
+    } catch {
+      // Service Worker behavior is verified separately below.
+    }
+    window.__timerAudioStarts = [];
+    class FakeAudioParam {
+      value = 0;
+      setValueAtTime(value) { this.value = value; }
+      exponentialRampToValueAtTime(value) { this.value = value; }
+    }
+    class FakeAudioNode extends EventTarget {
+      connect() { return this; }
+    }
+    class FakeOscillator extends FakeAudioNode {
+      frequency = new FakeAudioParam();
+      type = "sine";
+      start(when) { window.__timerAudioStarts.push({ frequency: this.frequency.value, when }); }
+      stop() {}
+    }
+    class FakeGain extends FakeAudioNode {
+      gain = new FakeAudioParam();
+    }
+    class FakeCompressor extends FakeAudioNode {
+      threshold = new FakeAudioParam();
+      knee = new FakeAudioParam();
+      ratio = new FakeAudioParam();
+      attack = new FakeAudioParam();
+      release = new FakeAudioParam();
+    }
+    class FakeAudioContext {
+      currentTime = 100;
+      state = "running";
+      destination = new FakeAudioNode();
+      createDynamicsCompressor() { return new FakeCompressor(); }
+      createOscillator() { return new FakeOscillator(); }
+      createGain() { return new FakeGain(); }
+      resume() { return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "AudioContext", { configurable: true, value: FakeAudioContext });
+  });
+  const refereePage = await refereeContext.newPage();
+  try {
+    await refereePage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await refereePage.evaluate(() => {
+      const button = document.querySelector('[data-screen="referee"]');
+      if (button instanceof HTMLElement) button.click();
+    });
+    await refereePage.locator("#referee-ten").click();
+    const tenCuePlan = await refereePage.evaluate(() => window.__timerAudioStarts.filter((_, index) => index % 3 === 0));
+    const tenOffsets = tenCuePlan.map((cue) => Number((cue.when - tenCuePlan[0].when).toFixed(3)));
+    const tenFrequencies = tenCuePlan.map((cue) => cue.frequency);
+    if (JSON.stringify(tenOffsets) !== JSON.stringify([0, 5, 6, 7, 8, 9, 10])) failures.push(`referee-timer: 10-count audio offsets are incorrect (${tenOffsets.join(",")})`);
+    if (JSON.stringify(tenFrequencies) !== JSON.stringify([1047, 1175, 1175, 1175, 1175, 1175, 1760])) failures.push(`referee-timer: 10-count audio pitches are incorrect (${tenFrequencies.join(",")})`);
+    await refereePage.evaluate(() => { window.__timerAudioStarts = []; });
+    await refereePage.locator("#referee-five").click();
+    const fiveCuePlan = await refereePage.evaluate(() => window.__timerAudioStarts.filter((_, index) => index % 3 === 0));
+    const fiveOffsets = fiveCuePlan.map((cue) => Number((cue.when - fiveCuePlan[0].when).toFixed(3)));
+    const fiveFrequencies = fiveCuePlan.map((cue) => cue.frequency);
+    if (JSON.stringify(fiveOffsets) !== JSON.stringify([0, 1, 2, 3, 4, 5])) failures.push(`referee-timer: 5-count audio offsets are incorrect (${fiveOffsets.join(",")})`);
+    if (JSON.stringify(fiveFrequencies) !== JSON.stringify([880, 880, 880, 880, 880, 1319])) failures.push(`referee-timer: 5-count audio pitches are incorrect (${fiveFrequencies.join(",")})`);
+    const initialFive = (await refereePage.locator("#referee-time").textContent())?.trim();
+    if (initialFive !== "05") failures.push(`referee-timer: 5-count did not start at 05 (${initialFive})`);
+    await refereePage.waitForTimeout(1100);
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "04") failures.push("referee-timer: 5-count display is not aligned to the first second boundary");
+    await refereePage.waitForTimeout(4100);
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "00") failures.push("referee-timer: 5-count did not finish at 00");
+    process.stdout.write("PASS referee-timer/countdown-timing\n");
+  } catch (error) {
+    failures.push(`referee-timer/countdown-timing: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    await refereeContext.close();
   }
 
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });

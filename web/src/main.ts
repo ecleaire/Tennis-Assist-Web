@@ -723,6 +723,22 @@ class TimerAudioCueController {
     this.scheduleFiveSecondSequence(0);
   }
 
+  scheduleRefereeCountdown(seconds: 10 | 5): number {
+    const context = this.audioContext();
+    if (!context) return 0;
+    this.stopScheduled();
+    const leadSeconds = 0;
+    const startAt = context.currentTime + leadSeconds;
+    if (seconds === 10) {
+      this.scheduleChime(1047, startAt, 0.55, 1.45);
+      this.scheduleRefereeFiveSecondSequence(startAt + 5, 1175, 1760);
+    } else {
+      this.scheduleRefereeFiveSecondSequence(startAt, 880, 1319);
+    }
+    this.scheduled = this.scheduledSources.length > 0;
+    return leadSeconds;
+  }
+
   scheduleMainCues(remaining: number, total: number): boolean {
     const context = this.audioContext();
     if (!context || remaining <= 0) return false;
@@ -780,6 +796,16 @@ class TimerAudioCueController {
       this.scheduleChime(1397, start + index, 0.16, 1.38);
     }
     this.scheduleChime(2093, start + 5, 1.75, 1.7);
+  }
+
+  private scheduleRefereeFiveSecondSequence(startAt: number, shortFrequency: number, finalFrequency: number): void {
+    const context = this.audioContext();
+    if (!context) return;
+    const start = Math.max(context.currentTime, startAt);
+    for (let index = 0; index < 5; index += 1) {
+      this.scheduleChime(shortFrequency, start + index, 0.16, 1.42);
+    }
+    this.scheduleChime(finalFrequency, start + 5, 1.75, 1.72);
   }
 
   private chime(frequency: number, delay: number, duration: number, volume: number): void {
@@ -1543,8 +1569,9 @@ class RefereeTimerController {
   private total = 10;
   private remaining = 10;
   private running = false;
-  private lastFrame = performance.now();
+  private endAt = 0;
   private activeLabel = "10カウント / 5カウントを選択";
+  private readonly audioCues = new TimerAudioCueController();
 
   constructor() {
     el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
@@ -1571,28 +1598,33 @@ class RefereeTimerController {
   }
 
   private start(seconds: 10 | 5, label: string): void {
+    const audioLead = this.audioCues.scheduleRefereeCountdown(seconds);
+    void this.audioCues.prepare();
     this.total = seconds;
     this.remaining = seconds;
     this.activeLabel = label;
     this.running = true;
-    this.lastFrame = performance.now();
+    this.endAt = performance.now() + (seconds + audioLead) * 1000;
     this.render();
   }
 
   private reset(): void {
+    this.audioCues.stopScheduled();
     this.total = 10;
     this.remaining = 10;
     this.running = false;
+    this.endAt = 0;
     this.activeLabel = "10カウント / 5カウントを選択";
     this.render();
   }
 
   private frame(now: number): void {
-    const delta = Math.max(0, now - this.lastFrame) / 1000;
-    this.lastFrame = now;
     if (this.running) {
-      this.remaining = Math.max(0, this.remaining - delta);
-      if (this.remaining <= 0) this.running = false;
+      this.remaining = this.endAt ? Math.max(0, (this.endAt - now) / 1000) : 0;
+      if (this.remaining <= 0) {
+        this.running = false;
+        this.endAt = 0;
+      }
       this.render();
     }
     requestAnimationFrame((next) => this.frame(next));
