@@ -774,9 +774,6 @@ function appendSeriesResultRows(sheet, records, csvColumns) {
     const bWins = toNumber(value('チームB勝数'));
     const resultSide = seriesResultWinnerSide({
       matchType: value('種別'),
-      overallWinner: value('総合勝者'),
-      teamA: teamA,
-      teamB: teamB,
       aWins: aWins,
       bWins: bWins,
       aViolations: toNumber(value('チームA違反数')),
@@ -816,10 +813,6 @@ function appendSeriesResultRows(sheet, records, csvColumns) {
 }
 
 function seriesResultWinnerSide(result) {
-  const overallWinner = String(result.overallWinner || '').trim();
-  if (overallWinner === result.teamA) return 'a';
-  if (overallWinner === result.teamB) return 'b';
-  if (overallWinner === '引き分け') return 'draw';
   if (result.aWins !== result.bWins) return result.aWins > result.bWins ? 'a' : 'b';
 
   const matchType = String(result.matchType || '').trim();
