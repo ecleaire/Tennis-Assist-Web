@@ -1,12 +1,13 @@
 {
   "name": "tennis-assist-web",
   "private": true,
-  "version": "1.3.49",
+  "version": "1.3.50",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
     "test:tiebreak": "node scripts/verify-tiebreak.mjs",
+    "test:gas-schema": "node scripts/verify-gas-schema.mjs",
     "preview": "vite preview",
     "playwright": "playwright"
   },

@@ -16,7 +16,6 @@ const GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
 const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '違反数', '得点', '紫'];
-const SERIES_RESULT_MANAGED_WIDTH = SERIES_RESULT_HEADER.length; // 試合結果はA〜Iのみ触ります。
 const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
@@ -55,7 +54,7 @@ function doGet(e) {
     if (!hasAnyApiKey(props)) return jsonResponse({ ok: false, error: 'API_KEY is missing' });
     if (!isValidApiKey(props, params.api_key)) return jsonResponse({ ok: false, error: 'invalid_api_key' });
     const action = String(params.action || '');
-    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting' && action !== 'sync_group_sheet' && action !== 'bootstrap') return jsonResponse({ ok: false, error: 'unknown_action' });
+    if (action !== 'history' && action !== 'teams' && action !== 'timer_setting' && action !== 'sync_group_sheet' && action !== 'bootstrap' && action !== 'schema_check') return jsonResponse({ ok: false, error: 'unknown_action' });
 
     const spreadsheetId = String(params.spreadsheet_id || defaultSpreadsheetId || '').trim();
     if (!spreadsheetId) return jsonResponse({ ok: false, error: 'SPREADSHEET_ID is missing' });
@@ -63,6 +62,22 @@ function doGet(e) {
     const defaultSheetName = action === 'teams' ? TEAM_LIST_SHEET_NAME : action === 'timer_setting' ? TIMER_SETTING_SHEET_NAME : HISTORY_ARCHIVE_SHEET_NAME;
     const sheetName = String(params.sheet || params.sheet_name || defaultSheetName);
     const ss = SpreadsheetApp.openById(spreadsheetId);
+
+    if (action === 'schema_check') {
+      const resultSheet = ss.getSheetByName(SERIES_RESULT_SHEET_NAME);
+      if (!resultSheet) return jsonResponse({ ok: false, error: '試合結果シートがありません' });
+      const schema = seriesResultHeaderInfo(resultSheet);
+      return jsonResponse({
+        ok: true,
+        spreadsheet_id: spreadsheetId,
+        sheet_name: resultSheet.getName(),
+        managed_columns: SERIES_RESULT_HEADER.reduce(function (columns, name) {
+          columns[name] = schema.headerMap[name] + 1;
+          return columns;
+        }, {}),
+        scan_width: schema.width
+      });
+    }
 
     if (action === 'bootstrap') {
       const teamSheet = ss.getSheetByName(TEAM_LIST_SHEET_NAME) || ss.getSheetByName('チーム一覧');
@@ -367,12 +382,31 @@ function doPost(e) {
       // 送信テストは本番履歴に混ぜず、専用シートへ追記します。
       const testSheet = ss.getSheetByName(TEST_SHEET_NAME) || ss.insertSheet(TEST_SHEET_NAME);
       appendTestRow(testSheet, body, eventName);
-      return jsonResponse({
+      const response = {
         ok: true,
         spreadsheet_id: spreadsheetId,
         sheet_name: testSheet.getName(),
         last_row: testSheet.getLastRow()
-      });
+      };
+      if (isTruthy(body.include_bootstrap)) {
+        const teamSheet = ss.getSheetByName(TEAM_LIST_SHEET_NAME) || ss.getSheetByName('チーム一覧');
+        const timerSheet = getOrCreateTimerSettingSheet(ss, TIMER_SETTING_SHEET_NAME);
+        const matchType = String(body.match_type || body.matchType || '').trim();
+        const teamValues = teamSheet && teamSheet.getLastRow() >= 2 ? teamSheet.getDataRange().getValues() : [];
+        const teams = readTeams(teamValues);
+        const prioritized = prioritizeTeamsForMatchType(ss, teams, matchType);
+        response.teams = prioritized.teams;
+        response.priority_teams = prioritized.priorityTeams;
+        response.team_sheet_name = teamSheet ? teamSheet.getName() : TEAM_LIST_SHEET_NAME;
+        response.team_row_count = prioritized.teams.length;
+        response.court_count = readCourtCount(teamValues);
+        response.timer_setting = timerSheet && timerSheet.getLastRow() >= 2
+          ? readTimerSetting(timerSheet.getDataRange().getValues())
+          : defaultTimerSetting('default');
+        response.timer_sheet_name = timerSheet ? timerSheet.getName() : TIMER_SETTING_SHEET_NAME;
+        response.timer_row_count = timerSheet ? Math.max(0, timerSheet.getLastRow() - 1) : 0;
+      }
+      return jsonResponse(response);
     }
 
     const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
@@ -827,19 +861,30 @@ function seriesResultWinnerSide(result) {
 function writeSeriesResultRows(sheet, canonicalRows) {
   const headerMap = ensureSeriesResultHeader(sheet);
   const startRow = nextDataAppendRow(sheet, SERIES_RESULT_HEADER, headerMap);
-  SERIES_RESULT_HEADER.forEach(function (headerName, headerIndex) {
-    const columnIndex = headerMap[headerName];
-    if (columnIndex == null) return;
-    if (columnIndex >= SERIES_RESULT_MANAGED_WIDTH) return;
-    const values = canonicalRows.map(function (row) { return [row[headerIndex]]; });
-    sheet.getRange(startRow, columnIndex + 1, values.length, 1).setValues(values);
+  const columns = SERIES_RESULT_HEADER.map(function (headerName, headerIndex) {
+    return { columnIndex: headerMap[headerName], headerIndex: headerIndex };
+  }).sort(function (a, b) { return a.columnIndex - b.columnIndex; });
+  const groups = [];
+  columns.forEach(function (column) {
+    const group = groups[groups.length - 1];
+    if (!group || column.columnIndex !== group[group.length - 1].columnIndex + 1) {
+      groups.push([column]);
+    } else {
+      group.push(column);
+    }
+  });
+  groups.forEach(function (group) {
+    const values = canonicalRows.map(function (row) {
+      return group.map(function (column) { return row[column.headerIndex]; });
+    });
+    sheet.getRange(startRow, group[0].columnIndex + 1, values.length, group.length).setValues(values);
   });
 }
 
 function nextDataAppendRow(sheet, headers, headerMap) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 2;
-  const width = SERIES_RESULT_MANAGED_WIDTH;
+  const width = maxHeaderColumnIndex(headerMap) + 1;
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   let appendRow = 2;
   values.forEach(function (row, index) {
@@ -857,7 +902,7 @@ function readSeriesResultKeys(sheet) {
   const headerMap = ensureSeriesResultHeader(sheet);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return new Set();
-  const width = SERIES_RESULT_MANAGED_WIDTH;
+  const width = maxHeaderColumnIndex(headerMap) + 1;
   const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   return new Set(values.map(function (row) {
     return seriesResultKey(SERIES_RESULT_HEADER.map(function (headerName) {
@@ -1059,28 +1104,37 @@ function appendRows(sheet, records, eventName, body, csvColumns, options) {
   return { appended, duplicates };
 }
 
-function ensureSeriesResultHeader(sheet) {
-  const width = SERIES_RESULT_MANAGED_WIDTH;
+function seriesResultHeaderInfo(sheet) {
+  const width = Math.max(1, sheet.getLastColumn());
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
   const headerMap = {};
+  const duplicateHeaders = [];
   current.forEach(function (value, index) {
     const name = String(value || '').trim();
-    if (name && headerMap[name] == null) headerMap[name] = index;
+    if (!name || SERIES_RESULT_HEADER.indexOf(name) < 0) return;
+    if (headerMap[name] == null) headerMap[name] = index;
+    else duplicateHeaders.push(name);
   });
 
   const missingHeaders = SERIES_RESULT_HEADER.filter(function (name) {
     return headerMap[name] == null;
   });
   if (missingHeaders.length) {
-    throw new Error('試合結果シートのA〜Iに必要な列がありません: ' + missingHeaders.join(', '));
+    throw new Error('試合結果シートに必要な列がありません: ' + missingHeaders.join(', '));
+  }
+  if (duplicateHeaders.length) {
+    throw new Error('試合結果シートに同名の列があります: ' + Array.from(new Set(duplicateHeaders)).join(', '));
   }
 
-  return headerMap;
+  return { headerMap: headerMap, width: maxHeaderColumnIndex(headerMap) + 1 };
+}
+
+function ensureSeriesResultHeader(sheet) {
+  return seriesResultHeaderInfo(sheet).headerMap;
 }
 
 function ensureExactHeader(sheet, header) {
-  // 既存のヘッダーや列順を勝手に上書きしません。
-  // 空シートの場合だけ初期ヘッダーを作成します。
+  // 既存ヘッダーを上書きせず、アプリ更新で追加された末尾の空ヘッダーだけ補います。
   const width = header.length;
   const current = sheet.getRange(1, 1, 1, width).getValues()[0];
   const hasAnyHeader = current.some(function (value) {
@@ -1089,7 +1143,24 @@ function ensureExactHeader(sheet, header) {
   if (!hasAnyHeader) {
     sheet.getRange(1, 1, 1, width).setValues([header]);
     sheet.getRange(1, 1, 1, width).setFontWeight('bold');
+    return;
   }
+
+  const conflicts = [];
+  const missing = [];
+  header.forEach(function (expected, index) {
+    const actual = String(current[index] || '').trim();
+    if (!actual) missing.push(index);
+    else if (actual !== String(expected || '').trim()) conflicts.push({ column: index + 1, actual: actual, expected: expected });
+  });
+  if (conflicts.length) {
+    throw new Error('archiveシートの列構成が一致しません: ' + conflicts.map(function (item) {
+      return item.column + '列目「' + item.actual + '」(期待値「' + item.expected + '」)';
+    }).join(', '));
+  }
+  missing.forEach(function (index) {
+    sheet.getRange(1, index + 1).setValue(header[index]);
+  });
 }
 
 function hasExactHeader(sheet, header) {

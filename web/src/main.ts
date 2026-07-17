@@ -635,7 +635,7 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-async function ensureGasSuccess(response: Response): Promise<void> {
+async function ensureGasSuccess(response: Response): Promise<GasResponse> {
   let result: GasResponse = {};
   try {
     result = await response.json() as GasResponse;
@@ -648,6 +648,7 @@ async function ensureGasSuccess(response: Response): Promise<void> {
     }
     throw new Error(result.message || result.error || `GAS request failed: ${response.status}`);
   }
+  return result;
 }
 
 class TimerAudioCueController {
@@ -4336,6 +4337,11 @@ class AdminController {
     const response = await fetch(url);
     const data = await response.json() as GasBootstrapResponse;
     if (!response.ok || !data.ok) throw new Error(data.message || data.error || "bootstrap_failed");
+    return this.applyBootstrapData(data);
+  }
+
+  private applyBootstrapData(data: GasBootstrapResponse): { team: TeamImportResult; timer: TimerSettingLoadResult } {
+    if (!this.onBootstrap) throw new Error("bootstrap_handler_missing");
     const team = this.onBootstrap(data);
     const setting = normalizeExternalTimerSetting(data.timer_setting, "sheet");
     this.saveTimerSetting(setting);
@@ -4483,15 +4489,16 @@ class AdminController {
     el("gas-status").textContent = "接続確認と設定読み込みを実行しています...";
     try {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
-      const testPromise = fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) })
-        .then((response) => ensureGasSuccess(response));
-      const bootstrapPromise = this.onBootstrap
-        ? this.loadBootstrapFromGas(settings)
-        : Promise.all([
-          this.onConnected ? this.onConnected() : Promise.resolve({ status: "failed", message: "チームリスト読み込み機能を初期化できていません。", count: 0 } satisfies TeamImportResult),
-          this.loadTimerSettingFromGas(settings),
-        ]).then(([team, timer]) => ({ team, timer }));
-      const [, bootstrap] = await Promise.all([testPromise, bootstrapPromise]);
+      const response = await fetch(settings.gasUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ ...body, include_bootstrap: true }),
+      });
+      const data = await ensureGasSuccess(response) as GasBootstrapResponse;
+      const hasBootstrap = Array.isArray(data.teams) && data.timer_setting != null;
+      const bootstrap = hasBootstrap && this.onBootstrap
+        ? this.applyBootstrapData(data)
+        : await this.loadBootstrapFromGas(settings);
       const loaded = bootstrap.team;
       const timerResult = bootstrap.timer;
       this.saveConnectionVerified();
