@@ -276,6 +276,24 @@ let teams: string[] = [...defaultTeams];
 const operationMatchTypes: MatchType[] = ["練習", "予選", "決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"];
 const operationMatchTypeOptions = ["試合種別を選択", ...operationMatchTypes];
 const priorityTeamMatchTypes = new Set<MatchType>(["決勝トーナメント", "4位決定リーグ", "優勝決定リーグ"]);
+type OverallDecision = { side: "a" | "b" | "draw"; basis: "wins" | "violations" | "score" | "purple" | "draw" };
+
+function decideOverallWinner(matchType: MatchType, sum: Summary): OverallDecision {
+  if (sum.teamAWins !== sum.teamBWins) {
+    return { side: sum.teamAWins > sum.teamBWins ? "a" : "b", basis: "wins" };
+  }
+  if (!priorityTeamMatchTypes.has(matchType)) return { side: "draw", basis: "draw" };
+  if (sum.teamAViolations !== sum.teamBViolations) {
+    return { side: sum.teamAViolations < sum.teamBViolations ? "a" : "b", basis: "violations" };
+  }
+  if (sum.teamAScore !== sum.teamBScore) {
+    return { side: sum.teamAScore < sum.teamBScore ? "a" : "b", basis: "score" };
+  }
+  if (sum.teamAPurple !== sum.teamBPurple) {
+    return { side: sum.teamAPurple > sum.teamBPurple ? "a" : "b", basis: "purple" };
+  }
+  return { side: "draw", basis: "draw" };
+}
 const csvColumns = [
   "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
@@ -2347,21 +2365,18 @@ class RecordsController {
     }, empty);
   }
 
-  private overallWinner(sum: Summary): "a" | "b" | "draw" {
-    if (sum.teamAWins !== sum.teamBWins) return sum.teamAWins > sum.teamBWins ? "a" : "b";
-    return "draw";
+  private overallDecision(sum: Summary): OverallDecision {
+    return decideOverallWinner(this.series?.matchType ?? "予選", sum);
   }
 
-  private drawDecisionNote(sum: Summary): string {
-    if (!this.series) return "";
-    if (sum.teamAViolations !== sum.teamBViolations) {
-      const side = sum.teamAViolations < sum.teamBViolations ? this.series.teamA : this.series.teamB;
-      return `決着が必要な場合の参考: 違反数が少ない ${side} が優先候補です。`;
-    }
-    if (sum.teamAScore !== sum.teamBScore) {
-      const side = sum.teamAScore > sum.teamBScore ? this.series.teamA : this.series.teamB;
-      return `決着が必要な場合の参考: 相手コートへ送り込んだボールの総得点が高い ${side} が優先候補です。`;
-    }
+  private overallWinner(sum: Summary): "a" | "b" | "draw" {
+    return this.overallDecision(sum).side;
+  }
+
+  private decisionNote(decision: OverallDecision): string {
+    if (decision.basis === "violations") return "勝利マッチ数が同数のため、3マッチ合計の違反数で判定しました。";
+    if (decision.basis === "score") return "勝利マッチ数・違反数が同じため、3マッチ合計の得点で判定しました。";
+    if (decision.basis === "purple") return "勝利マッチ数・違反数・得点が同じため、3マッチ合計の紫の取得数で判定しました。";
     return "";
   }
 
@@ -2372,9 +2387,9 @@ class RecordsController {
       return `<span class="final-result-label">途中集計</span><strong class="final-result-score">${score}</strong><span class="final-result-note">引き分け ${sum.draws} / 3マッチ終了後に最終結果を確認できます。</span>`;
     }
     const result = winner === "draw" ? "引き分け" : `${winner === "a" ? this.series.teamA : this.series.teamB}チームの勝利`;
-    const drawDecisionNote = winner === "draw" ? this.drawDecisionNote(sum) : "";
-    const drawNote = drawDecisionNote ? `<span class="final-result-note">${escapeText(drawDecisionNote)}</span>` : "";
-    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${drawNote}`;
+    const decisionNote = this.decisionNote(this.overallDecision(sum));
+    const note = decisionNote ? `<span class="final-result-note">${escapeText(decisionNote)}</span>` : "";
+    return `<span class="final-result-label">最終試合結果</span><strong class="final-result-score">${score}</strong><span class="final-result-winner">で ${escapeText(result)}</span>${note}`;
   }
 
   private matchViolationCount(record: MatchRecord, team: string): number {

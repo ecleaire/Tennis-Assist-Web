@@ -772,8 +772,22 @@ function appendSeriesResultRows(sheet, records, csvColumns) {
     if (!teamA || !teamB) return;
     const aWins = toNumber(value('チームA勝数'));
     const bWins = toNumber(value('チームB勝数'));
-    const aPoints = aWins > bWins ? 3 : aWins < bWins ? 0 : 1;
-    const bPoints = bWins > aWins ? 3 : bWins < aWins ? 0 : 1;
+    const resultSide = seriesResultWinnerSide({
+      matchType: value('種別'),
+      overallWinner: value('総合勝者'),
+      teamA: teamA,
+      teamB: teamB,
+      aWins: aWins,
+      bWins: bWins,
+      aViolations: toNumber(value('チームA違反数')),
+      bViolations: toNumber(value('チームB違反数')),
+      aScore: toNumber(value('チームA得点')),
+      bScore: toNumber(value('チームB得点')),
+      aPurple: toNumber(value('チームA紫')),
+      bPurple: toNumber(value('チームB紫'))
+    });
+    const aPoints = resultSide === 'a' ? 3 : resultSide === 'b' ? 0 : 1;
+    const bPoints = resultSide === 'b' ? 3 : resultSide === 'a' ? 0 : 1;
     const common = {
       timestamp: value('日時'),
       court: value('コート'),
@@ -799,6 +813,22 @@ function appendSeriesResultRows(sheet, records, csvColumns) {
     writeSeriesResultRows(sheet, rows);
   }
   return { appended: appended, duplicates: duplicates };
+}
+
+function seriesResultWinnerSide(result) {
+  const overallWinner = String(result.overallWinner || '').trim();
+  if (overallWinner === result.teamA) return 'a';
+  if (overallWinner === result.teamB) return 'b';
+  if (overallWinner === '引き分け') return 'draw';
+  if (result.aWins !== result.bWins) return result.aWins > result.bWins ? 'a' : 'b';
+
+  const matchType = String(result.matchType || '').trim();
+  const usesTieBreak = matchType === '決勝トーナメント' || matchType === '4位決定リーグ' || matchType === '優勝決定リーグ';
+  if (!usesTieBreak) return 'draw';
+  if (result.aViolations !== result.bViolations) return result.aViolations < result.bViolations ? 'a' : 'b';
+  if (result.aScore !== result.bScore) return result.aScore < result.bScore ? 'a' : 'b';
+  if (result.aPurple !== result.bPurple) return result.aPurple > result.bPurple ? 'a' : 'b';
+  return 'draw';
 }
 
 function writeSeriesResultRows(sheet, canonicalRows) {
