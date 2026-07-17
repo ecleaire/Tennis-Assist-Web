@@ -84,6 +84,16 @@ async function writeServiceWorker(root, cachePrefix, exclude = []) {
 const CORE = ${JSON.stringify(core, null, 2)};
 const OPTIONAL = ${JSON.stringify(optional, null, 2)};
 
+async function fetchNavigationWithTimeout(request, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)));
 });
@@ -105,7 +115,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).then((response) => {
+      fetchNavigationWithTimeout(event.request).then((response) => {
         if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put("./", response.clone()));
         return response;
       }).catch(async () => (await caches.match("./")) || caches.match("./index.html")),

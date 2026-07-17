@@ -9,6 +9,8 @@ type MatchType = "練習" | "練習試合" | "公式試合" | "予選" | "決勝
 type WakeLockSentinelLike = { release: () => Promise<void>; released?: boolean };
 type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "Dコート用" | "Eコート用" | "Fコート用" | "Gコート用" | "Hコート用" | "本部用" | "予備端末";
 const homeUnsentAlertDelayMs = 20000;
+const gasReadTimeoutMs = 20000;
+const gasWriteTimeoutMs = 35000;
 type SyncSummary = { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string; oldestUnsentAt: number };
 
 interface MatchRecord {
@@ -430,13 +432,20 @@ function timestamp(): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
 }
 
+let volatileDeviceId = "";
+
 function shortDeviceId(): string {
   const key = "tennis-assist-device-id-v1";
-  const existing = localStorage.getItem(key);
-  if (existing) return existing;
-  const generated = `端末-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-  localStorage.setItem(key, generated);
-  return generated;
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const generated = `端末-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    localStorage.setItem(key, generated);
+    return generated;
+  } catch {
+    if (!volatileDeviceId) volatileDeviceId = `端末-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    return volatileDeviceId;
+  }
 }
 
 function normalizeDeviceRole(value: unknown): DeviceRole {
@@ -649,6 +658,24 @@ async function ensureGasSuccess(response: Response): Promise<GasResponse> {
     throw new Error(result.message || result.error || `GAS request failed: ${response.status}`);
   }
   return result;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = gasReadTimeoutMs): Promise<Response> {
+  const controller = new AbortController();
+  const externalSignal = init.signal;
+  const abortFromExternal = (): void => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) abortFromExternal();
+  else externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted && !externalSignal?.aborted) throw new Error("gas_request_timeout");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromExternal);
+  }
 }
 
 class TimerAudioCueController {
@@ -1711,6 +1738,7 @@ class RecordsController {
   private operationManaged = false;
   private completionResetTimer = 0;
   private retryingPendingSends = false;
+  private readonly activeSeriesSends = new Map<string, Promise<NonNullable<MatchRecord["sendStatus"]>>>();
   private historyViewDirty = true;
   private teamPriorityCount = 0;
   private teamPriorityCache = new Map<string, { expiresAt: number; teams: string[]; priorityCount: number; courtCount: number | null }>();
@@ -1868,6 +1896,7 @@ class RecordsController {
     if (!settings.gasUrl.endsWith("/exec")) return "GAS URL未設定";
     if (!settings.apiKey) return "APIキー未入力";
     if (/invalid_api_key|api|key|認証|unauthorized|forbidden|invalid/i.test(latestError)) return "APIキー不一致";
+    if (/gas_request_timeout|timeout|timed out|タイムアウト/i.test(latestError)) return "GAS応答タイムアウト";
     if (!navigator.onLine) return "ネットワーク";
     if (/failed to fetch|network|ネットワーク|fetch/i.test(latestError)) return "ネットワーク";
     if (!settings.gasConnectedAt || settings.gasConnectedUrl !== settings.gasUrl) return "GAS未接続";
@@ -3015,7 +3044,7 @@ class RecordsController {
     });
     if (options.spreadsheetId) params.set("spreadsheet_id", options.spreadsheetId);
     if (options.matchType) params.set("match_type", options.matchType);
-    const response = await fetch(`${settings.gasUrl}?${params.toString()}`);
+    const response = await fetchWithTimeout(`${settings.gasUrl}?${params.toString()}`);
     const data = await response.json() as { ok?: boolean; error?: string; teams?: string[]; priority_teams?: string[]; row_count?: number; sheet_name?: string; court_count?: number | null };
     if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
     const nextTeams = (data.teams ?? []).map(String).filter(Boolean);
@@ -3178,7 +3207,7 @@ class RecordsController {
     el("history-status").textContent = "スプレッドシートから対戦履歴を読み込んでいます...";
     try {
       const url = `${settings.gasUrl}?action=history&api_key=${encodeURIComponent(settings.apiKey)}&spreadsheet_id=${encodeURIComponent(spreadsheetId)}`;
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       const data = await response.json() as { ok?: boolean; error?: string; csv_columns?: string[]; csv_rows?: string[][]; row_count?: number; sheet_name?: string };
       if (!response.ok || data.ok === false) throw new Error(data.error || "failed");
       const imported = this.recordsFromCsvRows([[...(data.csv_columns ?? [])], ...(data.csv_rows ?? [])]);
@@ -3261,7 +3290,18 @@ class RecordsController {
     }
   }
 
-  private async sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+  private sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+    const sendKey = record.recordId || `${record.seriesId}_result`;
+    const active = this.activeSeriesSends.get(sendKey);
+    if (active) return active;
+    const request = this.performSeriesResultSend(record).finally(() => {
+      if (this.activeSeriesSends.get(sendKey) === request) this.activeSeriesSends.delete(sendKey);
+    });
+    this.activeSeriesSends.set(sendKey, request);
+    return request;
+  }
+
+  private async performSeriesResultSend(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
       this.updateSendStatus(record, "local-only", "送信OFF");
@@ -3308,7 +3348,7 @@ class RecordsController {
     let latestError: unknown = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const response = await fetch(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+        const response = await fetchWithTimeout(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }, gasWriteTimeoutMs);
         await ensureGasSuccess(response);
         this.updateSendStatus(record, "sent");
         this.updateCompletionState("sent", "スプレッドシートへ送信できました。");
@@ -3423,8 +3463,12 @@ class RecordsController {
 
   private persistSeriesProgress(): boolean {
     if (!this.series) {
-      localStorage.removeItem(this.progressStorageKey);
-      return true;
+      try {
+        localStorage.removeItem(this.progressStorageKey);
+        return true;
+      } catch {
+        return false;
+      }
     }
     const progress: PersistedSeriesProgress = {
       series: this.series,
@@ -4301,7 +4345,7 @@ class AdminController {
       const url = new URL(settings.gasUrl);
       url.searchParams.set("action", "timer_setting");
       url.searchParams.set("api_key", settings.apiKey);
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       const data = await response.json() as GasResponse & { timer_setting?: unknown };
       if (!response.ok || !data.ok) throw new Error(data.message || data.error || "timer_setting_failed");
       const setting = normalizeExternalTimerSetting(data.timer_setting, "sheet");
@@ -4334,7 +4378,7 @@ class AdminController {
     const url = new URL(settings.gasUrl);
     url.searchParams.set("action", "bootstrap");
     url.searchParams.set("api_key", settings.apiKey);
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url);
     const data = await response.json() as GasBootstrapResponse;
     if (!response.ok || !data.ok) throw new Error(data.message || data.error || "bootstrap_failed");
     return this.applyBootstrapData(data);
@@ -4489,11 +4533,11 @@ class AdminController {
     el("gas-status").textContent = "接続確認と設定読み込みを実行しています...";
     try {
       const body = { api_key: settings.apiKey, event: "connection_test", target_sheet: "送信テスト", source: deviceSource(), sent_at: timestamp(), payload: { message: "Web app connection test" } };
-      const response = await fetch(settings.gasUrl, {
+      const response = await fetchWithTimeout(settings.gasUrl, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ ...body, include_bootstrap: true }),
-      });
+      }, gasWriteTimeoutMs);
       const data = await ensureGasSuccess(response) as GasBootstrapResponse;
       const hasBootstrap = Array.isArray(data.teams) && data.timer_setting != null;
       const bootstrap = hasBootstrap && this.onBootstrap
@@ -4521,6 +4565,9 @@ class AdminController {
 
   private gasConnectionErrorMessage(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error || "");
+    if (message.includes("gas_request_timeout")) {
+      return "接続・設定読込が時間内に完了しませんでした。通信状態を確認して、もう一度実行してください。";
+    }
     if (message.includes("invalid_api_key")) {
       return "接続・設定読込に失敗しました。APIキーが一致していません。GAS側の API_KEY / API_KEY1 / API_KEY2 など、API_KEYで始まるプロパティの値を確認してください。";
     }
