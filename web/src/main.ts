@@ -3501,6 +3501,9 @@ class ContentController {
         this.selectRulePdf(link);
       });
     });
+    document.querySelectorAll<HTMLElement>('[data-screen="rules"]').forEach((button) => {
+      button.addEventListener("pointerdown", () => this.ensureRulePdfLoaded(), { passive: true });
+    });
     el<HTMLButtonElement>("rule-menu-toggle").addEventListener("click", (event) => {
       event.stopPropagation();
       this.setRuleMenu(!this.ruleMenuOpen);
@@ -3528,7 +3531,7 @@ class ContentController {
     if (!src) return;
     const title = link.dataset.ruleTitle || link.textContent?.trim() || "ルールPDF";
     const frame = el<HTMLIFrameElement>("rule-pdf-frame");
-    if (frame.src !== src) frame.src = src;
+    this.setRulePdfSource(frame, src);
     frame.title = title;
     document.querySelectorAll<HTMLAnchorElement>("[data-rule-pdf-src]").forEach((button) => {
       button.classList.toggle("primary", button === link);
@@ -3538,6 +3541,20 @@ class ContentController {
     openLink.textContent = `${title}を別タブで開く`;
     const status = document.getElementById("rule-pdf-search-status");
     if (status) status.textContent = "表示中のPDFに検索語を渡します。検索できない場合は別タブで開いて検索してください。";
+  }
+
+  private ensureRulePdfLoaded(): void {
+    const selected = document.querySelector<HTMLAnchorElement>("[data-rule-pdf-src].primary")
+      ?? document.querySelector<HTMLAnchorElement>("[data-rule-pdf-src]");
+    if (selected) this.selectRulePdf(selected);
+  }
+
+  private setRulePdfSource(frame: HTMLIFrameElement, src: string): void {
+    if (frame.dataset.loadedSrc === src) return;
+    frame.dataset.loadedSrc = src;
+    frame.setAttribute("aria-busy", "true");
+    frame.addEventListener("load", () => frame.setAttribute("aria-busy", "false"), { once: true });
+    frame.src = src;
   }
 
   private searchRulePdf(): void {
@@ -3552,7 +3569,7 @@ class ContentController {
       return;
     }
     const frame = el<HTMLIFrameElement>("rule-pdf-frame");
-    frame.src = `${src}#search=${encodeURIComponent(query)}`;
+    this.setRulePdfSource(frame, `${src}#search=${encodeURIComponent(query)}`);
     const openLink = el<HTMLAnchorElement>("rule-pdf-open-link");
     openLink.href = `${selected.href}#search=${encodeURIComponent(query)}`;
     const title = selected.dataset.ruleTitle || selected.textContent?.trim() || "ルールPDF";
@@ -3577,6 +3594,7 @@ class ContentController {
 
   open(screen: Screen, secret: boolean): void {
     if (screen === "rules") {
+      this.ensureRulePdfLoaded();
       this.closeRuleSearch();
       this.setRuleMenu(false);
     }
