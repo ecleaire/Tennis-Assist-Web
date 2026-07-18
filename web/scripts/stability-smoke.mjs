@@ -47,6 +47,9 @@ const targets = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "iphone-se", width: 375, height: 667, mobile: true },
   { name: "iphone-17-pro", width: 402, height: 874, mobile: true },
+  { name: "android-360x800", width: 360, height: 800, mobile: true },
+  { name: "android-412x915", width: 412, height: 915, mobile: true },
+  { name: "android-915x412", width: 915, height: 412, mobile: true },
   { name: "ipad-air2-portrait", width: 768, height: 1024, mobile: true },
   { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
   { name: "ipad7-portrait", width: 810, height: 1080, mobile: true },
@@ -59,6 +62,8 @@ const editions = [
 const drawTargets = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "iphone-17-pro", width: 402, height: 874, mobile: true },
+  { name: "android-412x915", width: 412, height: 915, mobile: true },
+  { name: "android-915x412", width: 915, height: 412, mobile: true },
   { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
   { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
 ];
@@ -344,6 +349,38 @@ try {
       } finally {
         await context.close();
       }
+    }
+  }
+
+  if ((!editionFilter || editionFilter === "venue") && (!targetFilter || targetFilter === "desktop")) {
+    const restrictedRulesContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await restrictedRulesContext.addInitScript(() => {
+      try {
+        delete Navigator.prototype.serviceWorker;
+      } catch {
+        // Service Worker behavior is verified separately below.
+      }
+    });
+    const restrictedRulesPage = await restrictedRulesContext.newPage();
+    const label = "venue/mie-restricted-rules";
+    try {
+      await restrictedRulesPage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      const restrictedRules = restrictedRulesPage.locator("[data-admin-rule]");
+      if (await restrictedRules.first().isVisible()) failures.push(`${label}: restricted rule is visible before admin login`);
+      for (let index = 0; index < 10; index += 1) await restrictedRulesPage.locator('[data-screen="rules"]').click();
+      await restrictedRulesPage.locator("#development-nav").click();
+      await restrictedRulesPage.locator("#admin-password").fill("mie");
+      await restrictedRulesPage.locator("#admin-unlock").click();
+      await restrictedRulesPage.locator("#admin-settings").waitFor({ state: "visible" });
+      await restrictedRulesPage.locator('[data-screen="rules"]').click();
+      if (!(await restrictedRules.first().isVisible())) failures.push(`${label}: restricted rule is hidden after Mie admin login`);
+      process.stdout.write(`PASS ${label}\n`);
+    } catch (error) {
+      const message = `${label}: ${error instanceof Error ? error.message : String(error)}`;
+      failures.push(message);
+      process.stderr.write(`FAIL ${message}\n`);
+    } finally {
+      await restrictedRulesContext.close();
     }
   }
 

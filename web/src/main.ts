@@ -6473,7 +6473,7 @@ class Application {
       document.documentElement.classList.toggle("venue-light-accent", accentMode === "light");
     }
     document.documentElement.classList.toggle("rsam-admin-mode", this.rsamMode);
-    this.content.setRestrictedRulesVisible(this.hyogo || this.rsamMode);
+    this.content.setRestrictedRulesVisible(this.hyogo || this.rsamMode || mode === "mie");
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
