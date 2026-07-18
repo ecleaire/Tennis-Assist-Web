@@ -1421,6 +1421,23 @@ body.operation-timer-active #timer-ten {
   min-height: clamp(240px, 48vh, 560px);
 }
 
+.referee-center.referee-reset-active {
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.referee-center.referee-reset-active:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent) inset;
+  outline: 0;
+}
+
+.referee-center.referee-reset-active:active {
+  background: rgba(46, 168, 255, 0.06);
+}
+
 .referee-label {
   color: var(--danger);
   font-size: clamp(1.7rem, 4.3vw, 4rem);
@@ -6589,6 +6606,11 @@ body.operation-timer-active.compact #timer-start,
 body.operation-timer-active.compact #timer-end {
   grid-column: auto;
   margin-left: 0;
+}
+
+body.operation-timer-active:not(.timer-started) #timer-start,
+body.operation-timer-active.compact:not(.timer-started) #timer-start {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 760px) {

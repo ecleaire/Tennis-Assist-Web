@@ -775,11 +775,11 @@ class TimerAudioCueController {
     try {
       this.context = new AudioContextCtor();
       this.master = this.context.createDynamicsCompressor();
-      this.master.threshold.value = -24;
-      this.master.knee.value = 10;
-      this.master.ratio.value = 12;
-      this.master.attack.value = 0.002;
-      this.master.release.value = 0.18;
+      this.master.threshold.value = -10;
+      this.master.knee.value = 4;
+      this.master.ratio.value = 10;
+      this.master.attack.value = 0.0015;
+      this.master.release.value = 0.14;
       this.master.connect(this.context.destination);
     } catch {
       this.context = null;
@@ -1562,6 +1562,7 @@ class TimerController {
 
 class RefereeTimerController {
   private readonly shell = el<HTMLElement>("referee-shell");
+  private readonly center = this.shell.querySelector<HTMLElement>(".referee-center")!;
   private readonly label = el<HTMLElement>("referee-label");
   private readonly time = el<HTMLOutputElement>("referee-time");
   private readonly progress = el<HTMLProgressElement>("referee-progress");
@@ -1577,6 +1578,14 @@ class RefereeTimerController {
     el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
     el<HTMLButtonElement>("referee-five").addEventListener("click", () => this.start(5, "オーバーボール"));
     el<HTMLButtonElement>("referee-reset").addEventListener("click", () => this.reset());
+    this.center.addEventListener("click", () => {
+      if (this.running) this.reset();
+    });
+    this.center.addEventListener("keydown", (event) => {
+      if (!this.running || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      this.reset();
+    });
     this.fullscreenButton.addEventListener("click", () => void this.toggleFullscreen());
     document.addEventListener("fullscreenchange", () => {
       const active = document.fullscreenElement === this.shell;
@@ -1620,7 +1629,7 @@ class RefereeTimerController {
 
   private frame(now: number): void {
     if (this.running) {
-      this.remaining = this.endAt ? Math.max(0, (this.endAt - now) / 1000) : 0;
+      this.remaining = this.endAt ? Math.min(this.total, Math.max(0, (this.endAt - now) / 1000)) : 0;
       if (this.remaining <= 0) {
         this.running = false;
         this.endAt = 0;
@@ -1638,6 +1647,17 @@ class RefereeTimerController {
     this.progress.value = this.remaining;
     this.progress.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
     this.time.classList.toggle("warning", this.remaining <= 3 && this.remaining > 0);
+    this.center.classList.toggle("referee-reset-active", this.running);
+    this.center.tabIndex = this.running ? 0 : -1;
+    if (this.running) {
+      this.center.setAttribute("role", "button");
+      this.center.setAttribute("aria-label", "カウントダウンをリセット");
+      this.center.title = "タップしてリセット";
+    } else {
+      this.center.removeAttribute("role");
+      this.center.removeAttribute("aria-label");
+      this.center.removeAttribute("title");
+    }
   }
 
   private async toggleFullscreen(): Promise<void> {

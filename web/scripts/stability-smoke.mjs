@@ -218,6 +218,11 @@ try {
         await page.waitForTimeout(80);
         if (await page.locator("#timer-ten").isVisible()) failures.push(`${label}: 10-count visible in match-flow timer`);
         if (await page.locator("#timer-five").isVisible()) failures.push(`${label}: 5-count visible in match-flow timer`);
+        const preStartBox = await page.locator("#timer-start").boundingBox();
+        const progressBox = await page.locator("#timer-progress").boundingBox();
+        if (!preStartBox || !progressBox || preStartBox.width < progressBox.width * 0.9) {
+          failures.push(`${label}: match-flow start button is not wide enough (${JSON.stringify({ preStartBox, progressBox })})`);
+        }
         await page.locator("#timer-start").click();
         await page.waitForTimeout(40);
         for (const selector of ["#timer-start", "#timer-end"]) {
@@ -330,7 +335,12 @@ try {
     if (initialFive !== "05") failures.push(`referee-timer: 5-count did not start at 05 (${initialFive})`);
     await refereePage.waitForTimeout(1100);
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "04") failures.push("referee-timer: 5-count display is not aligned to the first second boundary");
-    await refereePage.waitForTimeout(4100);
+    await refereePage.locator(".referee-center").click();
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "10") failures.push("referee-timer: tapping the active count area did not reset the timer");
+    if ((await refereePage.locator("#referee-label").textContent())?.trim() !== "10カウント / 5カウントを選択") failures.push("referee-timer: count-area reset did not restore the idle label");
+    await refereePage.locator("#referee-five").click();
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "05") failures.push("referee-timer: 5-count could not restart after count-area reset");
+    await refereePage.waitForTimeout(5100);
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "00") failures.push("referee-timer: 5-count did not finish at 00");
     process.stdout.write("PASS referee-timer/countdown-timing\n");
   } catch (error) {
