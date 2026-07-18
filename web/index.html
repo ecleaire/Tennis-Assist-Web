@@ -86,6 +86,7 @@
                 <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置 抽選</button>
                 <button id="operation-time-random" class="button primary operation-numbered">② 試合時間 抽選</button>
                 <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
+                <button id="operation-cancel-draw" class="button danger operation-cancel-button" type="button">試合をキャンセル</button>
               </aside>
             </div>
           </article>
@@ -114,7 +115,7 @@
             <p id="dashboard-mode" class="status-line">試合準備完了</p>
             <button id="dashboard-timer-fullscreen" class="button">全画面表示</button>
             <button id="dashboard-timer-start" class="button timer-start-action">開始</button>
-            <button id="dashboard-timer-end" class="button timer-end-action">終了</button>
+            <button id="dashboard-timer-end" class="button timer-end-action">試合中断</button>
             <select id="dashboard-timer-step" class="timer-random-control" aria-label="ホーム画面のタイマー設定">
               <option value="1">ランダム間隔: 1秒</option>
               <option value="5">ランダム間隔: 5秒</option>
@@ -152,7 +153,7 @@
             <progress id="timer-progress" max="100" value="100"></progress>
             <div class="controls">
               <button id="timer-start" class="button timer-start-action">開始</button>
-              <button id="timer-end" class="button timer-end-action">終了</button>
+              <button id="timer-end" class="button timer-end-action">試合中断</button>
               <button id="timer-fullscreen" class="button">全画面</button>
               <button id="timer-reset" class="button timer-random-control">ランダム再生成</button>
               <select id="timer-step" class="timer-random-control" aria-label="タイマー設定">
@@ -188,6 +189,7 @@
               <button id="referee-ten" class="button danger referee-primary-count">10カウント開始</button>
               <button id="referee-five" class="button danger referee-primary-count">5カウント開始</button>
               <button id="referee-reset" class="button">リセット</button>
+              <button id="referee-return-timer" class="button">タイマーへ戻る</button>
             </div>
           </div>
         </article>
@@ -216,6 +218,17 @@
 
       <section id="screen-records" class="screen">
         <div class="records-layout">
+          <article id="paused-operation-panel" class="panel section-card paused-operation-panel hidden">
+            <div>
+              <p class="eyebrow">INTERRUPTED MATCH</p>
+              <h2>中断した試合</h2>
+              <p id="paused-operation-summary" class="muted"></p>
+            </div>
+            <div class="paused-operation-actions">
+              <button id="paused-operation-resume" class="button primary" type="button">中断した試合を再開</button>
+              <button id="paused-operation-discard" class="button danger" type="button">再開データを破棄</button>
+            </div>
+          </article>
           <article class="panel section-card hidden" aria-hidden="true">
             <div class="section-head">
               <div>
@@ -273,7 +286,8 @@
             <div class="toolbar">
               <button id="record-save" class="button primary">このマッチを保存</button>
               <button id="back-balls" class="button">配置へ戻る</button>
-              <button id="back-timer" class="button">タイマーへ戻る</button>
+              <button id="back-timer" class="button">抽選済み時間でタイマーへ戻る</button>
+              <button id="operation-cancel-record" class="button danger operation-record-only" type="button">試合をキャンセル</button>
             </div>
             <p id="record-status" class="muted">まずは対戦カードを開始してください。</p>
           </article>
@@ -295,7 +309,9 @@
               <div id="final-meta-editor" class="final-meta-editor hidden">
                 <label>コート<select id="final-court-select"></select></label>
                 <label>試合種別<select id="final-match-type-select"></select></label>
-                <button id="final-meta-save" class="button primary" type="button">反映</button>
+                <label>左側チーム<select id="final-team-a-select"></select></label>
+                <label>右側チーム<select id="final-team-b-select"></select></label>
+                <button id="final-meta-save" class="button primary" type="button">修正内容を確認</button>
               </div>
             </div>
             <p id="series-finished" class="finished-message hidden">試合が終了しました。おつかれさまでした。</p>
@@ -654,13 +670,36 @@
         </div>
       </form>
     </dialog>
+    <dialog id="operation-action-dialog" class="dialog operation-action-dialog">
+      <form method="dialog">
+        <h2 id="operation-action-title">操作の確認</h2>
+        <p id="operation-action-message" class="pre-wrap"></p>
+        <p class="operation-hold-guide">確定する場合は、下のボタンを3秒間長押ししてください。</p>
+        <div class="toolbar">
+          <button id="operation-action-cancel" class="button" value="cancel">確認に戻る</button>
+          <button id="operation-action-confirm" class="button danger operation-hold-confirm" type="button">3秒長押しで確定</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="final-meta-confirm-dialog" class="dialog final-meta-confirm-dialog">
+      <form method="dialog">
+        <h2>試合情報の修正確認</h2>
+        <div id="final-meta-confirm-detail" class="final-meta-confirm-detail"></div>
+        <p class="pre-wrap">チーム名を変更すると、各マッチ・最終集計・端末内履歴のチーム名も更新されます。内容をもう一度確認してください。</p>
+        <p class="operation-hold-guide">修正を反映する場合は、下のボタンを3秒間長押ししてください。</p>
+        <div class="toolbar">
+          <button id="final-meta-confirm-cancel" class="button" value="cancel">確認に戻る</button>
+          <button id="final-meta-confirm-hold" class="button primary operation-hold-confirm" type="button">3秒長押しで修正反映</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="timer-end-confirm-dialog" class="dialog timer-end-confirm-dialog">
       <form method="dialog">
-        <h2>タイマーを終了しますか？</h2>
-        <p class="pre-wrap">タイマー作動中ですが終了しますか？&#10;&#10;この確認画面の表示中もタイマーは止まらず進みます。</p>
+        <h2>試合を中断しますか？</h2>
+        <p class="pre-wrap">タイマー作動中ですが試合を中断しますか？&#10;&#10;この確認画面の表示中もタイマーは止まらず進みます。</p>
         <div class="toolbar">
           <button class="button" value="cancel">戻る</button>
-          <button id="timer-end-confirm" class="button primary" value="default">終了する</button>
+          <button id="timer-end-confirm" class="button danger" value="default">試合を中断する</button>
         </div>
       </form>
     </dialog>

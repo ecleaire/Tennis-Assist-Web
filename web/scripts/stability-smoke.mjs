@@ -63,13 +63,27 @@ const drawTargets = [
   { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
 ];
 const screens = ["dashboard", "timer", "referee", "balls", "records", "rules", "links"];
+const targetFilter = process.env.SMOKE_TARGET || "";
+const editionFilter = process.env.SMOKE_EDITION || "";
+const activeTargets = targetFilter ? targets.filter((target) => target.name === targetFilter) : targets;
+const activeDrawTargets = targetFilter ? drawTargets.filter((target) => target.name === targetFilter) : drawTargets;
+const activeEditions = editionFilter ? editions.filter((edition) => edition.name === editionFilter) : editions;
 
 const browser = await chromium.launch({ headless: true });
 const failures = [];
 
+async function holdButton(page, selector, duration = 3150) {
+  const locator = page.locator(selector);
+  await locator.scrollIntoViewIfNeeded();
+  await locator.focus();
+  await page.keyboard.down("Enter");
+  await page.waitForTimeout(duration);
+  await page.keyboard.up("Enter");
+}
+
 try {
-  for (const edition of editions) {
-    for (const target of targets) {
+  for (const edition of activeEditions) {
+    for (const target of activeTargets) {
       const context = await browser.newContext({
         viewport: { width: target.width, height: target.height },
         hasTouch: Boolean(target.mobile),
@@ -92,10 +106,14 @@ try {
 
       try {
         await page.goto(`${baseUrl}${edition.path}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        await page.waitForFunction(() => document.querySelectorAll("#operation-court option").length > 0);
         if (edition.name === "general") {
-          await page.evaluate(() => {
+          await page.waitForFunction(() => {
             const button = document.querySelector('[data-screen="operation"]');
-            if (button instanceof HTMLElement) button.click();
+            const screen = document.querySelector("#screen-operation");
+            if (!(button instanceof HTMLElement) || !(screen instanceof HTMLElement)) return false;
+            if (!screen.classList.contains("active")) button.click();
+            return screen.classList.contains("active");
           });
         }
         await page.locator("#operation-prepare").waitFor({ state: "visible", timeout: 10_000 });
@@ -154,8 +172,8 @@ try {
     }
   }
 
-  for (const edition of editions) {
-    for (const target of drawTargets) {
+  for (const edition of activeEditions) {
+    for (const target of activeDrawTargets) {
       const context = await browser.newContext({
         viewport: { width: target.width, height: target.height },
         hasTouch: Boolean(target.mobile),
@@ -172,10 +190,14 @@ try {
       const label = `${edition.name}/draw-sequence/${target.name}`;
       try {
         await page.goto(`${baseUrl}${edition.path}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        await page.waitForFunction(() => document.querySelectorAll("#operation-court option").length > 0);
         if (edition.name === "general") {
-          await page.evaluate(() => {
+          await page.waitForFunction(() => {
             const button = document.querySelector('[data-screen="operation"]');
-            if (button instanceof HTMLElement) button.click();
+            const screen = document.querySelector("#screen-operation");
+            if (!(button instanceof HTMLElement) || !(screen instanceof HTMLElement)) return false;
+            if (!screen.classList.contains("active")) button.click();
+            return screen.classList.contains("active");
           });
         }
         await page.locator("#operation-prepare").click();
@@ -214,8 +236,43 @@ try {
         if (await page.locator("#operation-ready").isDisabled()) failures.push(`${label}: ready stayed disabled after both draws`);
         await page.locator("#operation-ready").click();
         await page.locator("#operation-ready-confirm").click();
-        await page.locator("#screen-timer").waitFor({ state: "visible" });
+        await page.locator("#screen-timer .timer-face").waitFor({ state: "visible" });
+        if (!(await page.locator("#screen-timer").evaluate((screen) => screen.classList.contains("active")))) failures.push(`${label}: timer screen did not become active`);
         await page.waitForTimeout(80);
+        const preparedTime = (await page.locator("#timer-time").textContent())?.trim();
+        const preparedLayout = await page.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
+          className: ball.className,
+          left: ball.style.left,
+          top: ball.style.top,
+        })));
+        await page.locator("#operation-timer-back").click();
+        await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
+        await holdButton(page, "#operation-action-confirm");
+        await page.locator("#operation-draw").waitFor({ state: "visible" });
+        if (!(await page.locator("#operation-ball-random").isDisabled())) failures.push(`${label}: ball draw was re-enabled after timer accident return`);
+        if (!(await page.locator("#operation-time-random").isDisabled())) failures.push(`${label}: time draw was re-enabled after timer accident return`);
+        if (await page.locator("#operation-ready").isDisabled()) failures.push(`${label}: ready stayed disabled after timer accident return`);
+        const returnedTime = (await page.locator("#dashboard-time").textContent())?.trim();
+        if (returnedTime !== preparedTime) failures.push(`${label}: prepared time changed after timer accident return (${preparedTime} -> ${returnedTime})`);
+        const returnedLayout = await page.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
+          className: ball.className,
+          left: ball.style.left,
+          top: ball.style.top,
+        })));
+        if (JSON.stringify(returnedLayout) !== JSON.stringify(preparedLayout)) failures.push(`${label}: ball layout changed after timer accident return`);
+        await page.locator("#operation-ready").click();
+        await page.locator("#operation-ready-confirm").click();
+        await page.locator("#screen-timer .timer-face").waitFor({ state: "visible" });
+        if (!(await page.locator("#screen-timer").evaluate((screen) => screen.classList.contains("active")))) failures.push(`${label}: timer screen did not reactivate after accident return`);
+        if ((await page.locator("#timer-time").textContent())?.trim() !== preparedTime) failures.push(`${label}: timer did not resume from the prepared duration`);
+        if ((await page.locator("#timer-end").textContent())?.trim() !== "試合中断") failures.push(`${label}: match-flow timer end label is not explicit`);
+        const timerEndColors = await page.locator("#timer-end").evaluate((button) => {
+          const style = getComputedStyle(button);
+          return { background: style.backgroundColor, color: style.color };
+        });
+        if (!/rgb\((?:1[5-9]\d|2\d\d),\s*(?:[0-9]|[1-8]\d),\s*(?:[0-9]|[1-8]\d)\)/.test(timerEndColors.background)) {
+          failures.push(`${label}: match-flow force-end button is not red (${timerEndColors.background})`);
+        }
         if (await page.locator("#timer-ten").isVisible()) failures.push(`${label}: 10-count visible in match-flow timer`);
         if (await page.locator("#timer-five").isVisible()) failures.push(`${label}: 5-count visible in match-flow timer`);
         const preStartBox = await page.locator("#timer-start").boundingBox();
@@ -225,25 +282,190 @@ try {
         }
         await page.locator("#timer-start").click();
         await page.waitForTimeout(40);
-        for (const selector of ["#timer-start", "#timer-end"]) {
-          const box = await page.locator(selector).boundingBox();
-          if (!box || box.width < 120 || box.height < 64 || box.x < -1 || box.y < -1 || box.x + box.width > target.width + 1 || box.y + box.height > target.height + 1) {
-            failures.push(`${label}: match-flow timer action is too small or outside viewport: ${selector} ${JSON.stringify(box)}`);
-          }
+        await page.locator("#timer-end").click();
+        if (!(await page.locator("#cold-notice").textContent())?.includes("試合中断")) failures.push(`${label}: first interrupt press did not show the warning`);
+        if (!(await page.locator("body").evaluate((body) => body.classList.contains("timer-running")))) failures.push(`${label}: first force-end press stopped the timer`);
+        await page.locator("#timer-end").click();
+        await page.locator("#timer-end-confirm-dialog").waitFor({ state: "visible" });
+        if (!(await page.locator("#timer-end-confirm-dialog").textContent())?.includes("試合を中断")) failures.push(`${label}: interrupt confirmation wording is unclear`);
+        await page.locator('#timer-end-confirm-dialog button[value="cancel"]').click();
+        if (!(await page.locator("body").evaluate((body) => body.classList.contains("timer-running")))) failures.push(`${label}: cancelling force-end stopped the timer`);
+        if (await page.locator("#timer-start").isVisible()) failures.push(`${label}: pause control is visible in a running match-flow timer`);
+        const endBox = await page.locator("#timer-end").boundingBox();
+        if (!endBox || !progressBox || endBox.width < progressBox.width * 0.9 || endBox.height < 64 || endBox.x < -1 || endBox.y < -1 || endBox.x + endBox.width > target.width + 1 || endBox.y + endBox.height > target.height + 1) {
+          failures.push(`${label}: match-flow interrupt action is too small or outside viewport: ${JSON.stringify({ endBox, progressBox })}`);
         }
         const timerVisual = await page.evaluate(() => ({
           fontSize: Number.parseFloat(getComputedStyle(document.querySelector("#timer-time")).fontSize),
+          time: document.querySelector("#timer-time")?.getBoundingClientRect().toJSON(),
+          progress: document.querySelector("#timer-progress")?.getBoundingClientRect().toJSON(),
           columns: getComputedStyle(document.querySelector("#screen-timer .controls")).gridTemplateColumns.split(" ").length,
         }));
-        const minimumTimerFontSize = target.mobile ? 74 : 88;
+        const minimumTimerFontSize = target.mobile ? 80 : 100;
         if (timerVisual.fontSize < minimumTimerFontSize) failures.push(`${label}: match-flow timer digits too small (${timerVisual.fontSize}px)`);
+        if (!timerVisual.time || timerVisual.time.left < -1 || timerVisual.time.right > target.width + 1 || timerVisual.time.top < -1 || timerVisual.time.bottom > target.height + 1) {
+          failures.push(`${label}: match-flow timer digits are outside viewport (${JSON.stringify(timerVisual.time)})`);
+        }
+        if (timerVisual.time && timerVisual.progress && timerVisual.time.bottom > timerVisual.progress.top - 4) {
+          failures.push(`${label}: match-flow timer digits overlap progress (${JSON.stringify({ time: timerVisual.time, progress: timerVisual.progress })})`);
+        }
         if (timerVisual.columns !== 2) failures.push(`${label}: match-flow timer controls are not two columns`);
+        if (edition.name === "venue" && target.name === "desktop") {
+          await page.locator("#timer-end").click();
+          await page.locator("#timer-end").click();
+          await page.locator("#timer-end-confirm-dialog").waitFor({ state: "visible" });
+          await page.locator("#timer-end-confirm").click();
+          await page.locator("#record-input").waitFor({ state: "visible" });
+          if (!(await page.locator("#back-timer").isVisible())) failures.push(`${label}: prepared-time timer return is hidden on result input`);
+          if (await page.locator("#back-balls").isVisible()) failures.push(`${label}: ball-layout return unexpectedly visible on result input`);
+          const returnButtonBox = await page.locator("#back-timer").boundingBox();
+          if (!returnButtonBox || returnButtonBox.width < 180 || returnButtonBox.height < 54) {
+            failures.push(`${label}: prepared-time timer return is too small (${JSON.stringify(returnButtonBox)})`);
+          }
+          await page.locator("#back-timer").click();
+          await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
+          await holdButton(page, "#operation-action-confirm");
+          await page.locator("#screen-timer .timer-face").waitFor({ state: "visible" });
+          if (!(await page.locator("#screen-timer").evaluate((screen) => screen.classList.contains("active")))) failures.push(`${label}: prepared-time return did not activate timer`);
+          if ((await page.locator("#timer-time").textContent())?.trim() !== preparedTime) failures.push(`${label}: prepared-time return rerandomized the timer`);
+          if (!(await page.locator("#timer-start").isVisible())) failures.push(`${label}: prepared-time return did not reset timer to ready state`);
+          const retriedLayout = await page.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
+            className: ball.className,
+            left: ball.style.left,
+            top: ball.style.top,
+          })));
+          if (JSON.stringify(retriedLayout) !== JSON.stringify(preparedLayout)) failures.push(`${label}: prepared-time return changed the ball layout`);
+        }
         process.stdout.write(`PASS ${label}\n`);
       } catch (error) {
-        failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+        const message = `${label}: ${error instanceof Error ? error.message : String(error)}`;
+        failures.push(message);
+        process.stderr.write(`FAIL ${message}\n`);
       } finally {
         await context.close();
       }
+    }
+  }
+
+  if ((!editionFilter || editionFilter === "venue") && (!targetFilter || targetFilter === "desktop")) {
+    const operationContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await operationContext.addInitScript(() => {
+      try {
+        delete Navigator.prototype.serviceWorker;
+      } catch {
+        // Service Worker behavior is verified separately below.
+      }
+    });
+    const operationPage = await operationContext.newPage();
+    const label = "venue/operation-pause-resume-final-correction";
+    try {
+      await operationPage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await operationPage.waitForFunction(() => document.querySelectorAll("#operation-court option").length > 0);
+      await operationPage.locator("#operation-prepare").click();
+      await operationPage.locator("#operation-match-type").selectOption({ index: 1 });
+      const teamA = await operationPage.locator("#operation-team-a option").nth(0).textContent();
+      const teamB = await operationPage.locator("#operation-team-b option").nth(1).textContent();
+      if (!teamA || !teamB) throw new Error("operation_test_teams_unavailable");
+      await operationPage.locator("#operation-team-a").selectOption({ index: 0 });
+      await operationPage.locator("#operation-team-b").selectOption({ index: 1 });
+      await operationPage.locator("#operation-team-ok").click();
+      await operationPage.locator("#operation-start-check-confirm").click();
+      await operationPage.locator("#operation-ball-random").click();
+      await operationPage.locator("#operation-time-random").click();
+
+      const preparedTime = (await operationPage.locator("#dashboard-time").textContent())?.trim();
+      const preparedLayout = await operationPage.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
+        className: ball.className,
+        left: ball.style.left,
+        top: ball.style.top,
+      })));
+      await operationPage.locator("#operation-cancel-draw").click();
+      await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#operation-action-confirm", 450);
+      if (!(await operationPage.locator("#operation-action-dialog").isVisible())) failures.push(`${label}: short hold cancelled the match`);
+      await holdButton(operationPage, "#operation-action-confirm");
+      await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
+      await operationPage.locator('[data-screen="records"]').click();
+      await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
+      if (!(await operationPage.locator("#paused-operation-summary").textContent())?.includes("送信されていません")) failures.push(`${label}: paused match does not clearly state that it was not sent`);
+
+      await operationPage.reload({ waitUntil: "domcontentloaded" });
+      await operationPage.locator('[data-screen="records"]').click();
+      await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
+      await operationPage.locator("#paused-operation-resume").click();
+      await operationPage.locator("#operation-draw").waitFor({ state: "visible" });
+      if ((await operationPage.locator("#dashboard-time").textContent())?.trim() !== preparedTime) failures.push(`${label}: prepared time changed after reload and resume`);
+      const resumedLayout = await operationPage.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
+        className: ball.className,
+        left: ball.style.left,
+        top: ball.style.top,
+      })));
+      if (JSON.stringify(resumedLayout) !== JSON.stringify(preparedLayout)) failures.push(`${label}: ball layout changed after reload and resume`);
+      if (!(await operationPage.locator("#operation-ball-random").isDisabled()) || !(await operationPage.locator("#operation-time-random").isDisabled()) || await operationPage.locator("#operation-ready").isDisabled()) {
+        failures.push(`${label}: resumed draw controls are not locked to the completed state`);
+      }
+
+      for (let match = 1; match <= 3; match += 1) {
+        if (match > 1) {
+          await operationPage.locator("#operation-ball-random").click();
+          await operationPage.locator("#operation-time-random").click();
+        }
+        await operationPage.locator("#operation-ready").click();
+        await operationPage.locator("#operation-ready-confirm").click();
+        await operationPage.locator("#timer-start").click();
+        await operationPage.locator("#timer-end").click();
+        await operationPage.locator("#timer-end").click();
+        await operationPage.locator("#timer-end-confirm").click();
+        await operationPage.locator("#record-input").waitFor({ state: "visible" });
+        await operationPage.locator("#a-orange").selectOption("4");
+        await operationPage.locator("#a-purple").selectOption("1");
+        await operationPage.locator("#b-orange").selectOption("4");
+        await operationPage.locator("#b-purple").selectOption("1");
+
+        if (match === 1) {
+          await operationPage.locator("#operation-cancel-record").click();
+          await holdButton(operationPage, "#operation-action-confirm");
+          await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
+          await operationPage.reload({ waitUntil: "domcontentloaded" });
+          await operationPage.locator('[data-screen="records"]').click();
+          await operationPage.locator("#paused-operation-resume").click();
+          await operationPage.locator("#record-input").waitFor({ state: "visible" });
+          for (const selector of ["#a-orange", "#a-purple", "#b-orange", "#b-purple"]) {
+            const expected = selector.includes("orange") ? "4" : "1";
+            if (await operationPage.locator(selector).inputValue() !== expected) failures.push(`${label}: result input was not restored: ${selector}`);
+          }
+        }
+
+        await operationPage.locator("#record-save").click();
+        await operationPage.locator("#confirm-dialog").waitFor({ state: "visible" });
+        await operationPage.locator("#confirm-save").click();
+        if (match < 3) {
+          await operationPage.locator("#operation-between").waitFor({ state: "visible" });
+          await operationPage.locator("#operation-next-match").click();
+          await operationPage.locator("#operation-draw").waitFor({ state: "visible" });
+        }
+      }
+
+      await operationPage.locator("#final-results").waitFor({ state: "visible" });
+      await operationPage.locator("#final-meta-edit").click();
+      await operationPage.locator("#final-team-a-select").selectOption({ label: teamB.trim() });
+      await operationPage.locator("#final-team-b-select").selectOption({ label: teamA.trim() });
+      await operationPage.locator("#final-meta-save").click();
+      await operationPage.locator("#final-meta-confirm-dialog").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#final-meta-confirm-hold", 450);
+      if (!(await operationPage.locator("#final-meta-confirm-dialog").isVisible())) failures.push(`${label}: short hold applied final team correction`);
+      await holdButton(operationPage, "#final-meta-confirm-hold");
+      await operationPage.locator("#final-meta-confirm-dialog").waitFor({ state: "hidden" });
+      const finalTeams = await operationPage.locator("#final-matches .final-match-team strong").evaluateAll((elements) => elements.map((element) => element.textContent?.trim()));
+      if (finalTeams[0] !== teamB.trim() || finalTeams[1] !== teamA.trim()) failures.push(`${label}: corrected team names did not reach final match rows (${finalTeams.slice(0, 2).join(" / ")})`);
+      if (!(await operationPage.locator("#record-status").textContent())?.includes("両チームでもう一度確認")) failures.push(`${label}: final correction did not reset the agreement flow`);
+      process.stdout.write(`PASS ${label}\n`);
+    } catch (error) {
+      const message = `${label}: ${error instanceof Error ? error.message : String(error)}`;
+      failures.push(message);
+      process.stderr.write(`FAIL ${message}\n`);
+    } finally {
+      await operationContext.close();
     }
   }
 
@@ -302,6 +524,7 @@ try {
     const mainTotal = mainMinutes * 60 + mainSeconds;
     await refereePage.locator("#timer-start").click();
     await refereePage.waitForTimeout(30);
+    if (await refereePage.locator("#timer-start").isVisible()) failures.push("main-timer: pause control is visible after start");
     const mainCuePlan = await refereePage.evaluate(() => window.__timerAudioStarts.filter((_, index) => index % 3 === 0));
     const expectedMainFrequencies = [1568, 1760, 1397, 1397, 1397, 1397, 1397, 2093];
     const expectedMainOffsets = [30, mainTotal - 10, mainTotal - 5, mainTotal - 4, mainTotal - 3, mainTotal - 2, mainTotal - 1, mainTotal];
@@ -342,6 +565,9 @@ try {
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "05") failures.push("referee-timer: 5-count could not restart after count-area reset");
     await refereePage.waitForTimeout(5100);
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "00") failures.push("referee-timer: 5-count did not finish at 00");
+    await refereePage.locator("#referee-return-timer").click();
+    await refereePage.locator("#screen-timer").waitFor({ state: "visible" });
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "10") failures.push("referee-timer: returning to the timer did not reset the countdown");
     process.stdout.write("PASS referee-timer/countdown-timing\n");
   } catch (error) {
     failures.push(`referee-timer/countdown-timing: ${error instanceof Error ? error.message : String(error)}`);
