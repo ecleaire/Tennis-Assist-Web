@@ -620,7 +620,8 @@ try {
       if (!("serviceWorker" in navigator)) throw new Error("service_worker_unavailable");
       await navigator.serviceWorker.ready;
     });
-    await page.reload({ waitUntil: "networkidle" });
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 20_000 });
+    await page.locator("#operation-prepare").waitFor({ state: "visible", timeout: 5_000 });
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.locator("#operation-prepare").waitFor({ state: "visible", timeout: 5_000 });
