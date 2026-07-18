@@ -115,6 +115,20 @@ try {
           if (widthState.scroll > widthState.client + 2) {
             failures.push(`${label}: ${screen} horizontal overflow ${widthState.scroll}/${widthState.client}`);
           }
+          if (screen === "timer") {
+            for (const selector of ["#timer-ten", "#timer-five"]) {
+              if (!(await page.locator(selector).isVisible())) failures.push(`${label}: normal timer control is hidden: ${selector}`);
+              const box = await page.locator(selector).boundingBox();
+              if (!box || box.width < 44 || box.height < 44) failures.push(`${label}: normal timer control is too small: ${selector} ${JSON.stringify(box)}`);
+            }
+          }
+          if (screen === "referee") {
+            for (const selector of ["#referee-ten", "#referee-five"]) {
+              if (!(await page.locator(selector).isVisible())) failures.push(`${label}: referee timer control is hidden: ${selector}`);
+              const box = await page.locator(selector).boundingBox();
+              if (!box || box.width < 44 || box.height < 44) failures.push(`${label}: referee timer control is too small: ${selector} ${JSON.stringify(box)}`);
+            }
+          }
         }
 
         await page.evaluate((screen) => {
@@ -274,6 +288,27 @@ try {
   const refereePage = await refereeContext.newPage();
   try {
     await refereePage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await refereePage.evaluate(() => {
+      const button = document.querySelector('[data-screen="timer"]');
+      if (button instanceof HTMLElement) button.click();
+    });
+    const mainTimerText = (await refereePage.locator("#timer-time").textContent())?.trim() || "00 : 00";
+    const [mainMinutes, mainSeconds] = mainTimerText.split(":").map((part) => Number.parseInt(part.trim(), 10));
+    const mainTotal = mainMinutes * 60 + mainSeconds;
+    await refereePage.locator("#timer-start").click();
+    await refereePage.waitForTimeout(30);
+    const mainCuePlan = await refereePage.evaluate(() => window.__timerAudioStarts.filter((_, index) => index % 3 === 0));
+    const expectedMainFrequencies = [1568, 1760, 1397, 1397, 1397, 1397, 1397, 2093];
+    const expectedMainOffsets = [30, mainTotal - 10, mainTotal - 5, mainTotal - 4, mainTotal - 3, mainTotal - 2, mainTotal - 1, mainTotal];
+    const mainCueOffsets = mainCuePlan.map((cue) => cue.when - 100);
+    const mainFrequencies = mainCuePlan.map((cue) => cue.frequency);
+    if (JSON.stringify(mainFrequencies) !== JSON.stringify(expectedMainFrequencies)) failures.push(`main-timer: audio pitches are incorrect (${mainFrequencies.join(",")})`);
+    if (mainCueOffsets.length !== expectedMainOffsets.length || mainCueOffsets.some((offset, index) => Math.abs(offset - expectedMainOffsets[index]) > 0.08)) {
+      failures.push(`main-timer: audio offsets are incorrect (${mainCueOffsets.map((offset) => offset.toFixed(3)).join(",")}; expected ${expectedMainOffsets.join(",")})`);
+    }
+    if (!(await refereePage.locator("#timer-ten").isVisible()) || !(await refereePage.locator("#timer-five").isVisible())) failures.push("main-timer: manual countdown controls disappeared");
+    process.stdout.write("PASS main-timer/audio-schedule\n");
+    await refereePage.evaluate(() => { window.__timerAudioStarts = []; });
     await refereePage.evaluate(() => {
       const button = document.querySelector('[data-screen="referee"]');
       if (button instanceof HTMLElement) button.click();
