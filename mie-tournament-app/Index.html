@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1730">
+  <title>WRO三重大会 編成管理</title>
+  <style>
+    :root {
+      --bg: #081329;
+      --surface: #111f3a;
+      --surface-strong: #192b4d;
+      --line: #36547f;
+      --text: #f5f8ff;
+      --muted: #afc0da;
+      --accent: #36a7ff;
+      --accent-strong: #1687dc;
+      --success: #51d88a;
+      --warning: #ffc55c;
+      --danger: #ff6b74;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { color-scheme: dark; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+      letter-spacing: 0;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    button, input, select { font: inherit; letter-spacing: 0; }
+
+    button, select, input[type="time"], input[type="text"], input[type="password"] {
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-strong);
+      color: var(--text);
+    }
+
+    button {
+      padding: 10px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    button.primary { background: var(--accent-strong); border-color: var(--accent); }
+    button.success { background: #166b45; border-color: var(--success); }
+    button.secondary { background: var(--surface); }
+    button.danger { border-color: var(--danger); color: #ffd9dc; }
+
+    select, input[type="time"], input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 9px 12px;
+    }
+
+    .shell { width: min(1480px, 100%); margin: 0 auto; }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 82px;
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 19, 41, .96);
+    }
+
+    .eyebrow { margin: 0 0 4px; color: var(--accent); font-size: 12px; font-weight: 900; }
+    h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .status-band {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--line);
+      background: #0d1b34;
+    }
+
+    .status-message { min-width: 0; color: var(--muted); font-weight: 700; }
+    .status-message.success { color: var(--success); }
+    .status-message.error { color: var(--danger); }
+    .status-message.warning { color: var(--warning); }
+    .updated-at { color: var(--muted); white-space: nowrap; font-size: 13px; }
+
+    .warning-banner {
+      margin: 14px 22px 0;
+      padding: 12px 14px;
+      border: 1px solid #a66e14;
+      border-radius: var(--radius);
+      background: #352810;
+      color: #ffe2a6;
+      font-weight: 700;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 16px 22px 0;
+    }
+
+    .tab { background: var(--surface); }
+    .tab[aria-selected="true"] { background: var(--accent-strong); border-color: var(--accent); }
+
+    .workspace { padding: 20px 22px 36px; }
+    .view[hidden] { display: none; }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-heading h2 { margin: 0; font-size: clamp(22px, 3vw, 31px); }
+    .section-heading p { margin: 5px 0 0; color: var(--muted); }
+    .section-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .group-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .group-panel { border-top: 4px solid var(--accent); padding-top: 12px; min-width: 0; }
+    .group-panel h3 { margin: 0 0 10px; font-size: 23px; }
+    .group-help { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+
+    .group-row {
+      display: grid;
+      grid-template-columns: 58px minmax(180px, 1fr) repeat(5, minmax(62px, auto));
+      align-items: center;
+      gap: 8px;
+      min-height: 68px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .group-id { font-size: 20px; font-weight: 900; color: var(--accent); }
+    .metric { text-align: center; min-width: 0; }
+    .metric-label { display: block; color: var(--muted); font-size: 11px; }
+    .metric-value { display: block; margin-top: 3px; font-size: 17px; font-weight: 900; }
+    .seed { color: var(--success); }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+    th { background: var(--surface); color: var(--muted); font-size: 13px; white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+    td.match-id { width: 76px; color: var(--accent); font-weight: 900; white-space: nowrap; }
+    td.phase { width: 176px; font-weight: 800; }
+    td.time { width: 130px; }
+    td.winner { min-width: 140px; color: var(--success); font-weight: 800; }
+    td.winner select { min-width: 150px; }
+
+    .bracket {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(260px, 1fr));
+      gap: 28px;
+      align-items: center;
+      min-height: 600px;
+    }
+
+    .round { display: grid; gap: 26px; align-content: center; }
+    .round h3 { margin: 0 0 3px; text-align: center; color: var(--muted); }
+    .match-card {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .match-card + .match-card { margin-top: 8px; }
+    .match-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .match-name { font-weight: 900; }
+    .match-time { color: var(--warning); font-weight: 800; }
+    .versus { margin: 6px 0; text-align: center; color: var(--muted); font-weight: 900; }
+    .match-result { margin-top: 10px; color: var(--success); font-weight: 800; min-height: 22px; }
+
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 15;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 22px max(12px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(8, 19, 41, .96);
+    }
+
+    dialog {
+      width: min(500px, calc(100vw - 28px));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0;
+    }
+
+    dialog::backdrop { background: rgba(0, 5, 16, .78); }
+    .dialog-body { padding: 22px; }
+    .dialog-body h2 { margin: 0 0 10px; }
+    .dialog-body p { color: var(--muted); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      background: rgba(3, 10, 24, .72);
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .loading-overlay[hidden] { display: none; }
+
+    @media (max-width: 980px) {
+      .group-grid { grid-template-columns: 1fr; }
+      .bracket { grid-template-columns: 1fr; min-height: auto; gap: 18px; }
+      .round { gap: 12px; }
+      .group-row { grid-template-columns: 54px minmax(180px, 1fr) repeat(3, 70px); }
+      .group-row .metric:nth-last-child(-n+2) { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .app-header { position: static; align-items: flex-start; padding: 12px; }
+      .header-actions { max-width: 150px; }
+      .header-actions button { min-height: 42px; padding: 8px 10px; }
+      .status-band { grid-template-columns: 1fr; padding: 10px 12px; }
+      .tabs { padding: 12px 12px 0; }
+      .tab { padding: 8px 6px; font-size: 14px; }
+      .workspace { padding: 16px 12px 28px; }
+      .section-heading { align-items: flex-start; flex-direction: column; }
+      .section-actions { width: 100%; }
+      .section-actions button { flex: 1 1 150px; }
+      .group-row { grid-template-columns: 48px minmax(0, 1fr) 62px; }
+      .group-row .metric { display: none; }
+      .group-row .metric:first-of-type { display: block; }
+      .save-bar { padding-left: 12px; padding-right: 12px; }
+      .save-bar button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">WRO MIE / TOURNAMENT OPERATIONS</p>
+        <h1>大会編成・進行管理</h1>
+      </div>
+      <div class="header-actions">
+        <button id="refreshButton" class="secondary" type="button">更新</button>
+        <button id="spreadsheetButton" class="secondary" type="button">スプレッドシート</button>
+        <button id="editButton" class="primary" type="button">管理編集</button>
+      </div>
+    </header>
+
+    <div class="status-band" aria-live="polite">
+      <div id="statusMessage" class="status-message">大会情報を読み込んでいます。</div>
+      <div id="updatedAt" class="updated-at"></div>
+    </div>
+    <div id="securityNotice" class="warning-banner" hidden></div>
+
+    <nav class="tabs" aria-label="大会管理画面">
+      <button class="tab" type="button" data-view="groups" aria-selected="true">グループ分け</button>
+      <button class="tab" type="button" data-view="schedule" aria-selected="false">タイムスケジュール</button>
+      <button class="tab" type="button" data-view="tournament" aria-selected="false">トーナメント</button>
+    </nav>
+
+    <main class="workspace">
+      <section id="groupsView" class="view"></section>
+      <section id="scheduleView" class="view" hidden></section>
+      <section id="tournamentView" class="view" hidden></section>
+    </main>
+
+    <div class="save-bar">
+      <button id="discardButton" class="secondary" type="button">再読込</button>
+      <button id="saveButton" class="primary" type="button">変更を保存</button>
+    </div>
+  </div>
+
+  <dialog id="editDialog">
+    <form id="editForm" class="dialog-body" method="dialog">
+      <h2>管理編集</h2>
+      <p id="editDescription">編集キーを入力してください。</p>
+      <label for="editorKey">編集キー</label>
+      <input id="editorKey" type="password" autocomplete="current-password">
+      <div class="dialog-actions">
+        <button class="secondary" type="button" data-close-dialog>閉じる</button>
+        <button class="primary" type="submit">編集を有効にする</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="loadingOverlay" class="loading-overlay">処理中です...</div>
+
+  <script>
+    var appState = null;
+    var editorKey = sessionStorage.getItem('mieTournamentEditorKey') || '';
+    var activeView = 'groups';
+    var isDirty = false;
+    var PLACEHOLDERS = ['未定', 'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者', 'Aグループ1位', 'Bグループ1位'];
+
+    document.addEventListener('DOMContentLoaded', initialize);
+
+    function initialize() {
+      document.getElementById('refreshButton').addEventListener('click', loadState);
+      document.getElementById('discardButton').addEventListener('click', loadState);
+      document.getElementById('saveButton').addEventListener('click', saveState);
+      document.getElementById('editButton').addEventListener('click', openEditDialog);
+      document.getElementById('spreadsheetButton').addEventListener('click', openSpreadsheet);
+      document.getElementById('editForm').addEventListener('submit', submitEditorKey);
+      document.querySelectorAll('[data-close-dialog]').forEach(function(button) {
+        button.addEventListener('click', function() { document.getElementById('editDialog').close(); });
+      });
+      document.querySelectorAll('.tab').forEach(function(button) {
+        button.addEventListener('click', function() { showView(button.dataset.view); });
+      });
+      window.addEventListener('beforeunload', function(event) {
+        if (!isDirty) return;
+        event.preventDefault();
+        event.returnValue = '';
+      });
+      loadState();
+    }
+
+    function callServer(method) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function(resolve, reject) {
+        if (!window.google || !google.script || !google.script.run) {
+          reject(new Error('Google Apps ScriptのWebアプリから開いてください。'));
+          return;
+        }
+        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
+          reject(new Error(error && error.message ? error.message : 'GASとの通信に失敗しました。'));
+        });
+        var serverMethod = runner[method];
+        if (typeof serverMethod !== 'function') {
+          reject(new Error('GASの処理「' + method + '」を呼び出せません。'));
+          return;
+        }
+        serverMethod.apply(runner, args);
+      });
+    }
+
+    async function loadState() {
+      setLoading(true);
+      try {
+        var response = await callServer('getCompetitionState', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '大会情報を取得できませんでした。');
+        appState = response;
+        isDirty = false;
+        render();
+        setStatus(response.canEdit ? '編集可能です。' : '閲覧モードです。', response.canEdit ? 'success' : '');
+      } catch (error) {
+        setStatus(error.message, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function render() {
+      document.getElementById('updatedAt').textContent = appState.updatedAt ? '更新 ' + appState.updatedAt : '';
+      document.getElementById('editButton').textContent = appState.canEdit ? '編集モード' : '管理編集';
+      document.getElementById('saveButton').disabled = !appState.canEdit;
+      document.getElementById('discardButton').disabled = false;
+      var notice = document.getElementById('securityNotice');
+      notice.hidden = !appState.securityNotice;
+      notice.textContent = appState.securityNotice || '';
+      renderGroups();
+      renderSchedule();
+      renderTournament();
+      showView(activeView);
+    }
+
+    function renderGroups() {
+      var container = document.getElementById('groupsView');
+      container.textContent = '';
+      container.appendChild(createSectionHeading('グループ分け', '6チームを3チームずつに分け、A1〜A3・B1〜B3を割り当てます。', [
+        createButton('ランダムに組み分け', 'success', randomizeGroups, !appState.canEdit)
+      ]));
+      var help = document.createElement('p');
+      help.className = 'group-help';
+      help.textContent = '各グループ内で総当たりを行います。順位1位がトーナメントのシードです。必要ならチーム欄を直接変更できます。';
+      container.appendChild(help);
+
+      var grid = document.createElement('div');
+      grid.className = 'group-grid';
+      ['A', 'B'].forEach(function(groupId) {
+        var panel = document.createElement('article');
+        panel.className = 'group-panel';
+        var title = document.createElement('h3');
+        title.textContent = groupId + 'グループ';
+        panel.appendChild(title);
+        appState.groups.filter(function(row) { return row.group === groupId; }).forEach(function(group) {
+          panel.appendChild(createGroupRow(group));
+        });
+        grid.appendChild(panel);
+      });
+      container.appendChild(grid);
+    }
+
+    function createGroupRow(group) {
+      var standing = appState.standings.find(function(row) { return row.id === group.id; }) || {};
+      var row = document.createElement('div');
+      row.className = 'group-row';
+
+      var id = document.createElement('div');
+      id.className = 'group-id';
+      id.textContent = group.id;
+      row.appendChild(id);
+
+      var select = createTeamSelect(group.team, false);
+      select.disabled = !appState.canEdit;
+      select.setAttribute('aria-label', group.id + 'のチーム');
+      select.addEventListener('change', function() {
+        group.team = select.value;
+        syncGroupSchedule();
+        markDirty();
+        renderGroups();
+      });
+      row.appendChild(select);
+
+      row.appendChild(createMetric('勝ち点', standing.points || 0));
+      row.appendChild(createMetric('得点', standing.score || 0));
+      row.appendChild(createMetric('紫', standing.purple || 0));
+      row.appendChild(createMetric('違反', standing.violations || 0));
+      row.appendChild(createMetric('順位', standing.rank ? standing.rank + '位' : '-', standing.seed ? 'seed' : ''));
+      return row;
+    }
+
+    function renderSchedule() {
+      var container = document.getElementById('scheduleView');
+      container.textContent = '';
+      container.appendChild(createSectionHeading('タイムスケジュール', '全試合はAコートで実施します。開始時間と対戦枠は手動で変更できます。', []));
+
+      var wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th>試合ID</th><th>区分</th><th>開始時間</th><th>チーム1</th><th>チーム2</th><th>結果</th><th>メモ</th></tr></thead>';
+      var body = document.createElement('tbody');
+      appState.schedule.forEach(function(match) { body.appendChild(createScheduleRow(match)); });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      container.appendChild(wrap);
+    }
+
+    function createScheduleRow(match) {
+      var row = document.createElement('tr');
+      appendTextCell(row, match.id, 'match-id');
+      appendTextCell(row, match.phase, 'phase');
+
+      var timeCell = document.createElement('td');
+      timeCell.className = 'time';
+      var time = document.createElement('input');
+      time.type = 'time';
+      time.value = normalizeTime(match.startTime);
+      time.disabled = !appState.canEdit;
+      time.setAttribute('aria-label', match.id + 'の開始時間');
+      time.addEventListener('change', function() { match.startTime = time.value; markDirty(); });
+      timeCell.appendChild(time);
+      row.appendChild(timeCell);
+
+      row.appendChild(createSelectCell(match, 'team1'));
+      row.appendChild(createSelectCell(match, 'team2'));
+
+      var winner = document.createElement('td');
+      winner.className = 'winner';
+      var winnerSelect = createWinnerSelect(match);
+      winner.appendChild(winnerSelect);
+      row.appendChild(winner);
+
+      var noteCell = document.createElement('td');
+      var note = document.createElement('input');
+      note.type = 'text';
+      note.value = match.note || '';
+      note.maxLength = 100;
+      note.disabled = !appState.canEdit;
+      note.setAttribute('aria-label', match.id + 'のメモ');
+      note.addEventListener('input', function() { match.note = note.value; markDirty(); });
+      noteCell.appendChild(note);
+      row.appendChild(noteCell);
+      return row;
+    }
+
+    function renderTournament() {
+      var container = document.getElementById('tournamentView');
+      container.textContent = '';
+      container.appendChild(createSectionHeading('決勝トーナメント', '各グループ1位をシードとし、準決勝の組み合わせは自由に変更できます。', [
+        createButton('順位から初期配置', 'success', applyRecommendedBracket, !appState.canEdit)
+      ]));
+
+      var bracket = document.createElement('div');
+      bracket.className = 'bracket';
+      bracket.appendChild(createRound('1回戦', ['T-1', 'T-2']));
+      bracket.appendChild(createRound('準決勝', ['SF-1', 'SF-2']));
+      bracket.appendChild(createRound('決勝', ['F-1']));
+      container.appendChild(bracket);
+    }
+
+    function createRound(titleText, ids) {
+      var round = document.createElement('section');
+      round.className = 'round';
+      var title = document.createElement('h3');
+      title.textContent = titleText;
+      round.appendChild(title);
+      ids.forEach(function(id) {
+        var match = appState.schedule.find(function(row) { return row.id === id; });
+        if (match) round.appendChild(createMatchCard(match));
+      });
+      return round;
+    }
+
+    function createMatchCard(match) {
+      var card = document.createElement('article');
+      card.className = 'match-card';
+      var head = document.createElement('div');
+      head.className = 'match-head';
+      var name = document.createElement('span');
+      name.className = 'match-name';
+      name.textContent = match.id + ' / ' + match.phase;
+      var time = document.createElement('span');
+      time.className = 'match-time';
+      time.textContent = match.startTime || '時刻未設定';
+      head.appendChild(name);
+      head.appendChild(time);
+      card.appendChild(head);
+
+      ['team1', 'team2'].forEach(function(field, index) {
+        var select = createTeamSelect(match[field], true);
+        select.disabled = !appState.canEdit;
+        select.setAttribute('aria-label', match.id + 'のチーム' + (index + 1));
+        select.addEventListener('change', function() { match[field] = select.value; markDirty(); renderTournament(); });
+        card.appendChild(select);
+        if (index === 0) {
+          var versus = document.createElement('div');
+          versus.className = 'versus';
+          versus.textContent = 'VS';
+          card.appendChild(versus);
+        }
+      });
+      var result = document.createElement('div');
+      result.className = 'match-result';
+      result.textContent = match.winner ? '結果: ' + match.winner : (match.resultStatus || '未実施');
+      card.appendChild(result);
+      var winnerLabel = document.createElement('label');
+      winnerLabel.className = 'metric-label';
+      winnerLabel.textContent = '勝者を手動指定';
+      card.appendChild(winnerLabel);
+      var winnerSelect = createWinnerSelect(match);
+      card.appendChild(winnerSelect);
+      return card;
+    }
+
+    function createWinnerSelect(match) {
+      var select = document.createElement('select');
+      select.setAttribute('aria-label', match.id + 'の勝者');
+      var values = ['', match.team1 || '', match.team2 || '', '引き分け', '未定'];
+      unique(values).forEach(function(value) {
+        if (!value) return;
+        var option = document.createElement('option');
+        option.value = value;
+        option.textContent = value === '未定' ? '自動判定 / 未定' : value;
+        option.selected = value === (match.winnerOverride || '');
+        select.appendChild(option);
+      });
+      var automatic = document.createElement('option');
+      automatic.value = '';
+      automatic.textContent = '自動判定';
+      automatic.selected = !match.winnerOverride;
+      select.insertBefore(automatic, select.firstChild);
+      select.disabled = !appState.canEdit;
+      select.addEventListener('change', function() {
+        match.winnerOverride = select.value;
+        match.winner = select.value || match.winner || '';
+        markDirty();
+        if (activeView === 'tournament') renderTournament();
+      });
+      return select;
+    }
+
+    function createSectionHeading(titleText, description, buttons) {
+      var heading = document.createElement('div');
+      heading.className = 'section-heading';
+      var copy = document.createElement('div');
+      var title = document.createElement('h2');
+      title.textContent = titleText;
+      var paragraph = document.createElement('p');
+      paragraph.textContent = description;
+      copy.appendChild(title);
+      copy.appendChild(paragraph);
+      heading.appendChild(copy);
+      if (buttons.length) {
+        var actions = document.createElement('div');
+        actions.className = 'section-actions';
+        buttons.forEach(function(button) { actions.appendChild(button); });
+        heading.appendChild(actions);
+      }
+      return heading;
+    }
+
+    function createButton(label, className, handler, disabled) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = className;
+      button.textContent = label;
+      button.disabled = Boolean(disabled);
+      button.addEventListener('click', handler);
+      return button;
+    }
+
+    function createMetric(label, value, className) {
+      var metric = document.createElement('div');
+      metric.className = 'metric ' + (className || '');
+      var labelElement = document.createElement('span');
+      labelElement.className = 'metric-label';
+      labelElement.textContent = label;
+      var valueElement = document.createElement('span');
+      valueElement.className = 'metric-value';
+      valueElement.textContent = value;
+      metric.appendChild(labelElement);
+      metric.appendChild(valueElement);
+      return metric;
+    }
+
+    function createTeamSelect(value, includePlaceholders) {
+      var select = document.createElement('select');
+      var options = [''].concat(appState.teams || []);
+      if (includePlaceholders) options = options.concat(PLACEHOLDERS);
+      unique(options).forEach(function(optionValue) {
+        var option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionValue || '未選択';
+        option.selected = optionValue === (value || '');
+        select.appendChild(option);
+      });
+      return select;
+    }
+
+    function createSelectCell(match, field) {
+      var cell = document.createElement('td');
+      var select = createTeamSelect(match[field], true);
+      select.disabled = !appState.canEdit;
+      select.setAttribute('aria-label', match.id + 'の' + (field === 'team1' ? 'チーム1' : 'チーム2'));
+      select.addEventListener('change', function() { match[field] = select.value; markDirty(); });
+      cell.appendChild(select);
+      return cell;
+    }
+
+    function appendTextCell(row, value, className) {
+      var cell = document.createElement('td');
+      cell.className = className || '';
+      cell.textContent = value || '';
+      row.appendChild(cell);
+    }
+
+    function showView(view) {
+      activeView = view;
+      ['groups', 'schedule', 'tournament'].forEach(function(name) {
+        document.getElementById(name + 'View').hidden = name !== view;
+      });
+      document.querySelectorAll('.tab').forEach(function(button) {
+        button.setAttribute('aria-selected', String(button.dataset.view === view));
+      });
+    }
+
+    function syncGroupSchedule() {
+      var assignments = {};
+      appState.groups.forEach(function(group) { assignments[group.id] = group.team; });
+      var pairs = {
+        'A-1': ['A1', 'A2'], 'A-2': ['A2', 'A3'], 'A-3': ['A3', 'A1'],
+        'B-1': ['B1', 'B2'], 'B-2': ['B2', 'B3'], 'B-3': ['B3', 'B1']
+      };
+      appState.schedule.forEach(function(match) {
+        if (!pairs[match.id]) return;
+        match.team1 = assignments[pairs[match.id][0]] || '';
+        match.team2 = assignments[pairs[match.id][1]] || '';
+        match.winner = '';
+        match.winnerOverride = '';
+      });
+    }
+
+    async function randomizeGroups() {
+      if (!confirm('6チームをランダムにA・Bグループへ分けます。現在の組分けを変更しますか？')) return;
+      setLoading(true);
+      try {
+        var response = await callServer('randomizeGroups', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '組分けに失敗しました。');
+        appState = response;
+        isDirty = false;
+        render();
+        setStatus('グループ分けを更新しました。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    async function applyRecommendedBracket() {
+      if (!confirm('現在のグループ順位から初期トーナメント配置を作成します。手動変更中の対戦枠は上書きされます。')) return;
+      setLoading(true);
+      try {
+        var response = await callServer('applyRecommendedBracket', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '初期配置を作成できませんでした。');
+        appState = response;
+        isDirty = false;
+        render();
+        showView('tournament');
+        setStatus('順位から初期トーナメント配置を作成しました。必要に応じて手動変更できます。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    async function saveState() {
+      if (!appState || !appState.canEdit) return;
+      if (!confirm('グループ・時刻・トーナメント枠の変更を保存しますか？')) return;
+      setLoading(true);
+      try {
+        var payload = { groups: appState.groups, schedule: appState.schedule };
+        var response = await callServer('saveCompetitionState', payload, editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '保存に失敗しました。');
+        appState = response;
+        isDirty = false;
+        render();
+        setStatus('大会編成を保存しました。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    function openEditDialog() {
+      if (!appState) return;
+      if (!appState.editorKeyRequired) {
+        appState.canEdit = true;
+        render();
+        setStatus('編集キーが未設定のため、編集モードを有効にしました。', 'warning');
+        return;
+      }
+      document.getElementById('editorKey').value = editorKey;
+      document.getElementById('editDialog').showModal();
+    }
+
+    async function submitEditorKey(event) {
+      event.preventDefault();
+      var candidate = document.getElementById('editorKey').value;
+      setLoading(true);
+      try {
+        var response = await callServer('authorizeEditor', candidate);
+        if (!response || !response.success) throw new Error(response && response.message || '編集キーを確認できませんでした。');
+        editorKey = candidate;
+        sessionStorage.setItem('mieTournamentEditorKey', editorKey);
+        document.getElementById('editDialog').close();
+        await loadState();
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    function openSpreadsheet() {
+      if (!appState || !appState.spreadsheetUrl) return;
+      window.open(appState.spreadsheetUrl, '_blank', 'noopener');
+    }
+
+    function markDirty() {
+      isDirty = true;
+      setStatus('未保存の変更があります。', 'warning');
+    }
+
+    function setStatus(message, type) {
+      var element = document.getElementById('statusMessage');
+      element.className = 'status-message ' + (type || '');
+      element.textContent = message;
+    }
+
+    function setLoading(loading) {
+      document.getElementById('loadingOverlay').hidden = !loading;
+    }
+
+    function normalizeTime(value) {
+      var match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+      if (!match) return '';
+      return String(match[1]).padStart(2, '0') + ':' + match[2];
+    }
+
+    function unique(values) {
+      return values.filter(function(value, index) { return values.indexOf(value) === index; });
+    }
+  </script>
+</body>
+</html>
