@@ -462,7 +462,7 @@
     .bracket-canvas {
       position: relative;
       width: 1080px;
-      height: 470px;
+      height: 560px;
       margin: 0 auto;
     }
     .bracket-lines {
@@ -470,7 +470,7 @@
       inset: 0;
       z-index: 1;
       width: 1080px;
-      height: 470px;
+      height: 560px;
       overflow: visible;
       pointer-events: none;
     }
@@ -602,8 +602,17 @@
         padding: 4px 18px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .eyebrow,
-      body[data-active-view="tournament"]:not(.is-editing) .status-band,
-      body[data-active-view="tournament"]:not(.is-editing) .section-heading { display: none; }
+      body[data-active-view="tournament"]:not(.is-editing) .status-band { display: none; }
+      body[data-active-view="tournament"]:not(.is-editing) .section-heading {
+        display: flex;
+        min-height: 0;
+        margin-bottom: 6px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .section-heading > div:first-child { display: none; }
+      body[data-active-view="tournament"]:not(.is-editing) .section-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
       body[data-active-view="tournament"]:not(.is-editing) h1 { font-size: 22px; }
       body[data-active-view="tournament"]:not(.is-editing) .header-actions button {
         min-height: 38px;
@@ -618,6 +627,11 @@
       body[data-active-view="tournament"]:not(.is-editing) .tournament-tree {
         min-width: 1120px;
         padding: 6px 26px 10px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .bracket-canvas {
+        transform: scaleY(.8);
+        transform-origin: top center;
+        margin-bottom: -112px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .champion-banner {
         width: min(720px, 66%);
@@ -744,6 +758,119 @@
       .save-bar { padding-left: 12px; padding-right: 12px; }
       .save-bar button { flex: 1; }
     }
+
+    .tournament-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+    .tournament-options label {
+      display: grid;
+      gap: 5px;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .tournament-options select { min-height: 42px; }
+    .tournament-options .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      align-self: end;
+      min-height: 42px;
+    }
+    .tournament-options input[type="checkbox"] { width: 20px; height: 20px; }
+    .display-schedule-block { margin-top: 28px; }
+    .display-schedule-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .display-schedule-heading h3 { margin: 0; }
+    .display-schedule-table { min-width: 0 !important; }
+    .display-schedule-table th,
+    .display-schedule-table td { font-size: 16px; }
+    .display-schedule-table td:nth-child(2) { white-space: nowrap; }
+    .display-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      overflow: auto;
+      padding: 18px 22px 28px;
+      background: #dff3ff;
+      color: #111820;
+    }
+    .display-fullscreen[hidden] { display: none; }
+    .display-fullscreen-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      max-width: 1180px;
+      margin: 0 auto 10px;
+    }
+    .display-fullscreen-toolbar strong { font-size: clamp(22px, 3vw, 38px); }
+    .display-fullscreen-body { max-width: 1180px; margin: 0 auto; }
+    .display-fullscreen .tournament-tree { border-color: #111820; }
+    .display-fullscreen .bracket-canvas {
+      margin: 0 auto;
+      transform: none !important;
+      margin-bottom: 0 !important;
+    }
+    .display-fullscreen .display-schedule-table {
+      width: 100%;
+      background: #ffffff;
+      border: 2px solid #111820;
+    }
+    .display-fullscreen .display-schedule-table th,
+    .display-fullscreen .display-schedule-table td {
+      color: #111820;
+      border-color: #8aa9ba;
+    }
+    .bracket-line.is-third-place {
+      stroke: #657a87;
+      stroke-dasharray: 8 6;
+      stroke-width: 3;
+    }
+    .bracket-third-place-label {
+      position: absolute;
+      z-index: 3;
+      top: 236px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 3px 9px;
+      border: 2px solid #657a87;
+      background: #ffffff;
+      color: #111820;
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    html.is-display-fullscreen,
+    html.is-display-fullscreen body { overflow: hidden; }
+    .bracket-flat .bracket-team {
+      height: 132px;
+      padding: 8px 12px;
+      white-space: normal;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+    }
+    .bracket-flat .bracket-team.is-long { font-size: 16px; }
+    .bracket-flat .bracket-team.is-very-long { font-size: 13px; }
+    @media (max-width: 720px) {
+      .tournament-options { grid-template-columns: 1fr; }
+      .display-fullscreen { padding: 12px; }
+      .display-fullscreen-toolbar { align-items: flex-start; }
+      .display-fullscreen-toolbar strong { font-size: 22px; }
+    }
   </style>
 </head>
 <body>
@@ -778,10 +905,18 @@
       <section id="tournamentView" class="view" hidden></section>
     </main>
 
-    <div class="save-bar">
+  <div class="save-bar">
       <button id="discardButton" class="secondary" type="button">再読込</button>
       <button id="saveButton" class="primary" type="button">変更を保存</button>
     </div>
+  </div>
+
+  <div id="displayFullscreen" class="display-fullscreen" hidden>
+    <div class="display-fullscreen-toolbar">
+      <strong id="displayFullscreenTitle"></strong>
+      <button id="displayFullscreenClose" class="secondary" type="button">全画面解除</button>
+    </div>
+    <div id="displayFullscreenBody" class="display-fullscreen-body"></div>
   </div>
 
   <dialog id="editDialog">
@@ -805,7 +940,11 @@
     var activeView = 'groups';
     var isDirty = false;
     var editModeActive = false;
-    var PLACEHOLDERS = ['未定', 'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者', 'Aグループ1位', 'Bグループ1位'];
+    var PLACEHOLDERS = [
+      '未定', 'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者',
+      'SF-1 敗者', 'SF-2 敗者', '3P-1 勝者', '3P-1 敗者',
+      'Aグループ1位', 'Bグループ1位'
+    ];
 
     document.addEventListener('DOMContentLoaded', initialize);
 
@@ -815,6 +954,7 @@
       document.getElementById('saveButton').addEventListener('click', saveState);
       document.getElementById('editButton').addEventListener('click', openEditDialog);
       document.getElementById('spreadsheetButton').addEventListener('click', openSpreadsheet);
+      document.getElementById('displayFullscreenClose').addEventListener('click', closeDisplayFullscreen);
       document.getElementById('editForm').addEventListener('submit', submitEditorKey);
       document.querySelectorAll('[data-close-dialog]').forEach(function(button) {
         button.addEventListener('click', function() { document.getElementById('editDialog').close(); });
@@ -827,6 +967,7 @@
         event.preventDefault();
         event.returnValue = '';
       });
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
       loadState();
     }
 
@@ -946,10 +1087,50 @@
       var table = document.createElement('table');
       table.innerHTML = '<thead><tr><th>試合ID</th><th>区分</th><th>開始時間</th><th>チーム1</th><th>チーム2</th><th>結果</th><th>メモ</th></tr></thead>';
       var body = document.createElement('tbody');
-      appState.schedule.forEach(function(match) { body.appendChild(createScheduleRow(match)); });
+      appState.schedule.filter(isVisibleScheduleMatch).forEach(function(match) {
+        body.appendChild(createScheduleRow(match));
+      });
       table.appendChild(body);
       wrap.appendChild(table);
       container.appendChild(wrap);
+
+      var displayBlock = document.createElement('section');
+      displayBlock.className = 'display-schedule-block';
+      var displayHeading = document.createElement('div');
+      displayHeading.className = 'display-schedule-heading';
+      var displayTitle = document.createElement('h3');
+      displayTitle.textContent = '表示用タイムスケジュール';
+      displayHeading.appendChild(displayTitle);
+      displayHeading.appendChild(createButton('全画面表示', 'secondary', function() {
+        openDisplayFullscreen('schedule');
+      }, false));
+      displayBlock.appendChild(displayHeading);
+      displayBlock.appendChild(createDisplayScheduleTable());
+      container.appendChild(displayBlock);
+    }
+
+    function isVisibleScheduleMatch(match) {
+      return Boolean(match) && (appState.thirdPlaceEnabled || match.id !== '3P-1');
+    }
+
+    function createDisplayScheduleTable() {
+      var wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.className = 'display-schedule-table';
+      table.innerHTML = '<thead><tr><th>区分</th><th>開始時間</th><th>チーム1</th><th>チーム2</th></tr></thead>';
+      var body = document.createElement('tbody');
+      appState.schedule.filter(isVisibleScheduleMatch).forEach(function(match) {
+        var row = document.createElement('tr');
+        appendTextCell(row, match.phase || match.id);
+        appendTextCell(row, match.startTime || '--:--');
+        appendTextCell(row, displayBracketSlot(match.team1));
+        appendTextCell(row, displayBracketSlot(match.team2));
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      return wrap;
     }
 
     function createScheduleRow(match) {
@@ -994,11 +1175,49 @@
       var container = document.getElementById('tournamentView');
       container.textContent = '';
       var actions = [];
+      actions.push(createButton('全画面表示', 'secondary', function() {
+        openDisplayFullscreen('tournament');
+      }, false));
       if (isEditing()) {
         actions.push(createButton('組み合わせ・時刻を編集', 'secondary', function() { showView('schedule'); }, false));
         actions.push(createButton('順位から初期配置', 'success', applyRecommendedBracket, false));
       }
       container.appendChild(createSectionHeading('決勝トーナメント', '下段から上段へ勝ち上がります。各グループ1位は準決勝から参加します。', actions));
+
+      var options = document.createElement('div');
+      options.className = 'tournament-options';
+      var modeLabel = document.createElement('label');
+      modeLabel.textContent = 'トーナメント方式';
+      var modeSelect = document.createElement('select');
+      modeSelect.innerHTML = '<option value="seed-vs-winner">方式②：1回戦勝者とシードが対戦</option>' +
+        '<option value="seed-vs-seed">方式①：シード同士・1回戦勝者同士</option>';
+      modeSelect.value = appState.tournamentMode || 'seed-vs-winner';
+      modeSelect.disabled = !isEditing();
+      modeSelect.addEventListener('change', function() {
+        appState.tournamentMode = modeSelect.value;
+        markDirty();
+      });
+      modeLabel.appendChild(modeSelect);
+      options.appendChild(modeLabel);
+
+      var thirdLabel = document.createElement('label');
+      thirdLabel.className = 'checkbox-label';
+      var thirdCheck = document.createElement('input');
+      thirdCheck.type = 'checkbox';
+      thirdCheck.checked = Boolean(appState.thirdPlaceEnabled);
+      thirdCheck.disabled = !isEditing();
+      thirdCheck.addEventListener('change', function() {
+        appState.thirdPlaceEnabled = thirdCheck.checked;
+        markDirty();
+        renderSchedule();
+        renderTournament();
+      });
+      thirdLabel.appendChild(thirdCheck);
+      thirdLabel.appendChild(document.createTextNode('3位決定戦を行う'));
+      options.appendChild(thirdLabel);
+      if (isEditing()) {
+        container.appendChild(options);
+      }
 
       var scroll = document.createElement('div');
       scroll.className = 'tournament-scroll';
@@ -1022,18 +1241,28 @@
       var finalMatch = findScheduleMatch('F-1');
       var semifinal1 = findScheduleMatch('SF-1');
       var semifinal2 = findScheduleMatch('SF-2');
-      var qualifierLeft = findScheduleMatch('T-2');
-      var qualifierRight = findScheduleMatch('T-1');
+      var thirdPlace = findScheduleMatch('3P-1');
+      var firstRoundLeft = findScheduleMatch('T-1');
+      var firstRoundRight = findScheduleMatch('T-2');
       var seedA = findSeedTeam('A', 'Aグループ1位');
       var seedB = findSeedTeam('B', 'Bグループ1位');
-      var teams = [
-        seedA,
-        qualifierLeft && qualifierLeft.team1 || '未定',
-        qualifierLeft && qualifierLeft.team2 || '未定',
-        seedB,
-        qualifierRight && qualifierRight.team1 || '未定',
-        qualifierRight && qualifierRight.team2 || '未定'
-      ];
+      var mode = appState.tournamentMode || 'seed-vs-winner';
+      var teams = mode === 'seed-vs-seed'
+        ? [
+            seedA, seedB,
+            firstRoundLeft && firstRoundLeft.team1 || '未定',
+            firstRoundLeft && firstRoundLeft.team2 || '未定',
+            firstRoundRight && firstRoundRight.team1 || '未定',
+            firstRoundRight && firstRoundRight.team2 || '未定'
+          ]
+        : [
+            seedA,
+            firstRoundRight && firstRoundRight.team1 || '未定',
+            firstRoundRight && firstRoundRight.team2 || '未定',
+            seedB,
+            firstRoundLeft && firstRoundLeft.team1 || '未定',
+            firstRoundLeft && firstRoundLeft.team2 || '未定'
+          ];
 
       var champion = document.createElement('div');
       champion.className = 'bracket-champion';
@@ -1043,34 +1272,59 @@
 
       var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('class', 'bracket-lines');
-      svg.setAttribute('viewBox', '0 0 1080 470');
+      svg.setAttribute('viewBox', '0 0 1080 560');
       svg.setAttribute('aria-hidden', 'true');
 
-      var qualifierLeftWinner = getResolvedWinner(qualifierLeft);
-      var qualifierRightWinner = getResolvedWinner(qualifierRight);
+      var firstRoundLeftWinner = getResolvedWinner(firstRoundLeft);
+      var firstRoundRightWinner = getResolvedWinner(firstRoundRight);
       var semifinal1Winner = getResolvedWinner(semifinal1);
       var semifinal2Winner = getResolvedWinner(semifinal2);
       var finalWinner = getResolvedWinner(finalMatch);
 
-      appendBracketPath(svg, 'M264 408 V350 H356', isSameTeam(qualifierLeftWinner, teams[1]));
-      appendBracketPath(svg, 'M448 408 V350 H356', isSameTeam(qualifierLeftWinner, teams[2]));
-      appendBracketPath(svg, 'M356 350 V245 H264', Boolean(qualifierLeftWinner));
-      appendBracketPath(svg, 'M80 408 V245 H264', isSameTeam(semifinal1Winner, seedA));
-      appendBracketPath(svg, 'M264 245 V135 H540', Boolean(semifinal1Winner));
-
-      appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(qualifierRightWinner, teams[4]));
-      appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(qualifierRightWinner, teams[5]));
-      appendBracketPath(svg, 'M908 350 V245 H816', Boolean(qualifierRightWinner));
-      appendBracketPath(svg, 'M632 408 V245 H816', isSameTeam(semifinal2Winner, seedB));
-      appendBracketPath(svg, 'M816 245 V135 H540', Boolean(semifinal2Winner));
+      if (mode === 'seed-vs-seed') {
+        appendBracketPath(svg, 'M80 408 V350 H172', isSameTeam(semifinal1Winner, teams[0]));
+        appendBracketPath(svg, 'M264 408 V350 H172', isSameTeam(semifinal1Winner, teams[1]));
+        appendBracketPath(svg, 'M172 350 V245 H540', Boolean(semifinal1Winner));
+        appendBracketPath(svg, 'M448 408 V350 H540', isSameTeam(firstRoundLeftWinner, teams[2]));
+        appendBracketPath(svg, 'M632 408 V350 H540', isSameTeam(firstRoundLeftWinner, teams[3]));
+        appendBracketPath(svg, 'M540 350 V245 H724', Boolean(firstRoundLeftWinner));
+        appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(firstRoundRightWinner, teams[4]));
+        appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(firstRoundRightWinner, teams[5]));
+        appendBracketPath(svg, 'M908 350 V245 H724', Boolean(firstRoundRightWinner));
+        appendBracketPath(svg, 'M724 245 V135 H540', Boolean(semifinal2Winner));
+      } else {
+        appendBracketPath(svg, 'M264 408 V350 H356', isSameTeam(firstRoundRightWinner, teams[1]));
+        appendBracketPath(svg, 'M448 408 V350 H356', isSameTeam(firstRoundRightWinner, teams[2]));
+        appendBracketPath(svg, 'M356 350 V245 H264', Boolean(firstRoundRightWinner));
+        appendBracketPath(svg, 'M80 408 V245 H264', isSameTeam(semifinal1Winner, seedA));
+        appendBracketPath(svg, 'M264 245 V135 H540', Boolean(semifinal1Winner));
+        appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(firstRoundLeftWinner, teams[4]));
+        appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(firstRoundLeftWinner, teams[5]));
+        appendBracketPath(svg, 'M908 350 V245 H816', Boolean(firstRoundLeftWinner));
+        appendBracketPath(svg, 'M632 408 V245 H816', isSameTeam(semifinal2Winner, seedB));
+        appendBracketPath(svg, 'M816 245 V135 H540', Boolean(semifinal2Winner));
+      }
       appendBracketPath(svg, 'M540 135 V62', Boolean(finalWinner));
+      if (appState.thirdPlaceEnabled) {
+        var thirdSourceLeft = mode === 'seed-vs-seed' ? 172 : 264;
+        var thirdSourceRight = mode === 'seed-vs-seed' ? 724 : 816;
+        appendBracketPath(svg, 'M' + thirdSourceLeft + ' 245 V280 H460', false, true);
+        appendBracketPath(svg, 'M' + thirdSourceRight + ' 245 V280 H620', false, true);
+      }
       canvas.appendChild(svg);
 
       canvas.appendChild(createBracketTime(finalMatch, 540, 96));
-      canvas.appendChild(createBracketTime(semifinal1, 264, 206));
-      canvas.appendChild(createBracketTime(semifinal2, 816, 206));
-      canvas.appendChild(createBracketTime(qualifierLeft, 356, 316));
-      canvas.appendChild(createBracketTime(qualifierRight, 908, 316));
+      canvas.appendChild(createBracketTime(semifinal1, mode === 'seed-vs-seed' ? 172 : 264, 206));
+      canvas.appendChild(createBracketTime(semifinal2, mode === 'seed-vs-seed' ? 724 : 816, 206));
+      canvas.appendChild(createBracketTime(firstRoundLeft, mode === 'seed-vs-seed' ? 540 : 908, 316));
+      canvas.appendChild(createBracketTime(firstRoundRight, mode === 'seed-vs-seed' ? 908 : 356, 316));
+      if (appState.thirdPlaceEnabled) {
+        canvas.appendChild(createBracketTime(thirdPlace, 540, 274));
+        var thirdLabel = document.createElement('div');
+        thirdLabel.className = 'bracket-third-place-label';
+        thirdLabel.textContent = '3位決定戦';
+        canvas.appendChild(thirdLabel);
+      }
 
       var teamRow = document.createElement('div');
       teamRow.className = 'bracket-team-row';
@@ -1092,19 +1346,51 @@
       return standing && standing.team ? standing.team : fallback;
     }
 
-    function getResolvedWinner(match) {
+    function getResolvedWinner(match, trail) {
       if (!match || !match.winner || match.winner === '未定') return '';
-      return String(match.winner).trim();
+      return resolveBracketSlot(match.winner, trail || {});
+    }
+
+    function getResolvedLoser(match, trail) {
+      if (!match) return '';
+      var winner = getResolvedWinner(match, trail || {});
+      var first = displayBracketSlot(match.team1, trail || {});
+      var second = displayBracketSlot(match.team2, trail || {});
+      if (!winner || winner === '引き分け') return '';
+      if (isSameTeam(winner, first)) return second;
+      if (isSameTeam(winner, second)) return first;
+      return '';
+    }
+
+    function resolveBracketSlot(value, trail) {
+      var text = String(value || '').trim();
+      var match = text.match(/^(.+?) (勝者|敗者)$/);
+      if (!match) return text;
+      var key = match[1] + '|' + match[2];
+      if (trail[key]) return text;
+      var source = findScheduleMatch(match[1]);
+      if (!source) return text;
+      trail[key] = true;
+      var result = match[2] === '勝者'
+        ? getResolvedWinner(source, trail)
+        : getResolvedLoser(source, trail);
+      delete trail[key];
+      return result || text;
+    }
+
+    function displayBracketSlot(value, trail) {
+      var text = resolveBracketSlot(value, trail || {});
+      return text || '未定';
     }
 
     function isSameTeam(left, right) {
       return Boolean(left && right && String(left).trim() === String(right).trim());
     }
 
-    function appendBracketPath(svg, pathData, isWinner) {
+    function appendBracketPath(svg, pathData, isWinner, isThirdPlace) {
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', pathData);
-      path.setAttribute('class', 'bracket-line' + (isWinner ? ' is-winner' : ''));
+      path.setAttribute('class', 'bracket-line' + (isWinner ? ' is-winner' : '') + (isThirdPlace ? ' is-third-place' : ''));
       svg.appendChild(path);
     }
 
@@ -1132,6 +1418,7 @@
     function getTournamentPhaseLabel(match) {
       if (!match) return '';
       if (match.id === 'F-1') return '決勝';
+      if (match.id === '3P-1') return '3位決定戦';
       if (match.id.indexOf('SF-') === 0) return '準決勝 ' + match.id.slice(3);
       if (match.id.indexOf('T-') === 0) return '1回戦 ' + match.id.slice(2);
       return match.phase || match.id;
@@ -1239,6 +1526,49 @@
       row.appendChild(cell);
     }
 
+    function openDisplayFullscreen(kind) {
+      var overlay = document.getElementById('displayFullscreen');
+      var body = document.getElementById('displayFullscreenBody');
+      var title = document.getElementById('displayFullscreenTitle');
+      if (!overlay || !body || !title || !appState) return;
+      body.textContent = '';
+      title.textContent = kind === 'tournament' ? '決勝トーナメント' : 'タイムスケジュール';
+      if (kind === 'tournament') {
+        var tree = document.createElement('div');
+        tree.className = 'tournament-tree bracket-flat';
+        tree.appendChild(createFlatBracket());
+        body.appendChild(tree);
+      } else {
+        body.appendChild(createDisplayScheduleTable());
+      }
+      overlay.hidden = false;
+      document.documentElement.classList.add('is-display-fullscreen');
+      var request = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+      if (request) {
+        var promise = request.call(overlay);
+        if (promise && promise.catch) promise.catch(function() {});
+      }
+    }
+
+    function closeDisplayFullscreen() {
+      var overlay = document.getElementById('displayFullscreen');
+      var body = document.getElementById('displayFullscreenBody');
+      if (overlay) overlay.hidden = true;
+      if (body) body.textContent = '';
+      document.documentElement.classList.remove('is-display-fullscreen');
+      if (document.fullscreenElement && document.exitFullscreen) {
+        var promise = document.exitFullscreen();
+        if (promise && promise.catch) promise.catch(function() {});
+      }
+    }
+
+    function handleFullscreenChange() {
+      var overlay = document.getElementById('displayFullscreen');
+      if (!document.fullscreenElement && overlay && !overlay.hidden) {
+        closeDisplayFullscreen();
+      }
+    }
+
     function showView(view) {
       activeView = view;
       document.body.dataset.activeView = view;
@@ -1284,7 +1614,12 @@
       if (!confirm('現在のグループ順位から初期トーナメント配置を作成します。手動変更中の対戦枠は上書きされます。')) return;
       setLoading(true);
       try {
-        var response = await callServer('applyRecommendedBracket', editorKey);
+        var response = await callServer(
+          'applyRecommendedBracket',
+          editorKey,
+          appState.tournamentMode,
+          Boolean(appState.thirdPlaceEnabled)
+        );
         if (!response || !response.success) throw new Error(response && response.message || '初期配置を作成できませんでした。');
         appState = response;
         isDirty = false;
@@ -1300,7 +1635,12 @@
       if (!confirm('グループ・時刻・トーナメント枠の変更を保存しますか？')) return;
       setLoading(true);
       try {
-        var payload = { groups: appState.groups, schedule: appState.schedule };
+        var payload = {
+          groups: appState.groups,
+          schedule: appState.schedule,
+          tournamentMode: appState.tournamentMode,
+          thirdPlaceEnabled: Boolean(appState.thirdPlaceEnabled)
+        };
         var response = await callServer('saveCompetitionState', payload, editorKey);
         if (!response || !response.success) throw new Error(response && response.message || '保存に失敗しました。');
         appState = response;

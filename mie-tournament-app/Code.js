@@ -25,6 +25,7 @@ var MIE_MATCH_DEFINITIONS = [
   { id: 'T-2', phase: 'トーナメント1回戦' },
   { id: 'SF-1', phase: '準決勝' },
   { id: 'SF-2', phase: '準決勝' },
+  { id: '3P-1', phase: '3位決定戦' },
   { id: 'F-1', phase: '決勝' }
 ];
 
@@ -53,6 +54,8 @@ function getCompetitionState(editorKey) {
       groups: groups,
       standings: standings,
       schedule: schedule,
+      tournamentMode: getTournamentMode_(),
+      thirdPlaceEnabled: getThirdPlaceEnabled_(),
       canEdit: isEditorAuthorized_(editorKey),
       editorKeyRequired: keyRequired,
       securityNotice: keyRequired
@@ -104,7 +107,7 @@ function randomizeGroups(editorKey) {
   }
 }
 
-function applyRecommendedBracket(editorKey) {
+function applyRecommendedBracket(editorKey, requestedMode, requestedThirdPlace) {
   assertEditorAuthorized_(editorKey);
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -112,6 +115,10 @@ function applyRecommendedBracket(editorKey) {
   try {
     var spreadsheet = SpreadsheetApp.openById(MIE_SPREADSHEET_ID);
     var sheet = ensureCompetitionSheet_(spreadsheet);
+    var tournamentMode = normalizeTournamentMode_(requestedMode);
+    var thirdPlaceEnabled = requestedThirdPlace === undefined
+      ? getThirdPlaceEnabled_()
+      : Boolean(requestedThirdPlace);
     var groups = getGroupRows_(sheet);
     var standings = buildStandings_(groups, getResultContext_(spreadsheet).rows);
     var groupA = standings.filter(function(row) { return row.group === 'A'; });
@@ -124,8 +131,13 @@ function applyRecommendedBracket(editorKey) {
     var pairings = {
       'T-1': [groupA[1].team, groupB[2].team],
       'T-2': [groupB[1].team, groupA[2].team],
-      'SF-1': [groupA[0].team, 'T-2 勝者'],
-      'SF-2': [groupB[0].team, 'T-1 勝者'],
+      'SF-1': tournamentMode === 'seed-vs-seed'
+        ? [groupA[0].team, groupB[0].team]
+        : [groupA[0].team, 'T-2 勝者'],
+      'SF-2': tournamentMode === 'seed-vs-seed'
+        ? ['T-1 勝者', 'T-2 勝者']
+        : [groupB[0].team, 'T-1 勝者'],
+      '3P-1': ['SF-1 敗者', 'SF-2 敗者'],
       'F-1': ['SF-1 勝者', 'SF-2 勝者']
     };
 
@@ -136,9 +148,14 @@ function applyRecommendedBracket(editorKey) {
         row[3] = pairing[0];
         row[4] = pairing[1];
         row[5] = '';
+        if (normalizeValue_(row[0]) === '3P-1' && !thirdPlaceEnabled) {
+          row[3] = '';
+          row[4] = '';
+        }
       }
     });
     sheet.getRange(3, 10, values.length, 7).setValues(values);
+    saveTournamentOptions_(tournamentMode, thirdPlaceEnabled);
     SpreadsheetApp.flush();
 
     return getCompetitionState(editorKey);
@@ -162,6 +179,12 @@ function saveCompetitionState(payload, editorKey) {
     var teams = getMieTeams_(spreadsheet);
     var validatedGroups = validateGroups_(payload.groups, teams);
     var validatedSchedule = validateSchedule_(payload.schedule, teams);
+    var tournamentMode = payload.tournamentMode === undefined
+      ? getTournamentMode_()
+      : normalizeTournamentMode_(payload.tournamentMode);
+    var thirdPlaceEnabled = payload.thirdPlaceEnabled === undefined
+      ? getThirdPlaceEnabled_()
+      : Boolean(payload.thirdPlaceEnabled);
 
     sheet.getRange(3, 3, 6, 1).setValues(validatedGroups.map(function(row) {
       return [row.team];
@@ -171,6 +194,7 @@ function saveCompetitionState(payload, editorKey) {
       return [row.id, row.phase, row.startTime, row.team1, row.team2, row.winner, row.note];
     });
     sheet.getRange(3, 10, scheduleValues.length, 7).setValues(scheduleValues);
+    saveTournamentOptions_(tournamentMode, thirdPlaceEnabled);
     SpreadsheetApp.flush();
 
     return getCompetitionState(editorKey);
@@ -196,7 +220,40 @@ function ensureCompetitionSheet_(spreadsheet) {
   } else if (!normalizeValue_(sheet.getRange('A1').getDisplayValue())) {
     initializeCompetitionSheet_(sheet, getMieTeams_(spreadsheet));
   }
+  ensureScheduleRows_(sheet);
   return sheet;
+}
+
+function ensureScheduleRows_(sheet) {
+  var requiredRows = 2 + MIE_MATCH_DEFINITIONS.length;
+  if (sheet.getMaxRows() < requiredRows) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), requiredRows - sheet.getMaxRows());
+  }
+
+  var rowCount = Math.max(sheet.getLastRow() - 2, 0);
+  var existingIds = rowCount
+    ? sheet.getRange(3, 10, rowCount, 1).getDisplayValues().map(function(row) {
+        return normalizeValue_(row[0]);
+      })
+    : [];
+  var hasThirdPlace = existingIds.indexOf('3P-1') >= 0;
+  var finalIndex = existingIds.indexOf('F-1');
+  if (!hasThirdPlace && finalIndex >= 0) {
+    sheet.insertRowsBefore(finalIndex + 3, 1);
+  }
+
+  var values = sheet.getRange(3, 10, MIE_MATCH_DEFINITIONS.length, 7).getValues();
+  var changed = false;
+  MIE_MATCH_DEFINITIONS.forEach(function(definition, index) {
+    if (!normalizeValue_(values[index][0])) {
+      values[index][0] = definition.id;
+      values[index][1] = definition.phase;
+      changed = true;
+    }
+  });
+  if (changed) {
+    sheet.getRange(3, 10, values.length, 7).setValues(values);
+  }
 }
 
 function initializeCompetitionSheet_(sheet, teams) {
@@ -464,7 +521,11 @@ function validateSchedule_(schedule, allowedTeams) {
   schedule.forEach(function(row) {
     byId[normalizeValue_(row && row.id)] = row || {};
   });
-  var extraOptions = ['T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者', 'Aグループ1位', 'Bグループ1位', '未定'];
+  var extraOptions = [
+    'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者',
+    'SF-1 敗者', 'SF-2 敗者', '3P-1 勝者', '3P-1 敗者',
+    'Aグループ1位', 'Bグループ1位', '未定'
+  ];
   var validTeams = allowedTeams.map(normalizeValue_).concat(extraOptions);
 
   return MIE_MATCH_DEFINITIONS.map(function(definition) {
@@ -522,6 +583,25 @@ function assertEditorAuthorized_(editorKey) {
 
 function normalizeKey_(value) {
   return normalizeValue_(value).toLowerCase();
+}
+
+function normalizeTournamentMode_(value) {
+  return normalizeValue_(value) === 'seed-vs-seed' ? 'seed-vs-seed' : 'seed-vs-winner';
+}
+
+function getTournamentMode_() {
+  return normalizeTournamentMode_(PropertiesService.getScriptProperties().getProperty('MIE_TOURNAMENT_MODE'));
+}
+
+function getThirdPlaceEnabled_() {
+  var value = PropertiesService.getScriptProperties().getProperty('MIE_THIRD_PLACE_ENABLED');
+  return String(value).toLowerCase() === 'true';
+}
+
+function saveTournamentOptions_(mode, thirdPlaceEnabled) {
+  var properties = PropertiesService.getScriptProperties();
+  properties.setProperty('MIE_TOURNAMENT_MODE', normalizeTournamentMode_(mode));
+  properties.setProperty('MIE_THIRD_PLACE_ENABLED', thirdPlaceEnabled ? 'true' : 'false');
 }
 
 function createHeaderMap_(headers) {
