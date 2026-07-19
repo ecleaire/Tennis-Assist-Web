@@ -51,6 +51,10 @@ interface MatchRecord {
   deviceId?: string;
   deviceRole?: DeviceRole;
   appVersion?: string;
+  teamAAgreed?: boolean;
+  teamBAgreed?: boolean;
+  completedMatchCount?: number;
+  finalized?: boolean;
 }
 
 interface Series {
@@ -331,7 +335,7 @@ const csvColumns = [
   "チームA勝数", "チームA敗数", "チームAオレンジ", "チームA紫", "チームA得点", "チームA違反数",
   "チームB勝数", "チームB敗数", "チームBオレンジ", "チームB紫", "チームB得点", "チームB違反数",
   "引き分け数", "総合勝者", "マッチ勝者", "結果", "終了カテゴリ", "終了理由", "対象チーム", "メモ",
-  "端末役割", "端末ID", "アプリバージョン",
+  "端末役割", "端末ID", "アプリバージョン", "チームA同意", "チームB同意", "完了マッチ数", "最終確定",
 ] as const;
 
 const LINKS = {
@@ -612,6 +616,15 @@ function isSheetPreviewRecord(record: MatchRecord): boolean {
   return record.notes?.includes("スプレッドシート確認用読み込み") ?? false;
 }
 
+function isExplicitFinalizedSeriesRecord(record: MatchRecord): boolean {
+  return record.recordKind === "試合結果"
+    && record.teamAAgreed === true
+    && record.teamBAgreed === true
+    && record.completedMatchCount === 3
+    && record.finalized === true
+    && record.endReason === "3マッチ終了・代表同意済み";
+}
+
 function spreadsheetIdFromUrl(value: string): string | null {
   const text = value.trim();
   const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || text.match(/^[a-zA-Z0-9-_]{20,}$/);
@@ -631,7 +644,8 @@ function csvRow(record: MatchRecord): string[] {
     record.teamBWins ?? "", record.teamBLosses ?? "", record.teamBOrange, record.teamBPurple, record.teamBScore,
     record.teamBViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
-    record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "",
+    record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "", record.teamAAgreed === true ? "TRUE" : "FALSE",
+    record.teamBAgreed === true ? "TRUE" : "FALSE", record.completedMatchCount ?? "", record.finalized === true ? "TRUE" : "FALSE",
   ].map(String);
 }
 
@@ -2015,7 +2029,7 @@ class RecordsController {
     let failed = 0;
     let oldestUnsentAt = 0;
     for (const record of this.records) {
-      if (isSheetPreviewRecord(record) || record.recordKind !== "試合結果") continue;
+      if (isSheetPreviewRecord(record) || !this.isSendableSeriesResult(record)) continue;
       if (record.sendStatus === "pending" || record.sendStatus === "failed") {
         if (record.sendStatus === "pending") pending += 1;
         if (record.sendStatus === "failed") failed += 1;
@@ -2027,7 +2041,7 @@ class RecordsController {
     const settings = AdminController.settings();
     const connectionVerified = Boolean(settings.gasConnectedAt && settings.gasConnectedUrl && settings.gasConnectedUrl === settings.gasUrl && settings.apiKey);
     const configured = settings.gasUrl.endsWith("/exec") && Boolean(settings.apiKey) && connectionVerified;
-    const latestFailed = this.records.find((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && record.sendStatus === "failed" && record.sendError);
+    const latestFailed = this.records.find((record) => !isSheetPreviewRecord(record) && this.isSendableSeriesResult(record) && record.sendStatus === "failed" && record.sendError);
     return {
       pending,
       failed,
@@ -2124,6 +2138,10 @@ class RecordsController {
 
   pauseForOperation(): boolean {
     return Boolean(this.series && this.operationManaged && this.persistSeriesProgress());
+  }
+
+  hasCompletedOperationMatch(): boolean {
+    return Boolean(this.series && this.operationManaged && this.series.records.length > 0);
   }
 
   operationProgressSnapshot(): PersistedSeriesProgress | null {
@@ -2914,6 +2932,11 @@ class RecordsController {
 
   private async finalize(): Promise<void> {
     if (!this.agreedA || !this.agreedB || !this.series) return;
+    const completedNumbers = [...new Set(this.series.records.map((record) => record.matchNumber))].sort((a, b) => a - b);
+    if (this.series.records.length !== 3 || completedNumbers.join(",") !== "1,2,3") {
+      el("record-status").textContent = "第1〜第3マッチの結果がすべて確定していないため、試合結果を確定できません。";
+      return;
+    }
     if (!this.storageWriteAvailable()) {
       this.showStorageFailure();
       return;
@@ -2958,6 +2981,10 @@ class RecordsController {
       teamBViolations: sum.teamBViolations,
       notes: `両チーム代表同意済み / ${this.series.teamA} ${sum.teamAWins}勝 / ${this.series.teamB} ${sum.teamBWins}勝 / 引き分け${sum.draws}`,
       sendStatus: this.shouldSendToGas(AdminController.settings()) ? "pending" : "local-only",
+      teamAAgreed: true,
+      teamBAgreed: true,
+      completedMatchCount: 3,
+      finalized: true,
     };
     this.records.unshift(record);
     if (!this.saveStoredRecords() || !this.persistSeriesProgress()) {
@@ -3023,9 +3050,9 @@ class RecordsController {
       if (team !== "すべてのチーム" && record.teamA !== team && record.teamB !== team) return false;
       if (kind === "match" && record.recordKind !== "マッチ") return false;
       if (kind === "series" && record.recordKind !== "試合結果") return false;
-      if (kind === "unsent" && !(record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"))) return false;
+      if (kind === "unsent" && !(this.isSendableSeriesResult(record) && (record.sendStatus === "pending" || record.sendStatus === "failed"))) return false;
       if (sendReasonFilter !== "all") {
-        if (record.recordKind !== "試合結果" || (record.sendStatus !== "pending" && record.sendStatus !== "failed")) return false;
+        if (!this.isSendableSeriesResult(record) || (record.sendStatus !== "pending" && record.sendStatus !== "failed")) return false;
         if (this.sendIssueReason(AdminController.settings(), record.sendError || "") !== sendReasonFilter) return false;
       }
       if (result === "all") return true;
@@ -3052,11 +3079,11 @@ class RecordsController {
       const sendState = record.recordKind === "試合結果" ? this.sendStateLabel(record.sendStatus) : "";
       const roleBadge = record.deviceRole ? `<span class="history-role-badge">${escapeText(record.deviceRole)}</span>` : "";
       const device = `${record.deviceId ?? "端末不明"} / v${record.appVersion ?? "不明"}`;
-      const sendIssue = record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")
+      const sendIssue = this.isSendableSeriesResult(record) && (record.sendStatus === "pending" || record.sendStatus === "failed")
         ? `<p class="history-send-reason">理由: ${escapeText(this.sendIssueReason(AdminController.settings(), record.sendError || ""))}</p>`
         : "";
       card.innerHTML = `<h3>${escapeText(record.teamA)} vs ${escapeText(record.teamB)}${roleBadge}</h3><p class="muted">${escapeText(record.timestamp)} | ${escapeText(record.court)} 第${record.seriesNumber}試合 | ${number}</p><p class="history-device-line">端末: ${escapeText(device)}</p><p>終了理由: ${escapeText(record.endReason)}<br>A 橙${record.teamAOrange} 紫${record.teamAPurple} 得点${record.teamAScore} / B 橙${record.teamBOrange} 紫${record.teamBPurple} 得点${record.teamBScore} / 勝者 ${escapeText(winner)}</p>${sendState}${sendIssue}`;
-      if (record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
+      if (this.isSendableSeriesResult(record) && (record.sendStatus === "pending" || record.sendStatus === "failed")) {
         const retry = document.createElement("button");
         retry.className = "button history-retry";
         retry.textContent = "未送信の結果を再送する";
@@ -3077,7 +3104,7 @@ class RecordsController {
     const pending: MatchRecord[] = [];
     const failed: MatchRecord[] = [];
     for (const record of this.records) {
-      if (isSheetPreviewRecord(record) || record.recordKind !== "試合結果") continue;
+      if (isSheetPreviewRecord(record) || !this.isSendableSeriesResult(record)) continue;
       if (record.sendStatus === "pending") pending.push(record);
       if (record.sendStatus === "failed") failed.push(record);
     }
@@ -3159,7 +3186,7 @@ class RecordsController {
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem(this.storageKey) ?? "[]");
       if (!Array.isArray(parsed)) return [];
-      return (parsed as Array<Partial<MatchRecord>>).map((record) => {
+      const loaded = (parsed as Array<Partial<MatchRecord>>).map((record) => {
         const normalized: MatchRecord = {
           recordId: record.recordId ?? `${record.seriesId ?? "imported"}_${record.matchNumber ?? 0}`,
           timestamp: record.timestamp ?? timestamp(),
@@ -3190,6 +3217,23 @@ class RecordsController {
         }
         return normalized;
       });
+      let changed = false;
+      loaded.forEach((record) => {
+        if ((record.sendStatus === "pending" || record.sendStatus === "failed") && !isExplicitFinalizedSeriesRecord(record)) {
+          record.sendStatus = "local-only";
+          record.sendError = "3マッチ確定・両チーム同意の送信条件を満たしていません";
+          record.sendStatusChangedAt = timestamp();
+          changed = true;
+        }
+      });
+      if (changed) {
+        try {
+          localStorage.setItem(this.storageKey, JSON.stringify(loaded));
+        } catch {
+          // Keep the sanitized in-memory records even if storage is temporarily unavailable.
+        }
+      }
+      return loaded;
     } catch {
       return [];
     }
@@ -3412,7 +3456,7 @@ class RecordsController {
   }
 
   private exportUnsentHistory(): void {
-    const unsentRecords = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
+    const unsentRecords = this.records.filter((record) => !isSheetPreviewRecord(record) && this.isSendableSeriesResult(record) && (record.sendStatus === "pending" || record.sendStatus === "failed"));
     if (!unsentRecords.length) {
       el("history-status").textContent = "バックアップできる未送信の試合結果はありません。";
       return;
@@ -3473,6 +3517,10 @@ class RecordsController {
       deviceRole: normalizeDeviceRole(at(row, "端末役割")),
       deviceId: at(row, "端末ID"),
       appVersion: at(row, "アプリバージョン"),
+      teamAAgreed: at(row, "チームA同意").toUpperCase() === "TRUE",
+      teamBAgreed: at(row, "チームB同意").toUpperCase() === "TRUE",
+      completedMatchCount: Number(at(row, "完了マッチ数")) || undefined,
+      finalized: at(row, "最終確定").toUpperCase() === "TRUE",
       notes: at(row, "メモ"),
     })).filter((record) => record.teamA || record.teamB);
   }
@@ -3570,7 +3618,25 @@ class RecordsController {
     document.dispatchEvent(new CustomEvent("records-storage-updated"));
   }
 
+  private finalizedSeriesMatches(record: MatchRecord): MatchRecord[] | null {
+    if (!isExplicitFinalizedSeriesRecord(record) || isSheetPreviewRecord(record)) return null;
+    const matches = this.records
+      .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
+      .sort((a, b) => a.matchNumber - b.matchNumber);
+    const matchNumbers = [...new Set(matches.map((item) => item.matchNumber))].sort((a, b) => a - b);
+    return matches.length === 3 && matchNumbers.join(",") === "1,2,3" ? matches : null;
+  }
+
+  private isSendableSeriesResult(record: MatchRecord): boolean {
+    return this.finalizedSeriesMatches(record) !== null;
+  }
+
   private async retrySend(record: MatchRecord): Promise<void> {
+    if (!this.isSendableSeriesResult(record)) {
+      this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
+      el("history-status").textContent = "3マッチ分の結果確定と両チーム同意が完了した試合結果だけ送信できます。";
+      return;
+    }
     this.updateSendStatus(record, "pending");
     el("history-status").textContent = "未送信の試合結果を再送しています...";
     await this.sendSeriesResult(record);
@@ -3583,7 +3649,7 @@ class RecordsController {
       if (reason === "manual") el("history-status").textContent = "GAS送信設定が未設定またはOFFです。管理者設定のGAS URL、APIキー、送信ONを確認してください。";
       return;
     }
-    const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && record.recordKind === "試合結果" && (record.sendStatus === "pending" || record.sendStatus === "failed"));
+    const pending = this.records.filter((record) => !isSheetPreviewRecord(record) && this.isSendableSeriesResult(record) && (record.sendStatus === "pending" || record.sendStatus === "failed"));
     if (!pending.length) return;
     this.retryingPendingSends = true;
     this.renderSyncAlert();
@@ -3601,6 +3667,10 @@ class RecordsController {
   }
 
   private sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+    if (!this.isSendableSeriesResult(record)) {
+      this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
+      return Promise.resolve("local-only");
+    }
     const sendKey = record.recordId || `${record.seriesId}_result`;
     const active = this.activeSeriesSends.get(sendKey);
     if (active) return active;
@@ -3612,6 +3682,13 @@ class RecordsController {
   }
 
   private async performSeriesResultSend(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+    const matches = this.finalizedSeriesMatches(record);
+    if (!matches) {
+      this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
+      this.updateCompletionState("local-only", "3マッチ分の結果確定と両チーム同意が完了していないため送信しません。");
+      el("record-status").textContent = "送信条件を満たしていないため、端末内保存のみとしました。";
+      return "local-only";
+    }
     const settings = AdminController.settings();
     if (!settings.sendEnabled) {
       this.updateSendStatus(record, "local-only", "送信OFF");
@@ -3634,9 +3711,6 @@ class RecordsController {
     }
     this.updateSendStatus(record, "pending");
     this.updateCompletionState("pending");
-    const matches = this.records
-      .filter((item) => !isSheetPreviewRecord(item) && item.seriesId === record.seriesId && item.recordKind === "マッチ")
-      .sort((a, b) => a.matchNumber - b.matchNumber);
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
     const body = {
       api_key: settings.apiKey,
@@ -5102,10 +5176,15 @@ class Application {
   private homeSyncState: "idle" | "running" | "success" | "warning" = "idle";
   private homeSyncAlertMarkup = "";
   private homeRiskMarkup = "";
+  private readonly homeAudioCheck = new TimerAudioCueController();
+  private homeAudioSyncFrame = 0;
   private homeSyncNoticeTimer = 0;
   private homeUnsentAlertTimer = 0;
   private operationStep: "home" | "team" | "draw" | "between" | "finished" = "home";
   private readonly pausedOperationStorageKey = `tennis-assist-paused-operation-v1-${this.variant.id}`;
+  private pausedOperationPanelTimer = 0;
+  private pausedOperationPanelSeriesId = "";
+  private pausedOperationPanelAutoHidden = false;
   private pendingOperationAction: (() => void) | null = null;
   private operationActionHoldTimer = 0;
   private readonly operationReturnHoldTimers = new Map<HTMLButtonElement, number>();
@@ -5252,6 +5331,7 @@ class Application {
   private show(screen: Screen): void {
     this.timer.noteActivity();
     if (screen !== "development") this.admin?.stopTransientChecks();
+    if (screen !== this.operationScreen()) this.stopHomeAudioSync();
     if (screen !== "timer") void this.timer.leaveFullscreen();
     if (screen !== "referee") void this.refereeTimer.leaveFullscreen();
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
@@ -5265,7 +5345,7 @@ class Application {
     if (screen === "records") {
       this.records.openHistoryView();
     }
-    if (screen === this.operationScreen() && this.operationStep === "home") this.updatePausedOperationPanel();
+    if (screen === this.operationScreen() && this.operationStep === "home") this.updatePausedOperationPanel(true);
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -5602,7 +5682,7 @@ class Application {
     }
     if (step === "home") {
       this.updateHomeSyncAlert();
-      this.updatePausedOperationPanel();
+      this.updatePausedOperationPanel(true);
     }
     window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -5728,13 +5808,20 @@ class Application {
       `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
       `<span class="home-risk-chip ${checkedState}">${escapeText(checked)}</span>` +
       `</div>` +
-      `<div class="home-risk-actions"><button id="home-force-update" class="button tiny" type="button">強制更新</button><button id="home-sound-test" class="button tiny" type="button">音声テスト</button></div>` +
+      `<div class="home-risk-actions"><button id="home-force-update" class="button primary tiny home-force-update-button" type="button">強制更新</button><button id="home-sound-test" class="button tiny home-sound-test-button" type="button">開始30秒音を再生</button></div>` +
+      `<div class="home-audio-sync">` +
+      `<div class="home-audio-sync-title"><strong>10秒音声同期確認</strong><span>10秒表示と音のタイミングを確認</span></div>` +
+      `<output id="home-audio-sync-time" class="digital audio-sync-time home-audio-sync-time" aria-live="polite" role="timer">00 : 10</output>` +
+      `<p id="home-audio-sync-status" class="hint">5秒から短音、0秒で長音を再生します。</p>` +
+      `<div class="home-audio-sync-actions"><button id="home-audio-sync-test" class="button tiny" type="button">10秒タイマー音声を再生</button></div>` +
+      `</div>` +
       `</details>`;
     if (this.homeRiskMarkup === markup) return;
     panel.innerHTML = markup;
     this.homeRiskMarkup = markup;
     panel.querySelector<HTMLButtonElement>("#home-force-update")?.addEventListener("click", () => void this.forceUpdate());
-    panel.querySelector<HTMLButtonElement>("#home-sound-test")?.addEventListener("click", () => this.playSoundTest());
+    panel.querySelector<HTMLButtonElement>("#home-sound-test")?.addEventListener("click", () => void this.playSoundTest());
+    panel.querySelector<HTMLButtonElement>("#home-audio-sync-test")?.addEventListener("click", () => void this.testHomeAudioSync());
   }
 
   private async forceUpdate(): Promise<void> {
@@ -5759,26 +5846,12 @@ class Application {
     window.location.replace(url.toString());
   }
 
-  private playSoundTest(): void {
+  private async playSoundTest(): Promise<void> {
+    this.stopHomeAudioSync();
     try {
-      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) throw new Error("AudioContext unsupported");
-      const context = new AudioContextClass();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const now = context.currentTime;
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.28);
-      window.setTimeout(() => void context.close(), 420);
+      await this.homeAudioCheck.testThirtySeconds();
       this.homeSyncState = "success";
-      this.homeSyncNotice = "音声テストを再生しました。聞こえない場合は端末音量、マナーモード、ブラウザ設定を確認してください。";
+      this.homeSyncNotice = "開始30秒の音を再生しました。聞こえない場合は端末音量、マナーモード、ブラウザ設定を確認してください。";
       this.hideHomeSyncNoticeAfter(20000);
     } catch {
       this.homeSyncState = "warning";
@@ -5786,6 +5859,56 @@ class Application {
       this.hideHomeSyncNoticeAfter(30000);
     }
     this.updateHomeSyncAlert();
+  }
+
+  private stopHomeAudioSync(): void {
+    if (this.homeAudioSyncFrame) {
+      cancelAnimationFrame(this.homeAudioSyncFrame);
+      this.homeAudioSyncFrame = 0;
+    }
+    this.homeAudioCheck.stopScheduled();
+    const button = document.getElementById("home-audio-sync-test") as HTMLButtonElement | null;
+    if (button) {
+      button.disabled = false;
+      button.textContent = "10秒タイマー音声を再生";
+    }
+  }
+
+  private async testHomeAudioSync(): Promise<void> {
+    this.stopHomeAudioSync();
+    const output = document.getElementById("home-audio-sync-time");
+    const status = document.getElementById("home-audio-sync-status");
+    const button = document.getElementById("home-audio-sync-test") as HTMLButtonElement | null;
+    if (!output || !status || !button) return;
+    button.disabled = true;
+    button.textContent = "再生中…";
+    output.classList.remove("warning");
+    output.textContent = "00 : 10";
+      status.textContent = "10秒から開始します。5秒から短音、0秒で長音を確認してください。";
+    try {
+      await this.homeAudioCheck.prepare();
+      const startedAt = performance.now();
+      this.homeAudioCheck.scheduleRefereeCountdown(10);
+      const render = (): void => {
+        const elapsed = Math.min(10, Math.max(0, (performance.now() - startedAt) / 1000));
+        const remaining = Math.max(0, Math.ceil(10 - elapsed));
+        output.textContent = `00 : ${String(remaining).padStart(2, "0")}`;
+        output.classList.toggle("warning", remaining <= 5 && remaining > 0);
+        if (remaining > 0) {
+          this.homeAudioSyncFrame = requestAnimationFrame(render);
+          return;
+        }
+        this.homeAudioSyncFrame = 0;
+        button.disabled = false;
+        button.textContent = "10秒タイマー音声を再生";
+        status.textContent = "同期確認が完了しました。0秒の長音まで確認してください。";
+      };
+      this.homeAudioSyncFrame = requestAnimationFrame(render);
+    } catch {
+      button.disabled = false;
+      button.textContent = "10秒タイマー音声を再生";
+      status.textContent = "同期確認を開始できませんでした。端末音量、マナーモード、ブラウザ設定を確認してください。";
+    }
   }
 
   private hasGasUsageHistory(settings = AdminController.settings()): boolean {
@@ -5843,7 +5966,7 @@ class Application {
         this.operationReturnHoldTimers.delete(button);
         button.classList.remove("is-holding");
         this.handleOperationReturnTrigger(context);
-      }, 3000);
+      }, 1000);
       this.operationReturnHoldTimers.set(button, timer);
     };
     button.addEventListener("click", (event) => event.preventDefault());
@@ -6031,6 +6154,7 @@ class Application {
         && Boolean(state.recordInput && typeof state.recordInput === "object")
         && Boolean(progress?.series?.id && progress.series.teamA && progress.series.teamB)
         && Array.isArray(progress?.series?.records)
+        && (progress?.series?.records.length ?? 0) > 0
         && progress?.operationManaged === true
         && typeof state.savedAt === "string";
       if (!valid) {
@@ -6067,20 +6191,60 @@ class Application {
     } catch {
       // The UI remains usable even when storage is unavailable.
     }
+    this.resetPausedOperationPanelDisplay();
   }
 
-  private updatePausedOperationPanel(): void {
+  private resetPausedOperationPanelDisplay(): void {
+    if (this.pausedOperationPanelTimer) {
+      window.clearTimeout(this.pausedOperationPanelTimer);
+      this.pausedOperationPanelTimer = 0;
+    }
+    this.pausedOperationPanelSeriesId = "";
+    this.pausedOperationPanelAutoHidden = false;
+  }
+
+  private updatePausedOperationPanel(reveal = false): void {
     const state = this.readPausedOperation();
     const panel = el("paused-operation-panel");
-    panel.classList.toggle("hidden", !state);
-    if (!state) return;
+    if (!state) {
+      this.resetPausedOperationPanelDisplay();
+      panel.classList.add("hidden");
+      return;
+    }
+    const seriesId = state.progress.series.id;
+    if (this.pausedOperationPanelSeriesId !== seriesId) {
+      this.resetPausedOperationPanelDisplay();
+      this.pausedOperationPanelSeriesId = seriesId;
+    }
+    if (reveal) this.pausedOperationPanelAutoHidden = false;
+    panel.classList.toggle("hidden", this.pausedOperationPanelAutoHidden);
     const stage = state.step === "result" ? `第${state.match}マッチ リザルト入力` : `第${state.match}マッチ 抽選`;
     const series = state.progress.series;
     el("paused-operation-summary").textContent = `${series.teamA} vs ${series.teamB} / ${stage}で中断しました。スプレッドシートには送信されていません。`;
+    if (!this.pausedOperationPanelAutoHidden && !this.pausedOperationPanelTimer) {
+      this.pausedOperationPanelTimer = window.setTimeout(() => {
+        this.pausedOperationPanelTimer = 0;
+        if (this.pausedOperationPanelSeriesId !== seriesId) return;
+        this.pausedOperationPanelAutoHidden = true;
+        panel.classList.add("hidden");
+      }, 180000);
+    }
   }
 
   private confirmOperationPause(step: "draw" | "result"): void {
     if (!this.operationActive) return;
+    if (!this.records.hasCompletedOperationMatch()) {
+      this.openOperationAction(
+        "試合をキャンセルしますか？",
+        "第1マッチの結果が未確定のため、中断記録は保存せずホームへ戻ります。",
+        "3秒長押しで試合をキャンセル",
+        () => {
+          this.returnOperationHome(true);
+          this.updatePausedOperationPanel();
+        },
+      );
+      return;
+    }
     const paused = this.readPausedOperation();
     const currentSeriesId = this.records.currentOperationSeriesId();
     if (paused && paused.progress.series.id !== currentSeriesId) {

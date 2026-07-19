@@ -717,6 +717,68 @@ output.digital.dashboard-digital {
   padding: 8px 12px;
 }
 
+.home-force-update-button {
+  font-size: 1.04rem;
+  min-height: 48px !important;
+  padding: 11px 18px !important;
+}
+
+.home-sound-test-button {
+  min-height: 42px !important;
+  padding-inline: 14px !important;
+}
+
+.home-audio-sync {
+  background: rgba(5, 12, 28, 0.3);
+  border: 1px solid rgba(46, 168, 255, 0.3);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  width: 100%;
+}
+
+.home-audio-sync-title {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: center;
+}
+
+.home-audio-sync-title strong {
+  color: var(--text);
+}
+
+.home-audio-sync-title span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.home-audio-sync-time {
+  display: block;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  min-width: min(280px, 100%);
+  padding: 10px 8px 6px;
+  text-align: center;
+}
+
+.home-audio-sync-status {
+  margin: 0;
+  text-align: center;
+}
+
+.home-audio-sync-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.home-audio-sync-actions .button {
+  min-height: 48px;
+  min-width: min(280px, 100%);
+}
+
 .home-sync-alert {
   background: linear-gradient(135deg, rgba(255, 178, 74, 0.22), rgba(184, 50, 66, 0.18));
   border: 2px solid rgba(255, 178, 74, 0.76);
@@ -2355,10 +2417,22 @@ tr.win td {
 }
 
 .operation-return-trigger {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
   overflow: hidden;
   position: relative;
   touch-action: none;
   user-select: none;
+}
+
+.operation-return-trigger small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .operation-return-trigger::after {
@@ -2374,7 +2448,7 @@ tr.win td {
 }
 
 .operation-return-trigger.is-holding::after {
-  animation: operation-hold-progress 3s linear forwards;
+  animation: operation-hold-progress 1s linear forwards;
 }
 
 .record-input-return-row {
