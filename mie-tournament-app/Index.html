@@ -168,21 +168,28 @@
     td.winner { min-width: 140px; color: var(--success); font-weight: 800; }
     td.winner select { min-width: 150px; }
 
-    .tournament-tree {
-      overflow: hidden;
-      padding: 14px 26px 16px;
+    .tournament-scroll {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
       border: 2px solid var(--line);
       border-radius: var(--radius);
       background: #cfe8f8;
     }
 
+    .tournament-tree {
+      --tree-line: 3px;
+      --line: #111820;
+      min-width: 1080px;
+      padding: 12px 28px 16px;
+      color: #111820;
+    }
+
     .champion-banner {
       position: relative;
-      width: min(760px, 100%);
-      margin: 0 auto 16px;
-      padding: 10px 18px;
-      border: 2px solid var(--line);
-      border-radius: var(--radius);
+      width: min(720px, 66%);
+      margin: 0 auto 20px;
+      padding: 9px 18px;
+      border: 3px solid var(--line);
       background: #ffffff;
       text-align: center;
     }
@@ -190,184 +197,263 @@
       content: "";
       position: absolute;
       left: 50%;
-      bottom: -38px;
-      width: 3px;
-      height: 38px;
+      bottom: -20px;
+      width: var(--tree-line);
+      height: 20px;
       background: var(--line);
+      transform: translateX(-50%);
     }
-    .champion-label { display: block; color: var(--accent-strong); font-size: 13px; font-weight: 900; }
-    .champion-name { display: block; margin-top: 2px; font-size: clamp(24px, 2.6vw, 34px); font-weight: 900; }
+    .champion-name {
+      display: block;
+      font-size: clamp(24px, 2.5vw, 34px);
+      font-weight: 900;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
 
     .tree-level-title {
       position: relative;
-      z-index: 2;
+      z-index: 3;
       width: max-content;
-      margin: 0 auto 5px;
+      margin: 0 auto 4px;
       padding: 0 12px;
       background: #cfe8f8;
       color: #223746;
       text-align: center;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 900;
     }
 
     .tree-final {
       position: relative;
-      width: min(540px, 100%);
-      margin: 0 auto 34px;
+      width: 260px;
+      margin: 0 auto 24px;
     }
     .tree-final::after {
       content: "";
       position: absolute;
       left: 50%;
-      bottom: -34px;
-      width: 3px;
-      height: 34px;
+      bottom: -24px;
+      width: var(--tree-line);
+      height: 24px;
       background: var(--line);
+      transform: translateX(-50%);
     }
 
     .tree-semifinals {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: clamp(34px, 8vw, 120px);
-      margin: 0 7% 34px;
+      grid-template-columns: repeat(2, 260px);
+      justify-content: space-around;
+      gap: 120px;
+      margin: 0 7% 24px;
     }
     .tree-semifinals::before {
       content: "";
       position: absolute;
-      top: -18px;
-      left: 25%;
-      right: 25%;
-      border-top: 3px solid var(--line);
+      top: -14px;
+      left: calc(25% - 1px);
+      right: calc(25% - 1px);
+      border-top: var(--tree-line) solid var(--line);
     }
     .tree-semifinals > .match-card::before {
       content: "";
       position: absolute;
       left: 50%;
-      top: -18px;
-      width: 3px;
-      height: 18px;
+      top: -14px;
+      width: var(--tree-line);
+      height: 14px;
       background: var(--line);
+      transform: translateX(-50%);
     }
     .tree-semifinals > .match-card::after {
       content: "";
       position: absolute;
       left: 50%;
-      bottom: -34px;
-      width: 3px;
-      height: 34px;
+      bottom: -24px;
+      width: var(--tree-line);
+      height: 24px;
       background: var(--line);
+      transform: translateX(-50%);
     }
 
     .tree-qualifiers {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: clamp(34px, 8vw, 120px);
-      margin: 0 7%;
+      grid-template-columns: repeat(2, minmax(420px, 1fr));
+      gap: 96px;
+      margin: 0 3%;
     }
     .qualifier-branch {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      align-items: stretch;
+      grid-template-columns: 118px 260px;
+      justify-content: center;
+      gap: 18px;
+      align-items: end;
     }
     .qualifier-branch::before {
       content: "";
       position: absolute;
-      top: -16px;
-      left: 25%;
-      right: 25%;
-      border-top: 3px solid var(--line);
+      top: -14px;
+      left: calc(50% - 125px);
+      right: calc(50% - 125px);
+      border-top: var(--tree-line) solid var(--line);
     }
     .qualifier-branch::after {
       content: "";
       position: absolute;
       left: 50%;
-      top: -34px;
-      width: 3px;
-      height: 18px;
+      top: -24px;
+      width: var(--tree-line);
+      height: 10px;
       background: var(--line);
+      transform: translateX(-50%);
     }
     .qualifier-branch > .seed-card::before,
     .qualifier-branch > .match-card::before {
       content: "";
       position: absolute;
       left: 50%;
-      top: -16px;
-      width: 3px;
-      height: 16px;
+      top: -14px;
+      width: var(--tree-line);
+      height: 14px;
       background: var(--line);
+      transform: translateX(-50%);
     }
+
     .seed-card {
       position: relative;
       display: grid;
       place-items: center;
-      min-width: 0;
-      padding: 10px 9px;
-      border: 2px solid var(--line);
-      border-radius: var(--radius);
+      width: 118px;
+      height: 172px;
+      padding: 25px 8px 8px;
+      border: 3px solid var(--line);
       background: #ffffff;
       text-align: center;
     }
-    .qualifier-branch > .seed-card,
-    .qualifier-branch > .match-card { min-height: 108px; }
-    .seed-card strong { display: block; margin-top: 4px; font-size: 17px; overflow-wrap: anywhere; }
-    .seed-badge { color: var(--accent-strong); font-size: 11px; font-weight: 900; }
+    .seed-card strong {
+      display: block;
+      max-height: 134px;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.1;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      overflow: hidden;
+    }
+    .seed-card strong.is-long { font-size: 15px; }
+    .seed-card strong.is-very-long { font-size: 12px; }
+    .seed-badge {
+      position: absolute;
+      top: 7px;
+      left: 5px;
+      right: 5px;
+      color: var(--accent-strong);
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
 
     .match-card {
       position: relative;
-      padding: 10px;
-      border: 2px solid var(--line);
-      border-radius: var(--radius);
-      background: #ffffff;
+      min-width: 0;
+      background: transparent;
+      text-align: center;
     }
-
-    .match-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 7px; }
-    .match-name { font-size: 15px; font-weight: 900; }
-    .match-time { color: #111820; font-size: 17px; font-weight: 900; white-space: nowrap; }
-    .match-time-input { width: 122px !important; min-height: 40px !important; color: var(--warning) !important; font-weight: 800; }
-    .versus { margin: 4px 0; text-align: center; color: var(--muted); font-weight: 900; }
-    .match-result { margin-top: 7px; color: var(--success); font-weight: 900; min-height: 20px; }
-    .match-card.is-readonly { padding: 9px 10px; }
-    .match-card.is-readonly .match-head { margin-bottom: 5px; }
-    .match-team-list {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-      align-items: stretch;
-      gap: 0;
-    }
-    .match-team {
+    .match-head {
       display: grid;
       place-items: center;
-      min-width: 0;
-      min-height: 32px;
-      padding: 4px 8px;
-      border: 1px solid var(--line-soft);
-      background: #f8fcff;
-      text-align: center;
-      font-size: 16px;
-      font-weight: 900;
-      overflow-wrap: anywhere;
+      min-height: 24px;
+      margin-bottom: 2px;
     }
-    .match-team-vs {
+    .match-name {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .match-time {
+      color: #111820;
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .match-time-input { width: 122px !important; min-height: 40px !important; color: var(--warning) !important; font-weight: 800; }
+    .versus { margin: 4px 0; text-align: center; color: var(--muted); font-weight: 900; }
+    .match-team-list {
       position: relative;
-      z-index: 1;
-      align-self: center;
-      justify-self: center;
-      margin: 0 -1px;
-      padding: 3px 7px;
+      display: grid;
+      grid-template-columns: repeat(2, 112px);
+      justify-content: center;
+      gap: 14px;
+      padding-top: 14px;
+    }
+    .match-team-list::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 56px;
+      right: 56px;
+      border-top: var(--tree-line) solid var(--line);
+    }
+    .match-team-list::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: var(--tree-line);
+      height: 14px;
+      background: var(--line);
+      transform: translateX(-50%);
+    }
+    .match-team {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 112px;
+      height: 142px;
+      padding: 9px;
+      border: 3px solid var(--line);
       background: #ffffff;
-      color: var(--muted);
-      font-size: 11px;
+      color: #111820;
+      font-size: 18px;
       font-weight: 900;
+      line-height: 1.1;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      overflow: hidden;
     }
-    .match-card.is-readonly .match-result {
-      margin-top: 5px;
-      text-align: center;
-      font-size: 13px;
+    .match-team::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -14px;
+      width: var(--tree-line);
+      height: 14px;
+      background: var(--line);
+      transform: translateX(-50%);
     }
+    .match-team.is-long { font-size: 15px; }
+    .match-team.is-very-long { font-size: 12px; }
+    .match-team.is-source-label {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .match-result {
+      min-height: 18px;
+      margin-top: 3px;
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+    .tree-final .match-team { height: 70px; }
+    .tree-semifinals .match-team { height: 104px; }
+    .tree-qualifiers .match-team { height: 142px; }
 
     .save-bar {
       position: sticky;
@@ -429,32 +515,32 @@
         padding: 4px 8px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .workspace { padding: 5px 18px 8px; }
-      body[data-active-view="tournament"]:not(.is-editing) .tournament-tree { padding: 6px 18px 8px; }
+      body[data-active-view="tournament"]:not(.is-editing) .tournament-tree {
+        min-width: 1120px;
+        padding: 6px 26px 10px;
+      }
       body[data-active-view="tournament"]:not(.is-editing) .champion-banner {
-        margin-bottom: 10px;
-        padding: 4px 12px;
+        width: min(720px, 66%);
+        margin-bottom: 18px;
+        padding: 6px 14px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .champion-banner::after {
-        bottom: -23px;
-        height: 23px;
+        bottom: -18px;
+        height: 18px;
       }
-      body[data-active-view="tournament"]:not(.is-editing) .champion-label { font-size: 11px; }
-      body[data-active-view="tournament"]:not(.is-editing) .champion-name { font-size: 25px; }
-      body[data-active-view="tournament"]:not(.is-editing) .tree-level-title {
-        margin-bottom: 2px;
-        font-size: 13px;
-      }
+      body[data-active-view="tournament"]:not(.is-editing) .champion-name { font-size: 27px; }
       body[data-active-view="tournament"]:not(.is-editing) .tree-final {
-        width: min(500px, 100%);
-        margin-bottom: 20px;
+        width: 280px;
+        margin-bottom: 18px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .tree-final::after {
-        bottom: -20px;
-        height: 20px;
+        bottom: -18px;
+        height: 18px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals {
-        gap: 62px;
-        margin: 0 8% 20px;
+        grid-template-columns: repeat(2, 280px);
+        gap: 128px;
+        margin: 0 7% 18px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals::before,
       body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals > .match-card::before {
@@ -462,19 +548,22 @@
       }
       body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals > .match-card::before { height: 11px; }
       body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals > .match-card::after {
-        bottom: -20px;
-        height: 20px;
+        bottom: -18px;
+        height: 18px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .tree-qualifiers {
-        gap: 62px;
-        margin: 0 8%;
+        grid-template-columns: repeat(2, minmax(430px, 1fr));
+        gap: 76px;
+        margin: 0 3%;
       }
       body[data-active-view="tournament"]:not(.is-editing) .qualifier-branch {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 7px;
+        grid-template-columns: 112px 280px;
+        gap: 14px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .qualifier-branch::before {
         top: -10px;
+        left: calc(50% - 126px);
+        right: calc(50% - 126px);
       }
       body[data-active-view="tournament"]:not(.is-editing) .qualifier-branch::after {
         top: -20px;
@@ -485,18 +574,44 @@
         top: -10px;
         height: 10px;
       }
-      body[data-active-view="tournament"]:not(.is-editing) .qualifier-branch > .seed-card,
-      body[data-active-view="tournament"]:not(.is-editing) .qualifier-branch > .match-card {
-        min-height: 72px;
+      body[data-active-view="tournament"]:not(.is-editing) .seed-card {
+        width: 112px;
+        height: 150px;
+        padding: 24px 7px 7px;
       }
-      body[data-active-view="tournament"]:not(.is-editing) .seed-card { padding: 5px 7px; }
-      body[data-active-view="tournament"]:not(.is-editing) .seed-card strong { font-size: 14px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-card.is-readonly { padding: 5px 7px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-head { margin-bottom: 2px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-name { font-size: 13px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-time { font-size: 14px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-team { min-height: 24px; font-size: 14px; }
-      body[data-active-view="tournament"]:not(.is-editing) .match-team-vs { font-size: 9px; }
+      body[data-active-view="tournament"]:not(.is-editing) .seed-card strong {
+        max-height: 118px;
+        font-size: 17px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .seed-card strong.is-long { font-size: 14px; }
+      body[data-active-view="tournament"]:not(.is-editing) .seed-card strong.is-very-long { font-size: 11px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-head { min-height: 22px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-time { font-size: 18px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team-list {
+        grid-template-columns: repeat(2, 112px);
+        gap: 12px;
+        padding-top: 10px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team-list::before {
+        left: 56px;
+        right: 56px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team-list::after,
+      body[data-active-view="tournament"]:not(.is-editing) .match-team::before {
+        height: 10px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team::before { top: -10px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team {
+        width: 112px;
+        font-size: 17px;
+        border-width: 3px;
+      }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team.is-long { font-size: 14px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team.is-very-long { font-size: 11px; }
+      body[data-active-view="tournament"]:not(.is-editing) .match-team.is-source-label { font-size: 12px; }
+      body[data-active-view="tournament"]:not(.is-editing) .tree-final .match-team { height: 104px; }
+      body[data-active-view="tournament"]:not(.is-editing) .tree-semifinals .match-team { height: 116px; }
+      body[data-active-view="tournament"]:not(.is-editing) .tree-qualifiers .match-team { height: 132px; }
       body[data-active-view="tournament"]:not(.is-editing) .match-card.is-readonly .match-result {
         min-height: 14px;
         margin-top: 2px;
@@ -506,9 +621,8 @@
 
     @media (max-width: 980px) {
       .group-grid { grid-template-columns: 1fr; }
-      .tournament-tree { overflow-x: auto; padding: 20px; }
-      .tree-semifinals, .tree-qualifiers { min-width: 860px; margin-left: 0; margin-right: 0; }
-      .qualifier-branch { grid-template-columns: 170px minmax(250px, 1fr); }
+      .tournament-scroll { overflow-x: auto; }
+      .tournament-tree { min-width: 1080px; }
       .group-row { grid-template-columns: 54px minmax(180px, 1fr) repeat(3, 70px); }
       .group-row .metric:nth-last-child(-n+2) { display: none; }
     }
@@ -527,25 +641,6 @@
       .group-row { grid-template-columns: 48px minmax(0, 1fr) 62px; }
       .group-row .metric { display: none; }
       .group-row .metric:first-of-type { display: block; }
-      .tournament-tree { overflow: visible; padding: 14px; }
-      .tree-final { margin-bottom: 24px; }
-      .tree-final::after, .tree-semifinals::before,
-      .tree-semifinals > .match-card::before,
-      .tree-semifinals > .match-card::after,
-      .champion-banner::after, .qualifier-branch::before,
-      .qualifier-branch::after, .qualifier-branch > .seed-card::before,
-      .qualifier-branch > .match-card::before { display: none; }
-      .tree-semifinals, .tree-qualifiers {
-        min-width: 0;
-        grid-template-columns: 1fr;
-        gap: 16px;
-        margin: 0 0 20px;
-      }
-      .qualifier-branch { grid-template-columns: 1fr; gap: 8px; }
-      .match-team-list { grid-template-columns: 1fr; }
-      .match-team-vs { margin: -1px 0; }
-      .seed-card { min-height: 84px; }
-      .match-head { align-items: flex-start; flex-direction: column; }
       .save-bar { padding-left: 12px; padding-right: 12px; }
       .save-bar button { flex: 1; }
     }
@@ -805,25 +900,28 @@
       }
       container.appendChild(createSectionHeading('決勝トーナメント', '下段から上段へ勝ち上がります。各グループ1位は準決勝から参加します。', actions));
 
+      var scroll = document.createElement('div');
+      scroll.className = 'tournament-scroll';
+      scroll.setAttribute('aria-label', '決勝トーナメント表');
+      scroll.setAttribute('tabindex', '0');
+
       var tree = document.createElement('div');
       tree.className = 'tournament-tree';
 
       var finalMatch = findScheduleMatch('F-1');
       var champion = document.createElement('div');
       champion.className = 'champion-banner';
-      champion.innerHTML = '<span class="champion-label">Japan決勝大会進出</span><span class="champion-name"></span>';
+      champion.innerHTML = '<span class="champion-name"></span>';
       champion.querySelector('.champion-name').textContent = finalMatch && finalMatch.winner && finalMatch.winner !== '未定'
         ? finalMatch.winner
         : '決勝勝者';
       tree.appendChild(champion);
 
-      tree.appendChild(createTreeTitle('決勝'));
       var finalWrap = document.createElement('div');
       finalWrap.className = 'tree-final';
       if (finalMatch) finalWrap.appendChild(createMatchCard(finalMatch));
       tree.appendChild(finalWrap);
 
-      tree.appendChild(createTreeTitle('準決勝'));
       var semifinals = document.createElement('div');
       semifinals.className = 'tree-semifinals';
       ['SF-1', 'SF-2'].forEach(function(id) {
@@ -832,13 +930,13 @@
       });
       tree.appendChild(semifinals);
 
-      tree.appendChild(createTreeTitle('シード / 1回戦'));
       var qualifiers = document.createElement('div');
       qualifiers.className = 'tree-qualifiers';
       qualifiers.appendChild(createQualifierBranch('Aグループ1位', 'T-2'));
       qualifiers.appendChild(createQualifierBranch('Bグループ1位', 'T-1'));
       tree.appendChild(qualifiers);
-      container.appendChild(tree);
+      scroll.appendChild(tree);
+      container.appendChild(scroll);
     }
 
     function createTreeTitle(text) {
@@ -857,7 +955,7 @@
         return row.seed && row.group === seedPlaceholder.charAt(0);
       });
       seedCard.innerHTML = '<span class="seed-badge">準決勝シード</span><strong></strong>';
-      seedCard.querySelector('strong').textContent = standing && standing.team ? standing.team : seedPlaceholder;
+      setVerticalTeamName(seedCard.querySelector('strong'), standing && standing.team ? standing.team : seedPlaceholder);
       branch.appendChild(seedCard);
       var match = findScheduleMatch(matchId);
       if (match) branch.appendChild(createMatchCard(match));
@@ -887,15 +985,11 @@
       teams.className = 'match-team-list';
       var team1 = document.createElement('div');
       team1.className = 'match-team';
-      team1.textContent = match.team1 || '未定';
-      var versusText = document.createElement('span');
-      versusText.className = 'match-team-vs';
-      versusText.textContent = 'VS';
+      setVerticalTeamName(team1, match.team1 || '未定');
       var team2 = document.createElement('div');
       team2.className = 'match-team';
-      team2.textContent = match.team2 || '未定';
+      setVerticalTeamName(team2, match.team2 || '未定');
       teams.appendChild(team1);
-      teams.appendChild(versusText);
       teams.appendChild(team2);
       card.appendChild(teams);
 
@@ -905,7 +999,19 @@
         ? '勝者: ' + match.winner
         : (match.resultStatus || '未実施');
       card.appendChild(displayResult);
+      card.setAttribute('aria-label', getTournamentPhaseLabel(match) + ' ' + time.textContent + ' ' + team1.textContent + ' 対 ' + team2.textContent);
       return card;
+    }
+
+    function setVerticalTeamName(element, text) {
+      var value = String(text || '未定').trim() || '未定';
+      var length = Array.from(value).length;
+      element.textContent = value;
+      element.title = value;
+      element.setAttribute('aria-label', value);
+      element.classList.toggle('is-long', length > 10);
+      element.classList.toggle('is-very-long', length > 16);
+      element.classList.toggle('is-source-label', /(?:勝者|[AB]グループ1位)$/.test(value));
     }
 
     function getTournamentPhaseLabel(match) {
