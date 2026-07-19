@@ -455,6 +455,106 @@
     .tree-semifinals .match-team { height: 104px; }
     .tree-qualifiers .match-team { height: 142px; }
 
+    .tournament-tree.bracket-flat {
+      min-width: 1120px;
+      padding: 10px 20px 14px;
+    }
+    .bracket-canvas {
+      position: relative;
+      width: 1080px;
+      height: 470px;
+      margin: 0 auto;
+    }
+    .bracket-lines {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 1080px;
+      height: 470px;
+      overflow: visible;
+      pointer-events: none;
+    }
+    .bracket-line {
+      fill: none;
+      stroke: #111820;
+      stroke-width: 3;
+      stroke-linecap: square;
+      stroke-linejoin: miter;
+      vector-effect: non-scaling-stroke;
+    }
+    .bracket-line.is-winner {
+      stroke: #d5223f;
+      stroke-width: 5;
+    }
+    .bracket-champion {
+      position: absolute;
+      top: 0;
+      left: 360px;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      width: 360px;
+      height: 62px;
+      padding: 6px 16px;
+      border: 3px solid #111820;
+      background: #ffffff;
+      color: #111820;
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bracket-time {
+      position: absolute;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      width: 128px;
+      min-height: 32px;
+      padding: 3px 10px;
+      border: 2px solid #111820;
+      background: #ffffff;
+      color: #111820;
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    .bracket-team-row {
+      position: absolute;
+      top: 408px;
+      left: 0;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: repeat(6, 160px);
+      gap: 24px;
+      width: 1080px;
+    }
+    .bracket-team {
+      display: grid;
+      place-items: center;
+      width: 160px;
+      height: 52px;
+      padding: 5px 9px;
+      border: 3px solid #111820;
+      background: #ffffff;
+      color: #111820;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bracket-team.is-long { font-size: 13px; }
+    .bracket-team.is-very-long { font-size: 11px; }
+
     .save-bar {
       position: sticky;
       bottom: 0;
@@ -906,104 +1006,120 @@
       scroll.setAttribute('tabindex', '0');
 
       var tree = document.createElement('div');
-      tree.className = 'tournament-tree';
-
-      var finalMatch = findScheduleMatch('F-1');
-      var champion = document.createElement('div');
-      champion.className = 'champion-banner';
-      champion.innerHTML = '<span class="champion-name"></span>';
-      champion.querySelector('.champion-name').textContent = finalMatch && finalMatch.winner && finalMatch.winner !== '未定'
-        ? finalMatch.winner
-        : '決勝勝者';
-      tree.appendChild(champion);
-
-      var finalWrap = document.createElement('div');
-      finalWrap.className = 'tree-final';
-      if (finalMatch) finalWrap.appendChild(createMatchCard(finalMatch));
-      tree.appendChild(finalWrap);
-
-      var semifinals = document.createElement('div');
-      semifinals.className = 'tree-semifinals';
-      ['SF-1', 'SF-2'].forEach(function(id) {
-        var match = findScheduleMatch(id);
-        if (match) semifinals.appendChild(createMatchCard(match));
-      });
-      tree.appendChild(semifinals);
-
-      var qualifiers = document.createElement('div');
-      qualifiers.className = 'tree-qualifiers';
-      qualifiers.appendChild(createQualifierBranch('Aグループ1位', 'T-2'));
-      qualifiers.appendChild(createQualifierBranch('Bグループ1位', 'T-1'));
-      tree.appendChild(qualifiers);
+      tree.className = 'tournament-tree bracket-flat';
+      tree.appendChild(createFlatBracket());
       scroll.appendChild(tree);
       container.appendChild(scroll);
-    }
-
-    function createTreeTitle(text) {
-      var title = document.createElement('h3');
-      title.className = 'tree-level-title';
-      title.textContent = text;
-      return title;
-    }
-
-    function createQualifierBranch(seedPlaceholder, matchId) {
-      var branch = document.createElement('section');
-      branch.className = 'qualifier-branch';
-      var seedCard = document.createElement('div');
-      seedCard.className = 'seed-card';
-      var standing = appState.standings.find(function(row) {
-        return row.seed && row.group === seedPlaceholder.charAt(0);
-      });
-      seedCard.innerHTML = '<span class="seed-badge">準決勝シード</span><strong></strong>';
-      setVerticalTeamName(seedCard.querySelector('strong'), standing && standing.team ? standing.team : seedPlaceholder);
-      branch.appendChild(seedCard);
-      var match = findScheduleMatch(matchId);
-      if (match) branch.appendChild(createMatchCard(match));
-      return branch;
     }
 
     function findScheduleMatch(id) {
       return appState.schedule.find(function(row) { return row.id === id; });
     }
 
-    function createMatchCard(match) {
-      var card = document.createElement('article');
-      card.className = 'match-card is-readonly';
-      var head = document.createElement('div');
-      head.className = 'match-head';
-      var name = document.createElement('span');
-      name.className = 'match-name';
-      name.textContent = getTournamentPhaseLabel(match);
-      var time = document.createElement('span');
-      time.className = 'match-time';
-      time.textContent = match.startTime || '時刻未設定';
-      head.appendChild(name);
-      head.appendChild(time);
-      card.appendChild(head);
+    function createFlatBracket() {
+      var canvas = document.createElement('div');
+      canvas.className = 'bracket-canvas';
+      var finalMatch = findScheduleMatch('F-1');
+      var semifinal1 = findScheduleMatch('SF-1');
+      var semifinal2 = findScheduleMatch('SF-2');
+      var qualifierLeft = findScheduleMatch('T-2');
+      var qualifierRight = findScheduleMatch('T-1');
+      var seedA = findSeedTeam('A', 'Aグループ1位');
+      var seedB = findSeedTeam('B', 'Bグループ1位');
+      var teams = [
+        seedA,
+        qualifierLeft && qualifierLeft.team1 || '未定',
+        qualifierLeft && qualifierLeft.team2 || '未定',
+        seedB,
+        qualifierRight && qualifierRight.team1 || '未定',
+        qualifierRight && qualifierRight.team2 || '未定'
+      ];
 
-      var teams = document.createElement('div');
-      teams.className = 'match-team-list';
-      var team1 = document.createElement('div');
-      team1.className = 'match-team';
-      setVerticalTeamName(team1, match.team1 || '未定');
-      var team2 = document.createElement('div');
-      team2.className = 'match-team';
-      setVerticalTeamName(team2, match.team2 || '未定');
-      teams.appendChild(team1);
-      teams.appendChild(team2);
-      card.appendChild(teams);
+      var champion = document.createElement('div');
+      champion.className = 'bracket-champion';
+      champion.textContent = getResolvedWinner(finalMatch) || '優勝';
+      champion.title = champion.textContent;
+      canvas.appendChild(champion);
 
-      var displayResult = document.createElement('div');
-      displayResult.className = 'match-result';
-      displayResult.textContent = match.winner && match.winner !== '未定'
-        ? '勝者: ' + match.winner
-        : (match.resultStatus || '未実施');
-      card.appendChild(displayResult);
-      card.setAttribute('aria-label', getTournamentPhaseLabel(match) + ' ' + time.textContent + ' ' + team1.textContent + ' 対 ' + team2.textContent);
-      return card;
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'bracket-lines');
+      svg.setAttribute('viewBox', '0 0 1080 470');
+      svg.setAttribute('aria-hidden', 'true');
+
+      var qualifierLeftWinner = getResolvedWinner(qualifierLeft);
+      var qualifierRightWinner = getResolvedWinner(qualifierRight);
+      var semifinal1Winner = getResolvedWinner(semifinal1);
+      var semifinal2Winner = getResolvedWinner(semifinal2);
+      var finalWinner = getResolvedWinner(finalMatch);
+
+      appendBracketPath(svg, 'M264 408 V350 H356', isSameTeam(qualifierLeftWinner, teams[1]));
+      appendBracketPath(svg, 'M448 408 V350 H356', isSameTeam(qualifierLeftWinner, teams[2]));
+      appendBracketPath(svg, 'M356 350 V245 H264', Boolean(qualifierLeftWinner));
+      appendBracketPath(svg, 'M80 408 V245 H264', isSameTeam(semifinal1Winner, seedA));
+      appendBracketPath(svg, 'M264 245 V135 H540', Boolean(semifinal1Winner));
+
+      appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(qualifierRightWinner, teams[4]));
+      appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(qualifierRightWinner, teams[5]));
+      appendBracketPath(svg, 'M908 350 V245 H816', Boolean(qualifierRightWinner));
+      appendBracketPath(svg, 'M632 408 V245 H816', isSameTeam(semifinal2Winner, seedB));
+      appendBracketPath(svg, 'M816 245 V135 H540', Boolean(semifinal2Winner));
+      appendBracketPath(svg, 'M540 135 V62', Boolean(finalWinner));
+      canvas.appendChild(svg);
+
+      canvas.appendChild(createBracketTime(finalMatch, 540, 96));
+      canvas.appendChild(createBracketTime(semifinal1, 264, 206));
+      canvas.appendChild(createBracketTime(semifinal2, 816, 206));
+      canvas.appendChild(createBracketTime(qualifierLeft, 356, 316));
+      canvas.appendChild(createBracketTime(qualifierRight, 908, 316));
+
+      var teamRow = document.createElement('div');
+      teamRow.className = 'bracket-team-row';
+      teams.forEach(function(team) {
+        var box = document.createElement('div');
+        box.className = 'bracket-team';
+        setBracketTeamName(box, team);
+        teamRow.appendChild(box);
+      });
+      canvas.appendChild(teamRow);
+      canvas.setAttribute('aria-label', '決勝トーナメント。優勝 ' + champion.textContent + '。参加チーム ' + teams.join('、'));
+      return canvas;
     }
 
-    function setVerticalTeamName(element, text) {
+    function findSeedTeam(group, fallback) {
+      var standing = appState.standings.find(function(row) {
+        return row.seed && row.group === group;
+      });
+      return standing && standing.team ? standing.team : fallback;
+    }
+
+    function getResolvedWinner(match) {
+      if (!match || !match.winner || match.winner === '未定') return '';
+      return String(match.winner).trim();
+    }
+
+    function isSameTeam(left, right) {
+      return Boolean(left && right && String(left).trim() === String(right).trim());
+    }
+
+    function appendBracketPath(svg, pathData, isWinner) {
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData);
+      path.setAttribute('class', 'bracket-line' + (isWinner ? ' is-winner' : ''));
+      svg.appendChild(path);
+    }
+
+    function createBracketTime(match, centerX, top) {
+      var time = document.createElement('div');
+      time.className = 'bracket-time';
+      time.style.left = centerX + 'px';
+      time.style.top = top + 'px';
+      time.textContent = match && match.startTime ? match.startTime : '--:--';
+      time.title = (match ? getTournamentPhaseLabel(match) : '試合') + ' ' + time.textContent;
+      time.setAttribute('aria-label', time.title);
+      return time;
+    }
+
+    function setBracketTeamName(element, text) {
       var value = String(text || '未定').trim() || '未定';
       var length = Array.from(value).length;
       element.textContent = value;
@@ -1011,7 +1127,6 @@
       element.setAttribute('aria-label', value);
       element.classList.toggle('is-long', length > 10);
       element.classList.toggle('is-very-long', length > 16);
-      element.classList.toggle('is-source-label', /(?:勝者|[AB]グループ1位)$/.test(value));
     }
 
     function getTournamentPhaseLabel(match) {
