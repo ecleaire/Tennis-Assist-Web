@@ -3,6 +3,15 @@ var MIE_TEAM_SHEET = 'チームリスト';
 var MIE_RESULT_SHEET = '試合結果';
 var MIE_SETUP_SHEET = '大会編成';
 var MIE_TIME_ZONE = 'Asia/Tokyo';
+var MIE_BRACKET_DISPLAY_DEFAULTS = {
+  orientation: 'horizontal',
+  wrapMode: 'auto',
+  fontSize: 21,
+  boxWidth: 160,
+  boxHeight: 170,
+  boxBorderWidth: 3,
+  lineWidth: 3
+};
 
 var MIE_FALLBACK_TEAMS = [
   'サクラユリ',
@@ -56,6 +65,7 @@ function getCompetitionState(editorKey) {
       schedule: schedule,
       tournamentMode: getTournamentMode_(),
       thirdPlaceEnabled: getThirdPlaceEnabled_(),
+      bracketDisplaySettings: getBracketDisplaySettings_(),
       canEdit: isEditorAuthorized_(editorKey),
       editorKeyRequired: keyRequired,
       securityNotice: keyRequired
@@ -185,6 +195,9 @@ function saveCompetitionState(payload, editorKey) {
     var thirdPlaceEnabled = payload.thirdPlaceEnabled === undefined
       ? getThirdPlaceEnabled_()
       : Boolean(payload.thirdPlaceEnabled);
+    var bracketDisplaySettings = payload.bracketDisplaySettings === undefined
+      ? getBracketDisplaySettings_()
+      : normalizeBracketDisplaySettings_(payload.bracketDisplaySettings);
 
     sheet.getRange(3, 3, 6, 1).setValues(validatedGroups.map(function(row) {
       return [row.team];
@@ -195,6 +208,7 @@ function saveCompetitionState(payload, editorKey) {
     });
     sheet.getRange(3, 10, scheduleValues.length, 7).setValues(scheduleValues);
     saveTournamentOptions_(tournamentMode, thirdPlaceEnabled);
+    saveBracketDisplaySettings_(bracketDisplaySettings);
     SpreadsheetApp.flush();
 
     return getCompetitionState(editorKey);
@@ -602,6 +616,45 @@ function saveTournamentOptions_(mode, thirdPlaceEnabled) {
   var properties = PropertiesService.getScriptProperties();
   properties.setProperty('MIE_TOURNAMENT_MODE', normalizeTournamentMode_(mode));
   properties.setProperty('MIE_THIRD_PLACE_ENABLED', thirdPlaceEnabled ? 'true' : 'false');
+}
+
+function normalizeBracketDisplaySettings_(settings) {
+  settings = settings && typeof settings === 'object' ? settings : {};
+  var wrapModes = ['auto', '6', '8', '10', 'none'];
+  return {
+    orientation: settings.orientation === 'vertical' ? 'vertical' : 'horizontal',
+    wrapMode: wrapModes.indexOf(String(settings.wrapMode || '')) >= 0
+      ? String(settings.wrapMode)
+      : MIE_BRACKET_DISPLAY_DEFAULTS.wrapMode,
+    fontSize: clampSettingNumber_(settings.fontSize, 14, 30, MIE_BRACKET_DISPLAY_DEFAULTS.fontSize),
+    boxWidth: clampSettingNumber_(settings.boxWidth, 120, 176, MIE_BRACKET_DISPLAY_DEFAULTS.boxWidth),
+    boxHeight: clampSettingNumber_(settings.boxHeight, 110, 190, MIE_BRACKET_DISPLAY_DEFAULTS.boxHeight),
+    boxBorderWidth: clampSettingNumber_(settings.boxBorderWidth, 1, 7, MIE_BRACKET_DISPLAY_DEFAULTS.boxBorderWidth),
+    lineWidth: clampSettingNumber_(settings.lineWidth, 2, 7, MIE_BRACKET_DISPLAY_DEFAULTS.lineWidth)
+  };
+}
+
+function clampSettingNumber_(value, minimum, maximum, fallback) {
+  var number = Number(value);
+  if (!isFinite(number)) return fallback;
+  return Math.min(maximum, Math.max(minimum, number));
+}
+
+function getBracketDisplaySettings_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('MIE_BRACKET_DISPLAY_SETTINGS');
+  if (!raw) return normalizeBracketDisplaySettings_(MIE_BRACKET_DISPLAY_DEFAULTS);
+  try {
+    return normalizeBracketDisplaySettings_(JSON.parse(raw));
+  } catch (error) {
+    return normalizeBracketDisplaySettings_(MIE_BRACKET_DISPLAY_DEFAULTS);
+  }
+}
+
+function saveBracketDisplaySettings_(settings) {
+  PropertiesService.getScriptProperties().setProperty(
+    'MIE_BRACKET_DISPLAY_SETTINGS',
+    JSON.stringify(normalizeBracketDisplaySettings_(settings))
+  );
 }
 
 function createHeaderMap_(headers) {

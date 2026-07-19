@@ -462,44 +462,51 @@
     .bracket-canvas {
       position: relative;
       width: 1080px;
-      height: 560px;
+      height: 610px;
       margin: 0 auto;
+      --bracket-box-width: 160px;
+      --bracket-box-height: 170px;
+      --bracket-team-font-size: 21px;
+      --bracket-box-border-width: 3px;
+      --bracket-line-width: 3px;
     }
     .bracket-lines {
       position: absolute;
       inset: 0;
       z-index: 1;
       width: 1080px;
-      height: 560px;
+      height: 610px;
       overflow: visible;
       pointer-events: none;
     }
     .bracket-line {
       fill: none;
       stroke: #111820;
-      stroke-width: 3;
+      stroke-width: var(--bracket-line-width);
       stroke-linecap: square;
       stroke-linejoin: miter;
       vector-effect: non-scaling-stroke;
     }
     .bracket-line.is-winner {
       stroke: #d5223f;
-      stroke-width: 5;
+      stroke-width: calc(var(--bracket-line-width) + 2px);
     }
     .bracket-champion {
       position: absolute;
       top: 0;
-      left: 360px;
+      left: 268px;
       z-index: 3;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       width: 360px;
-      height: 62px;
+      height: 68px;
       padding: 6px 16px;
-      border: 3px solid #111820;
+      border: var(--bracket-box-border-width) solid #111820;
       background: #ffffff;
       color: #111820;
-      font-size: 26px;
+      font-size: 30px;
       font-weight: 900;
       line-height: 1.1;
       text-align: center;
@@ -512,13 +519,13 @@
       z-index: 3;
       display: grid;
       place-items: center;
-      width: 128px;
-      min-height: 32px;
+      width: 144px;
+      min-height: 38px;
       padding: 3px 10px;
       border: 2px solid #111820;
       background: #ffffff;
       color: #111820;
-      font-size: 17px;
+      font-size: 20px;
       font-weight: 900;
       line-height: 1;
       text-align: center;
@@ -527,33 +534,102 @@
     }
     .bracket-team-row {
       position: absolute;
-      top: 408px;
+      top: 410px;
       left: 0;
       z-index: 3;
-      display: grid;
-      grid-template-columns: repeat(6, 160px);
-      gap: 24px;
       width: 1080px;
+      height: var(--bracket-box-height);
     }
     .bracket-team {
+      position: absolute;
+      top: 0;
       display: grid;
       place-items: center;
-      width: 160px;
-      height: 52px;
-      padding: 5px 9px;
+      width: var(--bracket-box-width);
+      height: var(--bracket-box-height);
+      padding: 10px 12px;
       border: 3px solid #111820;
       background: #ffffff;
       color: #111820;
-      font-size: 16px;
+      font-size: var(--bracket-team-font-size);
       font-weight: 900;
-      line-height: 1;
+      line-height: 1.2;
       text-align: center;
-      white-space: nowrap;
+      white-space: normal;
       overflow: hidden;
-      text-overflow: ellipsis;
+      text-overflow: clip;
+      transform: translateX(-50%);
     }
-    .bracket-team.is-long { font-size: 13px; }
-    .bracket-team.is-very-long { font-size: 11px; }
+    .bracket-team-line {
+      display: block;
+      white-space: nowrap;
+    }
+    .bracket-team.is-long {
+      font-size: max(14px, calc(var(--bracket-team-font-size) - 3px));
+    }
+    .bracket-team.is-very-long {
+      font-size: max(12px, calc(var(--bracket-team-font-size) - 6px));
+    }
+    .bracket-canvas[data-team-orientation="horizontal"] .bracket-team {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+    .bracket-canvas[data-team-orientation="vertical"] .bracket-team {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .bracket-canvas[data-team-orientation="vertical"] .bracket-team-line {
+      display: inline;
+      white-space: nowrap;
+    }
+    .bracket-view-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(170px, 1fr));
+      gap: 12px;
+      margin: 12px 0 0;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+    }
+    .bracket-view-settings {
+      margin: 0 0 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+    .bracket-view-settings summary {
+      min-height: 48px;
+      padding: 13px 16px;
+      color: var(--text);
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .bracket-view-settings summary::marker { color: var(--accent-strong); }
+    .bracket-view-options label {
+      display: grid;
+      gap: 5px;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .bracket-view-options select,
+    .bracket-view-options input { min-height: 42px; }
+    .bracket-range {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 82px;
+      align-items: center;
+      gap: 8px;
+    }
+    .bracket-range input[type="number"] {
+      width: 82px;
+      min-height: 42px;
+      padding: 8px 9px;
+      color: var(--accent-strong);
+      font-weight: 900;
+      text-align: right;
+    }
 
     .save-bar {
       position: sticky;
@@ -629,9 +705,8 @@
         padding: 6px 26px 10px;
       }
       body[data-active-view="tournament"]:not(.is-editing) .bracket-canvas {
-        transform: scaleY(.8);
-        transform-origin: top center;
-        margin-bottom: -112px;
+        transform: none;
+        margin-bottom: 0;
       }
       body[data-active-view="tournament"]:not(.is-editing) .champion-banner {
         width: min(720px, 66%);
@@ -793,6 +868,30 @@
       margin-bottom: 10px;
     }
     .display-schedule-heading h3 { margin: 0; }
+    .display-heading-copy {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      min-width: 0;
+    }
+    .display-clock-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 4px 0 10px;
+    }
+    .live-clock {
+      display: inline-flex;
+      align-items: center;
+      min-width: 126px;
+      color: #111820;
+      font-size: clamp(30px, 3vw, 44px);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
     .display-schedule-table { min-width: 0 !important; }
     .display-schedule-table th,
     .display-schedule-table td { font-size: 16px; }
@@ -808,15 +907,22 @@
     }
     .display-fullscreen[hidden] { display: none; }
     .display-fullscreen-toolbar {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(126px, auto) minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
       gap: 12px;
-      max-width: 1180px;
+      max-width: 1280px;
       margin: 0 auto 10px;
     }
-    .display-fullscreen-toolbar strong { font-size: clamp(22px, 3vw, 38px); }
-    .display-fullscreen-body { max-width: 1180px; margin: 0 auto; }
+    .display-fullscreen-toolbar strong {
+      justify-self: center;
+      font-size: clamp(22px, 3vw, 38px);
+    }
+    .display-fullscreen-toolbar .live-clock {
+      justify-self: start;
+      font-size: clamp(36px, 3.6vw, 52px);
+    }
+    .display-fullscreen-body { max-width: 1280px; margin: 0 auto; }
     .display-fullscreen .tournament-tree { border-color: #111820; }
     .display-fullscreen .bracket-canvas {
       margin: 0 auto;
@@ -832,11 +938,17 @@
     .display-fullscreen .display-schedule-table td {
       color: #111820;
       border-color: #8aa9ba;
+      padding: clamp(10px, 1.5vh, 17px) 16px;
+      font-size: clamp(20px, 1.75vw, 27px);
+      line-height: 1.25;
+    }
+    .display-fullscreen[data-kind="schedule"] .display-fullscreen-body {
+      max-width: 1360px;
     }
     .bracket-line.is-third-place {
       stroke: #657a87;
       stroke-dasharray: 8 6;
-      stroke-width: 3;
+      stroke-width: var(--bracket-line-width);
     }
     .bracket-third-place-label {
       position: absolute;
@@ -848,28 +960,24 @@
       border: 2px solid #657a87;
       background: #ffffff;
       color: #111820;
-      font-size: 14px;
+      font-size: 17px;
       font-weight: 900;
       white-space: nowrap;
     }
     html.is-display-fullscreen,
     html.is-display-fullscreen body { overflow: hidden; }
-    .bracket-flat .bracket-team {
-      height: 132px;
-      padding: 8px 12px;
-      white-space: normal;
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      overflow-wrap: anywhere;
-      text-overflow: clip;
-    }
-    .bracket-flat .bracket-team.is-long { font-size: 16px; }
-    .bracket-flat .bracket-team.is-very-long { font-size: 13px; }
     @media (max-width: 720px) {
       .tournament-options { grid-template-columns: 1fr; }
+      .bracket-view-options { grid-template-columns: 1fr; }
       .display-fullscreen { padding: 12px; }
-      .display-fullscreen-toolbar { align-items: flex-start; }
+      .display-fullscreen-toolbar {
+        grid-template-columns: 1fr auto;
+        align-items: flex-start;
+      }
+      .display-fullscreen-toolbar .live-clock { font-size: 30px; }
       .display-fullscreen-toolbar strong { font-size: 22px; }
+      .display-fullscreen-toolbar strong { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+      .display-heading-copy { align-items: flex-start; flex-direction: column; gap: 8px; }
     }
   </style>
 </head>
@@ -913,6 +1021,7 @@
 
   <div id="displayFullscreen" class="display-fullscreen" hidden>
     <div class="display-fullscreen-toolbar">
+      <time class="live-clock" data-live-clock datetime="">--:--</time>
       <strong id="displayFullscreenTitle"></strong>
       <button id="displayFullscreenClose" class="secondary" type="button">全画面解除</button>
     </div>
@@ -940,6 +1049,23 @@
     var activeView = 'groups';
     var isDirty = false;
     var editModeActive = false;
+    var refreshInFlight = false;
+    var realtimeRefreshTimer = null;
+    var liveClockTimer = null;
+    var lastStateSignature = '';
+    var consecutiveRefreshFailures = 0;
+    var REALTIME_REFRESH_MS = 10000;
+    var BRACKET_DISPLAY_STORAGE_KEY = 'mieTournamentBracketDisplayV1';
+    var BRACKET_DISPLAY_DEFAULTS = {
+      orientation: 'horizontal',
+      wrapMode: 'auto',
+      fontSize: 21,
+      boxWidth: 160,
+      boxHeight: 170,
+      boxBorderWidth: 3,
+      lineWidth: 3
+    };
+    var bracketDisplaySettings = loadBracketDisplaySettings();
     var PLACEHOLDERS = [
       '未定', 'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者',
       'SF-1 敗者', 'SF-2 敗者', '3P-1 勝者', '3P-1 敗者',
@@ -949,8 +1075,8 @@
     document.addEventListener('DOMContentLoaded', initialize);
 
     function initialize() {
-      document.getElementById('refreshButton').addEventListener('click', loadState);
-      document.getElementById('discardButton').addEventListener('click', loadState);
+      document.getElementById('refreshButton').addEventListener('click', function() { loadState(); });
+      document.getElementById('discardButton').addEventListener('click', function() { loadState(); });
       document.getElementById('saveButton').addEventListener('click', saveState);
       document.getElementById('editButton').addEventListener('click', openEditDialog);
       document.getElementById('spreadsheetButton').addEventListener('click', openSpreadsheet);
@@ -960,7 +1086,10 @@
         button.addEventListener('click', function() { document.getElementById('editDialog').close(); });
       });
       document.querySelectorAll('.tab').forEach(function(button) {
-        button.addEventListener('click', function() { showView(button.dataset.view); });
+        button.addEventListener('click', function() {
+          showView(button.dataset.view);
+          refreshLiveResults();
+        });
       });
       window.addEventListener('beforeunload', function(event) {
         if (!isDirty) return;
@@ -968,6 +1097,14 @@
         event.returnValue = '';
       });
       document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          updateLiveClocks();
+          refreshLiveResults();
+        }
+      });
+      startLiveClock();
+      startRealtimeRefresh();
       loadState();
     }
 
@@ -990,20 +1127,112 @@
       });
     }
 
-    async function loadState() {
-      setLoading(true);
+    async function loadState(options) {
+      options = options && options.silent ? options : { silent: false };
+      if (refreshInFlight) return;
+      if (options.silent && (isEditing() || isDirty || document.hidden || !shouldRealtimeRefresh())) return;
+      refreshInFlight = true;
+      if (!options.silent) setLoading(true);
       try {
         var response = await callServer('getCompetitionState', editorKey);
         if (!response || !response.success) throw new Error(response && response.message || '大会情報を取得できませんでした。');
-        appState = response;
-        isDirty = false;
-        render();
-        setStatus('閲覧表示です。管理編集が必要な場合は「管理編集」を押してください。', '');
+        var nextSignature = createStateSignature(response);
+        var hasChanged = nextSignature !== lastStateSignature;
+        setCompetitionState(response);
+        lastStateSignature = nextSignature;
+        consecutiveRefreshFailures = 0;
+        if (!options.silent) isDirty = false;
+        if (!options.silent || hasChanged) {
+          render();
+        } else {
+          document.getElementById('updatedAt').textContent = appState.updatedAt ? '更新 ' + appState.updatedAt : '';
+          updateLiveClocks();
+        }
+        if (!options.silent) {
+          setStatus('閲覧表示です。管理編集が必要な場合は「管理編集」を押してください。', '');
+        }
       } catch (error) {
-        setStatus(error.message, 'error');
+        consecutiveRefreshFailures += 1;
+        if (!options.silent || consecutiveRefreshFailures >= 3) {
+          setStatus(options.silent
+            ? '自動更新を確認できません。通信回復後に再試行します。'
+            : error.message, options.silent ? 'warning' : 'error');
+        }
       } finally {
-        setLoading(false);
+        refreshInFlight = false;
+        if (!options.silent) setLoading(false);
       }
+    }
+
+    function createStateSignature(state) {
+      if (!state) return '';
+      return JSON.stringify({
+        teams: state.teams || [],
+        groups: state.groups || [],
+        standings: state.standings || [],
+        schedule: state.schedule || [],
+        tournamentMode: state.tournamentMode || '',
+        thirdPlaceEnabled: Boolean(state.thirdPlaceEnabled),
+        bracketDisplaySettings: state.bracketDisplaySettings || {}
+      });
+    }
+
+    function shouldRealtimeRefresh() {
+      var overlay = document.getElementById('displayFullscreen');
+      return activeView === 'schedule' || activeView === 'tournament' || Boolean(overlay && !overlay.hidden);
+    }
+
+    function refreshLiveResults() {
+      if (!appState || !shouldRealtimeRefresh()) return;
+      loadState({ silent: true });
+    }
+
+    function startRealtimeRefresh() {
+      if (realtimeRefreshTimer) window.clearInterval(realtimeRefreshTimer);
+      realtimeRefreshTimer = window.setInterval(refreshLiveResults, REALTIME_REFRESH_MS);
+    }
+
+    function formatCurrentTime(date) {
+      try {
+        return new Intl.DateTimeFormat('ja-JP', {
+          timeZone: 'Asia/Tokyo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hourCycle: 'h23'
+        }).format(date);
+      } catch (error) {
+        return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      }
+    }
+
+    function updateLiveClocks() {
+      var now = new Date();
+      var label = formatCurrentTime(now);
+      document.querySelectorAll('[data-live-clock]').forEach(function(clock) {
+        clock.textContent = label;
+        clock.dateTime = now.toISOString();
+      });
+    }
+
+    function startLiveClock() {
+      updateLiveClocks();
+      if (liveClockTimer) window.clearInterval(liveClockTimer);
+      liveClockTimer = window.setInterval(updateLiveClocks, 1000);
+    }
+
+    function createLiveClock() {
+      var clock = document.createElement('time');
+      clock.className = 'live-clock';
+      clock.setAttribute('data-live-clock', '');
+      clock.setAttribute('aria-label', '現在時刻');
+      return clock;
+    }
+
+    function createLiveClockRow() {
+      var row = document.createElement('div');
+      row.className = 'display-clock-row';
+      row.appendChild(createLiveClock());
+      return row;
     }
 
     function render() {
@@ -1019,6 +1248,8 @@
       renderSchedule();
       renderTournament();
       showView(activeView);
+      refreshDisplayFullscreenBody();
+      updateLiveClocks();
     }
 
     function renderGroups() {
@@ -1098,9 +1329,13 @@
       displayBlock.className = 'display-schedule-block';
       var displayHeading = document.createElement('div');
       displayHeading.className = 'display-schedule-heading';
+      var displayHeadingCopy = document.createElement('div');
+      displayHeadingCopy.className = 'display-heading-copy';
+      displayHeadingCopy.appendChild(createLiveClock());
       var displayTitle = document.createElement('h3');
       displayTitle.textContent = '表示用タイムスケジュール';
-      displayHeading.appendChild(displayTitle);
+      displayHeadingCopy.appendChild(displayTitle);
+      displayHeading.appendChild(displayHeadingCopy);
       displayHeading.appendChild(createButton('全画面表示', 'secondary', function() {
         openDisplayFullscreen('schedule');
       }, false));
@@ -1171,6 +1406,162 @@
       return row;
     }
 
+    function clampNumber(value, minimum, maximum, fallback) {
+      var number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(maximum, Math.max(minimum, number));
+    }
+
+    function loadBracketDisplaySettings(source) {
+      var saved = source && typeof source === 'object' ? source : {};
+      try {
+        if (!source) {
+          saved = JSON.parse(localStorage.getItem(BRACKET_DISPLAY_STORAGE_KEY) || '{}') || {};
+        }
+      } catch (error) {
+        saved = {};
+      }
+      return {
+        orientation: saved.orientation === 'vertical' ? 'vertical' : 'horizontal',
+        wrapMode: ['auto', '6', '8', '10', 'none'].indexOf(String(saved.wrapMode || '')) >= 0
+          ? String(saved.wrapMode)
+          : BRACKET_DISPLAY_DEFAULTS.wrapMode,
+        fontSize: clampNumber(saved.fontSize, 14, 30, BRACKET_DISPLAY_DEFAULTS.fontSize),
+        boxWidth: clampNumber(saved.boxWidth, 120, 176, BRACKET_DISPLAY_DEFAULTS.boxWidth),
+        boxHeight: clampNumber(saved.boxHeight, 110, 190, BRACKET_DISPLAY_DEFAULTS.boxHeight),
+        boxBorderWidth: clampNumber(saved.boxBorderWidth, 1, 7, BRACKET_DISPLAY_DEFAULTS.boxBorderWidth),
+        lineWidth: clampNumber(saved.lineWidth, 2, 7, BRACKET_DISPLAY_DEFAULTS.lineWidth)
+      };
+    }
+
+    function saveBracketDisplaySettings() {
+      try {
+        localStorage.setItem(BRACKET_DISPLAY_STORAGE_KEY, JSON.stringify(bracketDisplaySettings));
+      } catch (error) {}
+    }
+
+    function setCompetitionState(response) {
+      appState = response;
+      bracketDisplaySettings = loadBracketDisplaySettings(response && response.bracketDisplaySettings);
+      if (appState) {
+        appState.bracketDisplaySettings = Object.assign({}, bracketDisplaySettings);
+      }
+      saveBracketDisplaySettings();
+    }
+
+    function updateBracketDisplayDraft() {
+      if (appState) {
+        appState.bracketDisplaySettings = Object.assign({}, bracketDisplaySettings);
+      }
+      saveBracketDisplaySettings();
+      markDirty();
+    }
+
+    function applyBracketDisplaySettingsToCanvas(canvas) {
+      if (!canvas) return;
+      canvas.dataset.teamOrientation = bracketDisplaySettings.orientation;
+      canvas.style.setProperty('--bracket-box-width', bracketDisplaySettings.boxWidth + 'px');
+      canvas.style.setProperty('--bracket-box-height', bracketDisplaySettings.boxHeight + 'px');
+      canvas.style.setProperty('--bracket-team-font-size', bracketDisplaySettings.fontSize + 'px');
+      canvas.style.setProperty('--bracket-box-border-width', bracketDisplaySettings.boxBorderWidth + 'px');
+      canvas.style.setProperty('--bracket-line-width', bracketDisplaySettings.lineWidth + 'px');
+    }
+
+    function applyBracketDisplaySettingsToCanvases() {
+      document.querySelectorAll('.bracket-canvas').forEach(applyBracketDisplaySettingsToCanvas);
+    }
+
+    function createBracketDisplayOptions() {
+      var details = document.createElement('details');
+      details.className = 'bracket-view-settings';
+      details.open = true;
+      var summary = document.createElement('summary');
+      summary.textContent = '表示設定（' +
+        (bracketDisplaySettings.orientation === 'vertical' ? '縦書き' : '横書き') + ' / 枠 ' +
+        bracketDisplaySettings.boxWidth + '×' + bracketDisplaySettings.boxHeight + ' / 枠線 ' +
+        bracketDisplaySettings.boxBorderWidth + 'px / 接続線 ' + bracketDisplaySettings.lineWidth + 'px）';
+      details.appendChild(summary);
+
+      var options = document.createElement('div');
+      options.className = 'bracket-view-options';
+      options.appendChild(createBracketSettingSelect('チーム名の向き', 'orientation', [
+        ['horizontal', '横書き'], ['vertical', '縦書き']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingSelect('横書きの改行', 'wrapMode', [
+        ['auto', '自動（空白を優先）'], ['6', '6文字ごと'], ['8', '8文字ごと'],
+        ['10', '10文字ごと'], ['none', '改行しない']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingRange('文字サイズ', 'fontSize', 14, 30, 1, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠の幅', 'boxWidth', 120, 176, 2, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠の高さ', 'boxHeight', 110, 190, 2, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠線の太さ', 'boxBorderWidth', 1, 7, 1, 'px'));
+      options.appendChild(createBracketSettingRange('接続線の太さ', 'lineWidth', 2, 7, 1, 'px'));
+      details.appendChild(options);
+      return details;
+    }
+
+    function createBracketSettingSelect(title, key, choices, afterChange) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(title));
+      var select = document.createElement('select');
+      choices.forEach(function(choice) {
+        var option = document.createElement('option');
+        option.value = choice[0];
+        option.textContent = choice[1];
+        select.appendChild(option);
+      });
+      select.value = String(bracketDisplaySettings[key]);
+      select.addEventListener('change', function() {
+        bracketDisplaySettings[key] = select.value;
+        updateBracketDisplayDraft();
+        if (afterChange) afterChange();
+      });
+      label.appendChild(select);
+      return label;
+    }
+
+    function createBracketSettingRange(title, key, minimum, maximum, step, suffix) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(title));
+      var row = document.createElement('div');
+      row.className = 'bracket-range';
+      var input = document.createElement('input');
+      input.type = 'range';
+      input.min = minimum;
+      input.max = maximum;
+      input.step = step;
+      input.value = bracketDisplaySettings[key];
+      var numberInput = document.createElement('input');
+      numberInput.type = 'number';
+      numberInput.min = minimum;
+      numberInput.max = maximum;
+      numberInput.step = step;
+      numberInput.value = bracketDisplaySettings[key];
+      numberInput.setAttribute('aria-label', title + 'の数値');
+      function updateValue(value) {
+        var normalized = clampNumber(value, minimum, maximum, bracketDisplaySettings[key]);
+        bracketDisplaySettings[key] = normalized;
+        input.value = normalized;
+        numberInput.value = normalized;
+        updateBracketDisplayDraft();
+        applyBracketDisplaySettingsToCanvases();
+        var details = label.closest('details');
+        var summary = details && details.querySelector('summary');
+        if (summary) {
+          summary.textContent = '表示設定（' +
+            (bracketDisplaySettings.orientation === 'vertical' ? '縦書き' : '横書き') + ' / 枠 ' +
+            bracketDisplaySettings.boxWidth + '×' + bracketDisplaySettings.boxHeight + ' / 枠線 ' +
+            bracketDisplaySettings.boxBorderWidth + 'px / 接続線 ' + bracketDisplaySettings.lineWidth + 'px）';
+        }
+      }
+      input.addEventListener('input', function() { updateValue(input.value); });
+      numberInput.addEventListener('change', function() { updateValue(numberInput.value); });
+      row.appendChild(input);
+      row.appendChild(numberInput);
+      label.appendChild(row);
+      return label;
+    }
+
     function renderTournament() {
       var container = document.getElementById('tournamentView');
       container.textContent = '';
@@ -1196,6 +1587,7 @@
       modeSelect.addEventListener('change', function() {
         appState.tournamentMode = modeSelect.value;
         markDirty();
+        renderTournament();
       });
       modeLabel.appendChild(modeSelect);
       options.appendChild(modeLabel);
@@ -1218,6 +1610,9 @@
       if (isEditing()) {
         container.appendChild(options);
       }
+      if (isEditing()) {
+        container.appendChild(createBracketDisplayOptions());
+      }
 
       var scroll = document.createElement('div');
       scroll.className = 'tournament-scroll';
@@ -1226,6 +1621,7 @@
 
       var tree = document.createElement('div');
       tree.className = 'tournament-tree bracket-flat';
+      tree.appendChild(createLiveClockRow());
       tree.appendChild(createFlatBracket());
       scroll.appendChild(tree);
       container.appendChild(scroll);
@@ -1238,6 +1634,7 @@
     function createFlatBracket() {
       var canvas = document.createElement('div');
       canvas.className = 'bracket-canvas';
+      applyBracketDisplaySettingsToCanvas(canvas);
       var finalMatch = findScheduleMatch('F-1');
       var semifinal1 = findScheduleMatch('SF-1');
       var semifinal2 = findScheduleMatch('SF-2');
@@ -1247,6 +1644,7 @@
       var seedA = findSeedTeam('A', 'Aグループ1位');
       var seedB = findSeedTeam('B', 'Bグループ1位');
       var mode = appState.tournamentMode || 'seed-vs-winner';
+      var leafCenters = [80, 264, 448, 632, 816, 1000];
       var teams = mode === 'seed-vs-seed'
         ? [
             seedA, seedB,
@@ -1259,20 +1657,25 @@
             seedA,
             firstRoundRight && firstRoundRight.team1 || '未定',
             firstRoundRight && firstRoundRight.team2 || '未定',
-            seedB,
             firstRoundLeft && firstRoundLeft.team1 || '未定',
-            firstRoundLeft && firstRoundLeft.team2 || '未定'
+            firstRoundLeft && firstRoundLeft.team2 || '未定',
+            seedB
           ];
+
+      var geometry = mode === 'seed-vs-seed'
+        ? { finalX: 540, semifinal1X: 172, semifinal2X: 724, firstLeftX: 540, firstRightX: 908 }
+        : { finalX: 540, semifinal1X: 218, semifinal2X: 862, firstLeftX: 724, firstRightX: 356 };
 
       var champion = document.createElement('div');
       champion.className = 'bracket-champion';
       champion.textContent = getResolvedWinner(finalMatch) || '優勝';
       champion.title = champion.textContent;
+      champion.style.left = (geometry.finalX - 180) + 'px';
       canvas.appendChild(champion);
 
       var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('class', 'bracket-lines');
-      svg.setAttribute('viewBox', '0 0 1080 560');
+      svg.setAttribute('viewBox', '0 0 1080 610');
       svg.setAttribute('aria-hidden', 'true');
 
       var firstRoundLeftWinner = getResolvedWinner(firstRoundLeft);
@@ -1282,55 +1685,55 @@
       var finalWinner = getResolvedWinner(finalMatch);
 
       if (mode === 'seed-vs-seed') {
-        appendBracketPath(svg, 'M80 408 V350 H172', isSameTeam(semifinal1Winner, teams[0]));
-        appendBracketPath(svg, 'M264 408 V350 H172', isSameTeam(semifinal1Winner, teams[1]));
-        appendBracketPath(svg, 'M172 350 V245 H540', Boolean(semifinal1Winner));
-        appendBracketPath(svg, 'M448 408 V350 H540', isSameTeam(firstRoundLeftWinner, teams[2]));
-        appendBracketPath(svg, 'M632 408 V350 H540', isSameTeam(firstRoundLeftWinner, teams[3]));
-        appendBracketPath(svg, 'M540 350 V245 H724', Boolean(firstRoundLeftWinner));
-        appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(firstRoundRightWinner, teams[4]));
-        appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(firstRoundRightWinner, teams[5]));
-        appendBracketPath(svg, 'M908 350 V245 H724', Boolean(firstRoundRightWinner));
-        appendBracketPath(svg, 'M724 245 V135 H540', Boolean(semifinal2Winner));
+        appendBracketPath(svg, 'M80 410 V245 H172', isSameTeam(semifinal1Winner, teams[0]));
+        appendBracketPath(svg, 'M264 410 V245 H172', isSameTeam(semifinal1Winner, teams[1]));
+        appendBracketPath(svg, 'M448 410 V350 H540', isSameTeam(firstRoundLeftWinner, teams[2]));
+        appendBracketPath(svg, 'M632 410 V350 H540', isSameTeam(firstRoundLeftWinner, teams[3]));
+        appendBracketPath(svg, 'M540 350 V245 H724', isSameTeam(semifinal2Winner, firstRoundLeftWinner));
+        appendBracketPath(svg, 'M816 410 V350 H908', isSameTeam(firstRoundRightWinner, teams[4]));
+        appendBracketPath(svg, 'M1000 410 V350 H908', isSameTeam(firstRoundRightWinner, teams[5]));
+        appendBracketPath(svg, 'M908 350 V245 H724', isSameTeam(semifinal2Winner, firstRoundRightWinner));
+        appendBracketPath(svg, 'M172 245 V135 H540', isSameTeam(finalWinner, semifinal1Winner));
+        appendBracketPath(svg, 'M724 245 V135 H540', isSameTeam(finalWinner, semifinal2Winner));
       } else {
-        appendBracketPath(svg, 'M264 408 V350 H356', isSameTeam(firstRoundRightWinner, teams[1]));
-        appendBracketPath(svg, 'M448 408 V350 H356', isSameTeam(firstRoundRightWinner, teams[2]));
-        appendBracketPath(svg, 'M356 350 V245 H264', Boolean(firstRoundRightWinner));
-        appendBracketPath(svg, 'M80 408 V245 H264', isSameTeam(semifinal1Winner, seedA));
-        appendBracketPath(svg, 'M264 245 V135 H540', Boolean(semifinal1Winner));
-        appendBracketPath(svg, 'M816 408 V350 H908', isSameTeam(firstRoundLeftWinner, teams[4]));
-        appendBracketPath(svg, 'M1000 408 V350 H908', isSameTeam(firstRoundLeftWinner, teams[5]));
-        appendBracketPath(svg, 'M908 350 V245 H816', Boolean(firstRoundLeftWinner));
-        appendBracketPath(svg, 'M632 408 V245 H816', isSameTeam(semifinal2Winner, seedB));
-        appendBracketPath(svg, 'M816 245 V135 H540', Boolean(semifinal2Winner));
+        appendBracketPath(svg, 'M264 410 V350 H356', isSameTeam(firstRoundRightWinner, teams[1]));
+        appendBracketPath(svg, 'M448 410 V350 H356', isSameTeam(firstRoundRightWinner, teams[2]));
+        appendBracketPath(svg, 'M356 350 V245 H218', isSameTeam(semifinal1Winner, firstRoundRightWinner));
+        appendBracketPath(svg, 'M80 410 V245 H218', isSameTeam(semifinal1Winner, seedA));
+        appendBracketPath(svg, 'M632 410 V350 H724', isSameTeam(firstRoundLeftWinner, teams[3]));
+        appendBracketPath(svg, 'M816 410 V350 H724', isSameTeam(firstRoundLeftWinner, teams[4]));
+        appendBracketPath(svg, 'M724 350 V245 H862', isSameTeam(semifinal2Winner, firstRoundLeftWinner));
+        appendBracketPath(svg, 'M1000 410 V245 H862', isSameTeam(semifinal2Winner, seedB));
+        appendBracketPath(svg, 'M218 245 V135 H540', isSameTeam(finalWinner, semifinal1Winner));
+        appendBracketPath(svg, 'M862 245 V135 H540', isSameTeam(finalWinner, semifinal2Winner));
       }
-      appendBracketPath(svg, 'M540 135 V62', Boolean(finalWinner));
+      appendBracketPath(svg, 'M' + geometry.finalX + ' 135 V68', Boolean(finalWinner));
       if (appState.thirdPlaceEnabled) {
-        var thirdSourceLeft = mode === 'seed-vs-seed' ? 172 : 264;
-        var thirdSourceRight = mode === 'seed-vs-seed' ? 724 : 816;
-        appendBracketPath(svg, 'M' + thirdSourceLeft + ' 245 V280 H460', false, true);
-        appendBracketPath(svg, 'M' + thirdSourceRight + ' 245 V280 H620', false, true);
+        appendBracketPath(svg, 'M' + geometry.semifinal1X + ' 245 V300 H' + (geometry.finalX - 80), false, true);
+        appendBracketPath(svg, 'M' + geometry.semifinal2X + ' 245 V300 H' + (geometry.finalX + 80), false, true);
       }
       canvas.appendChild(svg);
 
-      canvas.appendChild(createBracketTime(finalMatch, 540, 96));
-      canvas.appendChild(createBracketTime(semifinal1, mode === 'seed-vs-seed' ? 172 : 264, 206));
-      canvas.appendChild(createBracketTime(semifinal2, mode === 'seed-vs-seed' ? 724 : 816, 206));
-      canvas.appendChild(createBracketTime(firstRoundLeft, mode === 'seed-vs-seed' ? 540 : 908, 316));
-      canvas.appendChild(createBracketTime(firstRoundRight, mode === 'seed-vs-seed' ? 908 : 356, 316));
+      canvas.appendChild(createBracketTime(finalMatch, geometry.finalX, 96));
+      canvas.appendChild(createBracketTime(semifinal1, geometry.semifinal1X, 206));
+      canvas.appendChild(createBracketTime(semifinal2, geometry.semifinal2X, 206));
+      canvas.appendChild(createBracketTime(firstRoundLeft, geometry.firstLeftX, 316));
+      canvas.appendChild(createBracketTime(firstRoundRight, geometry.firstRightX, 316));
       if (appState.thirdPlaceEnabled) {
-        canvas.appendChild(createBracketTime(thirdPlace, 540, 274));
+        canvas.appendChild(createBracketTime(thirdPlace, geometry.finalX, 274));
         var thirdLabel = document.createElement('div');
         thirdLabel.className = 'bracket-third-place-label';
         thirdLabel.textContent = '3位決定戦';
+        thirdLabel.style.left = geometry.finalX + 'px';
         canvas.appendChild(thirdLabel);
       }
 
       var teamRow = document.createElement('div');
       teamRow.className = 'bracket-team-row';
-      teams.forEach(function(team) {
+      teams.forEach(function(team, index) {
         var box = document.createElement('div');
         box.className = 'bracket-team';
+        box.style.left = leafCenters[index] + 'px';
         setBracketTeamName(box, team);
         teamRow.appendChild(box);
       });
@@ -1407,12 +1810,46 @@
 
     function setBracketTeamName(element, text) {
       var value = String(text || '未定').trim() || '未定';
-      var length = Array.from(value).length;
-      element.textContent = value;
+      var compactValue = value.replace(/[\s\u3000]+/g, '');
+      var length = Array.from(compactValue).length;
+      var lines = getBracketTeamNameLines(value);
+      element.textContent = '';
+      lines.forEach(function(line, index) {
+        var span = document.createElement('span');
+        span.className = 'bracket-team-line';
+        span.textContent = line;
+        element.appendChild(span);
+      });
       element.title = value;
       element.setAttribute('aria-label', value);
       element.classList.toggle('is-long', length > 10);
       element.classList.toggle('is-very-long', length > 16);
+    }
+
+    function getBracketTeamNameLines(value) {
+      if (bracketDisplaySettings.orientation === 'vertical') {
+        return [value.replace(/[\s\u3000]+/g, '') || '未定'];
+      }
+      if (bracketDisplaySettings.wrapMode === 'none') return [value];
+
+      var maximum = bracketDisplaySettings.wrapMode === 'auto'
+        ? 10
+        : Number(bracketDisplaySettings.wrapMode) || 10;
+      var words = value.split(/[\s\u3000]+/).filter(Boolean);
+      if (!words.length) return ['未定'];
+
+      var lines = [];
+      words.forEach(function(word) {
+        var characters = Array.from(word);
+        if (characters.length <= maximum) {
+          lines.push(word);
+          return;
+        }
+        for (var index = 0; index < characters.length; index += maximum) {
+          lines.push(characters.slice(index, index + maximum).join(''));
+        }
+      });
+      return lines;
     }
 
     function getTournamentPhaseLabel(match) {
@@ -1526,13 +1963,10 @@
       row.appendChild(cell);
     }
 
-    function openDisplayFullscreen(kind) {
-      var overlay = document.getElementById('displayFullscreen');
+    function renderDisplayFullscreenBody(kind) {
       var body = document.getElementById('displayFullscreenBody');
-      var title = document.getElementById('displayFullscreenTitle');
-      if (!overlay || !body || !title || !appState) return;
+      if (!body || !appState) return;
       body.textContent = '';
-      title.textContent = kind === 'tournament' ? '決勝トーナメント' : 'タイムスケジュール';
       if (kind === 'tournament') {
         var tree = document.createElement('div');
         tree.className = 'tournament-tree bracket-flat';
@@ -1541,8 +1975,25 @@
       } else {
         body.appendChild(createDisplayScheduleTable());
       }
+      updateLiveClocks();
+    }
+
+    function refreshDisplayFullscreenBody() {
+      var overlay = document.getElementById('displayFullscreen');
+      if (!overlay || overlay.hidden || !overlay.dataset.kind) return;
+      renderDisplayFullscreenBody(overlay.dataset.kind);
+    }
+
+    function openDisplayFullscreen(kind) {
+      var overlay = document.getElementById('displayFullscreen');
+      var title = document.getElementById('displayFullscreenTitle');
+      if (!overlay || !title || !appState) return;
+      overlay.dataset.kind = kind;
+      title.textContent = kind === 'tournament' ? '決勝トーナメント' : 'タイムスケジュール';
+      renderDisplayFullscreenBody(kind);
       overlay.hidden = false;
       document.documentElement.classList.add('is-display-fullscreen');
+      updateLiveClocks();
       var request = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
       if (request) {
         var promise = request.call(overlay);
@@ -1554,6 +2005,7 @@
       var overlay = document.getElementById('displayFullscreen');
       var body = document.getElementById('displayFullscreenBody');
       if (overlay) overlay.hidden = true;
+      if (overlay) delete overlay.dataset.kind;
       if (body) body.textContent = '';
       document.documentElement.classList.remove('is-display-fullscreen');
       if (document.fullscreenElement && document.exitFullscreen) {
@@ -1602,7 +2054,7 @@
       try {
         var response = await callServer('randomizeGroups', editorKey);
         if (!response || !response.success) throw new Error(response && response.message || '組分けに失敗しました。');
-        appState = response;
+        setCompetitionState(response);
         isDirty = false;
         render();
         setStatus('グループ分けを更新しました。', 'success');
@@ -1621,7 +2073,7 @@
           Boolean(appState.thirdPlaceEnabled)
         );
         if (!response || !response.success) throw new Error(response && response.message || '初期配置を作成できませんでした。');
-        appState = response;
+        setCompetitionState(response);
         isDirty = false;
         render();
         showView('tournament');
@@ -1639,11 +2091,12 @@
           groups: appState.groups,
           schedule: appState.schedule,
           tournamentMode: appState.tournamentMode,
-          thirdPlaceEnabled: Boolean(appState.thirdPlaceEnabled)
+          thirdPlaceEnabled: Boolean(appState.thirdPlaceEnabled),
+          bracketDisplaySettings: Object.assign({}, bracketDisplaySettings)
         };
         var response = await callServer('saveCompetitionState', payload, editorKey);
         if (!response || !response.success) throw new Error(response && response.message || '保存に失敗しました。');
-        appState = response;
+        setCompetitionState(response);
         isDirty = false;
         render();
         setStatus('大会編成を保存しました。', 'success');
