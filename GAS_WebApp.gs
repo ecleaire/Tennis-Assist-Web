@@ -409,6 +409,15 @@ function doPost(e) {
       return jsonResponse(response);
     }
 
+    const finalizedSubmission = validateFinalizedSeriesSubmission(body);
+    if (!finalizedSubmission.ok) {
+      return jsonResponse({
+        ok: false,
+        error: 'incomplete_series_result',
+        message: finalizedSubmission.message
+      });
+    }
+
     const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
     const records = collectRecords(body);
     const sheets = ensureResultSheetStructure(ss);
@@ -1045,6 +1054,51 @@ function collectRecords(body) {
   }
 
   return records;
+}
+
+function csvValueByHeader(csvRow, csvColumns, headerName) {
+  const index = (csvColumns || []).indexOf(headerName);
+  return index >= 0 ? String((csvRow || [])[index] || '').trim() : '';
+}
+
+function validateFinalizedSeriesSubmission(body) {
+  const eventName = String((body && body.event) || '').trim();
+  if (eventName !== 'series_result') {
+    return { ok: false, message: '確定済み試合結果以外は送信できません。' };
+  }
+
+  const payload = body && body.payload && typeof body.payload === 'object' ? body.payload : {};
+  const recordKind = String(payload.recordKind || payload.record_kind || '').trim();
+  const completedMatchCount = Number(payload.completedMatchCount ?? payload.completed_match_count);
+  const endReason = String(payload.endReason || payload.end_reason || '').trim();
+  if (recordKind !== '試合結果'
+      || !isTruthy(payload.teamAAgreed ?? payload.team_a_agreed)
+      || !isTruthy(payload.teamBAgreed ?? payload.team_b_agreed)
+      || completedMatchCount !== 3
+      || !isTruthy(payload.finalized)
+      || endReason !== '3マッチ終了・代表同意済み') {
+    return { ok: false, message: '3マッチ分の結果確定と両チーム同意が完了した試合結果だけ送信できます。' };
+  }
+
+  const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
+  const detailRows = Array.isArray(body.detail_rows) ? body.detail_rows : [];
+  if (detailRows.length !== 4 || csvColumns.indexOf('記録種別') < 0 || csvColumns.indexOf('マッチ番号') < 0) {
+    return { ok: false, message: '第1〜第3マッチと最終試合結果の4件が揃っていません。' };
+  }
+
+  const matchNumbers = [];
+  let resultCount = 0;
+  detailRows.forEach(function (detail) {
+    const csvRow = Array.isArray(detail && detail.csv_row) ? detail.csv_row : [];
+    const kind = csvValueByHeader(csvRow, csvColumns, '記録種別');
+    if (kind === 'マッチ') matchNumbers.push(Number(csvValueByHeader(csvRow, csvColumns, 'マッチ番号')));
+    if (kind === '試合結果') resultCount += 1;
+  });
+  matchNumbers.sort(function (a, b) { return a - b; });
+  if (resultCount !== 1 || matchNumbers.length !== 3 || matchNumbers.join(',') !== '1,2,3') {
+    return { ok: false, message: '第1〜第3マッチの確定結果が正しく揃っていません。' };
+  }
+  return { ok: true, message: '' };
 }
 
 function appendFilteredRows(sheet, records, eventName, body, csvColumns, recordKind) {

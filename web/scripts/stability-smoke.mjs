@@ -86,6 +86,10 @@ async function holdButton(page, selector, duration = 3150) {
   await page.keyboard.up("Enter");
 }
 
+async function holdReturnButton(page, selector, duration = 1150) {
+  await holdButton(page, selector, duration);
+}
+
 try {
   for (const edition of activeEditions) {
     for (const target of activeTargets) {
@@ -250,7 +254,7 @@ try {
           left: ball.style.left,
           top: ball.style.top,
         })));
-        await holdButton(page, "#operation-timer-back");
+        await holdReturnButton(page, "#operation-timer-back");
         await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
         await holdButton(page, "#operation-action-confirm");
         await page.locator("#operation-draw").waitFor({ state: "visible" });
@@ -327,9 +331,9 @@ try {
           if (!returnButtonBox || returnButtonBox.width < 120 || returnButtonBox.height < 48) {
             failures.push(`${label}: prepared-time timer return is too small (${JSON.stringify(returnButtonBox)})`);
           }
-          await holdButton(page, "#operation-result-back", 450);
+          await holdReturnButton(page, "#operation-result-back", 450);
           if (await page.locator("#operation-return-dialog").isVisible()) failures.push(`${label}: short hold opened the operation return menu`);
-          await holdButton(page, "#operation-result-back");
+          await holdReturnButton(page, "#operation-result-back");
           await page.locator("#operation-return-dialog").waitFor({ state: "visible" });
           await page.locator("#operation-return-primary").click();
           await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
@@ -400,8 +404,29 @@ try {
       } catch {
         // Service Worker behavior is verified separately below.
       }
+      const gasUrl = "https://example.invalid/gas/exec";
+      try {
+        localStorage.setItem("tennis-assist-admin-v1", JSON.stringify({
+          gasUrl,
+          apiKey: "TEST_KEY",
+          sendEnabled: true,
+          gasConnectedAt: new Date().toISOString(),
+          gasConnectedUrl: gasUrl,
+        }));
+      } catch {
+        // The init script also runs for the initial opaque about:blank document.
+      }
     });
     const operationPage = await operationContext.newPage();
+    const sentSeriesBodies = [];
+    await operationPage.route("https://example.invalid/gas/exec**", async (route) => {
+      const request = route.request();
+      if (request.method() === "POST") {
+        const body = request.postDataJSON();
+        sentSeriesBodies.push(body);
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, success: true, status: "ok" }) });
+    });
     const label = "venue/operation-pause-resume-final-correction";
     try {
       await operationPage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
@@ -417,6 +442,45 @@ try {
       await operationPage.locator("#operation-start-check-confirm").click();
       await operationPage.locator("#operation-ball-random").click();
       await operationPage.locator("#operation-time-random").click();
+      await holdButton(operationPage, '[data-operation-return-context="draw"]');
+      await operationPage.locator("#operation-return-dialog").waitFor({ state: "visible" });
+      await operationPage.locator("#operation-cancel-record").click();
+      await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#operation-action-confirm", 450);
+      if (!(await operationPage.locator("#operation-action-dialog").isVisible())) failures.push(`${label}: short hold cancelled the match`);
+      await holdButton(operationPage, "#operation-action-confirm");
+      await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
+      if (await operationPage.locator("#paused-operation-panel").isVisible()) failures.push(`${label}: an unfinished first match created a paused-operation warning`);
+      if (await operationPage.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("tennis-assist-paused-operation-v1-")))) failures.push(`${label}: an unfinished first match was retained as a paused record`);
+
+      await operationPage.locator("#operation-prepare").click();
+      await operationPage.locator("#operation-match-type").selectOption({ index: 1 });
+      await operationPage.locator("#operation-team-a").selectOption({ label: teamA.trim() });
+      await operationPage.locator("#operation-team-b").selectOption({ label: teamB.trim() });
+      await operationPage.locator("#operation-team-ok").click();
+      await operationPage.locator("#operation-start-check-confirm").click();
+      await operationPage.locator("#operation-ball-random").click();
+      await operationPage.locator("#operation-time-random").click();
+      await operationPage.locator("#operation-ready").click();
+      await operationPage.locator("#operation-ready-confirm").click();
+      await operationPage.locator("#timer-start").click();
+      await operationPage.locator("#timer-end").click();
+      await operationPage.locator("#timer-end").click();
+      await operationPage.locator("#timer-end-confirm").click();
+      await operationPage.locator("#record-input").waitFor({ state: "visible" });
+      await operationPage.locator("#a-orange").selectOption("4");
+      await operationPage.locator("#a-purple").selectOption("1");
+      await operationPage.locator("#b-orange").selectOption("4");
+      await operationPage.locator("#b-purple").selectOption("1");
+      await operationPage.locator("#record-save").click();
+      await operationPage.locator("#confirm-dialog").waitFor({ state: "visible" });
+      await operationPage.locator("#confirm-save").click();
+      if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data after only the first match was saved`);
+      await operationPage.locator("#operation-between").waitFor({ state: "visible" });
+      await operationPage.locator("#operation-next-match").click();
+      await operationPage.locator("#operation-draw").waitFor({ state: "visible" });
+      await operationPage.locator("#operation-ball-random").click();
+      await operationPage.locator("#operation-time-random").click();
 
       const preparedTime = (await operationPage.locator("#dashboard-time").textContent())?.trim();
       const preparedLayout = await operationPage.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
@@ -428,20 +492,9 @@ try {
       await operationPage.locator("#operation-return-dialog").waitFor({ state: "visible" });
       await operationPage.locator("#operation-cancel-record").click();
       await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
-      await holdButton(operationPage, "#operation-action-confirm", 450);
-      if (!(await operationPage.locator("#operation-action-dialog").isVisible())) failures.push(`${label}: short hold cancelled the match`);
       await holdButton(operationPage, "#operation-action-confirm");
-      await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
       await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
       if (!(await operationPage.locator("#paused-operation-summary").textContent())?.includes("送信されていません")) failures.push(`${label}: paused match does not clearly state that it was not sent`);
-
-      await operationPage.locator("#operation-prepare").click();
-      await operationPage.locator("#operation-team").waitFor({ state: "visible" });
-      if (!(await operationPage.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("tennis-assist-paused-operation-v1-"))))) failures.push(`${label}: starting a new match removed the paused record`);
-      await holdButton(operationPage, '[data-operation-return-context="team"]');
-      await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
-      await holdButton(operationPage, "#operation-action-confirm");
-      await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
 
       await operationPage.reload({ waitUntil: "domcontentloaded" });
       await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
@@ -458,8 +511,8 @@ try {
         failures.push(`${label}: resumed draw controls are not locked to the completed state`);
       }
 
-      for (let match = 1; match <= 3; match += 1) {
-        if (match > 1) {
+      for (let match = 2; match <= 3; match += 1) {
+        if (match > 2) {
           await operationPage.locator("#operation-ball-random").click();
           await operationPage.locator("#operation-time-random").click();
         }
@@ -475,26 +528,10 @@ try {
         await operationPage.locator("#b-orange").selectOption("4");
         await operationPage.locator("#b-purple").selectOption("1");
 
-        if (match === 1) {
-          await holdButton(operationPage, "#operation-result-back");
-          await operationPage.locator("#operation-return-dialog").waitFor({ state: "visible" });
-          await operationPage.locator("#operation-cancel-record").click();
-          await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
-          await holdButton(operationPage, "#operation-action-confirm");
-          await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
-          await operationPage.reload({ waitUntil: "domcontentloaded" });
-          await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
-          await operationPage.locator("#paused-operation-resume").click();
-          await operationPage.locator("#record-input").waitFor({ state: "visible" });
-          for (const selector of ["#a-orange", "#a-purple", "#b-orange", "#b-purple"]) {
-            const expected = selector.includes("orange") ? "4" : "1";
-            if (await operationPage.locator(selector).inputValue() !== expected) failures.push(`${label}: result input was not restored: ${selector}`);
-          }
-        }
-
         await operationPage.locator("#record-save").click();
         await operationPage.locator("#confirm-dialog").waitFor({ state: "visible" });
         await operationPage.locator("#confirm-save").click();
+        if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data before all three matches and both agreements were finalized`);
         if (match < 3) {
           await operationPage.locator("#operation-between").waitFor({ state: "visible" });
           await operationPage.locator("#operation-next-match").click();
@@ -515,6 +552,28 @@ try {
       const finalTeams = await operationPage.locator("#final-matches .final-match-team strong").evaluateAll((elements) => elements.map((element) => element.textContent?.trim()));
       if (finalTeams[0] !== teamB.trim() || finalTeams[1] !== teamA.trim()) failures.push(`${label}: corrected team names did not reach final match rows (${finalTeams.slice(0, 2).join(" / ")})`);
       if (!(await operationPage.locator("#record-status").textContent())?.includes("両チームでもう一度確認")) failures.push(`${label}: final correction did not reset the agreement flow`);
+      await operationPage.locator("#agree-a").click();
+      await operationPage.locator("#agreement-confirm").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#agreement-accept", 1150);
+      if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data after only the first team agreed`);
+      await operationPage.locator("#agree-b").click();
+      await operationPage.locator("#agreement-confirm").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#agreement-accept", 1150);
+      if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data before the final confirmation`);
+      await operationPage.locator("#finalize").click();
+      await operationPage.waitForFunction(() => document.querySelector("#completion-panel")?.classList.contains("hidden"), null, { timeout: 10_000 });
+      if (sentSeriesBodies.length !== 1) {
+        failures.push(`${label}: finalized series was sent ${sentSeriesBodies.length} times instead of once`);
+      } else {
+        const sent = sentSeriesBodies[0];
+        const detailNumbers = Array.isArray(sent.detail_rows)
+          ? sent.detail_rows.filter((row) => row?.csv_row?.[1] === "マッチ").map((row) => row.csv_row[6]).sort((a, b) => a - b)
+          : [];
+        if (sent.event !== "series_result" || sent.payload?.teamAAgreed !== true || sent.payload?.teamBAgreed !== true
+          || sent.payload?.completedMatchCount !== 3 || sent.payload?.finalized !== true || detailNumbers.join(",") !== "1,2,3") {
+          failures.push(`${label}: finalized series payload is missing its three-match/agreement proof`);
+        }
+      }
       process.stdout.write(`PASS ${label}\n`);
     } catch (error) {
       const message = `${label}: ${error instanceof Error ? error.message : String(error)}`;

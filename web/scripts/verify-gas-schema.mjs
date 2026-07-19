@@ -4,7 +4,7 @@ import vm from "node:vm";
 const source = fs.readFileSync(new URL("../../GAS_WebApp.gs", import.meta.url), "utf8");
 const context = {};
 vm.createContext(context);
-vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader };`, context);
+vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader, validateFinalizedSeriesSubmission };`, context);
 
 class MockRange {
   constructor(sheet, row, column, rows = 1, columns = 1) {
@@ -106,4 +106,29 @@ api.ensureExactHeader(archive, archiveHeader);
 if (archive.value(1, 35) !== "H35" || archive.value(1, 37) !== "H37") throw new Error("Trailing archive headers were not extended.");
 if (archive.rows[0].slice(0, 34).some((value, index) => value !== archiveHeader[index])) throw new Error("Existing archive headers were changed.");
 
-console.log("GAS schema verification passed: canonical, legacy 12-column, reordered, duplicate, and archive-extension cases.");
+const submissionColumns = ["日時", "記録種別", "対戦ID", "マッチ番号"];
+const submissionRow = (kind, matchNumber) => ["2026-07-18 10:00:00", kind, "series-1", String(matchNumber)];
+const finalizedSubmission = {
+  event: "series_result",
+  payload: {
+    recordKind: "試合結果",
+    teamAAgreed: true,
+    teamBAgreed: true,
+    completedMatchCount: 3,
+    finalized: true,
+    endReason: "3マッチ終了・代表同意済み",
+  },
+  csv_columns: submissionColumns,
+  detail_rows: [
+    { csv_row: submissionRow("マッチ", 1) },
+    { csv_row: submissionRow("マッチ", 2) },
+    { csv_row: submissionRow("マッチ", 3) },
+    { csv_row: submissionRow("試合結果", 0) },
+  ],
+};
+if (!api.validateFinalizedSeriesSubmission(finalizedSubmission).ok) throw new Error("A finalized three-match submission must be accepted.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, payload: { ...finalizedSubmission.payload, teamBAgreed: false } }).ok) throw new Error("A submission without both agreements must be rejected.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: finalizedSubmission.detail_rows.slice(0, 3) }).ok) throw new Error("A submission without all four detail rows must be rejected.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, event: "match_result" }).ok) throw new Error("A non-series event must be rejected.");
+
+console.log("GAS schema verification passed: canonical, legacy, reordered, duplicate, archive, and finalized-series gate cases.");
