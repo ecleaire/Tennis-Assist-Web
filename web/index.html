@@ -42,6 +42,18 @@
       <section id="screen-dashboard" class="screen active">
         <div class="operation-shell">
           <article id="operation-home" class="panel operation-step operation-home active">
+            <div id="paused-operation-panel" class="paused-operation-panel hidden">
+              <div>
+                <p class="eyebrow">INTERRUPTED MATCH</p>
+                <h2>中断した試合</h2>
+                <p id="paused-operation-summary" class="muted"></p>
+                <p class="paused-operation-hint">中断記録を保持したまま、下の「試合開始」から新しい試合も開始できます。</p>
+              </div>
+              <div class="paused-operation-actions">
+                <button id="paused-operation-resume" class="button primary" type="button">中断した試合を再開</button>
+                <button id="paused-operation-discard" class="button danger" type="button">中断記録を削除</button>
+              </div>
+            </div>
             <button id="operation-prepare" class="button primary operation-prepare">試合開始</button>
             <div id="home-operation-summary" class="home-operation-summary" aria-live="polite"></div>
             <div id="home-risk-panel" class="home-risk-panel" aria-live="polite"></div>
@@ -49,7 +61,7 @@
           </article>
 
           <article id="operation-team" class="panel operation-step operation-team">
-            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <button class="button operation-back operation-return-trigger" data-operation-back data-operation-return-context="team" type="button">戻る</button>
             <div class="section-head">
               <div>
                 <p class="eyebrow">MATCH SETUP</p>
@@ -71,7 +83,7 @@
           </article>
 
           <article id="operation-draw" class="panel operation-step operation-draw">
-            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <button class="button operation-back operation-return-trigger" data-operation-back data-operation-return-context="draw" type="button">戻る</button>
             <div class="operation-draw-layout">
               <div class="operation-draw-main">
                 <h2 id="operation-match-title" class="operation-match-title">【第1マッチ抽選】</h2>
@@ -86,13 +98,12 @@
                 <button id="operation-ball-random" class="button primary operation-numbered">① ボール配置 抽選</button>
                 <button id="operation-time-random" class="button primary operation-numbered">② 試合時間 抽選</button>
                 <button id="operation-ready" class="button primary operation-numbered">③ 準備完了</button>
-                <button id="operation-cancel-draw" class="button danger operation-cancel-button" type="button">試合をキャンセル</button>
               </aside>
             </div>
           </article>
 
           <article id="operation-between" class="panel operation-step operation-between">
-            <button class="button operation-back" data-operation-back type="button">前の画面に戻る</button>
+            <button class="button operation-back operation-return-trigger" data-operation-back data-operation-return-context="between" type="button">戻る</button>
             <p id="operation-ended-match" class="operation-ended-match">第1マッチが終了しました</p>
             <h2 id="operation-between-message"><span class="operation-between-line">選手の皆さんはコートチェンジと、</span><span class="operation-between-line">第2マッチの準備をお願いします。</span><span class="operation-between-note">（コートチェンジ後）ロボットのボタンを一度押したらスタートできる状態にしてください。準備ができ次第、抽選を行います。</span></h2>
             <button id="operation-next-match" class="button primary">第2マッチへ進む</button>
@@ -134,8 +145,7 @@
 
       <section id="screen-timer" class="screen">
         <article id="timer-shell" class="panel timer-shell">
-          <button id="operation-timer-back" class="button operation-back operation-timer-only" type="button">マッチ抽選へ戻る</button>
-          <button id="operation-timer-return" class="button operation-back operation-timer-return operation-timer-only" type="button">リザルト入力に戻る</button>
+          <button id="operation-timer-back" class="button operation-back operation-timer-only operation-return-trigger" type="button">戻る</button>
           <div class="timer-top">
             <span id="timer-mode" class="pill">試合準備完了</span>
           </div>
@@ -218,17 +228,6 @@
 
       <section id="screen-records" class="screen">
         <div class="records-layout">
-          <article id="paused-operation-panel" class="panel section-card paused-operation-panel hidden">
-            <div>
-              <p class="eyebrow">INTERRUPTED MATCH</p>
-              <h2>中断した試合</h2>
-              <p id="paused-operation-summary" class="muted"></p>
-            </div>
-            <div class="paused-operation-actions">
-              <button id="paused-operation-resume" class="button primary" type="button">中断した試合を再開</button>
-              <button id="paused-operation-discard" class="button danger" type="button">再開データを破棄</button>
-            </div>
-          </article>
           <article class="panel section-card hidden" aria-hidden="true">
             <div class="section-head">
               <div>
@@ -255,6 +254,9 @@
           </article>
 
           <article id="record-input" class="panel section-card">
+            <div class="record-input-return-row operation-record-only">
+              <button id="operation-result-back" class="button operation-return-trigger" type="button">戻る</button>
+            </div>
             <div class="section-head">
               <div>
                 <p class="eyebrow">RESULT INPUT</p>
@@ -287,7 +289,6 @@
               <button id="record-save" class="button primary">このマッチを保存</button>
               <button id="back-balls" class="button">配置へ戻る</button>
               <button id="back-timer" class="button">抽選済み時間でタイマーへ戻る</button>
-              <button id="operation-cancel-record" class="button danger operation-record-only" type="button">試合をキャンセル</button>
             </div>
             <p id="record-status" class="muted">まずは対戦カードを開始してください。</p>
           </article>
@@ -680,6 +681,20 @@
           <button id="operation-action-confirm" class="button danger operation-hold-confirm" type="button">3秒長押しで確定</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="operation-return-dialog" class="dialog operation-return-dialog">
+      <article>
+        <div class="dialog-title-row">
+          <h2>戻る</h2>
+          <button id="operation-return-close" class="dialog-close" type="button" aria-label="閉じる">×</button>
+        </div>
+        <p id="operation-return-message" class="muted">戻る場所を選択してください。</p>
+        <div class="operation-return-actions">
+          <button id="operation-return-primary" class="button primary" type="button"></button>
+          <button id="operation-return-secondary" class="button hidden" type="button"></button>
+          <button id="operation-cancel-record" class="button danger hidden" type="button">試合をキャンセル</button>
+        </div>
+      </article>
     </dialog>
     <dialog id="final-meta-confirm-dialog" class="dialog final-meta-confirm-dialog">
       <form method="dialog">

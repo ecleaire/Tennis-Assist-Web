@@ -196,7 +196,7 @@ type RecordInputSnapshot = {
 };
 
 interface PausedOperationState {
-  version: 1;
+  version: 2;
   match: number;
   step: "draw" | "result";
   ballDrawn: boolean;
@@ -204,6 +204,7 @@ interface PausedOperationState {
   timerSeconds: number;
   ballLayout: BallLayout;
   recordInput: RecordInputSnapshot;
+  progress: PersistedSeriesProgress;
   savedAt: string;
 }
 
@@ -2123,6 +2124,47 @@ class RecordsController {
 
   pauseForOperation(): boolean {
     return Boolean(this.series && this.operationManaged && this.persistSeriesProgress());
+  }
+
+  operationProgressSnapshot(): PersistedSeriesProgress | null {
+    if (!this.series || !this.operationManaged) return null;
+    return structuredClone({
+      series: this.series,
+      editing: this.editing,
+      agreedA: this.agreedA,
+      agreedB: this.agreedB,
+      finalized: this.finalized,
+      awaitingNextMatch: this.awaitingNextMatch,
+      awaitingResultInput: this.awaitingResultInput,
+      operationManaged: this.operationManaged,
+      savedAt: timestamp(),
+    });
+  }
+
+  restoreOperationProgress(progress: PersistedSeriesProgress): boolean {
+    const series = progress?.series;
+    if (!series?.id || !series.teamA || !series.teamB || !Array.isArray(series.records) || progress.operationManaged !== true) return false;
+    this.series = structuredClone(series);
+    this.editing = Number(progress.editing) || 0;
+    this.agreedA = progress.agreedA === true;
+    this.agreedB = progress.agreedB === true;
+    this.finalized = progress.finalized === true;
+    this.awaitingNextMatch = progress.awaitingNextMatch === true;
+    this.awaitingResultInput = progress.awaitingResultInput === true;
+    this.operationManaged = true;
+    this.resetInput();
+    this.renderSeries();
+    this.renderAgreement();
+    this.updateRecordVisibility();
+    return this.persistSeriesProgress();
+  }
+
+  currentOperationSeriesId(): string {
+    return this.operationManaged ? this.series?.id ?? "" : "";
+  }
+
+  discardOperationProgress(seriesId: string): void {
+    if (seriesId && this.operationManaged && this.series?.id === seriesId) this.completeSeriesReset();
   }
 
   operationInputSnapshot(): RecordInputSnapshot {
@@ -5066,6 +5108,10 @@ class Application {
   private readonly pausedOperationStorageKey = `tennis-assist-paused-operation-v1-${this.variant.id}`;
   private pendingOperationAction: (() => void) | null = null;
   private operationActionHoldTimer = 0;
+  private readonly operationReturnHoldTimers = new Map<HTMLButtonElement, number>();
+  private pendingOperationReturnPrimary: (() => void) | null = null;
+  private pendingOperationReturnSecondary: (() => void) | null = null;
+  private pendingOperationReturnCancel: (() => void) | null = null;
   private waitingServiceWorker: ServiceWorker | null = null;
   private serviceWorkerReloadPending = false;
 
@@ -5218,8 +5264,8 @@ class Application {
     this.content.open(screen, this.secret);
     if (screen === "records") {
       this.records.openHistoryView();
-      this.updatePausedOperationPanel();
     }
+    if (screen === this.operationScreen() && this.operationStep === "home") this.updatePausedOperationPanel();
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -5270,7 +5316,8 @@ class Application {
   private restoreOperationProgress(): void {
     const paused = this.readPausedOperation();
     const resume = this.records.operationResumeState();
-    if (paused && resume) {
+    const pausedIsCurrent = Boolean(paused && resume && this.records.currentOperationSeriesId() === paused.progress.series.id);
+    if (pausedIsCurrent) {
       this.operationActive = false;
       this.setOperationNavigationLocked(false);
       this.show(this.operationScreen());
@@ -5278,8 +5325,14 @@ class Application {
       this.updatePausedOperationPanel();
       return;
     }
-    if (paused && !resume) this.clearPausedOperation();
-    if (!resume) return;
+    if (!resume) {
+      if (paused) {
+        this.show(this.operationScreen());
+        this.showOperationStep("home");
+        this.updatePausedOperationPanel();
+      }
+      return;
+    }
     this.operationActive = true;
     this.operationMatch = resume.match;
     this.setOperationNavigationLocked(true);
@@ -5323,12 +5376,9 @@ class Application {
   private setupOperationFlow(): void {
     this.syncOperationTeams();
     this.setupOperationActionDialog();
+    this.setupOperationReturnDialog();
     this.updatePausedOperationPanel();
     el<HTMLButtonElement>("operation-prepare").addEventListener("click", () => {
-      if (this.readPausedOperation()) {
-        this.show("records");
-        return;
-      }
       this.operationActive = true;
       this.setOperationNavigationLocked(true);
       this.clearOperationHomeTimer();
@@ -5339,11 +5389,12 @@ class Application {
     el<HTMLButtonElement>("operation-team-ok").addEventListener("click", () => this.openOperationStartCheck());
     el<HTMLSelectElement>("operation-match-type").addEventListener("change", () => void this.refreshOperationTeamsForMatchType());
     el<HTMLButtonElement>("operation-start-check-confirm").addEventListener("click", () => this.startOperationSeries());
-    document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => button.addEventListener("click", () => this.requestOperationBack()));
-    el<HTMLButtonElement>("operation-timer-back").addEventListener("click", () => this.confirmOperationTimerBack());
-    el<HTMLButtonElement>("operation-timer-return").addEventListener("click", () => this.confirmOperationRecordReturn());
-    el<HTMLButtonElement>("operation-cancel-draw").addEventListener("click", () => this.confirmOperationPause("draw"));
-    el<HTMLButtonElement>("operation-cancel-record").addEventListener("click", () => this.confirmOperationPause("result"));
+    document.querySelectorAll<HTMLButtonElement>("[data-operation-back]").forEach((button) => {
+      const context = button.dataset.operationReturnContext as "team" | "draw" | "between";
+      this.setupOperationReturnTrigger(button, context);
+    });
+    this.setupOperationReturnTrigger(el<HTMLButtonElement>("operation-timer-back"), "timer");
+    this.setupOperationReturnTrigger(el<HTMLButtonElement>("operation-result-back"), "result");
     el<HTMLButtonElement>("paused-operation-resume").addEventListener("click", () => this.resumePausedOperation());
     el<HTMLButtonElement>("paused-operation-discard").addEventListener("click", () => this.confirmDiscardPausedOperation());
     el<HTMLButtonElement>("operation-ball-random").addEventListener("click", () => {
@@ -5549,7 +5600,10 @@ class Application {
       this.setOperationTimerActive(false);
       el("operation-match-title").textContent = `【第${this.operationMatch}マッチ抽選】`;
     }
-    if (step === "home") this.updateHomeSyncAlert();
+    if (step === "home") {
+      this.updateHomeSyncAlert();
+      this.updatePausedOperationPanel();
+    }
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -5775,6 +5829,129 @@ class Application {
     el<HTMLButtonElement>("operation-ready").disabled = readyLocked;
   }
 
+  private setupOperationReturnTrigger(button: HTMLButtonElement, context: "team" | "draw" | "between" | "timer" | "result"): void {
+    const cancelHold = (): void => {
+      const timer = this.operationReturnHoldTimers.get(button);
+      if (timer) window.clearTimeout(timer);
+      this.operationReturnHoldTimers.delete(button);
+      button.classList.remove("is-holding");
+    };
+    const startHold = (): void => {
+      if (button.disabled || this.operationReturnHoldTimers.has(button)) return;
+      button.classList.add("is-holding");
+      const timer = window.setTimeout(() => {
+        this.operationReturnHoldTimers.delete(button);
+        button.classList.remove("is-holding");
+        this.handleOperationReturnTrigger(context);
+      }, 3000);
+      this.operationReturnHoldTimers.set(button, timer);
+    };
+    button.addEventListener("click", (event) => event.preventDefault());
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      button.setPointerCapture?.(event.pointerId);
+      startHold();
+    });
+    ["pointerup", "pointercancel"].forEach((eventName) => button.addEventListener(eventName, cancelHold));
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+    button.addEventListener("keydown", (event) => {
+      if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+        event.preventDefault();
+        startHold();
+      }
+    });
+    button.addEventListener("keyup", (event) => {
+      if (event.key === " " || event.key === "Enter") cancelHold();
+    });
+  }
+
+  private setupOperationReturnDialog(): void {
+    const dialog = el<HTMLDialogElement>("operation-return-dialog");
+    el<HTMLButtonElement>("operation-return-close").addEventListener("click", () => dialog.close());
+    el<HTMLButtonElement>("operation-return-primary").addEventListener("click", () => {
+      const action = this.pendingOperationReturnPrimary;
+      dialog.close();
+      action?.();
+    });
+    el<HTMLButtonElement>("operation-return-secondary").addEventListener("click", () => {
+      const action = this.pendingOperationReturnSecondary;
+      dialog.close();
+      action?.();
+    });
+    el<HTMLButtonElement>("operation-cancel-record").addEventListener("click", () => {
+      const action = this.pendingOperationReturnCancel;
+      dialog.close();
+      action?.();
+    });
+    dialog.addEventListener("close", () => {
+      this.pendingOperationReturnPrimary = null;
+      this.pendingOperationReturnSecondary = null;
+      this.pendingOperationReturnCancel = null;
+    });
+  }
+
+  private handleOperationReturnTrigger(context: "team" | "draw" | "between" | "timer" | "result"): void {
+    if (!this.operationActive) return;
+    if (context === "team" || context === "between") {
+      this.requestOperationBack();
+      return;
+    }
+    if (context === "timer" && !this.operationTimeDrawn) return;
+    if (context === "timer" && !document.body.classList.contains("operation-timer-returnable")) {
+      this.confirmOperationTimerBack();
+      return;
+    }
+    if (context === "draw") {
+      this.openOperationReturnMenu(
+        this.operationMatch > 1 ? "中間結果を表示" : "コート・チーム選択へ戻る",
+        () => this.requestOperationBack(),
+        "",
+        null,
+        () => this.confirmOperationPause("draw"),
+      );
+      return;
+    }
+    if (context === "timer") {
+      this.openOperationReturnMenu(
+        "マッチ抽選へ戻る",
+        () => this.confirmOperationTimerBack(),
+        "リザルト入力へ戻る",
+        () => this.confirmOperationRecordReturn(),
+      );
+      return;
+    }
+    this.openOperationReturnMenu(
+      "抽選済み時間でタイマーへ戻る",
+      () => this.returnOperationTimerFromResult(this.operationMatch || this.records.currentMatchNumber()),
+      "",
+      null,
+      () => this.confirmOperationPause("result"),
+    );
+  }
+
+  private openOperationReturnMenu(
+    primaryLabel: string,
+    primaryAction: () => void,
+    secondaryLabel = "",
+    secondaryAction: (() => void) | null = null,
+    cancelAction: (() => void) | null = null,
+  ): void {
+    const dialog = el<HTMLDialogElement>("operation-return-dialog");
+    this.pendingOperationReturnPrimary = primaryAction;
+    this.pendingOperationReturnSecondary = secondaryAction;
+    this.pendingOperationReturnCancel = cancelAction;
+    const primary = el<HTMLButtonElement>("operation-return-primary");
+    const secondary = el<HTMLButtonElement>("operation-return-secondary");
+    const cancel = el<HTMLButtonElement>("operation-cancel-record");
+    primary.textContent = primaryLabel;
+    secondary.textContent = secondaryLabel;
+    secondary.classList.toggle("hidden", !secondaryAction);
+    cancel.classList.toggle("hidden", !cancelAction);
+    el("operation-return-message").textContent = secondaryAction || cancelAction ? "戻る場所または操作を選択してください。" : "戻る場所を選択してください。";
+    if (!dialog.open) dialog.showModal();
+  }
+
   private setupOperationActionDialog(): void {
     const dialog = el<HTMLDialogElement>("operation-action-dialog");
     const button = el<HTMLButtonElement>("operation-action-confirm");
@@ -5840,8 +6017,9 @@ class Application {
     try {
       const raw = localStorage.getItem(this.pausedOperationStorageKey);
       if (!raw) return null;
-      const state = JSON.parse(raw) as Partial<PausedOperationState>;
-      const valid = state.version === 1
+      const state = JSON.parse(raw) as Omit<Partial<PausedOperationState>, "version"> & { version?: number };
+      const progress = state.version === 2 ? state.progress : this.records.operationProgressSnapshot();
+      const valid = (state.version === 1 || state.version === 2)
         && (state.step === "draw" || state.step === "result")
         && Number.isInteger(state.match)
         && Number(state.match) >= 1
@@ -5851,12 +6029,28 @@ class Application {
         && Number.isFinite(state.timerSeconds)
         && Array.isArray(state.ballLayout)
         && Boolean(state.recordInput && typeof state.recordInput === "object")
+        && Boolean(progress?.series?.id && progress.series.teamA && progress.series.teamB)
+        && Array.isArray(progress?.series?.records)
+        && progress?.operationManaged === true
         && typeof state.savedAt === "string";
       if (!valid) {
         localStorage.removeItem(this.pausedOperationStorageKey);
         return null;
       }
-      return state as PausedOperationState;
+      const normalized: PausedOperationState = {
+        version: 2,
+        match: Number(state.match),
+        step: state.step as "draw" | "result",
+        ballDrawn: state.ballDrawn as boolean,
+        timeDrawn: state.timeDrawn as boolean,
+        timerSeconds: Number(state.timerSeconds),
+        ballLayout: state.ballLayout as BallLayout,
+        recordInput: state.recordInput as RecordInputSnapshot,
+        progress: progress as PersistedSeriesProgress,
+        savedAt: state.savedAt as string,
+      };
+      if (state.version !== 2) localStorage.setItem(this.pausedOperationStorageKey, JSON.stringify(normalized));
+      return normalized;
     } catch {
       try {
         localStorage.removeItem(this.pausedOperationStorageKey);
@@ -5876,24 +6070,26 @@ class Application {
   }
 
   private updatePausedOperationPanel(): void {
-    let state = this.readPausedOperation();
-    if (state && !this.records.operationResumeState()) {
-      this.clearPausedOperation();
-      state = null;
-    }
+    const state = this.readPausedOperation();
     const panel = el("paused-operation-panel");
     panel.classList.toggle("hidden", !state);
-    document.body.classList.toggle("operation-paused", Boolean(state));
     if (!state) return;
     const stage = state.step === "result" ? `第${state.match}マッチ リザルト入力` : `第${state.match}マッチ 抽選`;
-    el("paused-operation-summary").textContent = `${this.records.currentSeriesLabel()} / ${stage}で中断しました。スプレッドシートには送信されていません。`;
+    const series = state.progress.series;
+    el("paused-operation-summary").textContent = `${series.teamA} vs ${series.teamB} / ${stage}で中断しました。スプレッドシートには送信されていません。`;
   }
 
   private confirmOperationPause(step: "draw" | "result"): void {
     if (!this.operationActive) return;
+    const paused = this.readPausedOperation();
+    const currentSeriesId = this.records.currentOperationSeriesId();
+    if (paused && paused.progress.series.id !== currentSeriesId) {
+      window.alert("すでに別の中断記録があります。先に中断記録を再開または削除してから、現在の試合をキャンセルしてください。");
+      return;
+    }
     this.openOperationAction(
       "試合をキャンセルしますか？",
-      "現在の試合はスプレッドシートへ送信せず、端末内の中断データとして保存してホームへ戻ります。\n\n試合記録から再開できます。",
+      "現在の試合はスプレッドシートへ送信せず、端末内の中断データとして保存してホームへ戻ります。\n\nホームから再開できます。",
       "3秒長押しで試合をキャンセル",
       () => this.pauseOperation(step),
     );
@@ -5904,8 +6100,13 @@ class Application {
       el("record-status").textContent = "端末内に中断データを保存できないため、試合をキャンセルしませんでした。";
       return;
     }
+    const progress = this.records.operationProgressSnapshot();
+    if (!progress) {
+      el("record-status").textContent = "端末内に中断データを保存できないため、試合をキャンセルしませんでした。";
+      return;
+    }
     const state: PausedOperationState = {
-      version: 1,
+      version: 2,
       match: this.operationMatch || this.records.currentMatchNumber(),
       step,
       ballDrawn: this.operationBallDrawn,
@@ -5913,6 +6114,7 @@ class Application {
       timerSeconds: this.timer.preparedSeconds(),
       ballLayout: this.balls.snapshotLayout(),
       recordInput: this.records.operationInputSnapshot(),
+      progress,
       savedAt: timestamp(),
     };
     try {
@@ -5927,8 +6129,12 @@ class Application {
 
   private resumePausedOperation(): void {
     const state = this.readPausedOperation();
-    if (!state || !this.records.operationResumeState()) {
-      if (state) this.clearPausedOperation();
+    if (!state) {
+      this.updatePausedOperationPanel();
+      return;
+    }
+    if (!this.records.restoreOperationProgress(state.progress) || !this.records.operationResumeState()) {
+      el("record-status").textContent = "中断記録を端末内に復元できませんでした。中断記録は削除していません。";
       this.updatePausedOperationPanel();
       return;
     }
@@ -5976,14 +6182,15 @@ class Application {
   }
 
   private confirmDiscardPausedOperation(): void {
-    if (!this.readPausedOperation()) return;
+    const state = this.readPausedOperation();
+    if (!state) return;
     this.openOperationAction(
-      "中断した試合を破棄しますか？",
+      "中断記録を削除しますか？",
       "端末内に保存した試合進行と未確定の結果を削除します。この操作は元に戻せません。",
-      "3秒長押しで再開データを破棄",
+      "3秒長押しで中断記録を削除",
       () => {
         this.clearPausedOperation();
-        this.records.resetForOperation();
+        this.records.discardOperationProgress(state.progress.series.id);
         this.returnOperationHome(false);
         this.updatePausedOperationPanel();
       },
@@ -6105,13 +6312,16 @@ class Application {
     this.clearOperationHomeTimer();
     this.clearOperationTimerFinishDelay();
     void this.timer.leaveFullscreen();
+    this.timer.setDashboardOverride(null);
     this.timer.restartPreparedDuration();
+    this.operationActive = true;
     this.operationMatch = match || this.records.currentMatchNumber();
     this.operationBallDrawn = true;
     this.operationTimeDrawn = true;
     this.setOperationDrawButtonsLocked(true, true, false);
     this.setOperationDrawStage(3);
     this.recordTimerPending = true;
+    this.setOperationNavigationLocked(true);
     this.setOperationRecordFocus(false);
     this.setOperationIntermediateReview(false);
     this.setOperationFinalReview(false);
@@ -6196,10 +6406,7 @@ class Application {
     this.clearOperationHomeTimer();
     this.clearOperationTimerFinishDelay();
     if (document.body.classList.contains("operation-record-focus")) {
-      this.setOperationRecordFocus(false);
-      this.setOperationTimerActive(true);
-      this.setOperationTimerReturnable(true);
-      this.show("timer");
+      this.completeReturnOperationTimerFromResult(this.operationMatch || this.records.currentMatchNumber());
       return;
     }
     if (document.body.classList.contains("operation-final-review")) {
@@ -6384,8 +6591,8 @@ class Application {
       return;
     }
     if (event === "timer") {
-      if (this.operationActive && document.body.classList.contains("operation-record-focus")) {
-        this.returnOperationTimerFromResult(match);
+      if (this.operationActive) {
+        if (document.body.classList.contains("operation-record-focus")) this.returnOperationTimerFromResult(match);
         return;
       }
       this.setFlow(match, "タイマー確認中");

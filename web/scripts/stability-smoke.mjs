@@ -250,7 +250,7 @@ try {
           left: ball.style.left,
           top: ball.style.top,
         })));
-        await page.locator("#operation-timer-back").click();
+        await holdButton(page, "#operation-timer-back");
         await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
         await holdButton(page, "#operation-action-confirm");
         await page.locator("#operation-draw").waitFor({ state: "visible" });
@@ -321,17 +321,25 @@ try {
           await page.locator("#timer-end-confirm-dialog").waitFor({ state: "visible" });
           await page.locator("#timer-end-confirm").click();
           await page.locator("#record-input").waitFor({ state: "visible" });
-          if (!(await page.locator("#back-timer").isVisible())) failures.push(`${label}: prepared-time timer return is hidden on result input`);
+          if (!(await page.locator("#operation-result-back").isVisible())) failures.push(`${label}: operation return menu is hidden on result input`);
           if (await page.locator("#back-balls").isVisible()) failures.push(`${label}: ball-layout return unexpectedly visible on result input`);
-          const returnButtonBox = await page.locator("#back-timer").boundingBox();
-          if (!returnButtonBox || returnButtonBox.width < 180 || returnButtonBox.height < 54) {
+          const returnButtonBox = await page.locator("#operation-result-back").boundingBox();
+          if (!returnButtonBox || returnButtonBox.width < 120 || returnButtonBox.height < 48) {
             failures.push(`${label}: prepared-time timer return is too small (${JSON.stringify(returnButtonBox)})`);
           }
-          await page.locator("#back-timer").click();
+          await holdButton(page, "#operation-result-back", 450);
+          if (await page.locator("#operation-return-dialog").isVisible()) failures.push(`${label}: short hold opened the operation return menu`);
+          await holdButton(page, "#operation-result-back");
+          await page.locator("#operation-return-dialog").waitFor({ state: "visible" });
+          await page.locator("#operation-return-primary").click();
           await page.locator("#operation-action-dialog").waitFor({ state: "visible" });
           await holdButton(page, "#operation-action-confirm");
           await page.locator("#screen-timer .timer-face").waitFor({ state: "visible" });
           if (!(await page.locator("#screen-timer").evaluate((screen) => screen.classList.contains("active")))) failures.push(`${label}: prepared-time return did not activate timer`);
+          if (!(await page.locator("body").evaluate((body) => body.classList.contains("operation-timer-active")))) failures.push(`${label}: prepared-time return opened the standalone timer instead of the operation timer`);
+          for (const selector of ["#timer-mode", "#timer-reset", "#timer-step"]) {
+            if (await page.locator(selector).isVisible()) failures.push(`${label}: standalone timer control is visible after operation return: ${selector}`);
+          }
           if ((await page.locator("#timer-time").textContent())?.trim() !== preparedTime) failures.push(`${label}: prepared-time return rerandomized the timer`);
           if (!(await page.locator("#timer-start").isVisible())) failures.push(`${label}: prepared-time return did not reset timer to ready state`);
           const retriedLayout = await page.locator("#dashboard-court .ball").evaluateAll((balls) => balls.map((ball) => ({
@@ -416,18 +424,26 @@ try {
         left: ball.style.left,
         top: ball.style.top,
       })));
-      await operationPage.locator("#operation-cancel-draw").click();
+      await holdButton(operationPage, '[data-operation-return-context="draw"]');
+      await operationPage.locator("#operation-return-dialog").waitFor({ state: "visible" });
+      await operationPage.locator("#operation-cancel-record").click();
       await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
       await holdButton(operationPage, "#operation-action-confirm", 450);
       if (!(await operationPage.locator("#operation-action-dialog").isVisible())) failures.push(`${label}: short hold cancelled the match`);
       await holdButton(operationPage, "#operation-action-confirm");
       await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
-      await operationPage.locator('[data-screen="records"]').click();
       await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
       if (!(await operationPage.locator("#paused-operation-summary").textContent())?.includes("送信されていません")) failures.push(`${label}: paused match does not clearly state that it was not sent`);
 
+      await operationPage.locator("#operation-prepare").click();
+      await operationPage.locator("#operation-team").waitFor({ state: "visible" });
+      if (!(await operationPage.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("tennis-assist-paused-operation-v1-"))))) failures.push(`${label}: starting a new match removed the paused record`);
+      await holdButton(operationPage, '[data-operation-return-context="team"]');
+      await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
+      await holdButton(operationPage, "#operation-action-confirm");
+      await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
+
       await operationPage.reload({ waitUntil: "domcontentloaded" });
-      await operationPage.locator('[data-screen="records"]').click();
       await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
       await operationPage.locator("#paused-operation-resume").click();
       await operationPage.locator("#operation-draw").waitFor({ state: "visible" });
@@ -460,11 +476,14 @@ try {
         await operationPage.locator("#b-purple").selectOption("1");
 
         if (match === 1) {
+          await holdButton(operationPage, "#operation-result-back");
+          await operationPage.locator("#operation-return-dialog").waitFor({ state: "visible" });
           await operationPage.locator("#operation-cancel-record").click();
+          await operationPage.locator("#operation-action-dialog").waitFor({ state: "visible" });
           await holdButton(operationPage, "#operation-action-confirm");
           await operationPage.locator("#operation-prepare").waitFor({ state: "visible" });
           await operationPage.reload({ waitUntil: "domcontentloaded" });
-          await operationPage.locator('[data-screen="records"]').click();
+          await operationPage.locator("#paused-operation-panel").waitFor({ state: "visible" });
           await operationPage.locator("#paused-operation-resume").click();
           await operationPage.locator("#record-input").waitFor({ state: "visible" });
           for (const selector of ["#a-orange", "#a-purple", "#b-orange", "#b-purple"]) {
