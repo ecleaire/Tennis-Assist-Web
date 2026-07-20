@@ -50,9 +50,10 @@ function getCompetitionState(editorKey) {
     var sheet = ensureCompetitionSheet_(spreadsheet);
     var teams = getMieTeams_(spreadsheet);
     var groups = getGroupRows_(sheet);
+    var participantCount = groups.filter(function(row) { return row.team; }).length;
     var resultContext = getResultContext_(spreadsheet);
     var standings = buildStandings_(groups, resultContext.rows);
-    var schedule = getScheduleRows_(sheet, resultContext.rows);
+    var schedule = getScheduleRows_(sheet, resultContext.rows, participantCount);
     var keyRequired = getEditorKeys_().length > 0;
 
     return {
@@ -91,7 +92,7 @@ function authorizeEditor(editorKey) {
   };
 }
 
-function randomizeGroups(editorKey) {
+function randomizeGroups(editorKey, requestedTeams) {
   assertEditorAuthorized_(editorKey);
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -100,15 +101,29 @@ function randomizeGroups(editorKey) {
     var spreadsheet = SpreadsheetApp.openById(MIE_SPREADSHEET_ID);
     var sheet = ensureCompetitionSheet_(spreadsheet);
     var teams = getMieTeams_(spreadsheet);
-    if (teams.length !== 6) {
-      throw new Error('三重のチームリストは6チームにしてください。現在は' + teams.length + 'チームです。');
+    var allowedTeams = teams.map(normalizeValue_);
+    var currentTeams = uniqueNonEmpty_(getGroupRows_(sheet).map(function(row) { return row.team; }));
+    var hasRequestedTeams = Array.isArray(requestedTeams);
+    var participants = hasRequestedTeams
+      ? uniqueNonEmpty_(requestedTeams.map(normalizeValue_))
+      : currentTeams;
+    participants = participants.filter(function(team) {
+      return allowedTeams.indexOf(team) >= 0;
+    });
+    if (!hasRequestedTeams && (participants.length < 4 || participants.length > 6)) {
+      participants = teams.slice(0, 6);
+    }
+    if (participants.length < 4 || participants.length > 6) {
+      throw new Error('参加チームは4〜6チームにしてください。現在は' + participants.length + 'チームです。');
     }
 
-    var shuffled = shuffle_(teams.slice());
-    sheet.getRange(3, 3, 6, 1).setValues(shuffled.map(function(team) {
-      return [team];
+    var shuffled = shuffle_(participants.slice());
+    var groupValues = createBalancedGroupValues_(shuffled);
+    var groupLabels = createGroupLabels_(groupValues);
+    sheet.getRange(3, 2, 6, 2).setValues(groupValues.map(function(team, index) {
+      return [groupLabels[index], team];
     }));
-    updateGroupScheduleTeams_(sheet, createAssignmentMap_(shuffled));
+    updateGroupScheduleTeams_(sheet, createAssignmentMap_(groupValues));
     SpreadsheetApp.flush();
 
     return getCompetitionState(editorKey);
@@ -131,25 +146,42 @@ function applyRecommendedBracket(editorKey, requestedMode, requestedThirdPlace) 
       : Boolean(requestedThirdPlace);
     var groups = getGroupRows_(sheet);
     var standings = buildStandings_(groups, getResultContext_(spreadsheet).rows);
-    var groupA = standings.filter(function(row) { return row.group === 'A'; });
-    var groupB = standings.filter(function(row) { return row.group === 'B'; });
+    var activeStandings = standings.filter(function(row) { return row.team; }).sort(compareStanding_);
+    var isFourTeamRoundRobin = activeStandings.length === 4 && activeStandings.every(function(row) {
+      return row.group === '総当たり';
+    });
+    var groupA = standings.filter(function(row) { return row.group === 'A' && row.team; }).sort(compareStanding_);
+    var groupB = standings.filter(function(row) { return row.group === 'B' && row.team; }).sort(compareStanding_);
 
-    if (groupA.length !== 3 || groupB.length !== 3 || !groupA[0].team || !groupB[0].team) {
-      throw new Error('先に6チームのグループ分けを確定してください。');
+    if (!isFourTeamRoundRobin && (groupA.length < 2 || groupB.length < 2 || groupA.length + groupB.length < 4)) {
+      throw new Error('先に4〜6チームのグループ分けを確定してください。');
     }
 
-    var pairings = {
-      'T-1': [groupA[1].team, groupB[2].team],
-      'T-2': [groupB[1].team, groupA[2].team],
-      'SF-1': tournamentMode === 'seed-vs-seed'
-        ? [groupA[0].team, groupB[0].team]
-        : [groupA[0].team, 'T-2 勝者'],
-      'SF-2': tournamentMode === 'seed-vs-seed'
-        ? ['T-1 勝者', 'T-2 勝者']
-        : [groupB[0].team, 'T-1 勝者'],
-      '3P-1': ['SF-1 敗者', 'SF-2 敗者'],
-      'F-1': ['SF-1 勝者', 'SF-2 勝者']
-    };
+    var pairings;
+    if (isFourTeamRoundRobin) {
+      pairings = {
+        'T-1': ['', ''],
+        'T-2': ['', ''],
+        'SF-1': [activeStandings[0].team, activeStandings[3].team],
+        'SF-2': [activeStandings[1].team, activeStandings[2].team],
+        '3P-1': ['SF-1 敗者', 'SF-2 敗者'],
+        'F-1': ['SF-1 勝者', 'SF-2 勝者']
+      };
+    } else {
+      var firstRoundPairings = createFirstRoundPairings_(groupA, groupB);
+      pairings = {
+        'T-1': firstRoundPairings[0],
+        'T-2': firstRoundPairings[1],
+        'SF-1': tournamentMode === 'seed-vs-seed'
+          ? [groupA[0].team, groupB[0].team]
+          : [groupA[0].team, 'T-2 勝者'],
+        'SF-2': tournamentMode === 'seed-vs-seed'
+          ? ['T-1 勝者', 'T-2 勝者']
+          : [groupB[0].team, 'T-1 勝者'],
+        '3P-1': ['SF-1 敗者', 'SF-2 敗者'],
+        'F-1': ['SF-1 勝者', 'SF-2 勝者']
+      };
+    }
 
     var values = sheet.getRange(3, 10, MIE_MATCH_DEFINITIONS.length, 7).getValues();
     values.forEach(function(row) {
@@ -188,7 +220,8 @@ function saveCompetitionState(payload, editorKey) {
     var sheet = ensureCompetitionSheet_(spreadsheet);
     var teams = getMieTeams_(spreadsheet);
     var validatedGroups = validateGroups_(payload.groups, teams);
-    var validatedSchedule = validateSchedule_(payload.schedule, teams);
+    var participantCount = validatedGroups.filter(function(row) { return row.team; }).length;
+    var validatedSchedule = validateSchedule_(payload.schedule, teams, participantCount);
     var tournamentMode = payload.tournamentMode === undefined
       ? getTournamentMode_()
       : normalizeTournamentMode_(payload.tournamentMode);
@@ -199,8 +232,8 @@ function saveCompetitionState(payload, editorKey) {
       ? getBracketDisplaySettings_()
       : normalizeBracketDisplaySettings_(payload.bracketDisplaySettings);
 
-    sheet.getRange(3, 3, 6, 1).setValues(validatedGroups.map(function(row) {
-      return [row.team];
+    sheet.getRange(3, 2, 6, 2).setValues(validatedGroups.map(function(row) {
+      return [row.group, row.team];
     }));
 
     var scheduleValues = validatedSchedule.map(function(row) {
@@ -278,15 +311,13 @@ function initializeCompetitionSheet_(sheet, teams) {
     sheet.insertRowsAfter(sheet.getMaxRows(), 20 - sheet.getMaxRows());
   }
 
-  var teamValues = teams.slice(0, 6);
-  while (teamValues.length < 6) {
-    teamValues.push('');
-  }
+  var teamValues = createBalancedGroupValues_(teams.slice(0, 6));
+  var groupLabels = createGroupLabels_(teamValues);
 
   sheet.getRange('A1:I1').merge().setValue('グループ編成・予選順位');
   sheet.getRange('A2:I2').setValues([['識別ID', 'グループ', 'チーム名', '勝ち点', '違反数', '得点', '紫', '順位', '区分']]);
   sheet.getRange('A3:C8').setValues(MIE_GROUP_IDS.map(function(id, index) {
-    return [id, id.charAt(0), teamValues[index]];
+    return [id, groupLabels[index], teamValues[index]];
   }));
 
   sheet.getRange('J1:P1').merge().setValue('タイムスケジュール・トーナメント');
@@ -307,7 +338,7 @@ function applyCompetitionFormulas_(sheet) {
     sheet.getRange(row, 6).setFormula(createResultSumFormula_(row, '得点'));
     sheet.getRange(row, 7).setFormula(createResultSumFormula_(row, '紫'));
     sheet.getRange(row, 8).setFormula(createRankFormula_(row));
-    sheet.getRange(row, 9).setFormula('=IF(H' + row + '=1,"シード","")');
+    sheet.getRange(row, 9).setFormula('=IF(OR(H' + row + '="",B' + row + '="総当たり"),"",IF(H' + row + '=1,"シード",""))');
   }
 }
 
@@ -354,23 +385,27 @@ function getMieTeams_(spreadsheet) {
 
 function getGroupRows_(sheet) {
   var values = sheet.getRange(3, 1, 6, 3).getDisplayValues();
+  var teams = values.map(function(row) { return normalizeValue_(row[2]); });
+  var groupLabels = createGroupLabels_(teams);
   return values.map(function(row, index) {
     var id = normalizeValue_(row[0]) || MIE_GROUP_IDS[index];
     return {
       id: id,
-      group: normalizeValue_(row[1]) || id.charAt(0),
-      team: normalizeValue_(row[2])
+      group: groupLabels[index],
+      team: teams[index]
     };
   });
 }
 
-function getScheduleRows_(sheet, resultRows) {
+function getScheduleRows_(sheet, resultRows, participantCount) {
   var values = sheet.getRange(3, 10, MIE_MATCH_DEFINITIONS.length, 7).getDisplayValues();
   return values.map(function(row, index) {
     var definition = MIE_MATCH_DEFINITIONS[index];
-      var item = {
+    var item = {
       id: normalizeValue_(row[0]) || definition.id,
-      phase: normalizeValue_(row[1]) || definition.phase,
+      phase: index < 6
+        ? getPreliminaryPhase_(participantCount, index)
+        : normalizeValue_(row[1]) || definition.phase,
       startTime: normalizeValue_(row[2]),
       team1: normalizeValue_(row[3]),
       team2: normalizeValue_(row[4]),
@@ -421,7 +456,7 @@ function buildStandings_(groups, resultRows) {
   var standings = groups.map(function(group) {
     var totals = { points: 0, violations: 0, score: 0, purple: 0 };
     resultRows.forEach(function(result) {
-      if (result.type === '予選' && result.team === group.team) {
+      if (group.team && result.type === '予選' && result.team === group.team) {
         totals.points += result.points;
         totals.violations += result.violations;
         totals.score += result.score;
@@ -441,12 +476,14 @@ function buildStandings_(groups, resultRows) {
     };
   });
 
-  ['A', 'B'].forEach(function(groupId) {
-    var groupRows = standings.filter(function(row) { return row.group === groupId; });
+  uniqueNonEmpty_(standings.map(function(row) {
+    return row.team ? row.group : '';
+  })).forEach(function(groupId) {
+    var groupRows = standings.filter(function(row) { return row.group === groupId && row.team; });
     groupRows.sort(compareStanding_);
     groupRows.forEach(function(row, index) {
       row.rank = index + 1;
-      row.seed = index === 0;
+      row.seed = groupId !== '総当たり' && index === 0;
     });
   });
   return standings.sort(function(a, b) { return a.id.localeCompare(b.id, 'ja'); });
@@ -483,16 +520,87 @@ function findLatestPairResult_(resultRows, schedule) {
 }
 
 function updateGroupScheduleTeams_(sheet, assignment) {
-  var pairIds = [
-    ['A1', 'A2'], ['A2', 'A3'], ['A3', 'A1'],
-    ['B1', 'B2'], ['B2', 'B3'], ['B3', 'B1']
-  ];
+  var pairIds = createGroupPairIds_(assignment);
+  var participantCount = Object.keys(assignment).filter(function(id) { return assignment[id]; }).length;
+  var phaseValues = [];
   var values = sheet.getRange(3, 13, 6, 2).getValues();
   pairIds.forEach(function(pair, index) {
-    values[index][0] = assignment[pair[0]] || '';
-    values[index][1] = assignment[pair[1]] || '';
+    phaseValues.push([getPreliminaryPhase_(participantCount, index)]);
+    values[index][0] = pair[0] ? assignment[pair[0]] || '' : '';
+    values[index][1] = pair[1] ? assignment[pair[1]] || '' : '';
   });
+  sheet.getRange(3, 11, 6, 1).setValues(phaseValues);
   sheet.getRange(3, 13, 6, 2).setValues(values);
+}
+
+function createBalancedGroupValues_(teams) {
+  var participants = uniqueNonEmpty_((teams || []).map(normalizeValue_)).slice(0, 6);
+  if (participants.length === 4) {
+    return [participants[0], participants[1], participants[2], participants[3], '', ''];
+  }
+  var values = participants.slice();
+  while (values.length < 6) values.push('');
+  return values;
+}
+
+function createGroupPairIds_(assignment) {
+  var activeIds = MIE_GROUP_IDS.filter(function(id) { return assignment[id]; });
+  if (activeIds.length === 4) {
+    return [
+      [activeIds[0], activeIds[1]],
+      [activeIds[0], activeIds[2]],
+      [activeIds[0], activeIds[3]],
+      [activeIds[1], activeIds[2]],
+      [activeIds[1], activeIds[3]],
+      [activeIds[2], activeIds[3]]
+    ];
+  }
+  var pairs = [];
+  ['A', 'B'].forEach(function(groupId) {
+    var ids = MIE_GROUP_IDS.filter(function(id) {
+      return id.charAt(0) === groupId && assignment[id];
+    });
+    var groupPairs = [];
+    if (ids.length === 3) {
+      groupPairs = [[ids[0], ids[1]], [ids[1], ids[2]], [ids[2], ids[0]]];
+    } else if (ids.length === 2) {
+      groupPairs = [[ids[0], ids[1]]];
+    }
+    while (groupPairs.length < 3) groupPairs.push(['', '']);
+    pairs = pairs.concat(groupPairs.slice(0, 3));
+  });
+  return pairs;
+}
+
+function createGroupLabels_(teams) {
+  var participantCount = uniqueNonEmpty_((teams || []).map(normalizeValue_)).length;
+  if (participantCount === 4) {
+    return ['総当たり', '総当たり', '総当たり', '総当たり', '', ''];
+  }
+  return ['A', 'A', 'A', 'B', 'B', 'B'];
+}
+
+function getPreliminaryPhase_(participantCount, index) {
+  return participantCount === 4
+    ? '4チーム総当たり予選'
+    : (index < 3 ? 'Aグループ予選' : 'Bグループ予選');
+}
+
+function createFirstRoundPairings_(groupA, groupB) {
+  var secondA = groupA[1] ? groupA[1].team : '';
+  var thirdA = groupA[2] ? groupA[2].team : '';
+  var secondB = groupB[1] ? groupB[1].team : '';
+  var thirdB = groupB[2] ? groupB[2].team : '';
+  if (thirdA && thirdB) {
+    return [[secondA, thirdB], [secondB, thirdA]];
+  }
+  if (thirdA) {
+    return [[secondA, secondB], [thirdA, '']];
+  }
+  if (thirdB) {
+    return [[secondB, secondA], [thirdB, '']];
+  }
+  return [[secondA, ''], [secondB, '']];
 }
 
 function createAssignmentMap_(teams) {
@@ -505,7 +613,7 @@ function createAssignmentMap_(teams) {
 
 function validateGroups_(groups, allowedTeams) {
   if (!Array.isArray(groups) || groups.length !== 6) {
-    throw new Error('グループ編成は6チーム分必要です。');
+    throw new Error('グループ編成の6枠を確認してください。');
   }
 
   var byId = {};
@@ -514,19 +622,40 @@ function validateGroups_(groups, allowedTeams) {
   });
   var normalizedAllowed = allowedTeams.map(normalizeValue_);
   var result = MIE_GROUP_IDS.map(function(id) {
-    var team = byId[id];
-    if (!team || normalizedAllowed.indexOf(team) < 0) {
+    var team = byId[id] || '';
+    if (team && normalizedAllowed.indexOf(team) < 0) {
       throw new Error(id + 'のチーム名を確認してください。');
     }
     return { id: id, team: team };
   });
-  if (uniqueNonEmpty_(result.map(function(row) { return row.team; })).length !== 6) {
+  var participantTeams = result.map(function(row) { return row.team; }).filter(Boolean);
+  if (participantTeams.length < 4 || participantTeams.length > 6) {
+    throw new Error('参加チームは4〜6チームにしてください。');
+  }
+  if (uniqueNonEmpty_(participantTeams).length !== participantTeams.length) {
     throw new Error('同じチームを複数の識別IDへ設定できません。');
   }
-  return result;
+  if (participantTeams.length === 4) {
+    return MIE_GROUP_IDS.map(function(id, index) {
+      return {
+        id: id,
+        group: index < 4 ? '総当たり' : '',
+        team: participantTeams[index] || ''
+      };
+    });
+  }
+  var groupACount = result.filter(function(row) { return row.id.charAt(0) === 'A' && row.team; }).length;
+  var groupBCount = participantTeams.length - groupACount;
+  if (groupACount < 2 || groupBCount < 2 || Math.abs(groupACount - groupBCount) > 1) {
+    throw new Error('A・Bグループを2〜3チームずつ、人数差1以内にしてください。');
+  }
+  return result.map(function(row) {
+    row.group = row.id.charAt(0);
+    return row;
+  });
 }
 
-function validateSchedule_(schedule, allowedTeams) {
+function validateSchedule_(schedule, allowedTeams, participantCount) {
   if (!Array.isArray(schedule)) {
     throw new Error('タイムスケジュールを確認できません。');
   }
@@ -542,20 +671,19 @@ function validateSchedule_(schedule, allowedTeams) {
   ];
   var validTeams = allowedTeams.map(normalizeValue_).concat(extraOptions);
 
-  return MIE_MATCH_DEFINITIONS.map(function(definition) {
+  return MIE_MATCH_DEFINITIONS.map(function(definition, index) {
     var row = byId[definition.id] || {};
     var team1 = validateSlotValue_(row.team1, validTeams);
     var team2 = validateSlotValue_(row.team2, validTeams);
     // 集計から得た勝者は保存せず、管理者が明示した上書き値だけを保持する。
-      // The web UI sends the editable winner field as `winner`; accept the
-      // legacy `winnerOverride` name as well so older clients keep working.
-      var winnerValue = row.winnerOverride !== undefined ? row.winnerOverride : row.winner;
-      var winner = validateSlotValue_(winnerValue, validTeams.concat(['引き分け']));
+    // 旧クライアントの winnerOverride も引き続き受け付ける。
+    var winnerValue = row.winnerOverride !== undefined ? row.winnerOverride : row.winner;
+    var winner = validateSlotValue_(winnerValue, validTeams.concat(['引き分け']));
     var startTime = normalizeValue_(row.startTime);
     if (startTime.length > 12) throw new Error(definition.id + 'の開始時間が長すぎます。');
     return {
       id: definition.id,
-      phase: definition.phase,
+      phase: index < 6 ? getPreliminaryPhase_(participantCount, index) : definition.phase,
       startTime: startTime,
       team1: team1,
       team2: team2,
@@ -628,7 +756,7 @@ function normalizeBracketDisplaySettings_(settings) {
       : MIE_BRACKET_DISPLAY_DEFAULTS.wrapMode,
     fontSize: clampSettingNumber_(settings.fontSize, 14, 30, MIE_BRACKET_DISPLAY_DEFAULTS.fontSize),
     boxWidth: clampSettingNumber_(settings.boxWidth, 120, 176, MIE_BRACKET_DISPLAY_DEFAULTS.boxWidth),
-    boxHeight: clampSettingNumber_(settings.boxHeight, 110, 190, MIE_BRACKET_DISPLAY_DEFAULTS.boxHeight),
+    boxHeight: clampSettingNumber_(settings.boxHeight, 110, 400, MIE_BRACKET_DISPLAY_DEFAULTS.boxHeight),
     boxBorderWidth: clampSettingNumber_(settings.boxBorderWidth, 1, 7, MIE_BRACKET_DISPLAY_DEFAULTS.boxBorderWidth),
     lineWidth: clampSettingNumber_(settings.lineWidth, 2, 7, MIE_BRACKET_DISPLAY_DEFAULTS.lineWidth)
   };
