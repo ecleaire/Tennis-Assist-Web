@@ -45,6 +45,7 @@ if (!baseUrl) {
 }
 const targets = [
   { name: "desktop", width: 1440, height: 900 },
+  { name: "monitor-1360x768", width: 1360, height: 768 },
   { name: "iphone-se", width: 375, height: 667, mobile: true },
   { name: "iphone-17-pro", width: 402, height: 874, mobile: true },
   { name: "android-360x800", width: 360, height: 800, mobile: true },
@@ -54,6 +55,8 @@ const targets = [
   { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
   { name: "ipad7-portrait", width: 810, height: 1080, mobile: true },
   { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
+  { name: "ipad-pro11-portrait", width: 834, height: 1194, mobile: true },
+  { name: "ipad-pro11-landscape", width: 1194, height: 834, mobile: true },
 ];
 const editions = [
   { name: "venue", path: "/" },
@@ -61,11 +64,14 @@ const editions = [
 ];
 const drawTargets = [
   { name: "desktop", width: 1440, height: 900 },
+  { name: "monitor-1360x768", width: 1360, height: 768 },
   { name: "iphone-17-pro", width: 402, height: 874, mobile: true },
   { name: "android-412x915", width: 412, height: 915, mobile: true },
   { name: "android-915x412", width: 915, height: 412, mobile: true },
   { name: "ipad-air2-landscape", width: 1024, height: 768, mobile: true },
   { name: "ipad7-landscape", width: 1080, height: 810, mobile: true },
+  { name: "ipad-pro11-portrait", width: 834, height: 1194, mobile: true },
+  { name: "ipad-pro11-landscape", width: 1194, height: 834, mobile: true },
 ];
 const screens = ["dashboard", "timer", "referee", "balls", "records", "rules", "links"];
 const targetFilter = process.env.SMOKE_TARGET || "";
@@ -77,7 +83,7 @@ const activeEditions = editionFilter ? editions.filter((edition) => edition.name
 const browser = await chromium.launch({ headless: true });
 const failures = [];
 
-async function holdButton(page, selector, duration = 3150) {
+async function holdButton(page, selector, duration = 1150) {
   const locator = page.locator(selector);
   await locator.scrollIntoViewIfNeeded();
   await locator.focus();
@@ -158,6 +164,24 @@ try {
           }
         }
 
+        for (const fullscreenCase of [
+          { screen: "timer", button: "#timer-fullscreen", bodyClass: "compact" },
+          { screen: "referee", button: "#referee-fullscreen", bodyClass: "referee-compact" },
+          { screen: "balls", button: "#balls-fullscreen", bodyClass: "balls-compact" },
+        ]) {
+          await page.evaluate((screen) => {
+            const button = document.querySelector(`[data-screen="${screen}"]`);
+            if (button instanceof HTMLElement) button.click();
+          }, fullscreenCase.screen);
+          await page.locator(fullscreenCase.button).click();
+          await page.waitForFunction((bodyClass) => document.body.classList.contains(bodyClass), fullscreenCase.bodyClass);
+          await page.locator(fullscreenCase.button).click();
+          await page.waitForFunction((bodyClass) => !document.body.classList.contains(bodyClass), fullscreenCase.bodyClass);
+          if (!(await page.locator(`#screen-${fullscreenCase.screen}`).evaluate((screen) => screen.classList.contains("active")))) {
+            failures.push(`${label}: ${fullscreenCase.screen} fullscreen did not return to its source screen`);
+          }
+        }
+
         await page.evaluate((screen) => {
           const button = document.querySelector(`[data-screen="${screen}"]`);
           if (button instanceof HTMLElement) button.click();
@@ -217,6 +241,17 @@ try {
         await page.locator("#operation-start-check-dialog").waitFor({ state: "visible" });
         await page.locator("#operation-start-check-confirm").click();
         await page.locator("#operation-draw").waitFor({ state: "visible" });
+
+        await page.locator("#operation-balls-fullscreen").click();
+        await page.waitForFunction(() => document.body.classList.contains("operation-balls-compact"));
+        if (!(await page.locator("#operation-draw").evaluate((screen) => !screen.classList.contains("hidden")))) {
+          failures.push(`${label}: operation court fullscreen hid the draw screen`);
+        }
+        await page.locator("#operation-balls-fullscreen").click();
+        await page.waitForFunction(() => !document.body.classList.contains("operation-balls-compact"));
+        if (!(await page.locator("#operation-draw").evaluate((screen) => !screen.classList.contains("hidden")))) {
+          failures.push(`${label}: operation court fullscreen did not return to the draw screen`);
+        }
 
         const heightState = await page.evaluate(() => ({
           bodyClass: document.body.className,

@@ -11,6 +11,7 @@ type DeviceRole = "" | "Aコート用" | "Bコート用" | "Cコート用" | "D�
 const homeUnsentAlertDelayMs = 20000;
 const gasReadTimeoutMs = 20000;
 const gasWriteTimeoutMs = 35000;
+const holdConfirmDurationMs = 1000;
 type SyncSummary = { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string; oldestUnsentAt: number };
 
 interface MatchRecord {
@@ -2777,7 +2778,7 @@ class RecordsController {
       this.finalMetaHoldTimer = 0;
       button.classList.remove("is-holding");
       this.applyFinalMetaSelection();
-    }, 3000);
+    }, holdConfirmDurationMs);
   }
 
   private cancelFinalMetaHold(clearPending = false): void {
@@ -2896,7 +2897,7 @@ class RecordsController {
       this.agreementHoldTimer = 0;
       button.classList.remove("is-holding");
       this.acceptAgreement();
-    }, 1000);
+    }, holdConfirmDurationMs);
   }
 
   private cancelAgreementHold(): void {
@@ -5966,7 +5967,7 @@ class Application {
         this.operationReturnHoldTimers.delete(button);
         button.classList.remove("is-holding");
         this.handleOperationReturnTrigger(context);
-      }, 1000);
+      }, holdConfirmDurationMs);
       this.operationReturnHoldTimers.set(button, timer);
     };
     button.addEventListener("click", (event) => event.preventDefault());
@@ -6124,7 +6125,7 @@ class Application {
       button.classList.remove("is-holding");
       el<HTMLDialogElement>("operation-action-dialog").close();
       action?.();
-    }, 3000);
+    }, holdConfirmDurationMs);
   }
 
   private cancelOperationActionHold(clearAction = false): void {
@@ -6237,7 +6238,7 @@ class Application {
       this.openOperationAction(
         "試合をキャンセルしますか？",
         "第1マッチの結果が未確定のため、中断記録は保存せずホームへ戻ります。",
-        "3秒長押しで試合をキャンセル",
+        "1秒長押しで試合をキャンセル",
         () => {
           this.returnOperationHome(true);
           this.updatePausedOperationPanel();
@@ -6254,7 +6255,7 @@ class Application {
     this.openOperationAction(
       "試合をキャンセルしますか？",
       "現在の試合はスプレッドシートへ送信せず、端末内の中断データとして保存してホームへ戻ります。\n\nホームから再開できます。",
-      "3秒長押しで試合をキャンセル",
+      "1秒長押しで試合をキャンセル",
       () => this.pauseOperation(step),
     );
   }
@@ -6351,7 +6352,7 @@ class Application {
     this.openOperationAction(
       "中断記録を削除しますか？",
       "端末内に保存した試合進行と未確定の結果を削除します。この操作は元に戻せません。",
-      "3秒長押しで中断記録を削除",
+      "1秒長押しで中断記録を削除",
       () => {
         this.clearPausedOperation();
         this.records.discardOperationProgress(state.progress.series.id);
@@ -6457,7 +6458,7 @@ class Application {
     this.openOperationAction(
       "リザルト入力へ戻りますか？",
       "タイマーを終了し、現在のマッチのリザルト入力へ戻ります。",
-      "3秒長押しでリザルト入力へ戻る",
+      "1秒長押しでリザルト入力へ戻る",
       () => this.returnOperationRecordInput(),
     );
   }
@@ -6467,7 +6468,7 @@ class Application {
     this.openOperationAction(
       "抽選済み時間でタイマーへ戻りますか？",
       "試合時間とボール配置は再抽選されません。タイマーは抽選済み時間からやり直します。",
-      "3秒長押しでタイマーへ戻る",
+      "1秒長押しでタイマーへ戻る",
       () => this.completeReturnOperationTimerFromResult(match),
     );
   }
@@ -6534,7 +6535,7 @@ class Application {
     this.openOperationAction(
       "マッチ抽選へ戻りますか？",
       "ボール配置と試合時間は保持されます。タイマーをやり直す場合は、③準備完了を押してください。",
-      "3秒長押しでマッチ抽選へ戻る",
+      "1秒長押しでマッチ抽選へ戻る",
       () => this.goOperationBack(),
     );
   }
@@ -6543,7 +6544,7 @@ class Application {
     this.openOperationAction(
       "前の画面に戻りますか？",
       "現在の入力内容や試合進行を確認してから戻ってください。",
-      "3秒長押しで前の画面に戻る",
+      "1秒長押しで前の画面に戻る",
       () => this.goOperationBack(),
     );
   }

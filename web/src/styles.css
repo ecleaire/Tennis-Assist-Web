@@ -5,6 +5,7 @@
 }
 
 :root {
+  --hold-confirm-duration: 1s;
   --bg: #081126;
   --surface: #131d34;
   --surface-alt: #182546;
@@ -2448,7 +2449,7 @@ tr.win td {
 }
 
 .operation-return-trigger.is-holding::after {
-  animation: operation-hold-progress 1s linear forwards;
+  animation: operation-hold-progress var(--hold-confirm-duration) linear forwards;
 }
 
 .record-input-return-row {
@@ -2505,7 +2506,7 @@ tr.win td {
 }
 
 .operation-hold-confirm.is-holding::after {
-  animation: operation-hold-progress 3s linear forwards;
+  animation: operation-hold-progress var(--hold-confirm-duration) linear forwards;
 }
 
 @keyframes operation-hold-progress {
@@ -2781,7 +2782,7 @@ tr.win td {
 }
 
 #agreement-accept.is-holding::after {
-  animation: agreement-hold-progress 1s linear forwards;
+  animation: agreement-hold-progress var(--hold-confirm-duration) linear forwards;
 }
 
 @keyframes agreement-hold-progress {
@@ -6772,6 +6773,80 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
     font-size: clamp(2.15rem, 2.4vw, 2.4rem) !important;
     min-height: 112px;
     padding-block: 14px;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1600px) and (max-height: 800px) and (orientation: landscape) {
+  body.operation-step-draw {
+    overflow-y: hidden;
+  }
+
+  body.operation-step-draw #app {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    height: calc(var(--viewport-height) - 24px);
+  }
+
+  body.operation-step-draw .app-header {
+    min-height: 0;
+    padding-block: 10px;
+  }
+
+  body.operation-step-draw #screen-dashboard,
+  body.operation-step-draw .operation-shell,
+  body.operation-step-draw .operation-step.active {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.operation-step-draw .operation-step.active {
+    padding-block: 12px;
+  }
+
+  body.operation-step-draw .operation-draw-layout {
+    gap: 10px;
+    margin-top: 32px;
+  }
+
+  body.operation-step-draw .operation-draw-main,
+  body.operation-step-draw .operation-draw-side {
+    gap: 10px;
+    min-height: 0;
+  }
+
+  body.operation-step-draw .operation-match-title {
+    font-size: clamp(2.2rem, 3.5vw, 3rem);
+    line-height: 1.02;
+  }
+
+  body.operation-step-draw .operation-court-panel {
+    padding-block: 5px 7px;
+  }
+
+  body.operation-step-draw .operation-court-panel > p {
+    margin-bottom: 3px;
+    font-size: 1.25rem;
+  }
+
+  body.operation-step-draw .operation-court-panel .dashboard-court {
+    max-height: min(38vh, 285px);
+  }
+
+  body.operation-step-draw .operation-court-fullscreen {
+    min-height: 38px;
+    margin-top: 5px;
+  }
+
+  body.operation-step-draw .operation-draw-side .dashboard-digital {
+    padding-block: 8px;
+    font-size: clamp(3rem, 5.7vw, 4.7rem);
+  }
+
+  body.operation-step-draw .operation-draw-side .operation-numbered {
+    min-height: 82px;
+    padding-block: 9px;
+    font-size: clamp(1.75rem, 2.25vw, 2rem) !important;
   }
 }
 
