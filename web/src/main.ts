@@ -117,6 +117,8 @@ interface AdminSettings {
   matchType: MatchType;
   deviceRole: DeviceRole;
   audioCues: AudioCueSettings;
+  showOperationMatchLabel: boolean;
+  operationMatchLabelSize: number;
   gasConnectedAt?: string;
   gasConnectedUrl?: string;
   dayCheckAt?: string;
@@ -261,6 +263,13 @@ const defaultAudioCueSettings: AudioCueSettings = {
   remainingTen: true,
   remainingFiveSequence: true,
 };
+const defaultOperationMatchLabelSize = 32;
+
+function normalizeOperationMatchLabelSize(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return defaultOperationMatchLabelSize;
+  return Math.min(64, Math.max(18, Math.round(parsed)));
+}
 
 function normalizeAudioCueSettings(value: unknown): AudioCueSettings {
   const parsed = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
@@ -4370,6 +4379,9 @@ class AdminController {
     el<HTMLButtonElement>("gas-scan").addEventListener("click", () => void this.openScanner());
     el<HTMLSelectElement>("venue-color").addEventListener("change", () => this.applyColor());
     el<HTMLSelectElement>("match-type").addEventListener("change", () => this.save());
+    el<HTMLInputElement>("operation-match-label-enabled").addEventListener("change", () => this.save());
+    el<HTMLInputElement>("operation-match-label-size").addEventListener("input", () => this.updateOperationMatchLabelSizeOutput());
+    el<HTMLInputElement>("operation-match-label-size").addEventListener("change", () => this.save());
     this.populate();
   }
 
@@ -4396,12 +4408,24 @@ class AdminController {
         matchType,
         deviceRole: normalizeDeviceRole(parsed.deviceRole),
         audioCues: normalizeAudioCueSettings(parsed.audioCues),
+        showOperationMatchLabel: parsed.showOperationMatchLabel === true,
+        operationMatchLabelSize: normalizeOperationMatchLabelSize(parsed.operationMatchLabelSize),
         gasConnectedAt: parsed.gasConnectedAt,
         gasConnectedUrl: parsed.gasConnectedUrl,
         dayCheckAt: parsed.dayCheckAt,
       };
     } catch {
-      return { gasUrl: "", apiKey: "", sendEnabled: true, accentMode: "standard", matchType: "練習試合", deviceRole: "", audioCues: { ...defaultAudioCueSettings } };
+      return {
+        gasUrl: "",
+        apiKey: "",
+        sendEnabled: true,
+        accentMode: "standard",
+        matchType: "練習試合",
+        deviceRole: "",
+        audioCues: { ...defaultAudioCueSettings },
+        showOperationMatchLabel: false,
+        operationMatchLabelSize: defaultOperationMatchLabelSize,
+      };
     }
   }
 
@@ -4436,6 +4460,9 @@ class AdminController {
     el<HTMLInputElement>("audio-cue-elapsed-thirty").checked = settings.audioCues.elapsedThirty;
     el<HTMLInputElement>("audio-cue-remaining-ten").checked = settings.audioCues.remainingTen;
     el<HTMLInputElement>("audio-cue-remaining-five-sequence").checked = settings.audioCues.remainingFiveSequence;
+    el<HTMLInputElement>("operation-match-label-enabled").checked = settings.showOperationMatchLabel;
+    el<HTMLInputElement>("operation-match-label-size").value = String(settings.operationMatchLabelSize);
+    this.updateOperationMatchLabelSizeOutput();
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
     this.updateConnectionCard();
@@ -4559,6 +4586,8 @@ class AdminController {
         remainingTen: el<HTMLInputElement>("audio-cue-remaining-ten").checked,
         remainingFiveSequence: el<HTMLInputElement>("audio-cue-remaining-five-sequence").checked,
       },
+      showOperationMatchLabel: el<HTMLInputElement>("operation-match-label-enabled").checked,
+      operationMatchLabelSize: normalizeOperationMatchLabelSize(el<HTMLInputElement>("operation-match-label-size").value),
       gasConnectedAt: AdminController.settings().gasConnectedAt,
       gasConnectedUrl: AdminController.settings().gasConnectedUrl,
       dayCheckAt: AdminController.settings().dayCheckAt,
@@ -4569,6 +4598,11 @@ class AdminController {
     document.dispatchEvent(new CustomEvent("admin-settings-updated"));
     this.updateConnectionCard();
     el("gas-status").textContent = "この端末に管理設定、チームリスト、使用コートを保存しました。";
+  }
+
+  private updateOperationMatchLabelSizeOutput(): void {
+    const size = normalizeOperationMatchLabelSize(el<HTMLInputElement>("operation-match-label-size").value);
+    el<HTMLOutputElement>("operation-match-label-size-value").value = `${size}px`;
   }
 
   private async testAudioCue(kind: "thirty" | "ten" | "five"): Promise<void> {
@@ -4853,6 +4887,8 @@ class AdminController {
         matchType: settings.matchType,
         deviceRole: settings.deviceRole,
         audioCues: settings.audioCues,
+        showOperationMatchLabel: settings.showOperationMatchLabel,
+        operationMatchLabelSize: settings.operationMatchLabelSize,
       },
       timerSetting: AdminController.timerSetting(),
       records: this.portableStateProvider?.() ?? {},
@@ -4881,6 +4917,8 @@ class AdminController {
       settings.matchType = admin.matchType === "公式試合" ? "公式試合" : "練習試合";
       settings.deviceRole = normalizeDeviceRole(admin.deviceRole);
       settings.audioCues = normalizeAudioCueSettings(admin.audioCues);
+      settings.showOperationMatchLabel = admin.showOperationMatchLabel === true;
+      settings.operationMatchLabelSize = normalizeOperationMatchLabelSize(admin.operationMatchLabelSize);
       localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
       if (parsed.timerSetting) {
         const timerSetting = normalizeExternalTimerSetting(parsed.timerSetting, "manual");
@@ -5542,7 +5580,10 @@ class Application {
       if (this.operationActive) this.returnOperationHome(false);
     });
     document.addEventListener("records-storage-updated", () => this.updateHomeSyncAlert());
-    document.addEventListener("admin-settings-updated", () => this.updateHomeSyncAlert());
+    document.addEventListener("admin-settings-updated", () => {
+      this.updateHomeSyncAlert();
+      this.updateOperationTimerMatchLabel();
+    });
     window.addEventListener("online", () => this.updateHomeSyncAlert());
     window.addEventListener("offline", () => this.updateHomeSyncAlert());
     window.addEventListener("storage", (event) => {
@@ -6411,6 +6452,15 @@ class Application {
 
   private setOperationTimerActive(active: boolean): void {
     document.body.classList.toggle("operation-timer-active", active);
+    this.updateOperationTimerMatchLabel(active);
+  }
+
+  private updateOperationTimerMatchLabel(active = document.body.classList.contains("operation-timer-active")): void {
+    const label = el("operation-timer-match-label");
+    const settings = AdminController.settings();
+    label.textContent = `第${this.operationMatch}マッチ`;
+    label.style.fontSize = `${settings.operationMatchLabelSize}px`;
+    label.classList.toggle("hidden", !active || !settings.showOperationMatchLabel);
   }
 
   private setOperationTimerReturnable(active: boolean): void {

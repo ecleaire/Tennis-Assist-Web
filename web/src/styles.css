@@ -1096,6 +1096,30 @@ body.operation-balls-compact .operation-court-panel .operation-court-fullscreen 
   z-index: 2;
 }
 
+.operation-timer-match-label {
+  background: color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 950;
+  line-height: 1.1;
+  max-width: min(48vw, calc(100vw - 28px));
+  overflow: hidden;
+  padding: 10px 16px;
+  pointer-events: none;
+  position: fixed;
+  right: max(clamp(14px, 2vw, 24px), env(safe-area-inset-right));
+  text-overflow: ellipsis;
+  top: max(clamp(14px, 2vw, 24px), env(safe-area-inset-top));
+  white-space: nowrap;
+  z-index: 3;
+}
+
+body:not(.operation-timer-active) .operation-timer-match-label,
+body.timer-started .operation-timer-match-label {
+  display: none !important;
+}
+
 .operation-team > .section-head,
 .operation-draw-layout,
 .operation-between h2 {
@@ -3506,6 +3530,44 @@ tr.win td {
 .venue-color-setting label {
   display: grid;
   gap: 8px;
+}
+
+.operation-match-display-setting {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.venue-color-setting .operation-match-display-toggle {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.operation-match-display-toggle input {
+  flex: 0 0 auto;
+  min-height: 22px;
+  width: 22px;
+}
+
+.operation-match-label-size-control {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 58px;
+}
+
+.operation-match-label-size-control input[type="range"] {
+  min-height: 38px;
+  width: 100%;
+}
+
+.operation-match-label-size-control output {
+  font-weight: 850;
+  text-align: right;
 }
 
 .timer-setting-panel {

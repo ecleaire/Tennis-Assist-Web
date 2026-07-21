@@ -116,7 +116,13 @@ try {
       const runtimeErrors = [];
       page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
       page.on("console", (message) => {
-        if (message.type() === "error") runtimeErrors.push(`console: ${message.text()}`);
+        const messageText = message.text();
+        const isGoogleDriveReportOnlyWarning =
+          messageText.includes("Framing 'https://drive.google.com/' violates the following report-only Content Security Policy") &&
+          messageText.includes("frame-ancestors 'self'");
+        if (message.type() === "error" && !isGoogleDriveReportOnlyWarning) {
+          runtimeErrors.push(`console: ${messageText}`);
+        }
       });
 
       try {
@@ -395,6 +401,79 @@ try {
         process.stderr.write(`FAIL ${message}\n`);
       } finally {
         await context.close();
+      }
+    }
+  }
+
+  if ((!editionFilter || editionFilter === "venue") && (!targetFilter || targetFilter === "desktop")) {
+    for (const edition of ["venue", "general"]) {
+      const matchLabelContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      await matchLabelContext.addInitScript(() => {
+        try {
+          delete Navigator.prototype.serviceWorker;
+        } catch {
+          // Service Worker behavior is verified separately below.
+        }
+        Object.defineProperty(Element.prototype, "requestFullscreen", {
+          configurable: true,
+          value: async () => undefined,
+        });
+      });
+      const matchLabelPage = await matchLabelContext.newPage();
+      const label = `${edition}/operation-match-label`;
+      try {
+        const editionPath = edition === "general" ? "/general/" : "/";
+        await matchLabelPage.goto(`${baseUrl}${editionPath}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        if (edition === "general") {
+          await matchLabelPage.locator('[data-screen="operation"]').click();
+          await matchLabelPage.locator("#screen-operation").waitFor({ state: "visible" });
+        }
+        await matchLabelPage.waitForFunction(() => document.querySelectorAll("#operation-court option").length > 0);
+        await matchLabelPage.locator("#operation-prepare").click();
+        await matchLabelPage.locator("#operation-match-type").selectOption({ index: 1 });
+        await matchLabelPage.locator("#operation-team-a").selectOption({ index: 0 });
+        await matchLabelPage.locator("#operation-team-b").selectOption({ index: 1 });
+        await matchLabelPage.locator("#operation-team-ok").click();
+        await matchLabelPage.locator("#operation-start-check-confirm").click();
+        await matchLabelPage.locator("#operation-ball-random").click();
+        await matchLabelPage.locator("#operation-time-random").click();
+        await matchLabelPage.locator("#operation-ready").click();
+        await matchLabelPage.locator("#operation-ready-confirm").click();
+
+        const matchLabel = matchLabelPage.locator("#operation-timer-match-label");
+        if (await matchLabel.isVisible()) failures.push(`${label}: match label is visible by default`);
+        await matchLabelPage.evaluate(() => {
+          const key = "tennis-assist-admin-v1";
+          const settings = JSON.parse(localStorage.getItem(key) ?? "{}");
+          settings.showOperationMatchLabel = true;
+          settings.operationMatchLabelSize = 46;
+          localStorage.setItem(key, JSON.stringify(settings));
+          document.dispatchEvent(new CustomEvent("admin-settings-updated"));
+        });
+        await matchLabel.waitFor({ state: "visible" });
+        if ((await matchLabel.textContent())?.trim() !== "第1マッチ") failures.push(`${label}: incorrect match label text`);
+        if ((await matchLabel.evaluate((node) => getComputedStyle(node).fontSize)) !== "46px") failures.push(`${label}: configured font size was not applied`);
+        for (const viewport of [
+          { width: 1280, height: 900 },
+          { width: 402, height: 874 },
+          { width: 834, height: 1194 },
+          { width: 1080, height: 810 },
+        ]) {
+          await matchLabelPage.setViewportSize(viewport);
+          const box = await matchLabel.boundingBox();
+          if (!box || box.x < -1 || box.y < -1 || box.x + box.width > viewport.width + 1 || box.y + box.height > viewport.height + 1) {
+            failures.push(`${label}: match label outside viewport ${viewport.width}x${viewport.height} (${JSON.stringify(box)})`);
+          }
+        }
+        await matchLabelPage.locator("#timer-start").click();
+        if (await matchLabel.isVisible()) failures.push(`${label}: match label remained visible after timer start`);
+        process.stdout.write(`PASS ${label}\n`);
+      } catch (error) {
+        const message = `${label}: ${error instanceof Error ? error.message : String(error)}`;
+        failures.push(message);
+        process.stderr.write(`FAIL ${message}\n`);
+      } finally {
+        await matchLabelContext.close();
       }
     }
   }

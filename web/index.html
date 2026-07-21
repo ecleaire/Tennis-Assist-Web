@@ -146,6 +146,7 @@
       <section id="screen-timer" class="screen">
         <article id="timer-shell" class="panel timer-shell">
           <button id="operation-timer-back" class="button operation-back operation-timer-only operation-return-trigger" type="button"><span>戻る</span><small>1秒長押し</small></button>
+          <div id="operation-timer-match-label" class="operation-timer-match-label hidden" aria-live="polite">第1マッチ</div>
           <div class="timer-top">
             <span id="timer-mode" class="pill">試合準備完了</span>
           </div>
@@ -605,6 +606,15 @@
                     <option value="light">ライトUI</option>
                   </select>
                 </label>
+                <div class="operation-match-display-setting">
+                  <label class="operation-match-display-toggle"><input id="operation-match-label-enabled" type="checkbox" /> タイマー開始前にマッチ番号を表示</label>
+                  <label>マッチ番号の文字サイズ
+                    <div class="operation-match-label-size-control">
+                      <input id="operation-match-label-size" type="range" min="18" max="64" step="1" value="32" />
+                      <output id="operation-match-label-size-value" for="operation-match-label-size">32px</output>
+                    </div>
+                  </label>
+                </div>
               </details>
               <details id="audio-check-details" class="admin-details nested-details">
                 <summary>音声</summary>
