@@ -4083,8 +4083,13 @@ class ContentController {
             <p><a target="_blank" rel="noopener" href="https://www.keshikan.net/fonts.html">公式サイト</a> / <a target="_blank" rel="noopener" href="https://github.com/keshikan/DSEG">GitHub</a></p>
           </div>
           <div>
+            <strong>効果音ラボ（システム音声・効果音）</strong>
+            <p>案内音声やシステム効果音の一部に使用しています。</p>
+            <p><a target="_blank" rel="noopener" href="https://soundeffect-lab.info/">公式サイト</a></p>
+          </div>
+          <div>
             <strong>タイマー通知音</strong>
-            <p>ブラウザの Web Audio API で生成しています。声入り音声素材は使用していません。</p>
+            <p>ブラウザの Web Audio API で生成しています。</p>
           </div>
           <p>WRO、RoboSports、競技ルールに関する正式な情報は WRO 公式サイトを参照してください。</p>
           <p>開発支援: OpenAI ChatGPT / Codex</p>
