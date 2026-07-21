@@ -2947,6 +2947,14 @@ tr.win td {
   margin-top: 10px;
 }
 
+.credit-intro {
+  color: var(--text);
+  font-size: 1.12rem;
+  font-weight: 900;
+  line-height: 1.65;
+  margin: 2px 0 8px;
+}
+
 .public-url-section {
   margin-top: 10px;
 }

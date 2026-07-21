@@ -4075,12 +4075,17 @@ class ContentController {
     const credits = `
       <article class="link-section credit-section">
         <h3>ライセンス / クレジット</h3>
-        <p class="muted">本アプリでは、以下の素晴らしい素材を利用しています。公開してくださっている制作者の皆さまに心より感謝いたします。</p>
+        <p class="credit-intro">本アプリでは、以下の素晴らしい素材を利用しています。公開してくださっている制作者の皆さまに心より感謝いたします。</p>
         <div class="credit-list">
           <div>
             <strong>DSEG（7セグメントフォント）</strong>
             <p>タイマー表示に使用しています。</p>
             <p><a target="_blank" rel="noopener" href="https://www.keshikan.net/fonts.html">公式サイト</a> / <a target="_blank" rel="noopener" href="https://github.com/keshikan/DSEG">GitHub</a></p>
+          </div>
+          <div>
+            <strong>QuickChart QR Code API（QRコード生成）</strong>
+            <p>QRコードの生成に使用しています。</p>
+            <p><a target="_blank" rel="noopener" href="https://quickchart.io/documentation/qr-codes/">公式ドキュメント</a></p>
           </div>
           <div>
             <strong>効果音ラボ（システム音声・効果音）</strong>
