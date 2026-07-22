@@ -937,6 +937,7 @@ class TimerController {
   private coldShown = false;
   private coldUntil = 0;
   private subRemaining = 0;
+  private subEndAt = 0;
   private subCaption = "";
   private randomStep: number | "manual" | "tokyo" | "gas" = 1;
   private manualSeconds = 120;
@@ -950,6 +951,7 @@ class TimerController {
   private autoResetTimer = 0;
   private dashboardOverride: string | null = null;
   private readonly audioCues = new TimerAudioCueController();
+  private readonly subAudioCues = new TimerAudioCueController();
   private wakeLock: WakeLockSentinelLike | null = null;
   private thirtyCuePlayed = false;
   private remainingTenCuePlayed = false;
@@ -1113,13 +1115,7 @@ class TimerController {
     this.coldShown = false;
     this.coldUntil = 0;
     this.notice.textContent = "";
-    this.subRemaining = 0;
-    this.subTime.classList.add("hidden");
-    toggleClass(this.dashboardSubTimes, "hidden", true);
-    setText(this.dashboardSubCaptions, "");
-    toggleClass(this.dashboardSubCaptions, "count", false);
-    this.caption.textContent = "";
-    this.caption.classList.remove("count");
+    this.clearSubTimer();
     this.dashboardOverride = null;
     this.syncControls();
     this.render();
@@ -1157,13 +1153,7 @@ class TimerController {
     this.coldShown = false;
     this.coldUntil = 0;
     this.notice.textContent = "";
-    this.subRemaining = 0;
-    this.subTime.classList.add("hidden");
-    toggleClass(this.dashboardSubTimes, "hidden", true);
-    setText(this.dashboardSubCaptions, "");
-    toggleClass(this.dashboardSubCaptions, "count", false);
-    this.caption.textContent = "";
-    this.caption.classList.remove("count");
+    this.clearSubTimer();
     this.syncControls();
     this.render();
     void this.releaseWakeLock();
@@ -1301,13 +1291,7 @@ class TimerController {
     this.coldShown = false;
     this.coldUntil = 0;
     this.notice.textContent = "";
-    this.subRemaining = 0;
-    this.subTime.classList.add("hidden");
-    toggleClass(this.dashboardSubTimes, "hidden", true);
-    setText(this.dashboardSubCaptions, "");
-    toggleClass(this.dashboardSubCaptions, "count", false);
-    this.caption.textContent = "";
-    this.caption.classList.remove("count");
+    this.clearSubTimer();
     this.syncControls();
     this.render();
     void this.releaseWakeLock();
@@ -1450,14 +1434,11 @@ class TimerController {
       }
     }
     if (this.subRemaining > 0) {
-      this.subRemaining = Math.max(0, this.subRemaining - delta);
+      this.subRemaining = this.subEndAt
+        ? Math.max(0, (this.subEndAt - now) / 1000)
+        : Math.max(0, this.subRemaining - delta);
       if (this.subRemaining === 0) {
-        this.subTime.classList.add("hidden");
-        toggleClass(this.dashboardSubTimes, "hidden", true);
-        setText(this.dashboardSubCaptions, "");
-        toggleClass(this.dashboardSubCaptions, "count", false);
-        this.caption.classList.remove("count");
-        this.caption.textContent = "";
+        this.clearSubTimer(false);
       }
     }
     this.render();
@@ -1565,19 +1546,16 @@ class TimerController {
     this.syncControls();
   }
 
-  private toggleSubTimer(seconds: number, label: string): void {
+  private toggleSubTimer(seconds: 10 | 5, label: string): void {
     this.touchTimerState();
     if (this.subRemaining > 0 && this.subCaption === label) {
-      this.subRemaining = 0;
-      this.subTime.classList.add("hidden");
-      toggleClass(this.dashboardSubTimes, "hidden", true);
-      setText(this.dashboardSubCaptions, "");
-      toggleClass(this.dashboardSubCaptions, "count", false);
-      this.caption.classList.remove("count");
-      this.caption.textContent = "";
+      this.clearSubTimer();
       return;
     }
-    this.subRemaining = seconds;
+    const audioLead = this.subAudioCues.scheduleRefereeCountdown(seconds);
+    void this.subAudioCues.prepare();
+    this.subRemaining = seconds + audioLead;
+    this.subEndAt = performance.now() + this.subRemaining * 1000;
     this.subCaption = label;
     this.subTime.classList.remove("hidden");
     toggleClass(this.dashboardSubTimes, "hidden", false);
@@ -1586,6 +1564,18 @@ class TimerController {
     this.caption.classList.add("count");
     this.caption.textContent = label;
     this.render();
+  }
+
+  private clearSubTimer(stopAudio = true): void {
+    if (stopAudio) this.subAudioCues.stopScheduled();
+    this.subRemaining = 0;
+    this.subEndAt = 0;
+    this.subTime.classList.add("hidden");
+    toggleClass(this.dashboardSubTimes, "hidden", true);
+    setText(this.dashboardSubCaptions, "");
+    toggleClass(this.dashboardSubCaptions, "count", false);
+    this.caption.classList.remove("count");
+    this.caption.textContent = "";
   }
 
   private onKey(event: KeyboardEvent): void {
