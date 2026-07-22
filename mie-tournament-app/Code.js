@@ -7,6 +7,9 @@ var TIME_ZONE = 'Asia/Tokyo';
 var DEFAULT_SPREADSHEET_ID = '185jPLjc-nBri49aOr-CVw1baUI1qaxqjgcWLRS2-oxo';
 var GAS_MANAGEMENT_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8Ngk6lZwcTA';
 var GAS_MANAGEMENT_SHEET = 'GAS管理';
+var EDITOR_SESSION_TTL_SECONDS = 1800;
+var MAX_PAYLOAD_BYTES = 500000;
+var MAX_SCHEDULE_ROWS = 1000;
 var DEFAULT_TEAMS = ['サクラユリ', 'ハイパーGGG', 'ささみ　にんじん　マヨネーズ', '未来LABO', 'Team S', '榎本と榎本'];
 var BRACKET_DEFAULTS = { layoutDirection: 'left-to-right', orientation: 'horizontal', wrapMode: 'auto', fontSize: 21, boxWidth: 160, boxHeight: 170, boxBorderWidth: 3, lineWidth: 3, showMatchId: false, matchInfoFontSize: 12, matchInfoPosition: 'left', bottomUpStyle: 'classic', classicSeedWidth: 112, classicSeedHeight: 320, classicMatchWidth: 154, classicMatchHeight: 88, classicChampionWidth: 980, classicChampionHeight: 110, classicRoundGap: 74, classicBackground: '#cfe8f8' };
 var SCHEDULE_DISPLAY_DEFAULTS = {
@@ -56,8 +59,10 @@ function authorizeEditor(editorKey) {
   try {
     var target = resolveAdminTarget_(editorKey);
     var spreadsheet = SpreadsheetApp.openById(target.spreadsheetId);
-    if (normalizeKey_(editorKey) === 'rsam') appendMasterAudit_('ログイン', target.label);
-    return { success: true, canEdit: true, editorKeyRequired: true, accountLabel: target.label, spreadsheetName: spreadsheet.getName(), gasUrl: target.gasUrl || '', message: target.label + 'へ接続しました。' };
+    var isMaster = normalizeKey_(editorKey) === 'rsam';
+    var sessionToken = createEditorSession_(target, isMaster);
+    if (isMaster) appendMasterAudit_('ログイン', target.label);
+    return { success: true, canEdit: true, editorKeyRequired: true, accountLabel: target.label, spreadsheetName: spreadsheet.getName(), gasUrl: target.gasUrl || '', sessionToken: sessionToken, sessionExpiresIn: EDITOR_SESSION_TTL_SECONDS, message: target.label + 'へ接続しました。' };
   } catch (error) { return createErrorResponse_(error); }
 }
 
@@ -69,8 +74,8 @@ function getCompetitionState(editorKey) {
 
 function getAllViewerAccess(editorKey) {
   try {
-    if (normalizeKey_(editorKey) !== 'rsam') throw new Error('全アカウントの表示専用URLはMASTER（rsam）のみ発行できます。');
-    resolveAdminTarget_(editorKey);
+    var context = openContext_(editorKey);
+    if (!context.isMaster) throw new Error('全アカウントの表示専用URLはMASTER（rsam）のみ発行できます。');
     var management = SpreadsheetApp.openById(GAS_MANAGEMENT_SPREADSHEET_ID).getSheetByName(GAS_MANAGEMENT_SHEET);
     if (!management || management.getLastRow() < 2) throw new Error('GAS管理からアカウント一覧を取得できません。');
     var values = management.getRange(1, 1, Math.min(management.getLastRow(), 200), management.getLastColumn()).getDisplayValues();
@@ -98,22 +103,23 @@ function getAllViewerAccess(editorKey) {
 }
 
 function getMasterAuditLog(editorKey) {
-  if (normalizeKey_(editorKey) !== 'rsam') throw new Error('MASTER操作履歴はMASTER（rsam）のみ確認できます。');
-  resolveAdminTarget_(editorKey);
+  var context = openContext_(editorKey);
+  if (!context.isMaster) throw new Error('MASTER操作履歴はMASTER（rsam）のみ確認できます。');
   var rows;
   try { rows = JSON.parse(PropertiesService.getScriptProperties().getProperty('MASTER_AUDIT_LOG') || '[]'); } catch (error) { rows = []; }
   if (!Array.isArray(rows)) rows = [];
   return { success: true, rows: rows.slice(-100).reverse() };
 }
 
-function rotateViewerAccess(editorKey) {
+function rotateViewerAccess(editorKey, requestedExpiry) {
   var context = openContext_(editorKey);
   var properties = PropertiesService.getScriptProperties();
   properties.setProperty(viewerRevisionPropertyKey_(context.target.spreadsheetId), Utilities.getUuid());
+  writeViewerExpiry_(context.target.spreadsheetId, requestedExpiry);
   clearViewerStateCache_(context.target.spreadsheetId);
   var access = createViewerAccess_(context.target);
   if (context.isMaster) appendMasterAudit_('表示専用URL再発行', context.target.label);
-  return { success: true, viewerUrl: ScriptApp.getService().getUrl() + '?viewer=' + encodeURIComponent(access.token) + '&sig=' + encodeURIComponent(access.signature) };
+  return { success: true, viewerUrl: ScriptApp.getService().getUrl() + '?viewer=' + encodeURIComponent(access.token) + '&sig=' + encodeURIComponent(access.signature), viewerExpiresAt: readViewerExpiry_(context.target.spreadsheetId) };
 }
 
 function getPublicCompetitionState(viewerToken, viewerSignature) {
@@ -126,6 +132,24 @@ function getPublicCompetitionState(viewerToken, viewerSignature) {
     var state = buildCompetitionState_({ target: target, spreadsheet: SpreadsheetApp.openById(target.spreadsheetId) }, true);
     try { cache.put(cacheKey, JSON.stringify(state), 2); } catch (cacheError) {}
     return state;
+  } catch (error) { return createErrorResponse_(error); }
+}
+
+function getPublicCompetitionVersion(viewerToken, viewerSignature) {
+  try {
+    var target = verifyViewerAccess_(viewerToken, viewerSignature);
+    var cache = CacheService.getScriptCache();
+    var cacheKey = 'viewer-version-' + target.spreadsheetId;
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+    var spreadsheet = SpreadsheetApp.openById(target.spreadsheetId);
+    var sheet = spreadsheet.getSheetByName(SETUP_SHEET);
+    if (!sheet) throw new Error('大会編成データがまだ作成されていません。');
+    var settings = readSettings_(sheet);
+    var freshness = getCompetitionFreshness_(target.spreadsheetId, settings, getResultRows_(spreadsheet));
+    var response = { success: true, serverRevision: freshness.revision, updatedAt: freshness.updatedAt };
+    try { cache.put(cacheKey, JSON.stringify(response), 2); } catch (cacheError) {}
+    return response;
   } catch (error) { return createErrorResponse_(error); }
 }
 
@@ -146,6 +170,7 @@ function buildCompetitionState_(context, readOnly) {
     var teams = getTeams_(context.spreadsheet);
     var groups = readOnly ? getGroupRowsReadOnly_(sheet, settings, teams) : getGroupRows_(sheet, settings, teams);
     var results = getResultRows_(context.spreadsheet);
+    var freshness = getCompetitionFreshness_(context.target.spreadsheetId, settings, results);
     var schedule = getScheduleRows_(sheet, results, settings.rankingPolicies.tournament);
     if (groupConfigurationChanged || !schedule.some(function(row) { return /^P-/.test(row.id) || row.phase.indexOf('グループ予選') >= 0; })) {
       schedule = rebuildPreliminarySchedule_(schedule, groups);
@@ -193,7 +218,9 @@ function buildCompetitionState_(context, readOnly) {
       viewerMode: Boolean(readOnly),
       editorKeyRequired: !readOnly,
       securityNotice: '',
-      updatedAt: settings.updatedAt || ''
+      updatedAt: freshness.updatedAt,
+      serverRevision: freshness.revision,
+      viewerExpiresAt: readViewerExpiry_(context.target.spreadsheetId)
     };
 }
 
@@ -204,17 +231,30 @@ function saveCompetitionState(payload, editorKey) {
   try {
     var context = openContext_(editorKey);
     var sheet = ensureCompetitionSheet_(context.spreadsheet);
+    var currentSettings = readSettings_(sheet);
+    var currentFreshness = getCompetitionFreshness_(context.target.spreadsheetId, currentSettings, getResultRows_(context.spreadsheet));
+    var baseRevision = normalizeValue_(payload.baseRevision || payload.serverRevision);
+    if (!payload.forceSave && baseRevision && baseRevision !== currentFreshness.revision) {
+      return { success: false, conflict: true, message: '別の端末またはメインアプリから新しい変更が届いています。差分を確認してください。', currentState: buildCompetitionState_(context, false) };
+    }
     var teams = getTeams_(context.spreadsheet);
     var settings = normalizeSettings_(payload);
     settings.tournamentParticipants = normalizeTournamentParticipants_(settings.tournamentParticipants, teams, settings.tournamentParticipantCount);
     var groups = validateGroups_(payload.groups, teams, settings);
     var schedule = assignCourtDefaults_(validateSchedule_(payload.schedule, teams), settings.courtCount);
     schedule = applySeedSlotsToSchedule_(schedule, settings.seedSlots);
-    writeGroups_(sheet, groups);
-    writeSchedule_(sheet, schedule);
-    writeSettings_(sheet, settings);
-    applyCompetitionFormatting_(sheet, Math.max(groups.length, schedule.length));
-    SpreadsheetApp.flush();
+    var backup = createCompetitionBackup_(sheet);
+    try {
+      writeGroups_(sheet, groups);
+      writeSchedule_(sheet, schedule);
+      writeSettings_(sheet, settings);
+      applyCompetitionFormatting_(sheet, Math.max(groups.length, schedule.length));
+      SpreadsheetApp.flush();
+    } catch (writeError) {
+      try { restoreRangeBackups_(backup); SpreadsheetApp.flush(); }
+      catch (restoreError) { throw new Error('大会編成の保存中にエラーが発生し、一部を自動復元できませんでした。大会編成シートを確認してください。'); }
+      throw new Error('大会編成の保存中にエラーが発生したため、変更前の状態へ戻しました。');
+    }
     clearViewerStateCache_(context.target.spreadsheetId);
     if (context.isMaster) appendMasterAudit_('大会編成を保存', context.target.label);
     return getCompetitionState(editorKey);
@@ -338,8 +378,17 @@ function saveTeamList(editorKey, requestedRows, competitionPayload) {
   lock.waitLock(10000);
   try {
     var context = openContext_(editorKey);
+    if (competitionPayload && typeof competitionPayload === 'object') {
+      assertPayload_(competitionPayload);
+      var existingCompetitionSheet = ensureCompetitionSheet_(context.spreadsheet);
+      var currentFreshness = getCompetitionFreshness_(context.target.spreadsheetId, readSettings_(existingCompetitionSheet), getResultRows_(context.spreadsheet));
+      var baseRevision = normalizeValue_(competitionPayload.baseRevision || competitionPayload.serverRevision);
+      if (!competitionPayload.forceSave && baseRevision && baseRevision !== currentFreshness.revision) {
+        return { success: false, conflict: true, message: '別の端末またはメインアプリから新しい変更が届いています。差分を確認してください。', currentState: buildCompetitionState_(context, false) };
+      }
+    }
     var sheet = context.spreadsheet.getSheetByName(TEAM_SHEET) || context.spreadsheet.getSheetByName('チーム一覧');
-    if (!sheet) sheet = context.spreadsheet.insertSheet(TEAM_SHEET);
+    var createdTeamSheet = false;
     var used = {};
     var rows = requestedRows.map(function(row, index) {
       var name = normalizeValue_(row && (row.name !== undefined ? row.name : row.team)).slice(0, 100);
@@ -352,13 +401,18 @@ function saveTeamList(editorKey, requestedRows, competitionPayload) {
       var groupConfig = normalizeValue_(row.groupConfig).slice(0, 100);
       return [index + 1, name, affiliation, courtCount, groupConfig];
     });
-    ensureRows_(sheet, rows.length + 1);
-    sheet.getRange(1, 1, 1, 5).setValues([['チーム数', 'チーム名', '所属', 'コート数', 'グループ']]);
-    var clearRows = Math.max(sheet.getMaxRows() - 1, 1);
-    sheet.getRange(2, 1, clearRows, 5).clearContent();
-    sheet.getRange(2, 1, rows.length, 5).setValues(rows);
-    if (competitionPayload && typeof competitionPayload === 'object') {
-      var competitionSheet = ensureCompetitionSheet_(context.spreadsheet);
+    if (!sheet) { sheet = context.spreadsheet.insertSheet(TEAM_SHEET); createdTeamSheet = true; }
+    var competitionSheet = competitionPayload && typeof competitionPayload === 'object' ? ensureCompetitionSheet_(context.spreadsheet) : null;
+    var teamBackup = createdTeamSheet ? [] : [snapshotRange_(sheet.getRange(1, 1, sheet.getMaxRows(), Math.min(5, sheet.getMaxColumns())), true)];
+    var competitionBackup = competitionSheet ? createCompetitionBackup_(competitionSheet) : [];
+    try {
+      ensureRows_(sheet, rows.length + 1);
+      if (sheet.getMaxColumns() < 5) sheet.insertColumnsAfter(sheet.getMaxColumns(), 5 - sheet.getMaxColumns());
+      sheet.getRange(1, 1, 1, 5).setValues([['チーム数', 'チーム名', '所属', 'コート数', 'グループ']]);
+      var clearRows = Math.max(sheet.getMaxRows() - 1, 1);
+      sheet.getRange(2, 1, clearRows, 5).clearContent();
+      sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+      if (competitionSheet) {
       var teams = rows.map(function(row) { return row[1]; });
       var settings = normalizeSettings_(competitionPayload);
       settings.tournamentParticipants = normalizeTournamentParticipants_(settings.tournamentParticipants, teams, settings.tournamentParticipantCount);
@@ -369,8 +423,16 @@ function saveTeamList(editorKey, requestedRows, competitionPayload) {
       writeSchedule_(competitionSheet, schedule);
       writeSettings_(competitionSheet, settings);
       applyCompetitionFormatting_(competitionSheet, Math.max(groups.length, schedule.length));
+      }
+      SpreadsheetApp.flush();
+    } catch (writeError) {
+      try {
+        if (createdTeamSheet) context.spreadsheet.deleteSheet(sheet); else restoreRangeBackups_(teamBackup);
+        restoreRangeBackups_(competitionBackup);
+        SpreadsheetApp.flush();
+      } catch (restoreError) { throw new Error('チームリストの保存中にエラーが発生し、一部を自動復元できませんでした。スプレッドシートを確認してください。'); }
+      throw new Error('チームリストの保存中にエラーが発生したため、変更前の状態へ戻しました。');
     }
-    SpreadsheetApp.flush();
     clearViewerStateCache_(context.target.spreadsheetId);
     if (context.isMaster) appendMasterAudit_('チームリストを反映', rows.length + 'チーム');
     return getCompetitionState(editorKey);
@@ -473,8 +535,32 @@ function clearLoginAttempt_(key) {
   try { CacheService.getScriptCache().remove(loginAttemptCacheKey_(key)); } catch (error) {}
 }
 
+function createEditorSession_(target, isMaster) {
+  var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  var payload = { label: target.label, spreadsheetId: target.spreadsheetId, gasUrl: target.gasUrl || '', isMaster: Boolean(isMaster), issuedAt: Date.now() };
+  CacheService.getScriptCache().put('editor-session-' + token, JSON.stringify(payload), EDITOR_SESSION_TTL_SECONDS);
+  return token;
+}
+
+function readEditorSession_(token) {
+  token = normalizeValue_(token);
+  if (!/^[a-f0-9]{64}$/i.test(token)) throw new Error('編集セッションを確認できません。もう一度ログインしてください。');
+  var cache = CacheService.getScriptCache();
+  var key = 'editor-session-' + token;
+  var raw = cache.get(key);
+  if (!raw) throw new Error('編集セッションの有効期限が切れました。もう一度ログインしてください。');
+  var session;
+  try { session = JSON.parse(raw); } catch (error) { throw new Error('編集セッションを確認できません。もう一度ログインしてください。'); }
+  if (!session || !session.spreadsheetId) throw new Error('編集セッションを確認できません。もう一度ログインしてください。');
+  cache.put(key, JSON.stringify(session), EDITOR_SESSION_TTL_SECONDS);
+  return session;
+}
+
 function appendMasterAudit_(action, detail) {
+  var lock = LockService.getScriptLock();
+  var alreadyLocked = lock.hasLock();
   try {
+    if (!alreadyLocked && !lock.tryLock(3000)) return;
     var properties = PropertiesService.getScriptProperties();
     var rows;
     try { rows = JSON.parse(properties.getProperty('MASTER_AUDIT_LOG') || '[]'); } catch (error) { rows = []; }
@@ -482,6 +568,7 @@ function appendMasterAudit_(action, detail) {
     rows.push({ at: Utilities.formatDate(new Date(), TIME_ZONE, 'yyyy/MM/dd HH:mm:ss'), action: normalizeValue_(action).slice(0, 80), detail: normalizeValue_(detail).slice(0, 160) });
     properties.setProperty('MASTER_AUDIT_LOG', JSON.stringify(rows.slice(-200)));
   } catch (error) {}
+  finally { if (!alreadyLocked && lock.hasLock()) lock.releaseLock(); }
 }
 
 function resolveViewerTarget_(viewerAccount) {
@@ -531,7 +618,8 @@ function signViewerToken_(token, allowCreate) {
 }
 
 function createViewerAccess_(target) {
-  var payload = JSON.stringify({ spreadsheetId: target.spreadsheetId, label: target.label, revision: getViewerRevision_(target.spreadsheetId, true) });
+  var expiresAt = readViewerExpiry_(target.spreadsheetId);
+  var payload = JSON.stringify({ spreadsheetId: target.spreadsheetId, label: target.label, revision: getViewerRevision_(target.spreadsheetId, true), expiresAt: expiresAt || '' });
   var token = Utilities.base64EncodeWebSafe(payload, Utilities.Charset.UTF_8).replace(/=+$/, '');
   return { token: token, signature: signViewerToken_(token, true) };
 }
@@ -548,6 +636,8 @@ function verifyViewerAccess_(token, signature) {
   var requestedRevision = normalizeValue_(payload.revision) || '1';
   var currentRevision = getViewerRevision_(spreadsheetId, false) || '1';
   if (requestedRevision !== currentRevision) throw new Error('この表示専用URLは無効化されています。大会管理者から最新のURLまたはQRコードを受け取ってください。');
+  var expiresAt = normalizeValue_(payload.expiresAt);
+  if (expiresAt && Date.parse(expiresAt) <= Date.now()) throw new Error('この表示専用URLは有効期限が切れています。大会管理者から最新のURLまたはQRコードを受け取ってください。');
   return { spreadsheetId: spreadsheetId, label: label, gasUrl: '' };
 }
 
@@ -564,8 +654,25 @@ function getViewerRevision_(spreadsheetId, allowCreate) {
   return revision;
 }
 
+function viewerExpiryPropertyKey_(spreadsheetId) { return 'VIEWER_EXPIRES_AT_' + normalizeValue_(spreadsheetId); }
+function readViewerExpiry_(spreadsheetId) { return normalizeValue_(PropertiesService.getScriptProperties().getProperty(viewerExpiryPropertyKey_(spreadsheetId))); }
+function writeViewerExpiry_(spreadsheetId, requestedExpiry) {
+  var value = normalizeValue_(requestedExpiry);
+  var key = viewerExpiryPropertyKey_(spreadsheetId);
+  var properties = PropertiesService.getScriptProperties();
+  if (!value) { properties.deleteProperty(key); return; }
+  var timestamp = Date.parse(value);
+  if (!isFinite(timestamp) || timestamp <= Date.now()) throw new Error('表示専用URLの有効期限は明日以降を指定してください。');
+  properties.setProperty(key, new Date(timestamp).toISOString());
+}
+
 function clearViewerStateCache_(spreadsheetId) {
-  try { CacheService.getScriptCache().remove('viewer-state-' + normalizeValue_(spreadsheetId)); } catch (error) {}
+  try {
+    var cache = CacheService.getScriptCache();
+    var suffix = normalizeValue_(spreadsheetId);
+    cache.remove('viewer-state-' + suffix);
+    cache.remove('viewer-version-' + suffix);
+  } catch (error) {}
 }
 
 function parseAdminPasswords_(value) {
@@ -583,8 +690,9 @@ function extractSpreadsheetId_(value) {
 }
 
 function openContext_(editorKey) {
-  var target = resolveAdminTarget_(editorKey);
-  return { target: target, spreadsheet: SpreadsheetApp.openById(target.spreadsheetId), isMaster: normalizeKey_(editorKey) === 'rsam' };
+  var session = readEditorSession_(editorKey);
+  var target = { label: normalizeValue_(session.label) || '大会', spreadsheetId: normalizeValue_(session.spreadsheetId), gasUrl: normalizeValue_(session.gasUrl) };
+  return { target: target, spreadsheet: SpreadsheetApp.openById(target.spreadsheetId), isMaster: Boolean(session.isMaster) };
 }
 
 function ensureCompetitionSheet_(spreadsheet) {
@@ -1010,6 +1118,39 @@ function writeSchedule_(sheet, schedule) {
   sheet.getRange(3, 20, schedule.length, 1).setValues(schedule.map(function(row) { return [row.endTime || '']; }));
 }
 
+function snapshotRange_(range, clearExtended) {
+  var values = range.getValues();
+  var formulas = range.getFormulas();
+  return {
+    range: range,
+    clearExtended: Boolean(clearExtended),
+    values: values.map(function(row, rowIndex) {
+      return row.map(function(value, columnIndex) { return formulas[rowIndex][columnIndex] || value; });
+    })
+  };
+}
+
+function createCompetitionBackup_(sheet) {
+  var rowCount = Math.max(1, sheet.getMaxRows() - 2);
+  return [
+    snapshotRange_(sheet.getRange(3, 1, rowCount, 3), true),
+    snapshotRange_(sheet.getRange(3, 10, rowCount, 7), true),
+    snapshotRange_(sheet.getRange(3, 19, rowCount, 2), true),
+    snapshotRange_(sheet.getRange(1, 17, 18, 2))
+  ];
+}
+
+function restoreRangeBackups_(backups) {
+  (backups || []).forEach(function(backup) {
+    if (backup.clearExtended) {
+      var sheet = backup.range.getSheet();
+      var rows = Math.max(backup.range.getNumRows(), sheet.getMaxRows() - backup.range.getRow() + 1);
+      sheet.getRange(backup.range.getRow(), backup.range.getColumn(), rows, backup.range.getNumColumns()).clearContent();
+    }
+    backup.range.setValues(backup.values);
+  });
+}
+
 function validateGroups_(groups, allowedTeams, settings) {
   if (!Array.isArray(groups)) throw new Error('グループ編成を確認できません。');
   var expected = sum_(settings.groupSizes);
@@ -1068,8 +1209,9 @@ function sum_(values) {
 
 function validateSchedule_(schedule, allowedTeams) {
   if (!Array.isArray(schedule)) throw new Error('タイムスケジュールを確認できません。');
+  if (schedule.length > MAX_SCHEDULE_ROWS) throw new Error('タイムスケジュールは' + MAX_SCHEDULE_ROWS + '件以内にしてください。');
   var ids = {};
-  return schedule.map(function(row, index) {
+  var normalized = schedule.map(function(row, index) {
     var id = normalizeValue_(row && row.id).slice(0, 30);
     if (!id) throw new Error((index + 1) + '行目の試合IDを入力してください。');
     if (ids[id]) throw new Error('試合ID「' + id + '」が重複しています。');
@@ -1086,6 +1228,34 @@ function validateSchedule_(schedule, allowedTeams) {
       endTime: normalizeValue_(row.endTime).slice(0, 12)
     };
   });
+  validateTournamentGraph_(normalized);
+  return normalized;
+}
+
+function validateTournamentGraph_(schedule) {
+  var rows = {};
+  (schedule || []).forEach(function(row) { rows[row.id] = row; });
+  var dependencies = {};
+  (schedule || []).forEach(function(row) {
+    dependencies[row.id] = [];
+    ['team1', 'team2'].forEach(function(field) {
+      var match = normalizeValue_(row[field]).match(/^(.+?) (勝者|敗者)$/);
+      if (!match) return;
+      var sourceId = normalizeValue_(match[1]);
+      if (!rows[sourceId]) throw new Error('試合「' + row.id + '」の接続元「' + sourceId + '」が見つかりません。');
+      if (sourceId === row.id) throw new Error('試合「' + row.id + '」を自分自身へ接続できません。');
+      dependencies[row.id].push(sourceId);
+    });
+  });
+  var visiting = {}; var visited = {};
+  function visit(id) {
+    if (visiting[id]) throw new Error('トーナメント接続が循環しています。試合「' + id + '」付近を確認してください。');
+    if (visited[id]) return;
+    visiting[id] = true;
+    (dependencies[id] || []).forEach(visit);
+    delete visiting[id]; visited[id] = true;
+  }
+  Object.keys(rows).forEach(visit);
 }
 
 function assignCourtDefaults_(schedule, courtCount) {
@@ -1295,6 +1465,43 @@ function getResultRows_(spreadsheet) {
   return values.slice(1).map(function(row) { return { date: row[map['日時']], type: normalizeValue_(row[map['種別']]), team: normalizeValue_(row[map['チーム名']]), opponent: normalizeValue_(row[map['対戦相手']]), points: toNumber_(row[map['勝ち点']]), violations: toNumber_(row[map['違反数']]), score: toNumber_(row[map['得点']]), purple: toNumber_(row[map['紫']]) }; }).filter(function(row) { return row.team && row.opponent; });
 }
 
+function getCompetitionFreshness_(spreadsheetId, settings, results) {
+  results = results || [];
+  var resultData = results.map(function(row) {
+    return [toTimestamp_(row.date), row.type, row.team, row.opponent, row.points, row.violations, row.score, row.purple];
+  });
+  var resultSignature = hashString_(JSON.stringify(resultData));
+  var latestResultTimestamp = resultData.reduce(function(latest, row) { return Math.max(latest, Number(row[0]) || 0); }, 0);
+  var properties = PropertiesService.getScriptProperties();
+  var suffix = normalizeValue_(spreadsheetId);
+  var signatureKey = 'RESULT_SIGNATURE_' + suffix;
+  var observedKey = 'RESULT_OBSERVED_AT_' + suffix;
+  var previous = normalizeValue_(properties.getProperty(signatureKey));
+  var observedAt = normalizeValue_(properties.getProperty(observedKey));
+  if (previous !== resultSignature) {
+    properties.setProperty(signatureKey, resultSignature);
+    if (results.length) {
+      observedAt = Utilities.formatDate(new Date(latestResultTimestamp || Date.now()), TIME_ZONE, 'yyyy/MM/dd HH:mm:ss');
+      properties.setProperty(observedKey, observedAt);
+    } else {
+      observedAt = '';
+      properties.deleteProperty(observedKey);
+    }
+  }
+  var settingsTimestamp = toTimestamp_(settings && settings.updatedAt);
+  var observedTimestamp = toTimestamp_(observedAt);
+  var latest = Math.max(settingsTimestamp, latestResultTimestamp, observedTimestamp);
+  return {
+    revision: hashString_([normalizeValue_(settings && settings.updatedAt), resultSignature].join('|')),
+    updatedAt: latest ? Utilities.formatDate(new Date(latest), TIME_ZONE, 'yyyy/MM/dd HH:mm:ss') : ''
+  };
+}
+
+function hashString_(value) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value || ''), Utilities.Charset.UTF_8);
+  return bytes.map(function(byte) { var normalized = byte < 0 ? byte + 256 : byte; return ('0' + normalized.toString(16)).slice(-2); }).join('').slice(0, 32);
+}
+
 function buildStandings_(groups, results, policy) {
   policy = normalizeRankingPolicy_(policy, RANKING_POLICY_DEFAULTS.preliminary);
   var standings = groups.map(function(group) {
@@ -1349,7 +1556,14 @@ function isTournamentMatch_(row) { return row && (String(row.phase || '').indexO
 function isActualTeam_(value) { value = normalizeValue_(value); return Boolean(value && value !== '未定' && value !== 'BYE' && !/ (勝者|敗者)$/.test(value)); }
 function lastDataRowInColumn_(sheet, column) { var last = sheet.getLastRow(); if (last < 1) return 0; var values = sheet.getRange(1, column, last, 1).getDisplayValues(); for (var index = values.length - 1; index >= 0; index -= 1) if (normalizeValue_(values[index][0])) return index + 1; return 0; }
 function ensureRows_(sheet, required) { if (sheet.getMaxRows() < required) sheet.insertRowsAfter(sheet.getMaxRows(), required - sheet.getMaxRows()); }
-function assertPayload_(payload) { if (!payload || typeof payload !== 'object') throw new Error('保存データを確認できません。'); }
+function assertPayload_(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('保存データを確認できません。');
+  var serialized;
+  try { serialized = JSON.stringify(payload); } catch (error) { throw new Error('保存データをJSONへ変換できません。'); }
+  if (Utilities.newBlob(serialized, 'application/json').getBytes().length > MAX_PAYLOAD_BYTES) throw new Error('保存データが大きすぎます。試合数やメモ、線の調整数を減らしてください。');
+  if (Array.isArray(payload.groups) && payload.groups.length > 512) throw new Error('グループ枠は512件以内にしてください。');
+  if (Array.isArray(payload.schedule) && payload.schedule.length > MAX_SCHEDULE_ROWS) throw new Error('タイムスケジュールは' + MAX_SCHEDULE_ROWS + '件以内にしてください。');
+}
 function createHeaderMap_(headers) { var map = {}; headers.forEach(function(header, index) { if (header && map[header] === undefined) map[header] = index; }); return map; }
 function uniqueNonEmpty_(values) { var seen = {}; return (values || []).map(normalizeValue_).filter(function(value) { if (!value || seen[value]) return false; seen[value] = true; return true; }); }
 function shuffle_(values) { for (var index = values.length - 1; index > 0; index -= 1) { var target = Math.floor(Math.random() * (index + 1)); var value = values[index]; values[index] = values[target]; values[target] = value; } return values; }

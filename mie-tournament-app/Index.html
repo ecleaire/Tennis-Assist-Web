@@ -13,7 +13,7 @@
     <header class="app-header">
       <div>
         <p class="eyebrow">WRO / TOURNAMENT OPERATIONS</p>
-        <div class="title-row"><h1>大会編成・進行管理</h1><span class="app-version" aria-label="バージョン 3.6.1">v3.6.1</span></div>
+        <div class="title-row"><h1>大会編成・進行管理</h1><span class="app-version" aria-label="バージョン 3.7.2">v3.7.2</span></div>
       </div>
       <div class="header-actions">
         <button id="helpButton" class="secondary" type="button">使い方</button>
@@ -121,6 +121,9 @@
       <img id="viewerQrImage" alt="表示専用URLのQRコード" width="280" height="280" referrerpolicy="no-referrer" style="display:block;max-width:100%;height:auto;margin:12px auto;border:10px solid #fff">
       <label for="viewerUrlInput">表示専用URL</label>
       <input id="viewerUrlInput" type="text" readonly>
+      <label for="viewerExpiryDate">再発行後の有効期限（空欄は無期限）</label>
+      <input id="viewerExpiryDate" type="date">
+      <p class="group-help">期限を変更する場合も「旧URLを無効化して再発行」を押してください。</p>
       <div class="dialog-actions">
         <button id="viewerShareClose" class="secondary" type="button">閉じる</button>
         <button id="viewerUrlRotate" class="danger" type="button">旧URLを無効化して再発行</button>

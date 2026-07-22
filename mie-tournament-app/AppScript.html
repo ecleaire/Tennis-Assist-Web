@@ -8,6 +8,7 @@
     var isDirty = false;
     var editModeActive = false;
     var refreshInFlight = false;
+    var versionCheckInFlight = false;
     var loginInFlight = false;
     var teamListDirty = false;
     var teamSyncHoldTimer = null;
@@ -79,6 +80,7 @@
     document.addEventListener('DOMContentLoaded', initialize);
 
     function initialize() {
+      cleanupExpiredDraftCaches();
       viewerMode = document.body.dataset.viewerMode === 'true';
       viewerToken = document.body.dataset.viewerToken || '';
       viewerSignature = document.body.dataset.viewerSignature || '';
@@ -254,7 +256,8 @@
         bracketDisplaySettings: state.bracketDisplaySettings || {},
         scheduleDisplaySettings: state.scheduleDisplaySettings || {},
         isMaster: Boolean(state.isMaster),
-        updatedAt: state.updatedAt || ''
+        updatedAt: state.updatedAt || '',
+        serverRevision: state.serverRevision || ''
       });
     }
 
@@ -269,14 +272,27 @@
       document.querySelector('.save-bar').hidden = true;
       document.getElementById('editDialog').remove();
       var guide = document.getElementById('quickGuide');
+      guide.open = false;
       guide.querySelector('summary').textContent = '大会情報の見方';
       guide.querySelector('ol').innerHTML = '<li><strong>グループ分け</strong><br>予選グループと順位を確認できます。</li><li><strong>タイムスケジュール</strong><br>試合時刻・コート・対戦相手を確認できます。</li><li><strong>試合結果</strong><br>メインアプリや大会管理者が更新した結果は、この表示にも自動反映されます。</li><li><strong>勝ち点の付与基準</strong><br>1ゲーム（3マッチ）ごとに、勝利3点・引き分けは両チーム1点ずつ・敗北0点です。まず3マッチの勝利数で判定します。決勝トーナメント・4位決定リーグ・優勝決定リーグで勝利数が同じ場合は、違反数が少ない→得点が少ない→紫が多い順に勝者を判定し、すべて同じ場合は引き分けです。</li><li><strong>競技ルール</strong><br>競技ルールについては<a href="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing" target="_blank" rel="noopener">Japan決勝大会ルール</a>をご覧ください。</li><li><strong>トーナメント</strong><br>勝ち上がりと次の対戦を確認できます。</li><li><strong>リンク</strong><br>公式資料と、この大会専用ページのURL・QRコードを確認できます。</li>';
       var saveGuide = guide.querySelector('.save-guide'); if (saveGuide) saveGuide.hidden = true;
       document.querySelector('h1').textContent = '大会情報・進行状況';
     }
 
-    function refreshLiveResults() {
+    async function refreshLiveResults() {
       if (!appState || !shouldRealtimeRefresh()) return;
+      if (viewerMode && !refreshInFlight) {
+        if (versionCheckInFlight) return;
+        versionCheckInFlight = true;
+        try {
+          var version = await callServer('getPublicCompetitionVersion', viewerToken, viewerSignature);
+          if (version && version.success && version.serverRevision === appState.serverRevision) {
+            if (version.updatedAt) { appState.updatedAt = version.updatedAt; document.getElementById('updatedAt').textContent = '更新 ' + version.updatedAt; }
+            return;
+          }
+        } catch (error) {}
+        finally { versionCheckInFlight = false; }
+      }
       loadState({ silent: true });
     }
 
@@ -289,6 +305,7 @@
       if (!appState || !appState.viewerUrl) { setStatus('表示専用URLを発行できません。先に大会情報を読み込んでください。', 'error'); return; }
       document.getElementById('viewerShareDescription').textContent = (appState.accountLabel || 'この大会') + '専用です。他大会へ切り替える機能はありません。';
       document.getElementById('viewerUrlInput').value = appState.viewerUrl;
+      document.getElementById('viewerExpiryDate').value = appState.viewerExpiresAt ? String(appState.viewerExpiresAt).slice(0, 10) : '';
       setQrImage(document.getElementById('viewerQrImage'), appState.viewerUrl, 280);
       document.getElementById('viewerShareDialog').showModal();
     }
@@ -323,11 +340,15 @@
     async function rotateViewerUrl() {
       if (!appState || !isEditing()) return;
       if (!confirm('現在共有している表示専用URLとQRコードをすべて無効化して、新しいURLを発行しますか？この操作は元に戻せません。')) return;
+      var expiryPreview = document.getElementById('viewerExpiryDate').value;
+      if (!confirm('最終確認：旧URLを直ちに無効化します。\n新しいURLの有効期限：' + (expiryPreview || '無期限') + '\n\n実行しますか？')) return;
       setLoading(true);
       try {
-        var response = await callServer('rotateViewerAccess', editorKey);
+        var requestedExpiry = document.getElementById('viewerExpiryDate').value;
+        var response = await callServer('rotateViewerAccess', editorKey, requestedExpiry ? requestedExpiry + 'T23:59:59+09:00' : '');
         if (!response || !response.success || !response.viewerUrl) throw new Error(response && response.message || '表示専用URLを再発行できませんでした。');
         appState.viewerUrl = response.viewerUrl;
+        appState.viewerExpiresAt = response.viewerExpiresAt || '';
         document.getElementById('viewerUrlInput').value = response.viewerUrl;
         setQrImage(document.getElementById('viewerQrImage'), response.viewerUrl, 280);
         setStatus('旧URLを無効化し、新しい表示専用URLを発行しました。共有先へ新しいURLまたはQRコードを案内してください。', 'success');
@@ -1773,7 +1794,7 @@
       container.appendChild(createSectionHeading('リンク', viewerMode ? '公式サイト・大会資料と、現在表示している大会専用ページの共有情報です。' : '公式サイト・大会資料・公開URLをまとめています。リンクは新しいタブで開きます。', []));
       var version = document.createElement('p');
       version.className = 'links-app-version';
-      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.6.1';
+      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.7.2';
       container.appendChild(version);
       var grid = document.createElement('div');
       grid.className = 'links-grid';
@@ -3063,6 +3084,7 @@
 
     function buildCompetitionPayload() {
       return {
+        baseRevision: appState.draftBaseRevision || appState.serverRevision || '',
         groups: appState.groups,
         schedule: appState.schedule,
         groupCount: appState.groupCount,
@@ -3082,10 +3104,39 @@
       };
     }
 
+    function collectScheduleWarnings(schedule) {
+      var warnings = [];
+      function validTime(value) {
+        if (!value) return true;
+        var match = String(value).match(/^(\d{1,2}):(\d{2})$/);
+        return Boolean(match && Number(match[1]) >= 0 && Number(match[1]) <= 23 && Number(match[2]) >= 0 && Number(match[2]) <= 59);
+      }
+      (schedule || []).forEach(function(row, index) {
+        if (!validTime(row.startTime) || !validTime(row.endTime)) warnings.push((row.id || (index + 1) + '行目') + 'の時刻');
+        if (row.court && !/^[A-Z]$/i.test(String(row.court).trim())) warnings.push((row.id || (index + 1) + '行目') + 'のコート「' + row.court + '」');
+      });
+      return warnings.slice(0, 8);
+    }
+
+    function createSavePreview(payload) {
+      var warnings = collectScheduleWarnings(payload.schedule);
+      var message = [
+        '保存内容を確認してください。',
+        'グループ枠：' + (payload.groups || []).length + '件',
+        'スケジュール：' + (payload.schedule || []).length + '件',
+        'トーナメント参加枠：' + Number(payload.tournamentParticipantCount || 0) + '件',
+        'コート数：' + Number(payload.courtCount || 0)
+      ];
+      if (warnings.length) message.push('', '入力警告（手入力のまま保存できます）：', warnings.join('\n'));
+      message.push('', 'この内容をアカウントへ保存しますか？');
+      return message.join('\n');
+    }
+
     function openTeamSyncConfirmation() {
       if (!teamListDirty) return;
       cancelTeamSyncHold();
-      document.getElementById('teamSyncDescription').textContent = appState.teamList.length + '件のチーム情報をスプレッドシートへ送信します。変更内容と対象大会を確認してください。';
+      var previewNames = (appState.teamList || []).slice(0, 10).map(function(row, index) { return (index + 1) + '：' + (row.name || '未入力'); }).join('、');
+      document.getElementById('teamSyncDescription').textContent = appState.teamList.length + '件のチーム情報をスプレッドシートへ送信します。対象：' + (appState.accountLabel || '現在の大会') + '。先頭の内容：' + previewNames + (appState.teamList.length > 10 ? '…' : '');
       document.getElementById('teamSyncNext').hidden = false;
       document.getElementById('teamSyncHold').hidden = true;
       document.getElementById('teamSyncDialog').showModal();
@@ -3124,7 +3175,12 @@
     async function sendTeamListToSpreadsheet() {
       setLoading(true);
       try {
-        var response = await callServer('saveTeamList', editorKey, appState.teamList, buildCompetitionPayload());
+        var payload = buildCompetitionPayload();
+        var response = await callServer('saveTeamList', editorKey, appState.teamList, payload);
+        if (response && response.conflict) {
+          if (!resolveSaveConflict(response, payload)) return;
+          response = await callServer('saveTeamList', editorKey, appState.teamList, payload);
+        }
         if (!response || !response.success) throw new Error(response && response.message || 'チームリストを反映できませんでした。');
         setCompetitionState(response); isDirty = false; teamListDirty = false; clearDraftCache(); closeTeamSyncDialog(); render();
         setStatus('チームリストと大会編成をスプレッドシートへ反映しました。', 'success');
@@ -3139,11 +3195,15 @@
       if (!appState || !isEditing()) return;
       if (teamListDirty) { setStatus('先に「スプレッドシートへ反映」からチームリストを確定してください。', 'error'); return; }
       if (!navigator.onLine) { saveDraftCache(); setStatus('オフラインのため端末へ一時保存しました。接続後に「変更を保存」を押してください。', 'warning'); return; }
-      if (!confirm('グループ・時刻・トーナメント枠の変更を保存しますか？')) return;
+      var payload = buildCompetitionPayload();
+      if (!confirm(createSavePreview(payload))) return;
       setLoading(true);
       try {
-        var payload = buildCompetitionPayload();
         var response = await callServer('saveCompetitionState', payload, editorKey);
+        if (response && response.conflict) {
+          if (!resolveSaveConflict(response, payload)) return;
+          response = await callServer('saveCompetitionState', payload, editorKey);
+        }
         if (!response || !response.success) throw new Error(response && response.message || '保存に失敗しました。');
         setCompetitionState(response);
         isDirty = false;
@@ -3168,7 +3228,7 @@
       dialog.dataset.forceLogin = forceLogin ? 'true' : 'false';
       if (closeButton) closeButton.hidden = Boolean(forceLogin);
       dialog.querySelector('h2').textContent = forceLogin ? '管理者ログイン' : '管理編集';
-      document.getElementById('editorKey').value = editorKey;
+      document.getElementById('editorKey').value = '';
       dialog.showModal();
     }
 
@@ -3188,15 +3248,17 @@
           if (attempt === 0) await new Promise(function(resolve) { window.setTimeout(resolve, 250); });
         }
         if (!response || !response.success) throw new Error(response && response.message || '編集キーを確認できませんでした。');
+        if (!response.sessionToken) throw new Error('編集セッションを開始できませんでした。');
+        var sessionToken = response.sessionToken;
         var state = null;
         for (var stateAttempt = 0; stateAttempt < 2; stateAttempt += 1) {
-          try { state = await callServer('getCompetitionState', candidate); }
+          try { state = await callServer('getCompetitionState', sessionToken); }
           catch (stateError) { if (stateAttempt === 1) throw stateError; }
           if (state && state.success) break;
           if (stateAttempt === 0) await new Promise(function(resolve) { window.setTimeout(resolve, 250); });
         }
         if (!state || !state.success) throw new Error(state && state.message || '大会情報を読み込めませんでした。');
-        editorKey = candidate;
+        editorKey = sessionToken;
         sessionStorage.removeItem('tournamentAdminPassword');
         var dialog = document.getElementById('editDialog');
         dialog.dataset.forceLogin = 'false';
@@ -3204,6 +3266,7 @@
         if (closeButton) closeButton.hidden = false;
         editModeActive = true;
         setCompetitionState(state);
+        document.getElementById('quickGuide').open = false;
         lastStateSignature = createStateSignature(state);
         var restoredDraft = restoreDraftCache(state);
         isDirty = Boolean(restoredDraft);
@@ -3266,7 +3329,7 @@
       var key = getDraftCacheKey();
       if (!key || !appState) return;
       try {
-        localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), appState: appState, teamListDirty: Boolean(teamListDirty), bracketDisplaySettings: bracketDisplaySettings }));
+        localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), baseRevision: appState.draftBaseRevision || appState.serverRevision || '', appState: appState, teamListDirty: Boolean(teamListDirty), bracketDisplaySettings: bracketDisplaySettings }));
       } catch (error) {
         setStatus('端末の一時保存容量が不足しています。「変更を保存」で確定してください。', 'error');
       }
@@ -3295,6 +3358,8 @@
           securityNotice: serverState.securityNotice
         };
         appState = Object.assign({}, serverState, cached.appState, trusted);
+        appState.draftBaseRevision = String(cached.baseRevision || cached.appState.serverRevision || '__legacy_draft__').trim();
+        appState.serverRevision = serverState.serverRevision || '';
         teamListDirty = Boolean(cached.teamListDirty);
         if (cached.bracketDisplaySettings) bracketDisplaySettings = loadBracketDisplaySettings(cached.bracketDisplaySettings);
         if (cached.appState.scheduleDisplaySettings) scheduleDisplaySettings = loadScheduleDisplaySettings(cached.appState.scheduleDisplaySettings);
@@ -3309,6 +3374,47 @@
     function clearDraftCache() {
       var key = getDraftCacheKey();
       if (key) localStorage.removeItem(key);
+    }
+
+    function cleanupExpiredDraftCaches() {
+      try {
+        var now = Date.now();
+        for (var index = localStorage.length - 1; index >= 0; index -= 1) {
+          var key = localStorage.key(index);
+          if (!key || key.indexOf(DRAFT_CACHE_PREFIX) !== 0) continue;
+          var cached;
+          try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch (error) { cached = null; }
+          if (!cached || !cached.savedAt || now - Number(cached.savedAt) > DRAFT_CACHE_MAX_AGE_MS) localStorage.removeItem(key);
+        }
+      } catch (error) {}
+    }
+
+    function resolveSaveConflict(response, payload) {
+      var current = response && response.currentState;
+      if (!current) return false;
+      var differences = [];
+      if (JSON.stringify(appState.groups || []) !== JSON.stringify(current.groups || [])) differences.push('グループ分け');
+      if (JSON.stringify(appState.schedule || []) !== JSON.stringify(current.schedule || [])) differences.push('タイムスケジュール／試合結果');
+      if (JSON.stringify(appState.teamList || []) !== JSON.stringify(current.teamList || [])) differences.push('チームリスト');
+      if (JSON.stringify(appState.tournamentParticipants || []) !== JSON.stringify(current.tournamentParticipants || [])) differences.push('トーナメント参加枠');
+      var summary = differences.length ? differences.join('、') : '更新日時または外部試合結果';
+      var overwrite = confirm('保存後に別の端末またはメインアプリから変更が届いています。\n\n差分：' + summary + '\nサーバー最終更新：' + (current.updatedAt || '不明') + '\n\nOK：この端末の内容で上書き\nキャンセル：上書きせず停止');
+      if (overwrite) {
+        payload.forceSave = true;
+        payload.baseRevision = current.serverRevision || '';
+        return true;
+      }
+      if (confirm('サーバーの最新内容を読み込み、現在の端末変更を破棄しますか？\nキャンセルすると端末変更を保持したまま編集へ戻ります。')) {
+        setCompetitionState(current);
+        isDirty = false;
+        teamListDirty = false;
+        clearDraftCache();
+        render();
+        setStatus('サーバーの最新内容を読み込みました。', 'success');
+      } else {
+        setStatus('保存を中止しました。端末の変更は保持されています。', 'warning');
+      }
+      return false;
     }
 
     function clearDraftAndReload() {
