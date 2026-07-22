@@ -1,0 +1,3345 @@
+<script>
+    var appState = null;
+    var editorKey = '';
+    var viewerMode = false;
+    var viewerToken = '';
+    var viewerSignature = '';
+    var activeView = 'groups';
+    var isDirty = false;
+    var editModeActive = false;
+    var refreshInFlight = false;
+    var loginInFlight = false;
+    var teamListDirty = false;
+    var teamSyncHoldTimer = null;
+    var groupSyncHoldTimer = null;
+    var realtimeRefreshTimer = null;
+    var liveClockTimer = null;
+    var lastStateSignature = '';
+    var consecutiveRefreshFailures = 0;
+    var tournamentCountInputTimer = null;
+    var rankingPolicyOpen = { preliminary: false, tournament: false };
+    var teamListEditorOpen = false;
+    var masterViewerAccounts = null;
+    var masterViewerLoading = false;
+    var masterAuditRows = null;
+    var masterAuditLoading = false;
+    var REALTIME_REFRESH_MS = 10000;
+    var VIEWER_REFRESH_MS = 3000;
+    var BRACKET_DISPLAY_STORAGE_KEY = 'mieTournamentBracketDisplayV1';
+    var DRAFT_CACHE_PREFIX = 'tournamentDraftV1:';
+    var DRAFT_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+    var BRACKET_DISPLAY_DEFAULTS = {
+      layoutDirection: 'left-to-right',
+      orientation: 'horizontal',
+      wrapMode: 'auto',
+      fontSize: 21,
+      boxWidth: 160,
+      boxHeight: 170,
+      boxBorderWidth: 3,
+      lineWidth: 3,
+      showMatchId: false,
+      matchInfoFontSize: 12,
+      matchInfoPosition: 'left',
+      bottomUpStyle: 'classic',
+      classicSeedWidth: 112,
+      classicSeedHeight: 320,
+      classicMatchWidth: 154,
+      classicMatchHeight: 88,
+      classicChampionWidth: 980,
+      classicChampionHeight: 110,
+      classicRoundGap: 74,
+      classicBackground: '#cfe8f8'
+    };
+    var bracketDisplaySettings = loadBracketDisplaySettings();
+    var scheduleDisplaySettings = null;
+    var scheduleDisplaySettingsOpen = false;
+    var undoHistory = [];
+    var undoBaselineAvailable = true;
+    var bracketConnectionMode = false;
+    var pendingBracketConnection = null;
+    var bracketOptionsOpen = false;
+    var RANKING_POLICY_DEFAULTS = {
+      preliminary: [{ key: 'points', direction: 'desc' }, { key: 'violations', direction: 'asc' }, { key: 'score', direction: 'asc' }, { key: 'purple', direction: 'desc' }],
+      tournament: [{ key: 'points', direction: 'desc' }, { key: 'violations', direction: 'asc' }, { key: 'score', direction: 'asc' }, { key: 'purple', direction: 'desc' }]
+    };
+    var SCHEDULE_DISPLAY_COLUMNS = [
+      { key: 'phase', label: '区分', defaultWidth: 180 },
+      { key: 'startTime', label: '開始時間', defaultWidth: 110 },
+      { key: 'endTime', label: '終了時間', defaultWidth: 110 },
+      { key: 'court', label: 'コート', defaultWidth: 110 },
+      { key: 'team1', label: 'チーム1', defaultWidth: 240 },
+      { key: 'team2', label: 'チーム2', defaultWidth: 240 }
+    ];
+    var PLACEHOLDERS = [
+      '未定', 'T-1 勝者', 'T-2 勝者', 'SF-1 勝者', 'SF-2 勝者',
+      'SF-1 敗者', 'SF-2 敗者', '3P-1 勝者', '3P-1 敗者',
+      'Aグループ1位', 'Bグループ1位'
+    ];
+
+    document.addEventListener('DOMContentLoaded', initialize);
+
+    function initialize() {
+      viewerMode = document.body.dataset.viewerMode === 'true';
+      viewerToken = document.body.dataset.viewerToken || '';
+      viewerSignature = document.body.dataset.viewerSignature || '';
+      document.getElementById('refreshButton').addEventListener('click', reloadFromServer);
+      document.getElementById('discardButton').addEventListener('click', reloadFromServer);
+      document.getElementById('undoButton').addEventListener('click', undoLastChange);
+      document.getElementById('helpButton').addEventListener('click', function() {
+        var guide = document.getElementById('quickGuide');
+        guide.open = true;
+        guide.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      document.getElementById('viewerButton').addEventListener('click', function() {
+        openViewerShareDialog();
+      });
+      document.getElementById('viewerShareClose').addEventListener('click', function() { document.getElementById('viewerShareDialog').close(); });
+      document.getElementById('viewerUrlOpen').addEventListener('click', function() { if (appState && appState.viewerUrl) window.open(appState.viewerUrl, '_blank', 'noopener'); });
+      document.getElementById('viewerUrlCopy').addEventListener('click', copyViewerUrl);
+      document.getElementById('viewerUrlRotate').addEventListener('click', rotateViewerUrl);
+      document.getElementById('viewerQrSave').addEventListener('click', saveViewerQrImage);
+      document.getElementById('saveButton').addEventListener('click', saveState);
+      document.getElementById('editButton').addEventListener('click', openEditDialog);
+      document.getElementById('spreadsheetButton').addEventListener('click', openSpreadsheet);
+      document.getElementById('clearDraftButton').addEventListener('click', clearDraftAndReload);
+      document.getElementById('displayFullscreenClose').addEventListener('click', closeDisplayFullscreen);
+      document.getElementById('editForm').addEventListener('submit', submitEditorKey);
+      document.getElementById('teamSyncCancel').addEventListener('click', closeTeamSyncDialog);
+      document.getElementById('teamSyncNext').addEventListener('click', showFinalTeamSyncConfirmation);
+      var teamSyncHold = document.getElementById('teamSyncHold');
+      teamSyncHold.addEventListener('pointerdown', startTeamSyncHold);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(eventName) { teamSyncHold.addEventListener(eventName, cancelTeamSyncHold); });
+      teamSyncHold.addEventListener('click', function(event) { event.preventDefault(); });
+      document.getElementById('groupSyncCancel').addEventListener('click', closeGroupSyncDialog);
+      var groupSyncHold = document.getElementById('groupSyncHold');
+      groupSyncHold.addEventListener('pointerdown', startGroupSyncHold);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(eventName) { groupSyncHold.addEventListener(eventName, cancelGroupSyncHold); });
+      groupSyncHold.addEventListener('click', function(event) { event.preventDefault(); });
+      document.getElementById('editDialog').addEventListener('cancel', function(event) {
+        if (!appState) event.preventDefault();
+      });
+      document.querySelectorAll('[data-close-dialog]').forEach(function(button) {
+        button.addEventListener('click', function() { document.getElementById('editDialog').close(); });
+      });
+      document.querySelectorAll('.tab').forEach(function(button) {
+        button.addEventListener('click', function() {
+          showView(button.dataset.view);
+          refreshLiveResults();
+        });
+      });
+      window.addEventListener('beforeunload', function(event) {
+        if (!isDirty) return;
+        saveDraftCache();
+        event.preventDefault();
+        event.returnValue = '';
+      });
+      window.addEventListener('offline', function() {
+        if (isDirty) saveDraftCache();
+        setStatus('ネット接続が切れています。変更はこの端末へ保存済みです。', 'warning');
+      });
+      window.addEventListener('online', function() {
+        setStatus(isDirty
+          ? 'ネット接続が戻りました。端末保存中の変更は「変更を保存」で確定できます。'
+          : 'ネット接続が戻りました。', isDirty ? 'warning' : 'success');
+      });
+      window.addEventListener('resize', redrawVisibleBracketLines);
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          updateLiveClocks();
+          refreshLiveResults();
+        }
+      });
+      startLiveClock();
+      startRealtimeRefresh();
+      if (viewerMode) {
+        configureViewerMode();
+        setStatus('大会情報を読み込んでいます。', '');
+        loadState();
+        return;
+      }
+      sessionStorage.removeItem('tournamentAdminPassword');
+      openEditDialog(true);
+      setStatus('管理者パスワードでログインしてください。', 'warning');
+    }
+
+    function callServer(method) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function(resolve, reject) {
+        if (!window.google || !google.script || !google.script.run) {
+          reject(new Error('Google Apps ScriptのWebアプリから開いてください。'));
+          return;
+        }
+        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
+          reject(new Error(error && error.message ? error.message : 'GASとの通信に失敗しました。'));
+        });
+        var serverMethod = runner[method];
+        if (typeof serverMethod !== 'function') {
+          reject(new Error('GASの処理「' + method + '」を呼び出せません。'));
+          return;
+        }
+        serverMethod.apply(runner, args);
+      });
+    }
+
+    async function loadState(options) {
+      options = options && options.silent ? options : { silent: false };
+      if (refreshInFlight) return;
+      if (options.silent && (isEditing() || isDirty || document.hidden || !shouldRealtimeRefresh())) return;
+      refreshInFlight = true;
+      if (!options.silent) setLoading(true);
+      try {
+        var response = viewerMode ? await callServer('getPublicCompetitionState', viewerToken, viewerSignature) : await callServer('getCompetitionState', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '大会情報を取得できませんでした。');
+        var nextSignature = createStateSignature(response);
+        var hasChanged = !appState || nextSignature !== lastStateSignature;
+        consecutiveRefreshFailures = 0;
+        if (!hasChanged && options.silent) {
+          updateLiveClocks();
+          return;
+        }
+        setCompetitionState(response);
+        lastStateSignature = nextSignature;
+        if (!options.silent) isDirty = false;
+        if (!options.silent || hasChanged) {
+          render();
+        } else {
+          document.getElementById('updatedAt').textContent = appState.updatedAt ? '更新 ' + appState.updatedAt : '';
+          updateLiveClocks();
+        }
+        if (!options.silent) {
+          setStatus(viewerMode ? '大会情報を表示しています。内容は自動更新されます。' : '閲覧表示です。管理編集が必要な場合は「管理編集」を押してください。', '');
+        }
+      } catch (error) {
+        consecutiveRefreshFailures += 1;
+        if (!viewerMode && !appState && !options.silent) openEditDialog(true);
+        if (!options.silent || consecutiveRefreshFailures >= 3) {
+          setStatus(options.silent
+            ? '自動更新を確認できません。通信回復後に再試行します。'
+            : error.message, options.silent ? 'warning' : 'error');
+        }
+      } finally {
+        refreshInFlight = false;
+        if (!options.silent) setLoading(false);
+      }
+    }
+
+    function reloadFromServer() {
+      if (isDirty && !confirm('端末に一時保存した未確定の変更を破棄して、保存済みデータを再読込しますか？')) return;
+      clearDraftCache();
+      isDirty = false;
+      teamListDirty = false;
+      loadState();
+    }
+
+    function createStateSignature(state) {
+      if (!state) return '';
+      return JSON.stringify({
+        teams: state.teams || [],
+        teamList: state.teamList || [],
+        groups: state.groups || [],
+        standings: state.standings || [],
+        schedule: state.schedule || [],
+        groupCount: state.groupCount || 1,
+        teamsPerGroup: state.teamsPerGroup || 1,
+        groupSizes: state.groupSizes || [],
+        tournamentParticipantCount: state.tournamentParticipantCount || 2,
+        qualifiersPerGroup: state.qualifiersPerGroup || 1,
+        tournamentParticipants: state.tournamentParticipants || [],
+        seedSlots: state.seedSlots || [],
+        courtCount: state.courtCount || 1,
+        courtCountManual: Boolean(state.courtCountManual),
+        rankingPolicies: state.rankingPolicies || {},
+        thirdPlaceEnabled: Boolean(state.thirdPlaceEnabled),
+        bracketDisplaySettings: state.bracketDisplaySettings || {},
+        scheduleDisplaySettings: state.scheduleDisplaySettings || {},
+        isMaster: Boolean(state.isMaster),
+        updatedAt: state.updatedAt || ''
+      });
+    }
+
+    function shouldRealtimeRefresh() {
+      var overlay = document.getElementById('displayFullscreen');
+      return viewerMode || activeView === 'schedule' || activeView === 'tournament' || Boolean(overlay && !overlay.hidden);
+    }
+
+    function configureViewerMode() {
+      document.body.classList.add('viewer-mode');
+      document.querySelector('.header-actions').hidden = true;
+      document.querySelector('.save-bar').hidden = true;
+      document.getElementById('editDialog').remove();
+      var guide = document.getElementById('quickGuide');
+      guide.querySelector('summary').textContent = '大会情報の見方';
+      guide.querySelector('ol').innerHTML = '<li><strong>グループ分け</strong><br>予選グループと順位を確認できます。</li><li><strong>タイムスケジュール</strong><br>試合時刻・コート・対戦相手を確認できます。</li><li><strong>試合結果</strong><br>メインアプリや大会管理者が更新した結果は、この表示にも自動反映されます。</li><li><strong>勝ち点の付与基準</strong><br>1ゲーム（3マッチ）ごとに、勝利3点・引き分けは両チーム1点ずつ・敗北0点です。まず3マッチの勝利数で判定します。決勝トーナメント・4位決定リーグ・優勝決定リーグで勝利数が同じ場合は、違反数が少ない→得点が少ない→紫が多い順に勝者を判定し、すべて同じ場合は引き分けです。</li><li><strong>競技ルール</strong><br>競技ルールについては<a href="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing" target="_blank" rel="noopener">Japan決勝大会ルール</a>をご覧ください。</li><li><strong>トーナメント</strong><br>勝ち上がりと次の対戦を確認できます。</li><li><strong>リンク</strong><br>公式資料と、この大会専用ページのURL・QRコードを確認できます。</li>';
+      var saveGuide = guide.querySelector('.save-guide'); if (saveGuide) saveGuide.hidden = true;
+      document.querySelector('h1').textContent = '大会情報・進行状況';
+    }
+
+    function refreshLiveResults() {
+      if (!appState || !shouldRealtimeRefresh()) return;
+      loadState({ silent: true });
+    }
+
+    function startRealtimeRefresh() {
+      if (realtimeRefreshTimer) window.clearInterval(realtimeRefreshTimer);
+      realtimeRefreshTimer = window.setInterval(refreshLiveResults, viewerMode ? VIEWER_REFRESH_MS : REALTIME_REFRESH_MS);
+    }
+
+    function openViewerShareDialog() {
+      if (!appState || !appState.viewerUrl) { setStatus('表示専用URLを発行できません。先に大会情報を読み込んでください。', 'error'); return; }
+      document.getElementById('viewerShareDescription').textContent = (appState.accountLabel || 'この大会') + '専用です。他大会へ切り替える機能はありません。';
+      document.getElementById('viewerUrlInput').value = appState.viewerUrl;
+      setQrImage(document.getElementById('viewerQrImage'), appState.viewerUrl, 280);
+      document.getElementById('viewerShareDialog').showModal();
+    }
+
+    function createQrDataUrl(text, targetSize) {
+      if (typeof qrcode !== 'function') throw new Error('端末内QR生成を初期化できませんでした。');
+      var qr = qrcode(0, 'M');
+      qr.addData(String(text || ''), 'Byte');
+      qr.make();
+      var moduleCount = qr.getModuleCount();
+      var margin = 4;
+      var cellSize = Math.max(2, Math.floor((Number(targetSize) - margin * 2) / moduleCount));
+      return qr.createDataURL(cellSize, margin);
+    }
+
+    function setQrImage(image, text, targetSize) {
+      try { image.src = createQrDataUrl(text, targetSize); }
+      catch (error) { image.removeAttribute('src'); image.alt = 'QRコードを生成できませんでした'; }
+    }
+
+    async function copyViewerUrl() {
+      if (!appState || !appState.viewerUrl) return;
+      try {
+        await navigator.clipboard.writeText(appState.viewerUrl);
+        setStatus('表示専用URLをコピーしました。', 'success');
+      } catch (error) {
+        var input = document.getElementById('viewerUrlInput'); input.focus(); input.select();
+        setStatus('URLを選択しました。コピー操作を行ってください。', 'warning');
+      }
+    }
+
+    async function rotateViewerUrl() {
+      if (!appState || !isEditing()) return;
+      if (!confirm('現在共有している表示専用URLとQRコードをすべて無効化して、新しいURLを発行しますか？この操作は元に戻せません。')) return;
+      setLoading(true);
+      try {
+        var response = await callServer('rotateViewerAccess', editorKey);
+        if (!response || !response.success || !response.viewerUrl) throw new Error(response && response.message || '表示専用URLを再発行できませんでした。');
+        appState.viewerUrl = response.viewerUrl;
+        document.getElementById('viewerUrlInput').value = response.viewerUrl;
+        setQrImage(document.getElementById('viewerQrImage'), response.viewerUrl, 280);
+        setStatus('旧URLを無効化し、新しい表示専用URLを発行しました。共有先へ新しいURLまたはQRコードを案内してください。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    async function saveViewerQrImage() {
+      if (!appState || !appState.viewerUrl) return;
+      var safeLabel = String(appState.accountLabel || '大会').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60) || '大会';
+      try {
+        var source = createQrDataUrl(appState.viewerUrl, 600);
+        var qrImage = new Image();
+        await new Promise(function(resolve, reject) { qrImage.onload = resolve; qrImage.onerror = reject; qrImage.src = source; });
+        var canvas = document.createElement('canvas'); canvas.width = qrImage.naturalWidth; canvas.height = qrImage.naturalHeight;
+        var context = canvas.getContext('2d'); context.imageSmoothingEnabled = false; context.drawImage(qrImage, 0, 0);
+        var link = document.createElement('a'); link.href = canvas.toDataURL('image/png'); link.download = safeLabel + '-表示専用QR.png';
+        document.body.appendChild(link); link.click(); link.remove();
+        setStatus('QRコードを画像として保存しました。', 'success');
+      } catch (error) {
+        setStatus(error.message || 'QR画像を保存できませんでした。', 'error');
+      }
+    }
+
+    function formatCurrentTime(date) {
+      try {
+        return new Intl.DateTimeFormat('ja-JP', {
+          timeZone: 'Asia/Tokyo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hourCycle: 'h23'
+        }).format(date);
+      } catch (error) {
+        return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      }
+    }
+
+    function updateLiveClocks() {
+      var now = new Date();
+      var label = formatCurrentTime(now);
+      document.querySelectorAll('[data-live-clock]').forEach(function(clock) {
+        clock.textContent = label;
+        clock.dateTime = now.toISOString();
+      });
+    }
+
+    function startLiveClock() {
+      updateLiveClocks();
+      if (liveClockTimer) window.clearInterval(liveClockTimer);
+      liveClockTimer = window.setInterval(updateLiveClocks, 1000);
+    }
+
+    function createLiveClock() {
+      var clock = document.createElement('time');
+      clock.className = 'live-clock';
+      clock.setAttribute('data-live-clock', '');
+      clock.setAttribute('aria-label', '現在時刻');
+      return clock;
+    }
+
+    function createLiveClockRow() {
+      var row = document.createElement('div');
+      row.className = 'display-clock-row';
+      row.appendChild(createLiveClock());
+      return row;
+    }
+
+    function render() {
+      document.body.classList.toggle('is-editing', isEditing());
+      document.getElementById('updatedAt').textContent = appState.updatedAt ? '更新 ' + appState.updatedAt : '';
+      document.querySelector('.eyebrow').textContent = (appState.accountLabel || 'WRO') + ' / TOURNAMENT OPERATIONS';
+      document.getElementById('editButton').textContent = isEditing() ? '編集を終了' : '管理編集';
+      document.getElementById('saveButton').disabled = !isEditing() || !isDirty;
+      document.getElementById('undoButton').disabled = !isEditing() || undoHistory.length < 2;
+      document.getElementById('discardButton').disabled = false;
+      var notice = document.getElementById('securityNotice');
+      notice.hidden = !appState.securityNotice || !isEditing();
+      notice.textContent = appState.securityNotice || '';
+      renderView(activeView);
+      showView(activeView, false);
+      refreshDisplayFullscreenBody();
+      updateLiveClocks();
+    }
+
+    function renderView(view) {
+      if (!appState) return;
+      if (view === 'groups') renderGroups();
+      else if (view === 'schedule') renderSchedule();
+      else if (view === 'tournament') renderTournament();
+      else if (view === 'links') renderLinks();
+    }
+
+    function renderGroups() {
+      var container = document.getElementById('groupsView');
+      container.textContent = '';
+      var participantCount = getParticipatingTeams().length;
+      var groupsTab = document.querySelector('[data-view="groups"]');
+      if (groupsTab) groupsTab.textContent = 'グループ分け';
+      container.appendChild(createSectionHeading('グループ分け', participantCount + 'チーム・' + appState.groupCount + 'グループの編成です。', viewerMode ? [] : [
+        createHoldButton('1秒長押しでランダム組み分け', 'success', randomizeGroups, !isEditing()),
+        createButton('予選リーグ_結果へ反映', 'danger', openGroupSyncPreview, !isEditing() || !participantCount)
+      ]));
+
+      var settings = document.createElement('div');
+      settings.className = 'configuration-bar';
+      settings.appendChild(createNumberSetting('グループ総数', appState.groupCount, 1, 16, function(value) {
+        var fallbackSize = Number(appState.teamsPerGroup) || 1;
+        appState.groupSizes = (appState.groupSizes || []).slice(0, value);
+        while (appState.groupSizes.length < value) appState.groupSizes.push(fallbackSize);
+        appState.groupCount = value;
+        rebuildGroupSlots();
+      }, true));
+      (appState.groupSizes || []).forEach(function(size, index) {
+        settings.appendChild(createNumberSetting(groupLabel(index) + 'グループのチーム数', size, 1, 32, function(value) {
+          appState.groupSizes[index] = value;
+          appState.teamsPerGroup = Math.max.apply(Math, appState.groupSizes);
+          rebuildGroupSlots();
+        }, true));
+      });
+      settings.appendChild(createNumberSetting('各グループ上位の自動進出数', appState.qualifiersPerGroup || 1, 1, 32, function(value) {
+        appState.qualifiersPerGroup = value;
+        markDirty();
+      }));
+      settings.appendChild(createNumberSetting('トーナメント総進出数', appState.tournamentParticipantCount, 2, 64, function(value) {
+        normalizeTournamentParticipantDraft(value);
+        rebuildTournamentScheduleFromParticipants();
+        markTournamentDraftChanged();
+      }, true));
+      if (!viewerMode) container.appendChild(settings);
+      var help = document.createElement('p');
+      help.className = 'group-help';
+      help.textContent = '設定は大会編成シートと双方向で保存されます。「予選リーグ_結果」への反映は自動では行いません。専用ボタンを1秒長押しした場合だけ、グループ分け欄が空欄であることを再確認して反映します。既存値は上書きしません。';
+      if (!viewerMode) container.appendChild(help);
+      if (isEditing()) container.appendChild(createRankingPolicyEditor('preliminary', '予選の順位決めポリシー'));
+      if (isEditing()) container.appendChild(createTeamListEditor());
+
+      var grid = document.createElement('div');
+      grid.className = 'group-grid' + (Number(appState.groupCount) === 1 ? ' single-league' : '');
+      unique((appState.groups || []).map(function(row) { return row.group; })).forEach(function(groupName) {
+        var panel = document.createElement('article');
+        panel.className = 'group-panel';
+        var title = document.createElement('h3');
+        title.textContent = groupName + 'グループ';
+        panel.appendChild(title);
+        appState.groups.filter(function(row) { return row.group === groupName; }).forEach(function(group) {
+          panel.appendChild(createGroupRow(group, group.id));
+        });
+        grid.appendChild(panel);
+      });
+      container.appendChild(grid);
+    }
+
+    function createNumberSetting(labelText, value, minimum, maximum, onChange, live) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(labelText));
+      var input = document.createElement('input');
+      input.type = 'number'; input.min = minimum; input.max = maximum; input.value = value;
+      input.disabled = !isEditing();
+      function commitValue() {
+        window.clearTimeout(tournamentCountInputTimer);
+        tournamentCountInputTimer = null;
+        var normalized = Math.min(maximum, Math.max(minimum, Number(input.value) || minimum));
+        input.value = normalized;
+        onChange(normalized);
+      }
+      input.addEventListener('change', commitValue);
+      if (live) {
+        input.addEventListener('input', function() {
+          window.clearTimeout(tournamentCountInputTimer);
+          tournamentCountInputTimer = window.setTimeout(commitValue, 250);
+        });
+      }
+      label.appendChild(input);
+      return label;
+    }
+
+    function createRankingPolicyEditor(kind, titleText) {
+      var details = document.createElement('details'); details.className = 'ranking-policy'; details.open = Boolean(rankingPolicyOpen[kind]);
+      details.addEventListener('toggle', function() { rankingPolicyOpen[kind] = details.open; });
+      var summary = document.createElement('summary'); summary.textContent = titleText + 'を設定'; details.appendChild(summary);
+      var help = document.createElement('p'); help.className = 'group-help'; help.textContent = '優先順位1から順に比較します。数値が同じ場合は次の条件で判定します。'; details.appendChild(help);
+      var grid = document.createElement('div'); grid.className = 'ranking-policy-grid';
+      var metricLabels = { points: '勝ち点', score: '得点', purple: '紫', violations: '違反' };
+      var policy = appState.rankingPolicies[kind];
+      function applyPolicyChange() {
+        if (kind === 'preliminary') {
+          applyPreliminaryRankingPolicyDraft(); markDirty(); renderGroups(); renderTournament(); refreshDisplayFullscreenBody();
+        } else {
+          applyTournamentRankingPolicyDraft(); markTournamentDraftChanged();
+        }
+      }
+      policy.forEach(function(criterion, index) {
+        var row = document.createElement('div'); row.className = 'ranking-policy-row';
+        var priority = document.createElement('strong'); priority.textContent = (index + 1) + '位'; row.appendChild(priority);
+        var metric = document.createElement('select'); metric.setAttribute('aria-label', titleText + ' 優先順位' + (index + 1));
+        Object.keys(metricLabels).forEach(function(key) { var option = document.createElement('option'); option.value = key; option.textContent = metricLabels[key]; option.selected = key === criterion.key; metric.appendChild(option); });
+        metric.addEventListener('change', function() {
+          var oldKey = criterion.key; var other = policy.findIndex(function(item, itemIndex) { return itemIndex !== index && item.key === metric.value; });
+          if (other >= 0) policy[other].key = oldKey;
+          criterion.key = metric.value; applyPolicyChange();
+        });
+        row.appendChild(metric);
+        var direction = document.createElement('select'); direction.setAttribute('aria-label', titleText + ' ' + metricLabels[criterion.key] + 'の並び');
+        [['desc', '多い順'], ['asc', '少ない順']].forEach(function(choice) { var option = document.createElement('option'); option.value = choice[0]; option.textContent = choice[1]; option.selected = criterion.direction === choice[0]; direction.appendChild(option); });
+        direction.addEventListener('change', function() { criterion.direction = direction.value; applyPolicyChange(); });
+        row.appendChild(direction); grid.appendChild(row);
+      });
+      details.appendChild(grid); return details;
+    }
+
+    function replaceTeamReferences(oldName, newName) {
+      (appState.groups || []).forEach(function(row) { if (row.team === oldName) row.team = newName; });
+      (appState.schedule || []).forEach(function(match) {
+        ['team1', 'team2', 'winner', 'winnerOverride'].forEach(function(field) { if (match[field] === oldName) match[field] = newName; });
+        if (match.resultMetrics && match.resultMetrics[oldName]) {
+          match.resultMetrics[newName] = match.resultMetrics[oldName]; match.resultMetrics[newName].team = newName; delete match.resultMetrics[oldName];
+        }
+      });
+      (appState.tournamentParticipants || []).forEach(function(team, index) { if (team === oldName) appState.tournamentParticipants[index] = newName; });
+      (appState.standings || []).forEach(function(row) { if (row.team === oldName) row.team = newName; });
+    }
+
+    function markTeamListDraftChanged(renderLinkedViews) {
+      teamListDirty = true;
+      document.querySelectorAll('[data-team-sync]').forEach(function(button) { button.disabled = false; });
+      appState.teams = (appState.teamList || []).map(function(row) { return String(row.name || '').trim(); }).filter(Boolean);
+      if (!appState.courtCountManual) {
+        var sheetCourt = (appState.teamList || []).map(function(row) { return Number(row.courtCount); }).filter(function(value) { return Number.isFinite(value) && value > 0; })[0];
+        if (sheetCourt) { appState.spreadsheetCourtCount = Math.min(26, sheetCourt); appState.courtCount = appState.spreadsheetCourtCount; applyCourtCountDraft(); }
+      }
+      if (renderLinkedViews !== false) markGroupDraftChanged();
+      else markDirty();
+      setStatus('チームリストに未反映の変更があります。専用ボタンからスプレッドシートへ反映してください。', 'warning');
+    }
+
+    function applyTeamListGroupConfigurationDraft() {
+      var sizes = [];
+      (appState.teamList || []).forEach(function(row) {
+        var match = String(row.groupConfig || '').match(/(\d+)\s*チーム\s*[,、，×xX]\s*(\d+)\s*グループ/);
+        if (!match) return;
+        var teamCount = Math.min(32, Math.max(1, Number(match[1]) || 1));
+        var groupCount = Math.min(16 - sizes.length, Math.max(1, Number(match[2]) || 1));
+        while (groupCount-- > 0) sizes.push(teamCount);
+      });
+      if (!sizes.length) return false;
+      appState.groupSizes = sizes; appState.groupCount = sizes.length; appState.teamsPerGroup = Math.max.apply(Math, sizes);
+      rebuildGroupSlots();
+      return true;
+    }
+
+    function createTeamListEditor() {
+      var details = document.createElement('details'); details.className = 'team-list-editor'; details.open = teamListEditorOpen;
+      details.addEventListener('toggle', function() { teamListEditorOpen = details.open; });
+      var summary = document.createElement('summary'); summary.textContent = 'チームリスト編集を開く' + (teamListDirty ? '（未反映）' : ''); details.appendChild(summary);
+      var actions = document.createElement('div'); actions.className = 'section-actions';
+      actions.appendChild(createButton('チームを追加', 'secondary', function() {
+        var number = 1; var name;
+        do { name = '新規チーム' + number++; } while ((appState.teams || []).indexOf(name) >= 0);
+        appState.teamList.push({ number: appState.teamList.length + 1, name: name, affiliation: '', courtCount: '', groupConfig: '' });
+        markTeamListDraftChanged();
+      }, false));
+      var syncButton = createButton('スプレッドシートへ反映', 'danger', openTeamSyncConfirmation, !teamListDirty); syncButton.setAttribute('data-team-sync', ''); actions.appendChild(syncButton);
+      details.appendChild(actions);
+      var help = document.createElement('p'); help.className = 'group-help'; help.textContent = 'チーム名の変更はグループ・スケジュール・トーナメントへ即時同期します。スプレッドシートへの書き込みは別途確認が必要です。'; details.appendChild(help);
+      var wrap = document.createElement('div'); wrap.className = 'table-wrap';
+      var table = document.createElement('table'); table.innerHTML = '<thead><tr><th>No.</th><th>チーム名</th><th>所属</th><th>コート数</th><th>グループ設定</th><th>操作</th></tr></thead>';
+      var body = document.createElement('tbody');
+      (appState.teamList || []).forEach(function(teamRow, index) {
+        var row = document.createElement('tr'); appendTextCell(row, String(index + 1));
+        function appendTeamInput(field, label, inputMode) {
+          var cell = document.createElement('td'); var input = document.createElement('input'); input.type = 'text'; input.value = teamRow[field] || ''; input.setAttribute('aria-label', (index + 1) + '行目の' + label);
+          if (inputMode) input.inputMode = inputMode;
+          input.addEventListener(field === 'name' || field === 'courtCount' || field === 'groupConfig' ? 'change' : 'input', function() {
+            var value = input.value.trim();
+            if (field === 'name') {
+              var oldName = teamRow.name;
+              if (!value) { input.value = oldName; setStatus('チーム名は空欄にできません。', 'error'); return; }
+              if (appState.teamList.some(function(item, itemIndex) { return itemIndex !== index && item.name === value; })) { input.value = oldName; setStatus('同じチーム名は登録できません。', 'error'); return; }
+              teamRow.name = value; replaceTeamReferences(oldName, value);
+            } else teamRow[field] = value;
+            var groupConfigApplied = field === 'groupConfig' && applyTeamListGroupConfigurationDraft();
+            markTeamListDraftChanged(field === 'name' || field === 'courtCount' || groupConfigApplied);
+          });
+          cell.appendChild(input); row.appendChild(cell);
+        }
+        appendTeamInput('name', 'チーム名'); appendTeamInput('affiliation', '所属'); appendTeamInput('courtCount', 'コート数', 'numeric'); appendTeamInput('groupConfig', 'グループ設定');
+        var actionCell = document.createElement('td'); actionCell.appendChild(createButton('削除', 'danger', function() {
+          var removedName = teamRow.name;
+          if (!confirm('「' + removedName + '」をチームリストから削除しますか？大会内の割り当ても解除されます。')) return;
+          appState.teamList.splice(index, 1);
+          replaceTeamReferences(removedName, '');
+          appState.groups.forEach(function(group) { if (!group.team) group.team = ''; });
+          appState.tournamentParticipants = (appState.tournamentParticipants || []).map(function(team) { return team === removedName ? '' : team; });
+          syncGroupSchedule(); rebuildTournamentScheduleFromParticipants(); markTeamListDraftChanged();
+        }, false)); row.appendChild(actionCell); body.appendChild(row);
+      });
+      table.appendChild(body); wrap.appendChild(table); details.appendChild(wrap); return details;
+    }
+
+    function rebuildGroupSlots() {
+      var count = Number(appState.groupCount) || 1;
+      var sizes = (appState.groupSizes || []).slice(0, count);
+      while (sizes.length < count) sizes.push(Number(appState.teamsPerGroup) || 1);
+      var capacity = sizes.reduce(function(total, size) { return total + Number(size || 0); }, 0);
+      var current = getParticipatingTeams();
+      (appState.teams || []).forEach(function(team) {
+        if (current.length < capacity && current.indexOf(team) < 0) current.push(team);
+      });
+      var next = [];
+      for (var groupIndex = 0; groupIndex < count; groupIndex += 1) {
+        var label = groupLabel(groupIndex);
+        for (var slot = 1; slot <= sizes[groupIndex]; slot += 1) next.push({ id: label + slot, group: label, team: current.shift() || '' });
+      }
+      appState.groupSizes = sizes;
+      appState.teamsPerGroup = Math.max.apply(Math, sizes);
+      appState.groups = next;
+      var previousStandings = appState.standings || [];
+      appState.standings = next.map(function(group) {
+        var previous = previousStandings.find(function(row) { return group.team && row.team === group.team; }) || {};
+        return { id: group.id, group: group.group, team: group.team, points: previous.points || 0, score: previous.score || 0, purple: previous.purple || 0, violations: previous.violations || 0, rank: previous.rank || 0, seed: Boolean(previous.seed) };
+      });
+      syncGroupSchedule();
+      markGroupDraftChanged();
+    }
+
+    function groupLabel(index) {
+      var label = '';
+      do { label = String.fromCharCode(65 + index % 26) + label; index = Math.floor(index / 26) - 1; } while (index >= 0);
+      return label;
+    }
+
+    function createGroupRow(group, displayId) {
+      var standing = appState.standings.find(function(row) { return row.id === group.id; }) || {};
+      var row = document.createElement('div');
+      row.className = 'group-row';
+
+      var id = document.createElement('div');
+      id.className = 'group-id';
+      id.textContent = displayId || group.id;
+      row.appendChild(id);
+
+      if (viewerMode) {
+        var teamName = document.createElement('div');
+        teamName.className = 'viewer-team-name';
+        teamName.textContent = group.team || '未定';
+        teamName.title = teamName.textContent;
+        row.appendChild(teamName);
+      } else {
+        var select = createTeamSelect(group.team, false);
+        select.disabled = !isEditing();
+        select.setAttribute('aria-label', (displayId || group.id) + 'のチーム');
+        select.addEventListener('change', function() {
+          group.team = select.value;
+          syncGroupSchedule();
+          markGroupDraftChanged();
+        });
+        row.appendChild(select);
+      }
+
+      row.appendChild(createMetric('勝ち点', standing.points || 0));
+      row.appendChild(createMetric('得点', standing.score || 0));
+      row.appendChild(createMetric('紫', standing.purple || 0));
+      row.appendChild(createMetric('違反', standing.violations || 0));
+      var hasResultValues = Boolean(Number(standing.points) || Number(standing.score) || Number(standing.purple) || Number(standing.violations));
+      var rankMetric = createMetric('順位', standing.rank ? standing.rank + '位' : '', standing.seed ? 'seed' : '');
+      rankMetric.hidden = !hasResultValues;
+      row.appendChild(rankMetric);
+      return row;
+    }
+
+    function isOperationScheduleRow(match) {
+      return Boolean(match) && (/休憩|調整/.test(String(match.phase || '')) || /^(BREAK-|ADJ-)/.test(String(match.id || '')));
+    }
+
+    function applyCourtCountDraft() {
+      if (!appState) return;
+      var count = Math.min(26, Math.max(1, Number(appState.courtCount) || 1));
+      var nextCourt = 0;
+      var groupCourts = {}; var nextGroupCourt = 0;
+      (appState.schedule || []).forEach(function(match) {
+        var groupMatch = String(match.phase || '').match(/^(.+?)グループ予選/);
+        var existingCourt = normalizeCourtLabel(match.court, count);
+        if (groupMatch && existingCourt && !groupCourts[groupMatch[1]]) groupCourts[groupMatch[1]] = existingCourt;
+      });
+      (appState.schedule || []).forEach(function(match) {
+        if (isOperationScheduleRow(match)) {
+          match.court = '';
+          return;
+        }
+        var originalCourt = String(match.court || '').trim();
+        var rawCourt = normalizeCourtLabel(originalCourt, count);
+        var court = rawCourt || courtLabel(nextCourt % count + 1);
+        var groupMatch = String(match.phase || '').match(/^(.+?)グループ予選/);
+        if (groupMatch && !rawCourt) {
+          if (!groupCourts[groupMatch[1]]) groupCourts[groupMatch[1]] = courtLabel(nextGroupCourt++ % count + 1);
+          court = groupCourts[groupMatch[1]];
+        }
+        match.court = String(court);
+        nextCourt += 1;
+      });
+    }
+
+    function createCourtSelect(match, fromTournamentEditor) {
+      var select = document.createElement('select');
+      select.setAttribute('aria-label', match.id + 'のコート');
+      if (isOperationScheduleRow(match)) {
+        var none = document.createElement('option'); none.value = ''; none.textContent = '―'; select.appendChild(none); select.disabled = true;
+        return select;
+      }
+      for (var court = 1; court <= Number(appState.courtCount || 1); court += 1) {
+        var label = courtLabel(court);
+        var option = document.createElement('option'); option.value = label; option.textContent = 'コート' + label; option.selected = normalizeCourtLabel(match.court, appState.courtCount) === label; select.appendChild(option);
+      }
+      select.disabled = !isEditing();
+      select.addEventListener('change', function() {
+        match.court = select.value;
+        if (fromTournamentEditor) markTournamentDraftChanged();
+        else markScheduleDraftChanged();
+      });
+      return select;
+    }
+
+    function renderSchedule() {
+      var container = document.getElementById('scheduleView');
+      container.textContent = '';
+      container.appendChild(createSectionHeading('タイムスケジュール', viewerMode ? '試合時刻・コート・対戦相手を確認できます。内容は自動更新されます。' : '行をドラッグして並べ替えできます。試合ID・区分・対戦・時刻はすべて手動変更できます。', viewerMode ? [] : [
+        createButton('試合を追加', 'success', addScheduleMatch, !isEditing()),
+        createButton('調整時間を追加', 'secondary', function() { addOperationScheduleRow('調整時間', '10分'); }, !isEditing()),
+        createButton('休憩を追加', 'secondary', function() { addOperationScheduleRow('休憩', '30分'); }, !isEditing())
+      ]));
+
+      var courtSettings = document.createElement('div');
+      courtSettings.className = 'configuration-bar';
+      courtSettings.appendChild(createNumberSetting('コート数', appState.courtCount, 1, 26, function(value) {
+        appState.courtCount = value;
+        appState.courtCountManual = true;
+        applyCourtCountDraft();
+        markScheduleDraftChanged();
+        renderSchedule();
+      }));
+      var courtSource = document.createElement('span');
+      courtSource.className = 'group-help';
+      courtSource.textContent = appState.courtCountManual ? 'システム設定を優先中（スプレッドシートでは上書きされません）' : 'チームリストの「コート数」を使用中';
+      courtSettings.appendChild(courtSource);
+      if (appState.courtCountManual && Number(appState.spreadsheetCourtCount) > 0) {
+        courtSettings.appendChild(createButton('シート値に戻す', 'secondary', function() {
+          appState.courtCount = Number(appState.spreadsheetCourtCount);
+          appState.courtCountManual = false;
+          applyCourtCountDraft();
+          markScheduleDraftChanged();
+          renderSchedule();
+        }, !isEditing()));
+      }
+      if (!viewerMode) container.appendChild(courtSettings);
+
+      var wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th>順番</th><th>試合ID</th><th>区分</th><th>開始時間</th><th>終了時間</th><th>コート</th><th>チーム1</th><th>チーム2</th><th>結果</th><th>メモ</th><th>操作</th></tr></thead>';
+      var body = document.createElement('tbody');
+      appState.schedule.filter(isVisibleScheduleMatch).forEach(function(match) {
+        body.appendChild(createScheduleRow(match));
+      });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      if (!viewerMode) container.appendChild(wrap);
+
+      var displayBlock = document.createElement('section');
+      displayBlock.className = 'display-schedule-block';
+      var displayHeading = document.createElement('div');
+      displayHeading.className = 'display-schedule-heading';
+      var displayHeadingCopy = document.createElement('div');
+      displayHeadingCopy.className = 'display-heading-copy';
+      displayHeadingCopy.appendChild(createLiveClock());
+      var displayTitle = document.createElement('h3');
+      displayTitle.textContent = '表示用タイムスケジュール';
+      displayHeadingCopy.appendChild(displayTitle);
+      displayHeading.appendChild(displayHeadingCopy);
+      displayHeading.appendChild(createButton('全画面表示', 'secondary', function() {
+        openDisplayFullscreen('schedule');
+      }, false));
+      displayBlock.appendChild(displayHeading);
+      if (!viewerMode) displayBlock.appendChild(createScheduleDisplaySettingsEditor());
+      if (viewerMode) {
+        var scrollHint = document.createElement('p');
+        scrollHint.className = 'mobile-scroll-hint';
+        scrollHint.textContent = '表は横にスワイプして全項目を確認できます。';
+        displayBlock.appendChild(scrollHint);
+      }
+      displayBlock.appendChild(createDisplayScheduleTable());
+      container.appendChild(displayBlock);
+    }
+
+    function isVisibleScheduleMatch(match) {
+      if (!match || (!appState.thirdPlaceEnabled && match.id === '3P-1')) return false;
+      if (isFourTeamRoundRobin() && (match.id === 'T-1' || match.id === 'T-2')) return false;
+      return true;
+    }
+
+    function isDisplayScheduleMatch(match) {
+      if (!isVisibleScheduleMatch(match)) return false;
+      if (!/^(A-|B-|T-)/.test(match.id || '')) return true;
+      return isDisplayTeamSlot(match.team1) && isDisplayTeamSlot(match.team2);
+    }
+
+    function isDisplayTeamSlot(value) {
+      var raw = String(value || '').trim();
+      var resolved = displayBracketSlot(raw);
+      return isActualTeamName(resolved) || /^[A-Z]+グループ\d+位$/.test(raw);
+    }
+
+    function createDisplayScheduleTable() {
+      var wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.className = 'display-schedule-table';
+      var settings = scheduleDisplaySettings || loadScheduleDisplaySettings({});
+      table.style.fontSize = settings.fontSize + 'px';
+      var head = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      SCHEDULE_DISPLAY_COLUMNS.forEach(function(definition) {
+        var column = settings.columns[definition.key];
+        if (!column.visible) return;
+        var heading = document.createElement('th');
+        heading.textContent = definition.label;
+        applyScheduleDisplayCellStyle(heading, column, settings);
+        headRow.appendChild(heading);
+      });
+      head.appendChild(headRow); table.appendChild(head);
+      var body = document.createElement('tbody');
+      appState.schedule.filter(isDisplayScheduleMatch).forEach(function(match) {
+        var row = document.createElement('tr');
+        var isOperation = isOperationScheduleRow(match);
+        if (isOperation) row.className = 'operation-schedule-row';
+        var values = {
+          phase: match.phase || match.id,
+          startTime: match.startTime || '--:--',
+          endTime: isOperation ? (match.endTime || '--:--') : '―',
+          court: isOperation ? '―' : (match.court ? 'コート' + match.court : '―'),
+          team1: isOperation ? '―' : displayBracketSlot(match.team1),
+          team2: isOperation ? '―' : displayBracketSlot(match.team2)
+        };
+        SCHEDULE_DISPLAY_COLUMNS.forEach(function(definition) {
+          var column = settings.columns[definition.key];
+          if (!column.visible) return;
+          var cell = document.createElement('td');
+          cell.textContent = values[definition.key] || '';
+          applyScheduleDisplayCellStyle(cell, column, settings);
+          row.appendChild(cell);
+        });
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      return wrap;
+    }
+
+    function applyScheduleDisplayCellStyle(cell, column, settings) {
+      cell.style.fontSize = (column.fontSize || settings.fontSize) + 'px';
+      cell.style.width = column.width + 'px';
+      cell.style.minWidth = column.width + 'px';
+      cell.style.paddingTop = settings.rowPadding + 'px';
+      cell.style.paddingBottom = settings.rowPadding + 'px';
+    }
+
+    function createScheduleDisplaySettingsEditor() {
+      var details = document.createElement('details');
+      details.className = 'schedule-display-settings';
+      details.open = Boolean(scheduleDisplaySettingsOpen);
+      details.addEventListener('toggle', function() { scheduleDisplaySettingsOpen = details.open; });
+      var summary = document.createElement('summary'); summary.textContent = '表示用タイムスケジュールの詳細設定'; details.appendChild(summary);
+      if (!isEditing()) return details;
+      var general = document.createElement('div'); general.className = 'configuration-bar';
+      general.appendChild(createNumberSetting('全体文字サイズ', scheduleDisplaySettings.fontSize, 10, 40, function(value) {
+        scheduleDisplaySettings.fontSize = value;
+        SCHEDULE_DISPLAY_COLUMNS.forEach(function(item) { scheduleDisplaySettings.columns[item.key].fontSize = value; });
+        updateScheduleDisplayDraft();
+      }, true));
+      general.appendChild(createNumberSetting('行間・上下余白', scheduleDisplaySettings.rowPadding, 2, 40, function(value) { scheduleDisplaySettings.rowPadding = value; updateScheduleDisplayDraft(); }, true));
+      details.appendChild(general);
+      var grid = document.createElement('div'); grid.className = 'schedule-display-settings-grid';
+      SCHEDULE_DISPLAY_COLUMNS.forEach(function(definition) {
+        var column = scheduleDisplaySettings.columns[definition.key];
+        var card = document.createElement('div'); card.className = 'schedule-column-setting';
+        var title = document.createElement('strong'); title.textContent = definition.label + '列'; card.appendChild(title);
+        var visibleLabel = document.createElement('label'); visibleLabel.appendChild(document.createTextNode('表示する'));
+        var visible = document.createElement('input'); visible.type = 'checkbox'; visible.checked = column.visible;
+        visible.addEventListener('change', function() {
+          column.visible = visible.checked;
+          if (!SCHEDULE_DISPLAY_COLUMNS.some(function(item) { return scheduleDisplaySettings.columns[item.key].visible; })) {
+            column.visible = true; visible.checked = true;
+            setStatus('少なくとも1列は表示してください。', 'error');
+            return;
+          }
+          updateScheduleDisplayDraft();
+        });
+        visibleLabel.appendChild(visible); card.appendChild(visibleLabel);
+        card.appendChild(createNumberSetting('文字サイズ', column.fontSize, 10, 40, function(value) { column.fontSize = value; updateScheduleDisplayDraft(); }, true));
+        card.appendChild(createNumberSetting('列幅', column.width, 70, 500, function(value) { column.width = value; updateScheduleDisplayDraft(); }, true));
+        grid.appendChild(card);
+      });
+      details.appendChild(grid);
+      return details;
+    }
+
+    function createScheduleRow(match) {
+      var row = document.createElement('tr');
+      row.className = 'schedule-row';
+      var isOperation = isOperationScheduleRow(match);
+      if (isOperation) row.classList.add('operation-schedule-row');
+      row.draggable = isEditing();
+      row.dataset.matchId = match.id;
+      var handle = document.createElement('td'); handle.className = 'drag-handle'; handle.textContent = '☰'; row.appendChild(handle);
+      row.addEventListener('dragstart', function(event) { row.classList.add('dragging'); event.dataTransfer.setData('text/plain', String(appState.schedule.indexOf(match))); });
+      row.addEventListener('dragend', function() { row.classList.remove('dragging'); });
+      row.addEventListener('dragover', function(event) { if (isEditing()) event.preventDefault(); });
+      row.addEventListener('drop', function(event) {
+        event.preventDefault();
+        var from = Number(event.dataTransfer.getData('text/plain'));
+        var to = appState.schedule.indexOf(match);
+        if (!Number.isInteger(from) || from === to) return;
+        var moved = appState.schedule.splice(from, 1)[0];
+        appState.schedule.splice(to, 0, moved); markScheduleDraftChanged(); renderSchedule();
+      });
+
+      row.appendChild(createEditableTextCell(match, 'id', 'match-id', function(oldId, nextId) {
+        appState.schedule.forEach(function(item) {
+          ['team1', 'team2', 'winnerOverride'].forEach(function(field) {
+            if (String(item[field] || '').indexOf(oldId + ' ') === 0) item[field] = nextId + String(item[field]).slice(oldId.length);
+          });
+        });
+      }));
+      row.appendChild(createComboCell(match, 'phase', getSchedulePhaseOptions(), '区分'));
+
+      var timeCell = document.createElement('td');
+      timeCell.className = 'time';
+      var time = document.createElement('input');
+      time.type = 'time';
+      time.value = normalizeTime(match.startTime);
+      time.disabled = !isEditing();
+      time.setAttribute('aria-label', match.id + 'の開始時間');
+      time.addEventListener('input', function() {
+        match.startTime = time.value;
+        if (isOperation && !match.endTime) match.endTime = calculateOperationEndTime(match.startTime, match.note);
+        markScheduleDraftChanged();
+        if (isOperation) renderSchedule();
+      });
+      timeCell.appendChild(time);
+      row.appendChild(timeCell);
+
+      var endTimeCell = document.createElement('td');
+      endTimeCell.className = 'time';
+      if (isOperation) {
+        var endTime = document.createElement('input');
+        endTime.type = 'time';
+        endTime.value = normalizeTime(match.endTime);
+        endTime.disabled = !isEditing();
+        endTime.setAttribute('aria-label', match.id + 'の終了時間');
+        endTime.addEventListener('input', function() { match.endTime = endTime.value; markScheduleDraftChanged(); });
+        endTimeCell.appendChild(endTime);
+      } else {
+        endTimeCell.textContent = '―';
+      }
+      row.appendChild(endTimeCell);
+
+      if (isOperation) {
+        appendTextCell(row, '―');
+        appendTextCell(row, '―');
+        appendTextCell(row, '―');
+      } else {
+        row.appendChild(createComboCell(match, 'court', getCourtOptions(), 'コート'));
+        row.appendChild(createComboCell(match, 'team1', getTeamOptions(), 'チーム1'));
+        row.appendChild(createComboCell(match, 'team2', getTeamOptions(), 'チーム2'));
+      }
+
+      var winner = document.createElement('td');
+      winner.className = 'winner';
+      if (isOperation) winner.textContent = '―';
+      else winner.appendChild(createComboInput(match, 'winnerOverride', getWinnerOptions(match), '結果'));
+      row.appendChild(winner);
+
+      var noteCell = document.createElement('td');
+      var note = document.createElement('input');
+      note.type = 'text';
+      note.value = match.note || '';
+      note.maxLength = 100;
+      note.disabled = !isEditing();
+      note.setAttribute('aria-label', match.id + 'のメモ');
+      note.addEventListener('input', function() {
+        match.note = note.value;
+        if (isOperation && match.startTime) {
+          var calculated = calculateOperationEndTime(match.startTime, match.note);
+          if (calculated) match.endTime = calculated;
+        }
+        markScheduleDraftChanged();
+      });
+      noteCell.appendChild(note);
+      row.appendChild(noteCell);
+      var actions = document.createElement('td');
+      actions.className = 'row-actions';
+      var currentIndex = appState.schedule.indexOf(match);
+      actions.appendChild(createButton('上へ', 'secondary', function() {
+        var index = appState.schedule.indexOf(match);
+        if (index <= 0) return;
+        appState.schedule.splice(index - 1, 0, appState.schedule.splice(index, 1)[0]); markScheduleDraftChanged(); renderSchedule();
+      }, !isEditing() || currentIndex <= 0));
+      actions.appendChild(createButton('下へ', 'secondary', function() {
+        var index = appState.schedule.indexOf(match);
+        if (index < 0 || index >= appState.schedule.length - 1) return;
+        appState.schedule.splice(index + 1, 0, appState.schedule.splice(index, 1)[0]); markScheduleDraftChanged(); renderSchedule();
+      }, !isEditing() || currentIndex >= appState.schedule.length - 1));
+      actions.appendChild(createButton('削除', 'danger', function() {
+        if (!confirm(match.id + 'を削除しますか？')) return;
+        appState.schedule.splice(appState.schedule.indexOf(match), 1); markScheduleDraftChanged(); renderSchedule();
+      }, !isEditing()));
+      row.appendChild(actions);
+      return row;
+    }
+
+    function createEditableTextCell(match, field, className, afterChange) {
+      var cell = document.createElement('td'); cell.className = className || '';
+      var input = document.createElement('input'); input.type = 'text'; input.value = match[field] || ''; input.disabled = !isEditing();
+      input.addEventListener('change', function() {
+        var oldValue = match[field] || ''; var nextValue = input.value.trim();
+        if (!nextValue && field === 'id') { input.value = oldValue; return; }
+        if (field === 'id' && appState.schedule.some(function(item) { return item !== match && item.id === nextValue; })) {
+          input.value = oldValue;
+          setStatus('試合ID「' + nextValue + '」は既に使われています。別のIDを入力してください。', 'error');
+          return;
+        }
+        match[field] = nextValue; if (afterChange) afterChange(oldValue, nextValue); markScheduleDraftChanged(); renderSchedule();
+      });
+      cell.appendChild(input); return cell;
+    }
+
+    function getSchedulePhaseOptions() {
+      return unique(['グループ予選', '決勝トーナメント', '1回戦', '準々決勝', '準決勝', '3位決定戦', '決勝', '交流戦', '追加試合', '調整時間', '休憩'].concat((appState.schedule || []).map(function(item) { return item.phase || ''; })));
+    }
+
+    function getCourtOptions() {
+      var values = [];
+      for (var court = 1; court <= Number(appState.courtCount || 1); court += 1) values.push(courtLabel(court));
+      return unique(values.concat((appState.schedule || []).map(function(item) { return item.court || ''; })));
+    }
+
+    function courtLabel(index) {
+      index = Math.min(26, Math.max(1, Number(index) || 1));
+      return String.fromCharCode(64 + index);
+    }
+
+    function normalizeCourtLabel(value, courtCount) {
+      var raw = String(value || '').trim();
+      if (!raw) return '';
+      if (/^\d+$/.test(raw)) {
+        var number = Number(raw);
+        return number >= 1 && number <= Math.min(26, Number(courtCount) || 26) ? courtLabel(number) : '';
+      }
+      return raw;
+    }
+
+    function getTeamOptions() {
+      var values = [''].concat(appState.teams || []).concat(getGroupRankPlaceholders()).concat(PLACEHOLDERS).concat(['BYE']);
+      (appState.schedule || []).forEach(function(item) {
+        values.push(item.id + ' 勝者');
+        values.push(item.id + ' 敗者');
+      });
+      return unique(values);
+    }
+
+    function getGroupRankPlaceholders() {
+      var values = [];
+      var count = Number(appState && appState.groupCount) || 1;
+      var sizes = appState && appState.groupSizes || [];
+      for (var groupIndex = 0; groupIndex < count; groupIndex += 1) {
+        var maximumRank = Number(sizes[groupIndex]) || Number(appState.teamsPerGroup) || 1;
+        for (var rank = 1; rank <= maximumRank; rank += 1) values.push(groupLabel(groupIndex) + 'グループ' + rank + '位');
+      }
+      return values;
+    }
+
+    function getWinnerOptions(match) {
+      return unique(['', match.team1 || '', match.team2 || '', '引き分け', '未定']);
+    }
+
+    function createComboCell(match, field, options, label) {
+      var cell = document.createElement('td');
+      cell.appendChild(createComboInput(match, field, options, label));
+      return cell;
+    }
+
+    function createComboInput(match, field, options, label) {
+      var input = document.createElement('input');
+      var list = document.createElement('datalist');
+      var listId = 'choices-' + String(match.id || 'row').replace(/[^a-zA-Z0-9_-]/g, '-') + '-' + field;
+      list.id = listId;
+      unique(options || []).forEach(function(value) {
+        if (value === '') return;
+        var option = document.createElement('option');
+        option.value = value;
+        list.appendChild(option);
+      });
+      input.type = 'text';
+      input.value = match[field] || '';
+      input.setAttribute('list', listId);
+      input.setAttribute('aria-label', match.id + 'の' + label);
+      input.placeholder = '選択または手入力';
+      input.disabled = !isEditing();
+      input.addEventListener('input', function() {
+        match[field] = input.value;
+        if (field === 'winnerOverride') match.winner = input.value || match.winner || '';
+        markScheduleDraftChanged();
+      });
+      if (field === 'phase') input.addEventListener('change', renderSchedule);
+      var wrapper = document.createElement('span');
+      wrapper.className = 'combo-input';
+      wrapper.appendChild(input);
+      wrapper.appendChild(list);
+      return wrapper;
+    }
+
+    function addScheduleMatch() {
+      var number = 1; var id;
+      do { id = 'M-' + number++; } while (findScheduleMatch(id));
+      appState.schedule.push({ id: id, phase: '追加試合', startTime: '', endTime: '', court: '', team1: '', team2: '', winnerOverride: '', winner: '', note: '' });
+      applyCourtCountDraft();
+      markScheduleDraftChanged(); renderSchedule();
+    }
+
+    function addOperationScheduleRow(phase, defaultDuration) {
+      var prefix = phase === '休憩' ? 'BREAK-' : 'ADJ-';
+      var number = 1; var id;
+      do { id = prefix + number++; } while (findScheduleMatch(id));
+      appState.schedule.push({ id: id, phase: phase, startTime: '', endTime: '', court: '', team1: '', team2: '', winnerOverride: '', winner: '', note: defaultDuration || '' });
+      markScheduleDraftChanged(); renderSchedule();
+    }
+
+    function calculateOperationEndTime(startTime, note) {
+      var startMatch = String(startTime || '').match(/^(\d{1,2}):(\d{2})$/);
+      var durationMatch = String(note || '').match(/(\d+)\s*分/);
+      if (!startMatch || !durationMatch) return '';
+      var minutes = Number(startMatch[1]) * 60 + Number(startMatch[2]) + Number(durationMatch[1]);
+      minutes %= 24 * 60;
+      return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
+    }
+
+    function markScheduleDraftChanged() {
+      markDirty();
+      renderTournament();
+      refreshDisplayFullscreenBody();
+    }
+
+    function markGroupDraftChanged() {
+      markDirty();
+      renderGroups();
+      renderSchedule();
+      renderTournament();
+      refreshDisplayFullscreenBody();
+    }
+
+    function markTournamentDraftChanged() {
+      markDirty();
+      renderGroups();
+      renderSchedule();
+      renderTournament();
+      refreshDisplayFullscreenBody();
+    }
+
+    function clampNumber(value, minimum, maximum, fallback) {
+      var number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(maximum, Math.max(minimum, number));
+    }
+
+    function normalizeRankingPolicyDraft(policy, fallback) {
+      var allowed = ['points', 'score', 'purple', 'violations']; var used = {}; var result = [];
+      (Array.isArray(policy) ? policy : []).forEach(function(item) {
+        if (!item || allowed.indexOf(item.key) < 0 || used[item.key]) return;
+        used[item.key] = true; result.push({ key: item.key, direction: item.direction === 'asc' ? 'asc' : 'desc' });
+      });
+      fallback.forEach(function(item) { if (!used[item.key]) result.push({ key: item.key, direction: item.direction }); });
+      return result.slice(0, 4);
+    }
+
+    function normalizeRankingPoliciesDraft(policies) {
+      policies = policies && typeof policies === 'object' ? policies : {};
+      return {
+        preliminary: normalizeRankingPolicyDraft(policies.preliminary, RANKING_POLICY_DEFAULTS.preliminary),
+        tournament: normalizeRankingPolicyDraft(policies.tournament, RANKING_POLICY_DEFAULTS.tournament)
+      };
+    }
+
+    function compareByRankingPolicy(left, right, policy) {
+      for (var index = 0; index < policy.length; index += 1) {
+        var criterion = policy[index];
+        var difference = Number(left[criterion.key] || 0) - Number(right[criterion.key] || 0);
+        if (difference) return criterion.direction === 'asc' ? difference : -difference;
+      }
+      return 0;
+    }
+
+    function applyPreliminaryRankingPolicyDraft() {
+      var policy = appState.rankingPolicies.preliminary;
+      unique((appState.standings || []).map(function(row) { return row.group; }).filter(Boolean)).forEach(function(group) {
+        var rows = appState.standings.filter(function(row) { return row.group === group && row.team; }).sort(function(left, right) {
+          return compareByRankingPolicy(left, right, policy) || String(left.id).localeCompare(String(right.id), 'ja');
+        });
+        rows.forEach(function(row, index) { row.rank = index + 1; row.seed = index === 0; });
+      });
+    }
+
+    function applyTournamentRankingPolicyDraft() {
+      var policy = appState.rankingPolicies.tournament;
+      (appState.schedule || []).filter(isTournamentScheduleMatch).forEach(function(match) {
+        if (match.winnerOverride || !match.resultMetrics) return;
+        var left = match.resultMetrics[match.team1]; var right = match.resultMetrics[match.team2];
+        if (!left || !right) return;
+        var comparison = compareByRankingPolicy(left, right, policy);
+        match.winner = comparison < 0 ? match.team1 : comparison > 0 ? match.team2 : '';
+      });
+    }
+
+    function loadBracketDisplaySettings(source) {
+      var saved = source && typeof source === 'object' ? source : {};
+      try {
+        if (!source) {
+          saved = JSON.parse(localStorage.getItem(BRACKET_DISPLAY_STORAGE_KEY) || '{}') || {};
+        }
+      } catch (error) {
+        saved = {};
+      }
+      return {
+        layoutDirection: saved.layoutDirection === 'bottom-up' ? 'bottom-up' : 'left-to-right',
+        orientation: saved.orientation === 'vertical' ? 'vertical' : 'horizontal',
+        wrapMode: ['auto', '6', '8', '10', 'none'].indexOf(String(saved.wrapMode || '')) >= 0
+          ? String(saved.wrapMode)
+          : BRACKET_DISPLAY_DEFAULTS.wrapMode,
+        fontSize: clampNumber(saved.fontSize, 14, 30, BRACKET_DISPLAY_DEFAULTS.fontSize),
+        boxWidth: clampNumber(saved.boxWidth, 120, 176, BRACKET_DISPLAY_DEFAULTS.boxWidth),
+        boxHeight: clampNumber(saved.boxHeight, 110, 400, BRACKET_DISPLAY_DEFAULTS.boxHeight),
+        boxBorderWidth: clampNumber(saved.boxBorderWidth, 1, 7, BRACKET_DISPLAY_DEFAULTS.boxBorderWidth),
+        lineWidth: clampNumber(saved.lineWidth, 2, 7, BRACKET_DISPLAY_DEFAULTS.lineWidth),
+        showMatchId: Boolean(saved.showMatchId),
+        matchInfoFontSize: clampNumber(saved.matchInfoFontSize, 9, 24, BRACKET_DISPLAY_DEFAULTS.matchInfoFontSize),
+        matchInfoPosition: ['left', 'center', 'right'].indexOf(saved.matchInfoPosition) >= 0 ? saved.matchInfoPosition : BRACKET_DISPLAY_DEFAULTS.matchInfoPosition,
+        bottomUpStyle: saved.bottomUpStyle === 'detailed' ? 'detailed' : 'classic',
+        classicSeedWidth: clampNumber(saved.classicSeedWidth, 80, 240, BRACKET_DISPLAY_DEFAULTS.classicSeedWidth),
+        classicSeedHeight: clampNumber(saved.classicSeedHeight, 150, 520, BRACKET_DISPLAY_DEFAULTS.classicSeedHeight),
+        classicMatchWidth: clampNumber(saved.classicMatchWidth, 120, 340, BRACKET_DISPLAY_DEFAULTS.classicMatchWidth),
+        classicMatchHeight: clampNumber(saved.classicMatchHeight, 60, 220, BRACKET_DISPLAY_DEFAULTS.classicMatchHeight),
+        classicChampionWidth: clampNumber(saved.classicChampionWidth, 300, 1400, BRACKET_DISPLAY_DEFAULTS.classicChampionWidth),
+        classicChampionHeight: clampNumber(saved.classicChampionHeight, 70, 280, BRACKET_DISPLAY_DEFAULTS.classicChampionHeight),
+        classicRoundGap: clampNumber(saved.classicRoundGap, 30, 180, BRACKET_DISPLAY_DEFAULTS.classicRoundGap),
+        classicBackground: /^#[0-9a-f]{6}$/i.test(String(saved.classicBackground || '')) ? String(saved.classicBackground) : BRACKET_DISPLAY_DEFAULTS.classicBackground,
+        connectionOffsets: normalizeConnectionOffsets(saved.connectionOffsets)
+      };
+    }
+
+    function normalizeConnectionOffsets(value) {
+      var result = {};
+      Object.keys(value && typeof value === 'object' ? value : {}).slice(0, 256).forEach(function(key) {
+        result[String(key).slice(0, 120)] = clampNumber(value[key], -400, 400, 0);
+      });
+      return result;
+    }
+
+    function saveBracketDisplaySettings() {
+      try {
+        localStorage.setItem(BRACKET_DISPLAY_STORAGE_KEY, JSON.stringify(bracketDisplaySettings));
+      } catch (error) {}
+    }
+
+    function loadScheduleDisplaySettings(source) {
+      source = source && typeof source === 'object' ? source : {};
+      var requestedColumns = source.columns && typeof source.columns === 'object' ? source.columns : {};
+      var columns = {};
+      SCHEDULE_DISPLAY_COLUMNS.forEach(function(definition) {
+        var requested = requestedColumns[definition.key] && typeof requestedColumns[definition.key] === 'object' ? requestedColumns[definition.key] : {};
+        columns[definition.key] = {
+          visible: requested.visible === undefined ? true : Boolean(requested.visible),
+          fontSize: clampNumber(requested.fontSize, 10, 40, 18),
+          width: clampNumber(requested.width, 70, 500, definition.defaultWidth)
+        };
+      });
+      if (!SCHEDULE_DISPLAY_COLUMNS.some(function(definition) { return columns[definition.key].visible; })) columns.phase.visible = true;
+      return { fontSize: clampNumber(source.fontSize, 10, 40, 18), rowPadding: clampNumber(source.rowPadding, 2, 40, 12), columns: columns };
+    }
+
+    function setCompetitionState(response) {
+      appState = response;
+      if (!appState || !appState.isMaster) { masterViewerAccounts = null; masterAuditRows = null; }
+      undoHistory = [];
+      undoBaselineAvailable = true;
+      if (appState && (!Array.isArray(appState.teamList) || !appState.teamList.length)) {
+        appState.teamList = (appState.teams || []).map(function(team, index) { return { number: index + 1, name: team, affiliation: '', courtCount: '', groupConfig: '' }; });
+      }
+      teamListDirty = false;
+      if (appState && (!Array.isArray(appState.groupSizes) || !appState.groupSizes.length)) {
+        appState.groupSizes = Array.apply(null, Array(Number(appState.groupCount) || 1)).map(function() { return Number(appState.teamsPerGroup) || 1; });
+      }
+      if (appState) normalizeTournamentParticipantDraft(Number(appState.tournamentParticipantCount) || 2);
+      if (appState) {
+        appState.qualifiersPerGroup = Math.min(32, Math.max(1, Number(appState.qualifiersPerGroup) || 1));
+        appState.courtCount = Math.min(26, Math.max(1, Number(appState.courtCount) || 1));
+        appState.courtCountManual = Boolean(appState.courtCountManual);
+        applyCourtCountDraft();
+        appState.rankingPolicies = normalizeRankingPoliciesDraft(appState.rankingPolicies);
+        appState.seedSlots = normalizeSeedSlotsDraft(appState.seedSlots);
+      }
+      bracketDisplaySettings = loadBracketDisplaySettings(response && response.bracketDisplaySettings);
+      scheduleDisplaySettings = loadScheduleDisplaySettings(response && response.scheduleDisplaySettings);
+      if (appState) {
+        appState.bracketDisplaySettings = Object.assign({}, bracketDisplaySettings);
+        appState.scheduleDisplaySettings = JSON.parse(JSON.stringify(scheduleDisplaySettings));
+      }
+      saveBracketDisplaySettings();
+      recordUndoSnapshot();
+    }
+
+    function updateBracketDisplayDraft() {
+      if (appState) {
+        appState.bracketDisplaySettings = Object.assign({}, bracketDisplaySettings);
+      }
+      saveBracketDisplaySettings();
+      markDirty();
+    }
+
+    function updateScheduleDisplayDraft() {
+      if (appState) appState.scheduleDisplaySettings = JSON.parse(JSON.stringify(scheduleDisplaySettings));
+      markDirty();
+      renderSchedule();
+      refreshDisplayFullscreenBody();
+    }
+
+    function applyBracketDisplaySettingsToCanvas(canvas) {
+      if (!canvas) return;
+      var canvasHeight = Math.max(610, 440 + bracketDisplaySettings.boxHeight);
+      canvas.dataset.teamOrientation = bracketDisplaySettings.orientation;
+      canvas.dataset.layoutDirection = bracketDisplaySettings.layoutDirection;
+      canvas.dataset.bottomUpStyle = bracketDisplaySettings.bottomUpStyle;
+      canvas.dataset.showMatchId = String(Boolean(bracketDisplaySettings.showMatchId));
+      canvas.style.height = canvas.classList.contains('generic-bracket') ? 'auto' : canvasHeight + 'px';
+      canvas.style.setProperty('--bracket-box-width', bracketDisplaySettings.boxWidth + 'px');
+      canvas.style.setProperty('--bracket-box-height', bracketDisplaySettings.boxHeight + 'px');
+      canvas.style.setProperty('--bracket-team-font-size', bracketDisplaySettings.fontSize + 'px');
+      canvas.style.setProperty('--bracket-box-border-width', bracketDisplaySettings.boxBorderWidth + 'px');
+      canvas.style.setProperty('--bracket-line-width', bracketDisplaySettings.lineWidth + 'px');
+      canvas.style.setProperty('--bracket-meta-font-size', bracketDisplaySettings.matchInfoFontSize + 'px');
+      canvas.style.setProperty('--bracket-meta-align', bracketDisplaySettings.matchInfoPosition);
+      canvas.style.setProperty('--classic-seed-width', bracketDisplaySettings.classicSeedWidth + 'px');
+      canvas.style.setProperty('--classic-seed-height', bracketDisplaySettings.classicSeedHeight + 'px');
+      canvas.style.setProperty('--classic-match-width', bracketDisplaySettings.classicMatchWidth + 'px');
+      canvas.style.setProperty('--classic-match-height', bracketDisplaySettings.classicMatchHeight + 'px');
+      canvas.style.setProperty('--classic-champion-width', bracketDisplaySettings.classicChampionWidth + 'px');
+      canvas.style.setProperty('--classic-champion-height', bracketDisplaySettings.classicChampionHeight + 'px');
+      canvas.style.setProperty('--classic-round-gap', bracketDisplaySettings.classicRoundGap + 'px');
+      canvas.style.setProperty('--classic-background', bracketDisplaySettings.classicBackground);
+      var lines = canvas.querySelector('.bracket-lines');
+      if (lines) {
+        lines.style.height = canvasHeight + 'px';
+        lines.setAttribute('viewBox', '0 0 1080 ' + canvasHeight);
+      }
+    }
+
+    function applyBracketDisplaySettingsToCanvases() {
+      document.querySelectorAll('.bracket-canvas, .generic-bracket').forEach(function(canvas) {
+        applyBracketDisplaySettingsToCanvas(canvas);
+        if (canvas.classList.contains('generic-bracket')) scheduleGenericBracketLineDraw(canvas);
+      });
+    }
+
+    function createBracketDisplayOptions() {
+      var details = document.createElement('details');
+      details.className = 'bracket-view-settings';
+      details.open = Boolean(bracketOptionsOpen);
+      details.addEventListener('toggle', function() { bracketOptionsOpen = details.open; });
+      var summary = document.createElement('summary');
+      summary.textContent = 'トーナメント表示の詳細設定を開く（' +
+        (bracketDisplaySettings.layoutDirection === 'bottom-up' ? '下→上' : '左→右') + ' / ' +
+        (bracketDisplaySettings.bottomUpStyle === 'classic' ? '縦長型' : '対戦詳細型') + ' / ' +
+        (bracketDisplaySettings.orientation === 'vertical' ? '縦書き' : '横書き') + ' / 枠 ' +
+        bracketDisplaySettings.boxWidth + '×' + bracketDisplaySettings.boxHeight + ' / 枠線 ' +
+        bracketDisplaySettings.boxBorderWidth + 'px / 接続線 ' + bracketDisplaySettings.lineWidth + 'px）';
+      details.appendChild(summary);
+
+      var options = document.createElement('div');
+      options.className = 'bracket-view-options';
+      options.appendChild(createBracketSettingSelect('表の進行方向', 'layoutDirection', [
+        ['left-to-right', '左から右へ勝ち上がる'], ['bottom-up', '下から上へ勝ち上がる']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingSelect('下→上の表示形式', 'bottomUpStyle', [
+        ['classic', '縦長チーム枠＋コート・時間'], ['detailed', '対戦チーム詳細表示（従来型）']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingSelect('チーム名の向き', 'orientation', [
+        ['horizontal', '横書き'], ['vertical', '縦書き']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingSelect('横書きの改行', 'wrapMode', [
+        ['auto', '自動（空白を優先）'], ['6', '6文字ごと'], ['8', '8文字ごと'],
+        ['10', '10文字ごと'], ['none', '改行しない']
+      ], function() { renderTournament(); }));
+      options.appendChild(createBracketSettingCheckbox('試合IDを表示', 'showMatchId'));
+      options.appendChild(createBracketSettingSelect('試合情報の文字位置', 'matchInfoPosition', [
+        ['left', '左'], ['center', '中央'], ['right', '右']
+      ], function() { applyBracketDisplaySettingsToCanvases(); }));
+      options.appendChild(createBracketSettingRange('試合情報の文字サイズ', 'matchInfoFontSize', 9, 24, 1, 'px'));
+      options.appendChild(createBracketSettingRange('文字サイズ', 'fontSize', 14, 30, 1, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠の幅', 'boxWidth', 120, 176, 2, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠の高さ', 'boxHeight', 110, 400, 2, 'px'));
+      options.appendChild(createBracketSettingRange('チーム名枠線の太さ', 'boxBorderWidth', 1, 7, 1, 'px'));
+      options.appendChild(createBracketSettingRange('接続線の太さ', 'lineWidth', 2, 7, 1, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：参加枠の幅', 'classicSeedWidth', 80, 240, 2, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：参加枠の高さ', 'classicSeedHeight', 150, 520, 5, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：試合枠の幅', 'classicMatchWidth', 120, 340, 2, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：試合枠の高さ', 'classicMatchHeight', 60, 220, 2, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：優勝枠の幅', 'classicChampionWidth', 300, 1400, 10, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：優勝枠の高さ', 'classicChampionHeight', 70, 280, 5, 'px'));
+      options.appendChild(createBracketSettingRange('下→上：ラウンド間隔', 'classicRoundGap', 30, 180, 2, 'px'));
+      options.appendChild(createBracketColorSetting('下→上：背景色', 'classicBackground'));
+      options.appendChild(createButton('線を自動整理（重なり回避）', 'secondary', function() {
+        if (!confirm('手動で調整したすべての接続線を、重なりを避ける自動位置へ戻しますか？')) return;
+        bracketDisplaySettings.connectionOffsets = {};
+        updateBracketDisplayDraft();
+        applyBracketDisplaySettingsToCanvases();
+      }, !isEditing()));
+      details.appendChild(options);
+      return details;
+    }
+
+    function createBracketSettingCheckbox(title, key) {
+      var label = document.createElement('label');
+      label.className = 'checkbox-label';
+      var input = document.createElement('input'); input.type = 'checkbox'; input.checked = Boolean(bracketDisplaySettings[key]);
+      input.addEventListener('change', function() {
+        bracketDisplaySettings[key] = input.checked;
+        updateBracketDisplayDraft();
+        applyBracketDisplaySettingsToCanvases();
+      });
+      label.appendChild(input); label.appendChild(document.createTextNode(title));
+      return label;
+    }
+
+    function createBracketSettingSelect(title, key, choices, afterChange) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(title));
+      var select = document.createElement('select');
+      choices.forEach(function(choice) {
+        var option = document.createElement('option');
+        option.value = choice[0];
+        option.textContent = choice[1];
+        select.appendChild(option);
+      });
+      select.value = String(bracketDisplaySettings[key]);
+      select.addEventListener('change', function() {
+        bracketDisplaySettings[key] = select.value;
+        updateBracketDisplayDraft();
+        if (afterChange) afterChange();
+      });
+      label.appendChild(select);
+      return label;
+    }
+
+    function createBracketSettingRange(title, key, minimum, maximum, step, suffix) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(title));
+      var row = document.createElement('div');
+      row.className = 'bracket-range';
+      var input = document.createElement('input');
+      input.type = 'range';
+      input.min = minimum;
+      input.max = maximum;
+      input.step = step;
+      input.value = bracketDisplaySettings[key];
+      var numberInput = document.createElement('input');
+      numberInput.type = 'number';
+      numberInput.min = minimum;
+      numberInput.max = maximum;
+      numberInput.step = step;
+      numberInput.value = bracketDisplaySettings[key];
+      numberInput.setAttribute('aria-label', title + 'の数値');
+      function updateValue(value) {
+        var normalized = clampNumber(value, minimum, maximum, bracketDisplaySettings[key]);
+        bracketDisplaySettings[key] = normalized;
+        input.value = normalized;
+        numberInput.value = normalized;
+        updateBracketDisplayDraft();
+        applyBracketDisplaySettingsToCanvases();
+        var details = label.closest('details');
+        var summary = details && details.querySelector('summary');
+        if (summary) {
+          summary.textContent = 'トーナメント表示の詳細設定を開く（' +
+            (bracketDisplaySettings.layoutDirection === 'bottom-up' ? '下→上' : '左→右') + ' / ' +
+            (bracketDisplaySettings.bottomUpStyle === 'classic' ? '縦長型' : '対戦詳細型') + ' / ' +
+            (bracketDisplaySettings.orientation === 'vertical' ? '縦書き' : '横書き') + ' / 枠 ' +
+            bracketDisplaySettings.boxWidth + '×' + bracketDisplaySettings.boxHeight + ' / 枠線 ' +
+            bracketDisplaySettings.boxBorderWidth + 'px / 接続線 ' + bracketDisplaySettings.lineWidth + 'px）';
+        }
+      }
+      input.addEventListener('input', function() { updateValue(input.value); });
+      numberInput.addEventListener('change', function() { updateValue(numberInput.value); });
+      row.appendChild(input);
+      row.appendChild(numberInput);
+      label.appendChild(row);
+      return label;
+    }
+
+    function createBracketColorSetting(title, key) {
+      var label = document.createElement('label');
+      label.appendChild(document.createTextNode(title));
+      var input = document.createElement('input'); input.type = 'color'; input.value = bracketDisplaySettings[key]; input.setAttribute('aria-label', title);
+      input.addEventListener('input', function() {
+        bracketDisplaySettings[key] = input.value;
+        updateBracketDisplayDraft();
+        applyBracketDisplaySettingsToCanvases();
+      });
+      label.appendChild(input);
+      return label;
+    }
+
+    function normalizeTournamentParticipantDraft(count) {
+      if (!appState) return [];
+      count = Math.min(64, Math.max(2, Number(count) || 2));
+      var participants = Array.isArray(appState.tournamentParticipants) ? appState.tournamentParticipants.slice(0, count) : [];
+      if (!participants.some(Boolean)) {
+        participants = [];
+        (appState.schedule || []).filter(isTournamentScheduleMatch).forEach(function(match) {
+          [match.team1, match.team2].forEach(function(team) {
+            if (isActualTeamName(team) && participants.indexOf(team) < 0) participants.push(team);
+          });
+        });
+        participants = participants.slice(0, count);
+      }
+      while (participants.length < count) participants.push('');
+      appState.tournamentParticipantCount = count;
+      appState.tournamentParticipants = participants;
+      return participants;
+    }
+
+    function isTournamentScheduleMatch(match) {
+      return Boolean(match) && (/トーナメント|決勝/.test(match.phase || '') || /^(R\d+-|F-|SF-|3P-)/.test(match.id || ''));
+    }
+
+    function createTournamentScheduleDraft(participants, thirdPlaceEnabled) {
+      var count = Math.max(2, participants.length);
+      var size = 1;
+      while (size < count) size *= 2;
+      var sources = participants.slice(0, count).map(function(team) { return team || '未定'; });
+      while (sources.length < size) sources.push('BYE');
+      var matches = [];
+      var round = 1;
+      while (sources.length > 1) {
+        var next = [];
+        for (var index = 0; index < sources.length; index += 2) {
+          var id = sources.length === 2 ? 'F-1' : 'R' + round + '-' + (index / 2 + 1);
+          var team1 = sources[index] || 'BYE';
+          var team2 = sources[index + 1] || 'BYE';
+          matches.push({ id: id, phase: sources.length === 2 ? '決勝' : 'トーナメント' + round + '回戦', startTime: '', court: '', team1: team1, team2: team2, winnerOverride: team1 === 'BYE' ? team2 : team2 === 'BYE' ? team1 : '', winner: '', note: '' });
+          next.push(id + ' 勝者');
+        }
+        sources = next;
+        round += 1;
+      }
+      if (thirdPlaceEnabled && round > 2) {
+        var semifinals = matches.filter(function(row) { return row.phase === 'トーナメント' + (round - 2) + '回戦'; });
+        if (semifinals.length >= 2) matches.splice(matches.length - 1, 0, { id: '3P-1', phase: '3位決定戦', startTime: '', court: '', team1: semifinals[0].id + ' 敗者', team2: semifinals[1].id + ' 敗者', winnerOverride: '', winner: '', note: '' });
+      }
+      return matches;
+    }
+
+    function rebuildTournamentScheduleFromParticipants() {
+      var previous = {};
+      (appState.schedule || []).filter(isTournamentScheduleMatch).forEach(function(match) { previous[match.id] = match; });
+      var nonTournament = (appState.schedule || []).filter(function(match) { return !isTournamentScheduleMatch(match); });
+      var generated = createTournamentScheduleDraft(appState.tournamentParticipants || [], Boolean(appState.thirdPlaceEnabled));
+      generated.forEach(function(match) {
+        var old = previous[match.id];
+        if (!old) return;
+        match.startTime = old.startTime || '';
+        match.court = old.court || '';
+        match.note = old.note || '';
+        if (old.team1 === match.team1 && old.team2 === match.team2) {
+          match.winnerOverride = old.winnerOverride || '';
+          match.winner = old.winner || '';
+        }
+      });
+      appState.schedule = nonTournament.concat(generated);
+      (appState.seedSlots || []).forEach(function(slot) {
+        var target = findScheduleMatch(slot.targetMatchId);
+        if (target && slot.participant) target[slot.targetSide] = slot.participant;
+      });
+      applyCourtCountDraft();
+    }
+
+    function createTournamentParticipantEditor() {
+      var section = document.createElement('details');
+      section.className = 'tournament-participants';
+      var summary = document.createElement('summary'); summary.textContent = 'トーナメント参加チーム指定を開く'; section.appendChild(summary);
+      var title = document.createElement('h3'); title.textContent = 'トーナメント参加チーム'; section.appendChild(title);
+      var help = document.createElement('p'); help.textContent = '各参加枠のチームを手動で選択できます。変更はトーナメント表とタイムスケジュールへ即時反映されます。'; section.appendChild(help);
+      var grid = document.createElement('div'); grid.className = 'tournament-participant-grid';
+      normalizeTournamentParticipantDraft(appState.tournamentParticipantCount).forEach(function(team, index) {
+        var label = document.createElement('label'); label.appendChild(document.createTextNode('参加枠 ' + (index + 1)));
+        var select = createTeamSelect(team, true); select.setAttribute('aria-label', 'トーナメント参加枠' + (index + 1));
+        select.addEventListener('change', function() {
+          var selected = select.value;
+          if (selected && appState.tournamentParticipants.some(function(value, participantIndex) { return participantIndex !== index && value === selected; })) {
+            select.value = appState.tournamentParticipants[index] || '';
+            setStatus('同じチームを複数の参加枠へ設定できません。', 'error');
+            return;
+          }
+          appState.tournamentParticipants[index] = selected;
+          rebuildTournamentScheduleFromParticipants();
+          markTournamentDraftChanged();
+        });
+        label.appendChild(select); grid.appendChild(label);
+      });
+      section.appendChild(grid);
+      return section;
+    }
+
+    function normalizeSeedSlotsDraft(value) {
+      return (Array.isArray(value) ? value : []).slice(0, 32).map(function(slot, index) {
+        slot = slot && typeof slot === 'object' ? slot : {};
+        return { id: slot.id || 'SEED-' + (index + 1), participant: String(slot.participant || ''), targetMatchId: String(slot.targetMatchId || ''), targetSide: slot.targetSide === 'team2' ? 'team2' : 'team1' };
+      });
+    }
+
+    function getTournamentMatchesForSeed() {
+      return (appState.schedule || []).filter(isTournamentScheduleMatch).filter(function(match) { return match.id !== '3P-1'; });
+    }
+
+    function createSeedParticipantSelect(value) {
+      var select = document.createElement('select');
+      unique([''].concat(appState.teams || []).concat(getGroupRankPlaceholders()).concat(['未定', 'BYE'])).forEach(function(item) {
+        var option = document.createElement('option'); option.value = item; option.textContent = item || '未選択'; option.selected = item === value; select.appendChild(option);
+      });
+      return select;
+    }
+
+    function applySeedSlotChanges(previousSlots) {
+      var usedParticipants = {}; var usedTargets = {}; var duplicateMessage = '';
+      (appState.seedSlots || []).forEach(function(slot) {
+        if (slot.participant && usedParticipants[slot.participant]) duplicateMessage = '同じ出場元を複数のシード枠へ設定できません。';
+        if (slot.participant) usedParticipants[slot.participant] = true;
+        var targetKey = slot.targetMatchId && slot.participant ? slot.targetMatchId + ':' + slot.targetSide : '';
+        if (targetKey && usedTargets[targetKey]) duplicateMessage = '同じ試合の同じ合流位置へ複数のシード枠を設定できません。';
+        if (targetKey) usedTargets[targetKey] = true;
+      });
+      if (duplicateMessage) {
+        appState.seedSlots = normalizeSeedSlotsDraft(previousSlots);
+        renderTournament(); setStatus(duplicateMessage, 'error'); return false;
+      }
+      var previousTargets = {};
+      (previousSlots || []).forEach(function(slot) { if (slot.targetMatchId && slot.participant) previousTargets[slot.targetMatchId + ':' + slot.targetSide] = slot.participant; });
+      var conflicts = (appState.seedSlots || []).filter(function(slot) {
+        var match = findScheduleMatch(slot.targetMatchId); var key = slot.targetMatchId + ':' + slot.targetSide;
+        return match && slot.participant && match[slot.targetSide] && match[slot.targetSide] !== slot.participant && match[slot.targetSide] !== previousTargets[key];
+      });
+      if (conflicts.length && !confirm('指定した合流先には既に対戦相手が設定されています。シード枠で上書きしますか？')) {
+        appState.seedSlots = normalizeSeedSlotsDraft(previousSlots);
+        renderTournament(); setStatus('シード枠による上書きを取り消しました。', 'warning'); return false;
+      }
+      (previousSlots || []).forEach(function(slot) {
+        var match = findScheduleMatch(slot.targetMatchId);
+        if (match && slot.targetSide && match[slot.targetSide] === slot.participant) match[slot.targetSide] = '';
+      });
+      (appState.seedSlots || []).forEach(function(slot) {
+        var match = findScheduleMatch(slot.targetMatchId);
+        if (match && slot.participant) {
+          match[slot.targetSide] = slot.participant;
+          match.winnerOverride = ''; match.winner = '';
+        }
+      });
+      markTournamentDraftChanged();
+      return true;
+    }
+
+    function createTournamentSeedEditor() {
+      var details = document.createElement('details'); details.className = 'seed-settings';
+      var summary = document.createElement('summary'); summary.textContent = 'シード枠を設定（現在 ' + appState.seedSlots.length + '枠）'; details.appendChild(summary);
+      var help = document.createElement('p'); help.className = 'group-help'; help.textContent = '0枠ならシードなしです。出場元と、合流する試合・チーム欄を指定してください。'; details.appendChild(help);
+      details.appendChild(createNumberSetting('シード枠数', appState.seedSlots.length, 0, 32, function(value) {
+        var previous = JSON.parse(JSON.stringify(appState.seedSlots));
+        appState.seedSlots = appState.seedSlots.slice(0, value);
+        while (appState.seedSlots.length < value) appState.seedSlots.push({ id: 'SEED-' + (appState.seedSlots.length + 1), participant: '', targetMatchId: '', targetSide: 'team1' });
+        applySeedSlotChanges(previous);
+      }, true));
+      var matches = getTournamentMatchesForSeed();
+      appState.seedSlots.forEach(function(slot, index) {
+        var row = document.createElement('div'); row.className = 'seed-row';
+        var title = document.createElement('strong'); title.textContent = 'シード ' + (index + 1); row.appendChild(title);
+        var participantLabel = document.createElement('label'); participantLabel.appendChild(document.createTextNode('出場元'));
+        var participant = createSeedParticipantSelect(slot.participant); participant.addEventListener('change', function() { var previous = JSON.parse(JSON.stringify(appState.seedSlots)); slot.participant = participant.value; applySeedSlotChanges(previous); }); participantLabel.appendChild(participant); row.appendChild(participantLabel);
+        var matchLabel = document.createElement('label'); matchLabel.appendChild(document.createTextNode('合流する試合'));
+        var matchSelect = document.createElement('select');
+        [{ id: '', phase: '未選択' }].concat(matches).forEach(function(match) { var option = document.createElement('option'); option.value = match.id; option.textContent = match.id ? match.id + ' / ' + (match.phase || '') : '未選択'; option.selected = match.id === slot.targetMatchId; matchSelect.appendChild(option); });
+        matchSelect.addEventListener('change', function() { var previous = JSON.parse(JSON.stringify(appState.seedSlots)); slot.targetMatchId = matchSelect.value; applySeedSlotChanges(previous); }); matchLabel.appendChild(matchSelect); row.appendChild(matchLabel);
+        var sideLabel = document.createElement('label'); sideLabel.appendChild(document.createTextNode('合流位置'));
+        var side = document.createElement('select'); [['team1', 'チーム1側'], ['team2', 'チーム2側']].forEach(function(choice) { var option = document.createElement('option'); option.value = choice[0]; option.textContent = choice[1]; option.selected = choice[0] === slot.targetSide; side.appendChild(option); });
+        side.addEventListener('change', function() { var previous = JSON.parse(JSON.stringify(appState.seedSlots)); slot.targetSide = side.value; applySeedSlotChanges(previous); }); sideLabel.appendChild(side); row.appendChild(sideLabel);
+        details.appendChild(row);
+      });
+      return details;
+    }
+
+    function createTournamentMatchEditor() {
+      var section = document.createElement('details');
+      section.className = 'tournament-match-editor';
+      var summary = document.createElement('summary'); summary.textContent = 'トーナメント対戦・接続編集を開く'; section.appendChild(summary);
+      var title = document.createElement('h3'); title.textContent = 'トーナメント対戦・接続編集'; section.appendChild(title);
+      var help = document.createElement('p');
+      help.textContent = '対戦相手、開始時刻、勝者を変更するとタイムスケジュールへ即時反映されます。「試合ID 勝者／敗者」を選ぶと接続線も更新されます。';
+      section.appendChild(help);
+      var wrap = document.createElement('div'); wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th>試合ID</th><th>区分</th><th>開始時間</th><th>コート</th><th>チーム1／接続元</th><th>チーム2／接続元</th><th>勝者</th></tr></thead>';
+      var body = document.createElement('tbody');
+      (appState.schedule || []).filter(isTournamentScheduleMatch).forEach(function(match) {
+        var row = document.createElement('tr');
+        appendTextCell(row, match.id, 'match-id');
+        appendTextCell(row, match.phase);
+        var timeCell = document.createElement('td');
+        var time = document.createElement('input'); time.type = 'time'; time.value = normalizeTime(match.startTime); time.setAttribute('aria-label', match.id + 'のトーナメント開始時間');
+        time.addEventListener('input', function() { match.startTime = time.value; markTournamentDraftChanged(); });
+        timeCell.appendChild(time); row.appendChild(timeCell);
+        var courtCell = document.createElement('td'); courtCell.appendChild(createCourtSelect(match, true)); row.appendChild(courtCell);
+        ['team1', 'team2'].forEach(function(field) {
+          var cell = document.createElement('td');
+          var select = createTeamSelect(match[field], true);
+          select.setAttribute('aria-label', match.id + 'のトーナメント' + (field === 'team1' ? 'チーム1' : 'チーム2'));
+          select.addEventListener('change', function() { match[field] = select.value; match.winnerOverride = ''; match.winner = ''; markTournamentDraftChanged(); });
+          cell.appendChild(select); row.appendChild(cell);
+        });
+        var winnerCell = document.createElement('td'); winnerCell.appendChild(createWinnerSelect(match, true)); row.appendChild(winnerCell);
+        body.appendChild(row);
+      });
+      table.appendChild(body); wrap.appendChild(table); section.appendChild(wrap);
+      return section;
+    }
+
+    function renderLinks() {
+      var container = document.getElementById('linksView');
+      if (!container) return;
+      container.textContent = '';
+      container.appendChild(createSectionHeading('リンク', viewerMode ? '公式サイト・大会資料と、現在表示している大会専用ページの共有情報です。' : '公式サイト・大会資料・公開URLをまとめています。リンクは新しいタブで開きます。', []));
+      var version = document.createElement('p');
+      version.className = 'links-app-version';
+      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.6.1';
+      container.appendChild(version);
+      var grid = document.createElement('div');
+      grid.className = 'links-grid';
+      if (!viewerMode && appState && appState.isMaster) { grid.appendChild(createMasterViewerSection()); grid.appendChild(createMasterAuditSection()); }
+      var sections = [
+        { title: 'WRO 全国 国際ホームページ', links: [
+          ['WRO Japan', 'https://www.wroj.org/action/2026'],
+          ['WRO 国際', 'https://wro-association.org/']
+        ] },
+        { title: 'WRO 公認予選会', links: [
+          ['WRO兵庫', 'https://wro-hyogo.jp/'],
+          ['WRO東京', 'https://www.wro-tokyo-competition.net/'],
+          ['WRO三重', 'https://miraido.net/'],
+          ['WRO奈良', 'https://sites.google.com/view/wro-nara/%E3%83%9B%E3%83%BC%E3%83%A0?authuser=0']
+        ] },
+        { title: 'ルール関連', links: [
+          ['Japan決勝大会ルール', 'https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing'],
+          ['世界大会ルール', 'https://wro-association.org/competition/2026-season/#:~:text=ROBOSPORTS-,GENERAL%20%26%20GAME%20RULES,-PLAYFIELD%20DOUBLE%20TENNIS'],
+          ['Q&A', 'https://wro-association.org/competition/questions-answers/'],
+          ['Google翻訳', 'https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view?usp=sharing'],
+          ['DeepL翻訳', 'https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view?usp=sharing']
+        ] }
+      ];
+      sections.forEach(function(section) {
+        var article = document.createElement('article'); article.className = 'link-section';
+        var title = document.createElement('h3'); title.textContent = section.title; article.appendChild(title);
+        var links = document.createElement('div'); links.className = 'link-button-grid';
+        section.links.forEach(function(item) { links.appendChild(createExternalLink(item[0], item[1], 'link-button')); });
+        article.appendChild(links); grid.appendChild(article);
+      });
+
+      var publicSection = document.createElement('article'); publicSection.className = 'link-section public-url-section';
+      var publicTitle = document.createElement('h3'); publicTitle.textContent = '公開URL QRコード'; publicSection.appendChild(publicTitle);
+      var publicGrid = document.createElement('div'); publicGrid.className = 'public-url-grid';
+      var publicUrls = viewerMode
+        ? [['現在表示している大会専用ページ', window.location.href]]
+        : [
+            ['大会 審判用', 'https://ecleaire.github.io/Tennis-Assist-Web/'],
+            ['選手 練習用 / general', 'https://ecleaire.github.io/Tennis-Assist-Web/general/']
+          ];
+      publicUrls.forEach(function(item) {
+        var card = createExternalLink('', item[1], 'public-url-card');
+        var qr = document.createElement('img');
+        qr.alt = item[0] + ' 公開URL QRコード'; qr.loading = 'lazy'; qr.referrerPolicy = 'no-referrer';
+        setQrImage(qr, item[1], 220);
+        var copy = document.createElement('div'); var strong = document.createElement('strong'); strong.textContent = item[0];
+        var url = document.createElement('span'); url.textContent = item[1]; copy.appendChild(strong); copy.appendChild(url);
+        card.appendChild(qr); card.appendChild(copy); publicGrid.appendChild(card);
+      });
+      publicSection.appendChild(publicGrid); grid.appendChild(publicSection);
+
+      var credit = document.createElement('article'); credit.className = 'link-section credit-section';
+      var creditTitle = document.createElement('h3'); creditTitle.textContent = 'ライセンス / クレジット'; credit.appendChild(creditTitle);
+      var intro = document.createElement('p'); intro.className = 'group-help'; intro.textContent = 'メインアプリでは以下の素材・仕組みを利用しています。公開してくださっている制作者の皆さまに感謝いたします。'; credit.appendChild(intro);
+      var creditList = document.createElement('div'); creditList.className = 'credit-list';
+      var dseg = document.createElement('div'); dseg.innerHTML = '<strong>DSEG（7セグメントフォント）</strong><p>メインアプリのタイマー表示に使用しています。 <a target="_blank" rel="noopener" href="https://www.keshikan.net/fonts.html">公式サイト</a> / <a target="_blank" rel="noopener" href="https://github.com/keshikan/DSEG">GitHub</a></p>'; creditList.appendChild(dseg);
+      var audio = document.createElement('div'); audio.innerHTML = '<strong>タイマー通知音</strong><p>ブラウザの Web Audio API で生成しています。</p>'; creditList.appendChild(audio);
+      var qrCredit = document.createElement('div'); qrCredit.innerHTML = '<strong>QRコード生成</strong><p>qrcode-generator（Kazuhiko Arase、MIT License）をアプリ内へ同梱し、URLを外部送信せず端末内で生成しています。</p>'; creditList.appendChild(qrCredit);
+      var official = document.createElement('p'); official.textContent = 'WRO、RoboSports、競技ルールに関する正式な情報はWRO公式サイトを参照してください。'; creditList.appendChild(official);
+      var support = document.createElement('p'); support.textContent = '開発支援: OpenAI ChatGPT / Codex'; creditList.appendChild(support);
+      credit.appendChild(creditList); grid.appendChild(credit);
+      container.appendChild(grid);
+    }
+
+    function createMasterViewerSection() {
+      var section = document.createElement('article'); section.className = 'link-section master-viewer-section';
+      var title = document.createElement('h3'); title.textContent = 'MASTER：全アカウント表示専用URL・QR'; section.appendChild(title);
+      var help = document.createElement('p'); help.className = 'group-help'; help.textContent = 'MASTER（rsam）だけが利用できます。GAS管理に登録された全大会のgeneral版URLを発行します。'; section.appendChild(help);
+      section.appendChild(createButton(masterViewerAccounts ? '一覧を再発行' : '全アカウントのURL・QRを発行', 'success', loadMasterViewerAccounts, masterViewerLoading));
+      if (masterViewerLoading) {
+        var loading = document.createElement('p'); loading.className = 'group-help'; loading.textContent = '全アカウントのURLを発行しています…'; section.appendChild(loading);
+      }
+      if (Array.isArray(masterViewerAccounts)) {
+        var grid = document.createElement('div'); grid.className = 'public-url-grid';
+        if (!masterViewerAccounts.length) { var empty = document.createElement('p'); empty.textContent = '発行対象のアカウントがありません。'; grid.appendChild(empty); }
+        masterViewerAccounts.forEach(function(account) {
+          var card = createExternalLink('', account.viewerUrl, 'public-url-card');
+          var qr = document.createElement('img'); qr.alt = account.label + ' general版QRコード'; qr.loading = 'lazy'; qr.referrerPolicy = 'no-referrer'; setQrImage(qr, account.viewerUrl, 220);
+          var copy = document.createElement('div'); var strong = document.createElement('strong'); strong.textContent = account.label;
+          var url = document.createElement('span'); url.textContent = account.viewerUrl; copy.appendChild(strong); copy.appendChild(url);
+          card.appendChild(qr); card.appendChild(copy); grid.appendChild(card);
+        });
+        section.appendChild(grid);
+      }
+      return section;
+    }
+
+    async function loadMasterViewerAccounts() {
+      if (masterViewerLoading || !appState || !appState.isMaster) return;
+      masterViewerLoading = true; renderLinks();
+      try {
+        var response = await callServer('getAllViewerAccess', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '全アカウントのURLを発行できませんでした。');
+        masterViewerAccounts = Array.isArray(response.accounts) ? response.accounts : [];
+        setStatus(masterViewerAccounts.length + 'アカウントの表示専用URL・QRを発行しました。', 'success');
+      } catch (error) {
+        setStatus(error.message, 'error');
+      } finally {
+        masterViewerLoading = false; renderLinks();
+      }
+    }
+
+    function createMasterAuditSection() {
+      var section = document.createElement('article'); section.className = 'link-section master-audit-section';
+      var title = document.createElement('h3'); title.textContent = 'MASTER：操作履歴'; section.appendChild(title);
+      section.appendChild(createButton(masterAuditRows ? '履歴を更新' : '操作履歴を表示', 'secondary', loadMasterAuditLog, masterAuditLoading));
+      if (masterAuditLoading) { var loading = document.createElement('p'); loading.className = 'group-help'; loading.textContent = '操作履歴を読み込んでいます…'; section.appendChild(loading); }
+      if (Array.isArray(masterAuditRows)) {
+        var wrap = document.createElement('div'); wrap.className = 'table-wrap';
+        var table = document.createElement('table'); table.innerHTML = '<thead><tr><th>日時</th><th>操作</th><th>内容</th></tr></thead>';
+        var body = document.createElement('tbody');
+        masterAuditRows.forEach(function(item) { var row = document.createElement('tr'); [item.at, item.action, item.detail].forEach(function(value) { appendTextCell(row, String(value || '')); }); body.appendChild(row); });
+        table.appendChild(body); wrap.appendChild(table); section.appendChild(wrap);
+      }
+      return section;
+    }
+
+    async function loadMasterAuditLog() {
+      if (masterAuditLoading || !appState || !appState.isMaster) return;
+      masterAuditLoading = true; renderLinks();
+      try {
+        var response = await callServer('getMasterAuditLog', editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '操作履歴を読み込めませんでした。');
+        masterAuditRows = Array.isArray(response.rows) ? response.rows : [];
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { masterAuditLoading = false; renderLinks(); }
+    }
+
+    function createExternalLink(label, url, className) {
+      var link = document.createElement('a');
+      link.className = className || '';
+      link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      if (label) link.textContent = label;
+      return link;
+    }
+
+    function renderTournament() {
+      var container = document.getElementById('tournamentView');
+      disconnectBracketObservers(container);
+      container.textContent = '';
+      var isRoundRobin = isFourTeamRoundRobin();
+      var actions = [];
+      actions.push(createButton('全画面表示', 'secondary', function() {
+        openDisplayFullscreen('tournament');
+      }, false));
+      if (isEditing()) {
+        actions.push(createButton('タイムスケジュールを開く', 'secondary', function() { showView('schedule'); }, false));
+        actions.push(createButton(bracketConnectionMode ? '線をつなぐモードを終了' : '線をつなぐ', bracketConnectionMode ? 'danger' : 'secondary', function() { bracketConnectionMode = !bracketConnectionMode; pendingBracketConnection = null; renderTournament(); }, false));
+        actions.push(createButton('順位から初期配置', 'success', applyRecommendedBracket, false));
+      }
+      container.appendChild(createSectionHeading(
+        '決勝トーナメント',
+        isRoundRobin
+          ? '総当たり順位1位対4位、2位対3位で準決勝を行います。'
+          : '下段から上段へ勝ち上がります。各グループ1位は準決勝から参加します。',
+        actions
+      ));
+
+      var options = document.createElement('div');
+      options.className = 'tournament-options';
+      options.appendChild(createNumberSetting('トーナメント参加チーム数', appState.tournamentParticipantCount, 2, 64, function(value) {
+        normalizeTournamentParticipantDraft(value);
+        rebuildTournamentScheduleFromParticipants();
+        markTournamentDraftChanged();
+      }, true));
+
+      var thirdLabel = document.createElement('label');
+      thirdLabel.className = 'checkbox-label';
+      var thirdCheck = document.createElement('input');
+      thirdCheck.type = 'checkbox';
+      thirdCheck.checked = Boolean(appState.thirdPlaceEnabled);
+      thirdCheck.disabled = !isEditing();
+      thirdCheck.addEventListener('change', function() {
+        appState.thirdPlaceEnabled = thirdCheck.checked;
+        rebuildTournamentScheduleFromParticipants();
+        markTournamentDraftChanged();
+      });
+      thirdLabel.appendChild(thirdCheck);
+      thirdLabel.appendChild(document.createTextNode('3位決定戦を行う'));
+      options.appendChild(thirdLabel);
+      if (isEditing()) {
+        container.appendChild(options);
+        container.appendChild(createTournamentParticipantEditor());
+        container.appendChild(createTournamentSeedEditor());
+        container.appendChild(createTournamentMatchEditor());
+        container.appendChild(createRankingPolicyEditor('tournament', 'トーナメントの勝敗・順位決めポリシー'));
+      }
+      if (isEditing()) {
+        container.appendChild(createBracketDisplayOptions());
+      }
+      if (isEditing() && bracketConnectionMode) {
+        var connectionHelp = document.createElement('p'); connectionHelp.className = 'connection-mode-help'; connectionHelp.textContent = '線をつなぐ：青（勝者）または紫（敗者）の点を、接続先の緑点へドラッグしてください。線または黄色の点を左右（下→上表示では上下）へドラッグすると、直角に曲がる位置を個別調整できます。接続順に枠と線を自動整列し、線同士は別レーンへ分けて表示します。'; container.appendChild(connectionHelp);
+      }
+
+      var scroll = document.createElement('div');
+      scroll.className = 'tournament-scroll';
+      scroll.setAttribute('aria-label', '決勝トーナメント表');
+      scroll.setAttribute('tabindex', '0');
+
+      var tree = document.createElement('div');
+      tree.className = 'tournament-tree bracket-flat';
+      tree.appendChild(createLiveClockRow());
+      tree.appendChild(createFlatBracket());
+      scroll.appendChild(tree);
+      container.appendChild(scroll);
+    }
+
+    function findScheduleMatch(id) {
+      return appState.schedule.find(function(row) { return row.id === id; });
+    }
+
+    function createFlatBracket() {
+      return createGenericBracket();
+      /* 旧6チーム専用描画は互換参照用として残す。 */
+      if (isFourTeamRoundRobin()) return createFourTeamFlatBracket();
+      var canvas = document.createElement('div');
+      canvas.className = 'bracket-canvas';
+      applyBracketDisplaySettingsToCanvas(canvas);
+      var finalMatch = findScheduleMatch('F-1');
+      var semifinal1 = findScheduleMatch('SF-1');
+      var semifinal2 = findScheduleMatch('SF-2');
+      var thirdPlace = findScheduleMatch('3P-1');
+      var firstRoundLeft = findScheduleMatch('T-1');
+      var firstRoundRight = findScheduleMatch('T-2');
+      var seedA = findSeedTeam('A', 'Aグループ1位');
+      var seedB = findSeedTeam('B', 'Bグループ1位');
+      var mode = appState.tournamentMode || 'seed-vs-winner';
+      var leafCenters = [80, 264, 448, 632, 816, 1000];
+      var teams = mode === 'seed-vs-seed'
+        ? [
+            seedA, seedB,
+            firstRoundLeft && firstRoundLeft.team1 || '不戦通過',
+            firstRoundLeft && firstRoundLeft.team2 || '不戦通過',
+            firstRoundRight && firstRoundRight.team1 || '不戦通過',
+            firstRoundRight && firstRoundRight.team2 || '不戦通過'
+          ]
+        : [
+            seedA,
+            firstRoundRight && firstRoundRight.team1 || '不戦通過',
+            firstRoundRight && firstRoundRight.team2 || '不戦通過',
+            firstRoundLeft && firstRoundLeft.team1 || '不戦通過',
+            firstRoundLeft && firstRoundLeft.team2 || '不戦通過',
+            seedB
+          ];
+
+      var geometry = mode === 'seed-vs-seed'
+        ? { finalX: 540, semifinal1X: 172, semifinal2X: 724, firstLeftX: 540, firstRightX: 908 }
+        : { finalX: 540, semifinal1X: 218, semifinal2X: 862, firstLeftX: 724, firstRightX: 356 };
+
+      var champion = document.createElement('div');
+      champion.className = 'bracket-champion';
+      champion.textContent = getResolvedWinner(finalMatch) || '優勝';
+      champion.title = champion.textContent;
+      champion.style.left = (geometry.finalX - 180) + 'px';
+      canvas.appendChild(champion);
+
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'bracket-lines');
+      svg.setAttribute('viewBox', '0 0 1080 610');
+      svg.setAttribute('aria-hidden', 'true');
+      canvas.appendChild(svg);
+      applyBracketDisplaySettingsToCanvas(canvas);
+
+      var firstRoundLeftWinner = getResolvedWinner(firstRoundLeft);
+      var firstRoundRightWinner = getResolvedWinner(firstRoundRight);
+      var semifinal1Winner = getResolvedWinner(semifinal1);
+      var semifinal2Winner = getResolvedWinner(semifinal2);
+      var finalWinner = getResolvedWinner(finalMatch);
+
+      if (mode === 'seed-vs-seed') {
+        appendBracketPath(svg, 'M80 410 V245 H172', isSameTeam(semifinal1Winner, teams[0]));
+        appendBracketPath(svg, 'M264 410 V245 H172', isSameTeam(semifinal1Winner, teams[1]));
+        appendBracketPath(svg, 'M448 410 V350 H540', isSameTeam(firstRoundLeftWinner, teams[2]));
+        appendBracketPath(svg, 'M632 410 V350 H540', isSameTeam(firstRoundLeftWinner, teams[3]));
+        appendBracketPath(svg, 'M540 350 V245 H724', isSameTeam(semifinal2Winner, firstRoundLeftWinner));
+        appendBracketPath(svg, 'M816 410 V350 H908', isSameTeam(firstRoundRightWinner, teams[4]));
+        appendBracketPath(svg, 'M1000 410 V350 H908', isSameTeam(firstRoundRightWinner, teams[5]));
+        appendBracketPath(svg, 'M908 350 V245 H724', isSameTeam(semifinal2Winner, firstRoundRightWinner));
+        appendBracketPath(svg, 'M172 245 V135 H540', isSameTeam(finalWinner, semifinal1Winner));
+        appendBracketPath(svg, 'M724 245 V135 H540', isSameTeam(finalWinner, semifinal2Winner));
+      } else {
+        appendBracketPath(svg, 'M264 410 V350 H356', isSameTeam(firstRoundRightWinner, teams[1]));
+        appendBracketPath(svg, 'M448 410 V350 H356', isSameTeam(firstRoundRightWinner, teams[2]));
+        appendBracketPath(svg, 'M356 350 V245 H218', isSameTeam(semifinal1Winner, firstRoundRightWinner));
+        appendBracketPath(svg, 'M80 410 V245 H218', isSameTeam(semifinal1Winner, seedA));
+        appendBracketPath(svg, 'M632 410 V350 H724', isSameTeam(firstRoundLeftWinner, teams[3]));
+        appendBracketPath(svg, 'M816 410 V350 H724', isSameTeam(firstRoundLeftWinner, teams[4]));
+        appendBracketPath(svg, 'M724 350 V245 H862', isSameTeam(semifinal2Winner, firstRoundLeftWinner));
+        appendBracketPath(svg, 'M1000 410 V245 H862', isSameTeam(semifinal2Winner, seedB));
+        appendBracketPath(svg, 'M218 245 V135 H540', isSameTeam(finalWinner, semifinal1Winner));
+        appendBracketPath(svg, 'M862 245 V135 H540', isSameTeam(finalWinner, semifinal2Winner));
+      }
+      appendBracketPath(svg, 'M' + geometry.finalX + ' 135 V68', Boolean(finalWinner));
+      if (appState.thirdPlaceEnabled) {
+        appendBracketPath(svg, 'M' + geometry.semifinal1X + ' 245 V300 H' + (geometry.finalX - 80), false, true);
+        appendBracketPath(svg, 'M' + geometry.semifinal2X + ' 245 V300 H' + (geometry.finalX + 80), false, true);
+      }
+
+      canvas.appendChild(createBracketTime(finalMatch, geometry.finalX, 96));
+      canvas.appendChild(createBracketTime(semifinal1, geometry.semifinal1X, 206));
+      canvas.appendChild(createBracketTime(semifinal2, geometry.semifinal2X, 206));
+      canvas.appendChild(createBracketTime(firstRoundLeft, geometry.firstLeftX, 316));
+      canvas.appendChild(createBracketTime(firstRoundRight, geometry.firstRightX, 316));
+      if (appState.thirdPlaceEnabled) {
+        canvas.appendChild(createBracketTime(thirdPlace, geometry.finalX, 274));
+        var thirdLabel = document.createElement('div');
+        thirdLabel.className = 'bracket-third-place-label';
+        thirdLabel.textContent = '3位決定戦';
+        thirdLabel.style.left = geometry.finalX + 'px';
+        canvas.appendChild(thirdLabel);
+      }
+
+      var teamRow = document.createElement('div');
+      teamRow.className = 'bracket-team-row';
+      teams.forEach(function(team, index) {
+        var box = document.createElement('div');
+        box.className = 'bracket-team';
+        box.style.left = leafCenters[index] + 'px';
+        setBracketTeamName(box, team);
+        teamRow.appendChild(box);
+      });
+      canvas.appendChild(teamRow);
+      canvas.setAttribute('aria-label', '決勝トーナメント。優勝 ' + champion.textContent + '。参加チーム ' + teams.join('、'));
+      return canvas;
+    }
+
+    function createGenericBracket() {
+      var canvas = document.createElement('div');
+      canvas.className = 'generic-bracket';
+      if (isEditing() && bracketConnectionMode) canvas.classList.add('is-connection-editing');
+      applyBracketDisplaySettingsToCanvas(canvas);
+      if (canvas.dataset.layoutDirection === 'bottom-up') {
+        canvas.classList.add(bracketDisplaySettings.bottomUpStyle === 'detailed' ? 'is-detailed-bottom-up' : 'is-classic-bottom-up');
+      }
+      canvas.style.height = 'auto';
+      canvas.style.setProperty('--tree-line', bracketDisplaySettings.lineWidth + 'px');
+      var tournamentMatches = (appState.schedule || []).filter(function(match) {
+        return /トーナメント|決勝/.test(match.phase || '') || /^(R\d+-|F-|SF-|3P-)/.test(match.id || '');
+      }).filter(function(match) { return match.id !== '3P-1'; });
+      var byId = {};
+      tournamentMatches.forEach(function(match) { byId[match.id] = match; });
+      function sourceId(value) { var match = String(value || '').match(/^(.*?) (勝者|敗者)$/); return match && byId[match[1]] ? match[1] : ''; }
+      function depth(match, trail) {
+        trail = trail || {};
+        if (!match || trail[match.id]) return 1;
+        var nextTrail = Object.assign({}, trail); nextTrail[match.id] = true;
+        return 1 + Math.max(sourceId(match.team1) ? depth(byId[sourceId(match.team1)], nextTrail) : 0, sourceId(match.team2) ? depth(byId[sourceId(match.team2)], nextTrail) : 0);
+      }
+      var actualSeeds = normalizeTournamentParticipantDraft(Number(appState.tournamentParticipantCount || 2)).map(function(team) { return team || '未定'; });
+      var maxDepth = tournamentMatches.reduce(function(maximum, match) { return Math.max(maximum, depth(match)); }, 1);
+      var finalMatch = tournamentMatches.filter(function(match) { return depth(match) === maxDepth; }).sort(function(left, right) {
+        return String(left.id).localeCompare(String(right.id), 'ja', { numeric: true });
+      })[0] || null;
+      var championTeam = finalMatch ? String(finalMatch.winnerOverride || finalMatch.winner || '').trim() : '';
+
+      var seedRound = document.createElement('section'); seedRound.className = 'generic-round seed-round';
+      var seedTitle = document.createElement('h3'); seedTitle.textContent = '参加枠（' + actualSeeds.length + '）'; seedRound.appendChild(seedTitle);
+      actualSeeds.forEach(function(team, index) {
+        var card = document.createElement('div'); card.className = 'generic-card seed-card'; card.dataset.nodeId = 'seed-' + index; card.dataset.team = team;
+        if (championTeam && isSameTeam(championTeam, team)) card.classList.add('is-champion-seed');
+        var strong = document.createElement('strong'); strong.textContent = '枠 ' + (index + 1); card.appendChild(strong);
+        var slot = document.createElement('span'); slot.className = 'generic-slot'; slot.textContent = team; card.appendChild(slot); seedRound.appendChild(card);
+        appendConnectionSourcePort(card, team, '枠から接続', 'is-winner-port');
+      });
+      canvas.appendChild(seedRound);
+
+      var firstRoundSeedBase = {};
+      tournamentMatches.filter(function(match) { return depth(match) === 1; }).sort(function(left, right) {
+        return String(left.id).localeCompare(String(right.id), 'ja', { numeric: true });
+      }).forEach(function(match, index) { firstRoundSeedBase[match.id] = index * 2; });
+      var positionCache = {};
+      function sourcePosition(value, trail, ownerMatch, field) {
+        var referencedId = sourceId(value);
+        if (referencedId) return matchPosition(byId[referencedId], trail);
+        var seedIndex = value === '未定' ? -1 : actualSeeds.indexOf(value);
+        if (seedIndex < 0 && ownerMatch && firstRoundSeedBase[ownerMatch.id] !== undefined) {
+          seedIndex = firstRoundSeedBase[ownerMatch.id] + (field === 'team2' ? 1 : 0);
+        }
+        return seedIndex >= 0 ? seedIndex : actualSeeds.length / 2;
+      }
+      function matchPosition(match, trail) {
+        if (!match) return actualSeeds.length / 2;
+        if (positionCache[match.id] !== undefined) return positionCache[match.id];
+        trail = trail || {};
+        if (trail[match.id]) return actualSeeds.length / 2;
+        var nextTrail = Object.assign({}, trail); nextTrail[match.id] = true;
+        var result = (sourcePosition(match.team1, nextTrail, match, 'team1') + sourcePosition(match.team2, nextTrail, match, 'team2')) / 2;
+        positionCache[match.id] = result;
+        return result;
+      }
+      for (var roundDepth = 1; roundDepth <= maxDepth; roundDepth += 1) {
+        var roundMatches = tournamentMatches.filter(function(match) { return depth(match) === roundDepth; });
+        roundMatches.sort(function(left, right) {
+          return matchPosition(left) - matchPosition(right) || String(left.id).localeCompare(String(right.id), 'ja', { numeric: true });
+        });
+        if (!roundMatches.length) continue;
+        var round = document.createElement('section'); round.className = 'generic-round';
+        var title = document.createElement('h3'); title.textContent = roundDepth === maxDepth ? '決勝' : 'ラウンド ' + roundDepth; round.appendChild(title);
+        roundMatches.forEach(function(match) {
+          var card = document.createElement('div'); card.className = 'generic-card match-card'; card.dataset.nodeId = match.id;
+          var strong = document.createElement('strong'); strong.className = 'generic-match-meta';
+          var matchId = document.createElement('span'); matchId.className = 'generic-match-id'; matchId.textContent = match.id; strong.appendChild(matchId);
+          if (match.court) { var matchCourt = document.createElement('span'); matchCourt.className = 'generic-match-court'; matchCourt.textContent = 'コート' + match.court; strong.appendChild(matchCourt); }
+          else { var pendingCourt = document.createElement('span'); pendingCourt.className = 'generic-match-court'; pendingCourt.textContent = 'コート未定'; strong.appendChild(pendingCourt); }
+          var matchup = document.createElement('span'); matchup.className = 'generic-matchup';
+          var matchupTeam1 = document.createElement('span'); matchupTeam1.textContent = displayBracketSlot(match.team1); matchup.appendChild(matchupTeam1);
+          var versus = document.createElement('b'); versus.textContent = '対'; matchup.appendChild(versus);
+          var matchupTeam2 = document.createElement('span'); matchupTeam2.textContent = displayBracketSlot(match.team2); matchup.appendChild(matchupTeam2);
+          strong.appendChild(matchup);
+          var matchTime = document.createElement('span'); matchTime.className = 'generic-match-time'; matchTime.textContent = match.startTime || '時刻未定'; strong.appendChild(matchTime);
+          card.appendChild(strong);
+          ['team1', 'team2'].forEach(function(field) {
+            var slot = document.createElement('span'); slot.className = 'generic-slot'; slot.dataset.source = sourceId(match[field]); slot.dataset.team = match[field]; slot.dataset.field = field; slot.textContent = displayBracketSlot(match[field]); card.appendChild(slot);
+            slot.dataset.targetKey = match.id + ':' + field;
+            if (!slot.dataset.source) {
+              var directSeedIndex = match[field] === '未定' ? -1 : actualSeeds.indexOf(match[field]);
+              if (directSeedIndex < 0 && firstRoundSeedBase[match.id] !== undefined) directSeedIndex = firstRoundSeedBase[match.id] + (field === 'team2' ? 1 : 0);
+              if (directSeedIndex >= 0 && directSeedIndex < actualSeeds.length) slot.dataset.seedIndex = String(directSeedIndex);
+            }
+            appendConnectionTargetControls(slot, match, field);
+          });
+          appendConnectionSourcePort(card, match.id + ' 勝者', match.id + 'の勝者', 'is-winner-port');
+          appendConnectionSourcePort(card, match.id + ' 敗者', match.id + 'の敗者', 'is-loser-port');
+          round.appendChild(card);
+        });
+        canvas.appendChild(round);
+      }
+      if (canvas.dataset.layoutDirection === 'bottom-up' && finalMatch) {
+        var championRound = document.createElement('section'); championRound.className = 'generic-round champion-round';
+        var championCard = document.createElement('div'); championCard.className = 'generic-card champion-card'; championCard.dataset.nodeId = 'champion';
+        var championTitle = document.createElement('strong'); championTitle.textContent = '優勝'; championCard.appendChild(championTitle);
+        var championSlot = document.createElement('span'); championSlot.className = 'generic-slot'; championSlot.dataset.source = finalMatch.id; championSlot.dataset.team = finalMatch.id + ' 勝者'; championSlot.dataset.field = 'champion'; championSlot.dataset.targetKey = 'champion'; championSlot.textContent = championTeam || '未定'; championCard.appendChild(championSlot);
+        championRound.appendChild(championCard); canvas.appendChild(championRound);
+      }
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'generic-bracket-lines'); canvas.insertBefore(svg, canvas.firstChild);
+      observeGenericBracket(canvas);
+      scheduleGenericBracketLineDraw(canvas);
+      return canvas;
+    }
+
+    function appendConnectionSourcePort(card, value, label, className) {
+      var port = document.createElement('button'); port.type = 'button'; port.className = 'connection-port connection-source ' + className;
+      port.textContent = className === 'is-loser-port' ? '敗' : / 勝者$/.test(value) ? '勝' : '枠'; port.title = label; port.draggable = true;
+      port.addEventListener('dragstart', function(event) { event.dataTransfer.setData('text/plain', value); event.dataTransfer.effectAllowed = 'link'; });
+      port.addEventListener('click', function(event) {
+        event.stopPropagation(); pendingBracketConnection = value;
+        document.querySelectorAll('.connection-source').forEach(function(item) { item.classList.remove('is-selected'); });
+        port.classList.add('is-selected'); setStatus('接続先の緑色の点をクリックしてください。', 'warning');
+      });
+      card.appendChild(port);
+    }
+
+    function appendConnectionTargetControls(slot, match, field) {
+      var port = document.createElement('button'); port.type = 'button'; port.className = 'connection-port connection-target'; port.textContent = '●'; port.title = match.id + 'の' + (field === 'team1' ? 'チーム1' : 'チーム2') + 'へ接続';
+      function connect(value) {
+        value = String(value || '').trim(); if (!value) return;
+        if (wouldCreateTournamentCycle(value, match.id)) { setStatus('この接続は試合参照が循環するため設定できません。', 'error'); return; }
+        if (match[field] && match[field] !== value && !confirm(match.id + 'の現在の「' + match[field] + '」を「' + value + '」へ置き換えますか？')) return;
+        match[field] = value; match.winnerOverride = ''; match.winner = ''; pendingBracketConnection = null;
+        markTournamentDraftChanged(); setStatus(match.id + 'の' + (field === 'team1' ? 'チーム1' : 'チーム2') + 'へ接続しました。', 'success');
+      }
+      port.addEventListener('dragover', function(event) { event.preventDefault(); event.dataTransfer.dropEffect = 'link'; });
+      port.addEventListener('drop', function(event) { event.preventDefault(); event.stopPropagation(); connect(event.dataTransfer.getData('text/plain')); });
+      port.addEventListener('click', function(event) { event.stopPropagation(); if (pendingBracketConnection) connect(pendingBracketConnection); else setStatus('先に青または紫の接続点を選んでください。', 'warning'); });
+      slot.appendChild(port);
+      var clear = document.createElement('button'); clear.type = 'button'; clear.className = 'connection-clear'; clear.textContent = '×'; clear.title = 'この接続を解除';
+      clear.addEventListener('click', function(event) { event.stopPropagation(); if (!match[field] || !confirm(match.id + 'の「' + match[field] + '」接続を解除しますか？')) return; match[field] = ''; match.winnerOverride = ''; match.winner = ''; markTournamentDraftChanged(); setStatus('接続を解除しました。', 'warning'); });
+      slot.appendChild(clear);
+    }
+
+    function wouldCreateTournamentCycle(sourceValue, targetMatchId) {
+      var sourceMatch = String(sourceValue || '').match(/^(.+?) (勝者|敗者)$/);
+      if (!sourceMatch) return false;
+      if (sourceMatch[1] === targetMatchId) return true;
+      function dependsOn(matchId, wantedId, trail) {
+        if (!matchId || trail[matchId]) return false;
+        if (matchId === wantedId) return true;
+        trail[matchId] = true;
+        var source = findScheduleMatch(matchId);
+        if (!source) return false;
+        return ['team1', 'team2'].some(function(field) {
+          var reference = String(source[field] || '').match(/^(.+?) (勝者|敗者)$/);
+          return reference && dependsOn(reference[1], wantedId, trail);
+        });
+      }
+      return dependsOn(sourceMatch[1], targetMatchId, {});
+    }
+
+    function observeGenericBracket(canvas) {
+      if (!window.ResizeObserver) return;
+      var observer = new ResizeObserver(function() { if (canvas.isConnected) scheduleGenericBracketLineDraw(canvas); });
+      canvas._bracketResizeObserver = observer;
+      observer.observe(canvas);
+      canvas.querySelectorAll('.generic-card, .generic-slot').forEach(function(element) { observer.observe(element); });
+    }
+
+    function disconnectBracketObservers(root) {
+      if (!root || !root.querySelectorAll) return;
+      root.querySelectorAll('.generic-bracket').forEach(function(canvas) {
+        if (canvas._bracketResizeObserver) {
+          canvas._bracketResizeObserver.disconnect();
+          canvas._bracketResizeObserver = null;
+        }
+      });
+    }
+
+    function scheduleGenericBracketLineDraw(canvas) {
+      if (!canvas) return;
+      var token = String((Number(canvas.dataset.lineDrawToken) || 0) + 1);
+      canvas.dataset.lineDrawToken = token;
+      window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(function() {
+          if (canvas.dataset.lineDrawToken === token) drawGenericBracketLines(canvas);
+        });
+      });
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function() { if (canvas.isConnected) drawGenericBracketLines(canvas); });
+    }
+
+    function redrawVisibleBracketLines() {
+      document.querySelectorAll('.generic-bracket').forEach(function(canvas) {
+        if (canvas.getClientRects().length) scheduleGenericBracketLineDraw(canvas);
+      });
+    }
+
+    function drawGenericBracketLines(canvas) {
+      if (!canvas || !canvas.isConnected) return;
+      var svg = canvas.querySelector('.generic-bracket-lines'); if (!svg) return; svg.textContent = '';
+      var bounds = canvas.getBoundingClientRect(); svg.setAttribute('viewBox', '0 0 ' + bounds.width + ' ' + bounds.height);
+      if (bounds.width < 1 || bounds.height < 1) return;
+      var connections = [];
+      canvas.querySelectorAll('.generic-slot').forEach(function(slot) {
+        var source = null;
+        if (slot.dataset.source) source = canvas.querySelector('[data-node-id="' + CSS.escape(slot.dataset.source) + '"]');
+        if (!source && slot.dataset.seedIndex !== undefined) source = canvas.querySelector('[data-node-id="seed-' + CSS.escape(slot.dataset.seedIndex) + '"]');
+        if (!source && slot.dataset.team && slot.dataset.team !== '未定') {
+          source = Array.from(canvas.querySelectorAll('[data-node-id^="seed-"]')).find(function(node) { return node.dataset.team === slot.dataset.team; });
+        }
+        if (!source || source.closest('.generic-card') === slot.closest('.generic-card')) return;
+        var from = source.getBoundingClientRect(); var to = slot.getBoundingClientRect(); var targetCard = slot.closest('.generic-card').getBoundingClientRect();
+        var sourceNodeId = String(source.dataset.nodeId || '');
+        var targetKey = String(slot.dataset.targetKey || '').split(':')[0];
+        var sourceKind = / 敗者$/.test(slot.dataset.team || '') ? 'loser' : (/^seed-/.test(sourceNodeId) ? 'seed' : 'winner');
+        var sourceMatch = sourceKind === 'seed' ? null : findScheduleMatch(sourceNodeId);
+        var targetMatch = findScheduleMatch(targetKey);
+        var isWinnerPath = false;
+        if (sourceKind === 'seed' && targetMatch && (targetMatch.winnerOverride || targetMatch.winner)) {
+          isWinnerPath = isSameTeam(targetMatch.winnerOverride || targetMatch.winner, source.dataset.team);
+        } else if (sourceKind === 'winner' && sourceMatch && (sourceMatch.winnerOverride || sourceMatch.winner)) {
+          isWinnerPath = true;
+        }
+        var connectionKey = sourceNodeId + '>' + String(slot.dataset.targetKey || '');
+        connections.push({
+          key: connectionKey,
+          targetKey: targetKey,
+          from: from,
+          to: to,
+          targetCard: targetCard,
+          targetField: slot.dataset.field || 'team1',
+          sourceKind: sourceKind,
+          isWinnerPath: isWinnerPath,
+          sourceOrder: canvas.dataset.layoutDirection === 'bottom-up' ? from.left : from.top
+        });
+      });
+      var byTarget = {};
+      connections.forEach(function(connection) { (byTarget[connection.targetKey] || (byTarget[connection.targetKey] = [])).push(connection); });
+      Object.keys(byTarget).forEach(function(targetKey) {
+        var siblings = byTarget[targetKey].sort(function(left, right) { return left.sourceOrder - right.sourceOrder; });
+        siblings.forEach(function(connection, index) {
+          connection.autoOffset = canvas.dataset.layoutDirection === 'bottom-up' ? 0 : (index - (siblings.length - 1) / 2) * 16;
+        });
+      });
+      connections.forEach(function(connection) {
+        var hasManualOffset = Object.prototype.hasOwnProperty.call(bracketDisplaySettings.connectionOffsets || {}, connection.key);
+        var offset = hasManualOffset ? Number(bracketDisplaySettings.connectionOffsets[connection.key]) || 0 : connection.autoOffset || 0;
+        function geometry(requestedOffset) {
+          var from = connection.from; var to = connection.to;
+          if (canvas.dataset.layoutDirection === 'bottom-up') {
+            var classicLayout = canvas.classList.contains('is-classic-bottom-up') || canvas.classList.contains('is-detailed-bottom-up');
+            var sourcePortLeft = connection.sourceKind === 'loser' ? 0.58 : (classicLayout ? 0.5 : 0.36);
+            var sourcePortAdjustment = classicLayout && connection.sourceKind !== 'loser' ? 0 : 11;
+            var verticalX1 = from.left + from.width * sourcePortLeft + sourcePortAdjustment - bounds.left;
+            var verticalY1 = from.top - bounds.top;
+            var targetRatio = connection.targetField === 'champion' ? 0.5 : (connection.targetField === 'team2' ? 0.65 : 0.35);
+            var verticalX2 = connection.targetCard.left + connection.targetCard.width * targetRatio - bounds.left;
+            var verticalY2 = connection.targetCard.bottom - bounds.top;
+            var middleY = (verticalY1 + verticalY2) / 2 + requestedOffset;
+            return { d: 'M' + verticalX1 + ' ' + verticalY1 + ' V' + middleY + ' H' + verticalX2 + ' V' + verticalY2, x: (verticalX1 + verticalX2) / 2, y: middleY };
+          }
+          var x1 = from.right - bounds.left; var y1 = from.top + from.height / 2 - bounds.top;
+          var x2 = to.left - bounds.left; var y2 = to.top + to.height / 2 - bounds.top;
+          var middleX = (x1 + x2) / 2 + requestedOffset;
+          return { d: 'M' + x1 + ' ' + y1 + ' H' + middleX + ' V' + y2 + ' H' + x2, x: middleX, y: (y1 + y2) / 2 };
+        }
+        var initial = geometry(offset);
+        var halo = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        halo.setAttribute('class', 'line-halo'); halo.setAttribute('d', initial.d); svg.appendChild(halo);
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'connection-path' + (connection.isWinnerPath ? ' is-winner-path' : '')); path.setAttribute('d', initial.d); path.dataset.connectionKey = connection.key; svg.appendChild(path);
+        if (isEditing() && bracketConnectionMode) {
+          var hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          hitArea.setAttribute('class', 'connection-hit-area'); hitArea.setAttribute('d', initial.d); svg.appendChild(hitArea);
+          var handle = appendLineAdjustmentHandle(svg, initial.x, initial.y);
+          var preview = function(nextOffset) {
+            var next = geometry(nextOffset); halo.setAttribute('d', next.d); path.setAttribute('d', next.d); hitArea.setAttribute('d', next.d);
+            handle.setAttribute('cx', next.x); handle.setAttribute('cy', next.y);
+          };
+          hitArea.addEventListener('pointerenter', function() { path.classList.add('is-hovered'); });
+          hitArea.addEventListener('pointerleave', function() { path.classList.remove('is-hovered'); });
+          bindLineAdjustmentDrag(hitArea, path, canvas, connection.key, offset, preview);
+          bindLineAdjustmentDrag(handle, path, canvas, connection.key, offset, preview);
+        }
+      });
+    }
+
+    function appendLineAdjustmentHandle(svg, x, y) {
+      var handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      handle.setAttribute('class', 'line-adjust-handle'); handle.setAttribute('cx', x); handle.setAttribute('cy', y); handle.setAttribute('r', '7');
+      svg.appendChild(handle);
+      return handle;
+    }
+
+    function bindLineAdjustmentDrag(dragTarget, path, canvas, connectionKey, currentOffset, preview) {
+      dragTarget.addEventListener('pointerdown', function(event) {
+        event.preventDefault(); event.stopPropagation();
+        var startX = event.clientX; var startY = event.clientY; var vertical = canvas.dataset.layoutDirection === 'bottom-up';
+        path.classList.add('is-adjusting');
+        function move(moveEvent) {
+          var delta = vertical ? moveEvent.clientY - startY : moveEvent.clientX - startX;
+          preview(clampNumber(currentOffset + delta, -400, 400, 0));
+        }
+        function finish(upEvent) {
+          window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', cancel);
+          var delta = vertical ? upEvent.clientY - startY : upEvent.clientX - startX;
+          bracketDisplaySettings.connectionOffsets[connectionKey] = clampNumber(currentOffset + delta, -400, 400, 0);
+          path.classList.remove('is-adjusting');
+          updateBracketDisplayDraft(); drawGenericBracketLines(canvas);
+          setStatus('接続線の位置を調整しました。変更を保存するとこのアカウントへ保存されます。', 'success');
+        }
+        function cancel() { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', cancel); path.classList.remove('is-adjusting'); drawGenericBracketLines(canvas); }
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', finish); window.addEventListener('pointercancel', cancel);
+      });
+    }
+
+    function createFourTeamFlatBracket() {
+      var canvas = document.createElement('div');
+      canvas.className = 'bracket-canvas bracket-four-team';
+      applyBracketDisplaySettingsToCanvas(canvas);
+
+      var finalMatch = findScheduleMatch('F-1');
+      var semifinal1 = findScheduleMatch('SF-1');
+      var semifinal2 = findScheduleMatch('SF-2');
+      var thirdPlace = findScheduleMatch('3P-1');
+      var rankedTeams = (appState.standings || []).filter(function(row) {
+        return isActualTeamName(row.team);
+      }).sort(function(left, right) {
+        return Number(left.rank || 999) - Number(right.rank || 999);
+      }).map(function(row) { return row.team; });
+      var teams = [
+        semifinal1 && semifinal1.team1 || rankedTeams[0] || '総当たり1位',
+        semifinal1 && semifinal1.team2 || rankedTeams[3] || '総当たり4位',
+        semifinal2 && semifinal2.team1 || rankedTeams[1] || '総当たり2位',
+        semifinal2 && semifinal2.team2 || rankedTeams[2] || '総当たり3位'
+      ];
+      var leafCenters = [150, 390, 690, 930];
+      var semifinalCenters = [270, 810];
+      var finalX = 540;
+
+      var champion = document.createElement('div');
+      champion.className = 'bracket-champion';
+      champion.textContent = getResolvedWinner(finalMatch) || '優勝';
+      champion.title = champion.textContent;
+      champion.style.left = (finalX - 180) + 'px';
+      canvas.appendChild(champion);
+
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'bracket-lines');
+      svg.setAttribute('viewBox', '0 0 1080 610');
+      svg.setAttribute('aria-hidden', 'true');
+      canvas.appendChild(svg);
+
+      var semifinal1Winner = getResolvedWinner(semifinal1);
+      var semifinal2Winner = getResolvedWinner(semifinal2);
+      var finalWinner = getResolvedWinner(finalMatch);
+      appendBracketPath(svg, 'M150 410 V245 H270', isSameTeam(semifinal1Winner, teams[0]));
+      appendBracketPath(svg, 'M390 410 V245 H270', isSameTeam(semifinal1Winner, teams[1]));
+      appendBracketPath(svg, 'M690 410 V245 H810', isSameTeam(semifinal2Winner, teams[2]));
+      appendBracketPath(svg, 'M930 410 V245 H810', isSameTeam(semifinal2Winner, teams[3]));
+      appendBracketPath(svg, 'M270 245 V135 H540', isSameTeam(finalWinner, semifinal1Winner));
+      appendBracketPath(svg, 'M810 245 V135 H540', isSameTeam(finalWinner, semifinal2Winner));
+      appendBracketPath(svg, 'M540 135 V68', Boolean(finalWinner));
+      if (appState.thirdPlaceEnabled) {
+        appendBracketPath(svg, 'M270 245 V300 H460', false, true);
+        appendBracketPath(svg, 'M810 245 V300 H620', false, true);
+      }
+
+      canvas.appendChild(createBracketTime(finalMatch, finalX, 96));
+      canvas.appendChild(createBracketTime(semifinal1, semifinalCenters[0], 206));
+      canvas.appendChild(createBracketTime(semifinal2, semifinalCenters[1], 206));
+      if (appState.thirdPlaceEnabled) {
+        canvas.appendChild(createBracketTime(thirdPlace, finalX, 274));
+        var thirdLabel = document.createElement('div');
+        thirdLabel.className = 'bracket-third-place-label';
+        thirdLabel.textContent = '3位決定戦';
+        thirdLabel.style.left = finalX + 'px';
+        canvas.appendChild(thirdLabel);
+      }
+
+      var teamRow = document.createElement('div');
+      teamRow.className = 'bracket-team-row';
+      teams.forEach(function(team, index) {
+        var box = document.createElement('div');
+        box.className = 'bracket-team';
+        box.style.left = leafCenters[index] + 'px';
+        setBracketTeamName(box, team);
+        teamRow.appendChild(box);
+      });
+      canvas.appendChild(teamRow);
+      canvas.setAttribute('aria-label', '4チーム決勝トーナメント。優勝 ' + champion.textContent + '。参加チーム ' + teams.join('、'));
+      return canvas;
+    }
+
+    function findSeedTeam(group, fallback) {
+      var standing = appState.standings.find(function(row) {
+        return row.seed && row.group === group;
+      });
+      return standing && standing.team ? standing.team : fallback;
+    }
+
+    function getResolvedWinner(match, trail) {
+      if (!match) return '';
+      if (!match.winner || match.winner === '未定') {
+        var first = resolveBracketSlot(match.team1, trail || {});
+        var second = resolveBracketSlot(match.team2, trail || {});
+        if (isActualTeamName(first) && isVacantBracketSlot(match.team2)) return first;
+        if (isActualTeamName(second) && isVacantBracketSlot(match.team1)) return second;
+        return '';
+      }
+      return resolveBracketSlot(match.winner, trail || {});
+    }
+
+    function isVacantBracketSlot(value) {
+      var text = String(value || '').trim();
+      return !text || text === '不戦通過';
+    }
+
+    function getResolvedLoser(match, trail) {
+      if (!match) return '';
+      var winner = getResolvedWinner(match, trail || {});
+      var first = displayBracketSlot(match.team1, trail || {});
+      var second = displayBracketSlot(match.team2, trail || {});
+      if (!winner || winner === '引き分け') return '';
+      if (isSameTeam(winner, first)) return second;
+      if (isSameTeam(winner, second)) return first;
+      return '';
+    }
+
+    function resolveBracketSlot(value, trail) {
+      var text = String(value || '').trim();
+      var groupRank = text.match(/^([A-Z]+)グループ(\d+)位$/);
+      if (groupRank) {
+        var standing = (appState.standings || []).find(function(row) {
+          return row.group === groupRank[1] && Number(row.rank) === Number(groupRank[2]) && row.team;
+        });
+        return standing ? standing.team : text;
+      }
+      var match = text.match(/^(.+?) (勝者|敗者)$/);
+      if (!match) return text;
+      var key = match[1] + '|' + match[2];
+      if (trail[key]) return text;
+      var source = findScheduleMatch(match[1]);
+      if (!source) return text;
+      trail[key] = true;
+      var result = match[2] === '勝者'
+        ? getResolvedWinner(source, trail)
+        : getResolvedLoser(source, trail);
+      delete trail[key];
+      return result || text;
+    }
+
+    function displayBracketSlot(value, trail) {
+      var text = resolveBracketSlot(value, trail || {});
+      return text || '未定';
+    }
+
+    function isSameTeam(left, right) {
+      return Boolean(left && right && String(left).trim() === String(right).trim());
+    }
+
+    function isActualTeamName(value) {
+      var text = String(value || '').trim();
+      return Boolean(text) && (appState.teams || []).some(function(team) {
+        return String(team || '').trim() === text;
+      });
+    }
+
+    function appendBracketPath(svg, pathData, isWinner, isThirdPlace) {
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData);
+      path.setAttribute('class', 'bracket-line' + (isWinner ? ' is-winner' : '') + (isThirdPlace ? ' is-third-place' : ''));
+      svg.appendChild(path);
+    }
+
+    function createBracketTime(match, centerX, top) {
+      var time = document.createElement('div');
+      time.className = 'bracket-time';
+      time.style.left = centerX + 'px';
+      time.style.top = top + 'px';
+      time.textContent = match && match.startTime ? match.startTime : '--:--';
+      time.title = (match ? getTournamentPhaseLabel(match) : '試合') + ' ' + time.textContent;
+      time.setAttribute('aria-label', time.title);
+      return time;
+    }
+
+    function setBracketTeamName(element, text) {
+      var value = String(text || '未定').trim() || '未定';
+      var compactValue = value.replace(/[\s\u3000]+/g, '');
+      var length = Array.from(compactValue).length;
+      var lines = getBracketTeamNameLines(value);
+      element.textContent = '';
+      lines.forEach(function(line, index) {
+        var span = document.createElement('span');
+        span.className = 'bracket-team-line';
+        span.textContent = line;
+        element.appendChild(span);
+      });
+      element.title = value;
+      element.setAttribute('aria-label', value);
+      element.classList.toggle('is-long', length > 10);
+      element.classList.toggle('is-very-long', length > 16);
+    }
+
+    function getBracketTeamNameLines(value) {
+      if (bracketDisplaySettings.orientation === 'vertical') {
+        return [value.replace(/[\s\u3000]+/g, '') || '未定'];
+      }
+      if (bracketDisplaySettings.wrapMode === 'none') return [value];
+
+      var maximum = bracketDisplaySettings.wrapMode === 'auto'
+        ? 10
+        : Number(bracketDisplaySettings.wrapMode) || 10;
+      var words = value.split(/[\s\u3000]+/).filter(Boolean);
+      if (!words.length) return ['未定'];
+
+      var lines = [];
+      words.forEach(function(word) {
+        var characters = Array.from(word);
+        if (characters.length <= maximum) {
+          lines.push(word);
+          return;
+        }
+        for (var index = 0; index < characters.length; index += maximum) {
+          lines.push(characters.slice(index, index + maximum).join(''));
+        }
+      });
+      return lines;
+    }
+
+    function getTournamentPhaseLabel(match) {
+      if (!match) return '';
+      if (match.id === 'F-1') return '決勝';
+      if (match.id === '3P-1') return '3位決定戦';
+      if (match.id.indexOf('SF-') === 0) return '準決勝 ' + match.id.slice(3);
+      if (match.id.indexOf('T-') === 0) return '1回戦 ' + match.id.slice(2);
+      return match.phase || match.id;
+    }
+
+    function createWinnerSelect(match, fromTournamentEditor) {
+      var select = document.createElement('select');
+      select.setAttribute('aria-label', match.id + 'の勝者');
+      var values = ['', match.team1 || '', match.team2 || '', '引き分け', '未定'];
+      unique(values).forEach(function(value) {
+        if (!value) return;
+        var option = document.createElement('option');
+        option.value = value;
+        option.textContent = value === '未定' ? '自動判定 / 未定' : value;
+        option.selected = value === (match.winnerOverride || '');
+        select.appendChild(option);
+      });
+      var automatic = document.createElement('option');
+      automatic.value = '';
+      automatic.textContent = '自動判定';
+      automatic.selected = !match.winnerOverride;
+      select.insertBefore(automatic, select.firstChild);
+      select.disabled = !isEditing();
+      select.addEventListener('change', function() {
+        match.winnerOverride = select.value;
+        match.winner = select.value || match.winner || '';
+        if (fromTournamentEditor) markTournamentDraftChanged();
+        else markScheduleDraftChanged();
+      });
+      return select;
+    }
+
+    function createSectionHeading(titleText, description, buttons) {
+      var heading = document.createElement('div');
+      heading.className = 'section-heading';
+      var copy = document.createElement('div');
+      var title = document.createElement('h2');
+      title.textContent = titleText;
+      var paragraph = document.createElement('p');
+      paragraph.textContent = description;
+      copy.appendChild(title);
+      copy.appendChild(paragraph);
+      heading.appendChild(copy);
+      if (buttons.length) {
+        var actions = document.createElement('div');
+        actions.className = 'section-actions';
+        buttons.forEach(function(button) { actions.appendChild(button); });
+        heading.appendChild(actions);
+      }
+      return heading;
+    }
+
+    function createButton(label, className, handler, disabled) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = className;
+      button.textContent = label;
+      button.disabled = Boolean(disabled);
+      button.addEventListener('click', handler);
+      return button;
+    }
+
+    function createHoldButton(label, className, handler, disabled) {
+      var button = document.createElement('button');
+      var timer = null;
+      button.type = 'button';
+      button.className = className + ' hold-confirm';
+      button.textContent = label;
+      button.disabled = Boolean(disabled);
+      function cancelHold() {
+        if (timer) window.clearTimeout(timer);
+        timer = null;
+        button.classList.remove('is-holding');
+        button.textContent = label;
+      }
+      button.addEventListener('pointerdown', function(event) {
+        event.preventDefault();
+        if (button.disabled || timer) return;
+        button.classList.add('is-holding');
+        button.textContent = 'そのまま長押し…';
+        timer = window.setTimeout(function() {
+          timer = null;
+          button.classList.remove('is-holding');
+          button.textContent = label;
+          handler();
+        }, 1000);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(eventName) { button.addEventListener(eventName, cancelHold); });
+      button.addEventListener('click', function(event) { event.preventDefault(); });
+      return button;
+    }
+
+    function createMetric(label, value, className) {
+      var metric = document.createElement('div');
+      metric.className = 'metric ' + (className || '');
+      var labelElement = document.createElement('span');
+      labelElement.className = 'metric-label';
+      labelElement.textContent = label;
+      var valueElement = document.createElement('span');
+      valueElement.className = 'metric-value';
+      valueElement.textContent = value;
+      metric.appendChild(labelElement);
+      metric.appendChild(valueElement);
+      return metric;
+    }
+
+    function createTeamSelect(value, includePlaceholders) {
+      var select = document.createElement('select');
+      var options = [''].concat(appState.teams || []);
+      if (includePlaceholders) {
+        options = options.concat(getGroupRankPlaceholders()).concat(PLACEHOLDERS).concat(['BYE']);
+        (appState.schedule || []).forEach(function(match) {
+          options.push(match.id + ' 勝者');
+          options.push(match.id + ' 敗者');
+        });
+      }
+      unique(options).forEach(function(optionValue) {
+        var option = document.createElement('option');
+        option.value = optionValue;
+        option.textContent = optionValue || '未選択';
+        option.selected = optionValue === (value || '');
+        select.appendChild(option);
+      });
+      return select;
+    }
+
+    function createSelectCell(match, field) {
+      var cell = document.createElement('td');
+      var select = createTeamSelect(match[field], true);
+      select.disabled = !isEditing();
+      select.setAttribute('aria-label', match.id + 'の' + (field === 'team1' ? 'チーム1' : 'チーム2'));
+      select.addEventListener('change', function() { match[field] = select.value; markScheduleDraftChanged(); });
+      cell.appendChild(select);
+      return cell;
+    }
+
+    function appendTextCell(row, value, className) {
+      var cell = document.createElement('td');
+      cell.className = className || '';
+      cell.textContent = value || '';
+      row.appendChild(cell);
+    }
+
+    function renderDisplayFullscreenBody(kind) {
+      var body = document.getElementById('displayFullscreenBody');
+      if (!body || !appState) return;
+      disconnectBracketObservers(body);
+      body.textContent = '';
+      if (kind === 'tournament') {
+        var tree = document.createElement('div');
+        tree.className = 'tournament-tree bracket-flat';
+        tree.appendChild(createFlatBracket());
+        body.appendChild(tree);
+      } else {
+        body.appendChild(createDisplayScheduleTable());
+      }
+      updateLiveClocks();
+    }
+
+    function refreshDisplayFullscreenBody() {
+      var overlay = document.getElementById('displayFullscreen');
+      if (!overlay || overlay.hidden || !overlay.dataset.kind) return;
+      renderDisplayFullscreenBody(overlay.dataset.kind);
+    }
+
+    function openDisplayFullscreen(kind) {
+      var overlay = document.getElementById('displayFullscreen');
+      var title = document.getElementById('displayFullscreenTitle');
+      if (!overlay || !title || !appState) return;
+      overlay.dataset.kind = kind;
+      title.textContent = kind === 'tournament' ? '決勝トーナメント' : 'タイムスケジュール';
+      overlay.hidden = false;
+      renderDisplayFullscreenBody(kind);
+      document.documentElement.classList.add('is-display-fullscreen');
+      updateLiveClocks();
+      if (kind === 'tournament') redrawVisibleBracketLines();
+      var request = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+      if (request) {
+        var promise = request.call(overlay);
+        if (promise && promise.catch) promise.catch(function() {});
+      }
+    }
+
+    function closeDisplayFullscreen() {
+      var overlay = document.getElementById('displayFullscreen');
+      var body = document.getElementById('displayFullscreenBody');
+      if (overlay) overlay.hidden = true;
+      if (overlay) delete overlay.dataset.kind;
+      if (body) { disconnectBracketObservers(body); body.textContent = ''; }
+      document.documentElement.classList.remove('is-display-fullscreen');
+      if (document.fullscreenElement && document.exitFullscreen) {
+        var promise = document.exitFullscreen();
+        if (promise && promise.catch) promise.catch(function() {});
+      }
+    }
+
+    function handleFullscreenChange() {
+      var overlay = document.getElementById('displayFullscreen');
+      if (!document.fullscreenElement && overlay && !overlay.hidden) {
+        closeDisplayFullscreen();
+      } else if (overlay && !overlay.hidden && overlay.dataset.kind === 'tournament') {
+        redrawVisibleBracketLines();
+      }
+    }
+
+    function showView(view, shouldRender) {
+      activeView = view;
+      document.body.dataset.activeView = view;
+      if (shouldRender !== false) renderView(view);
+      ['groups', 'schedule', 'tournament', 'links'].forEach(function(name) {
+        var section = document.getElementById(name + 'View');
+        if (section) section.hidden = name !== view;
+      });
+      document.querySelectorAll('.tab').forEach(function(button) {
+        button.setAttribute('aria-selected', String(button.dataset.view === view));
+      });
+      if (view === 'tournament') redrawVisibleBracketLines();
+    }
+
+    function createRoundRobinRounds(entries) {
+      var players = entries.slice();
+      if (players.length < 2) return [];
+      if (players.length % 2) players.push(null);
+      var rounds = [];
+      for (var round = 0; round < players.length - 1; round += 1) {
+        var pairs = [];
+        for (var index = 0; index < players.length / 2; index += 1) {
+          var left = players[index]; var right = players[players.length - 1 - index];
+          if (left && right) pairs.push([left, right]);
+        }
+        rounds.push(pairs);
+        players = [players[0], players[players.length - 1]].concat(players.slice(1, players.length - 1));
+      }
+      return rounds;
+    }
+
+    function buildInterleavedRoundRobin(groups) {
+      var groupNames = unique((groups || []).map(function(row) { return row.group; }).filter(Boolean));
+      var data = groupNames.map(function(group) {
+        return { group: group, rounds: createRoundRobinRounds((groups || []).filter(function(row) { return row.group === group && row.team; })) };
+      });
+      var maximumRounds = data.reduce(function(maximum, item) { return Math.max(maximum, item.rounds.length); }, 0);
+      var counters = {}; var result = [];
+      for (var round = 0; round < maximumRounds; round += 1) {
+        var orderedGroups = data;
+        var maximumPairs = orderedGroups.reduce(function(maximum, item) { return Math.max(maximum, (item.rounds[round] || []).length); }, 0);
+        for (var pairIndex = 0; pairIndex < maximumPairs; pairIndex += 1) {
+          orderedGroups.forEach(function(item) {
+            var pair = (item.rounds[round] || [])[pairIndex];
+            if (!pair) return;
+            counters[item.group] = (counters[item.group] || 0) + 1;
+            result.push({ id: 'P-' + item.group + '-' + counters[item.group], phase: item.group + 'グループ予選', startTime: '', court: '', team1: pair[0].team, team2: pair[1].team, winner: '', winnerOverride: '', note: '' });
+          });
+        }
+      }
+      return result;
+    }
+
+    function syncGroupSchedule() {
+      var tournament = (appState.schedule || []).filter(isTournamentScheduleMatch);
+      var operations = (appState.schedule || []).filter(function(match) {
+        return !isTournamentScheduleMatch(match) && !/^P-/.test(String(match.id || '')) && String(match.phase || '').indexOf('グループ予選') < 0;
+      });
+      var initialAdjustment = operations.filter(function(match) { return String(match.id || '') === 'ADJ-START'; });
+      var otherOperations = operations.filter(function(match) { return String(match.id || '') !== 'ADJ-START'; });
+      var preliminary = buildInterleavedRoundRobin(appState.groups || []);
+      appState.schedule = initialAdjustment.concat(preliminary).concat(otherOperations).concat(tournament);
+      applyCourtCountDraft();
+    }
+
+    function createGroupPairIds(assignments) {
+      var activeIds = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'].filter(function(id) {
+        return Boolean(assignments[id]);
+      });
+      if (activeIds.length === 4) {
+        var roundRobinPairs = [];
+        for (var leftIndex = 0; leftIndex < activeIds.length; leftIndex += 1) {
+          for (var rightIndex = leftIndex + 1; rightIndex < activeIds.length; rightIndex += 1) {
+            roundRobinPairs.push([activeIds[leftIndex], activeIds[rightIndex]]);
+          }
+        }
+        return roundRobinPairs;
+      }
+      var pairs = [];
+      ['A', 'B'].forEach(function(groupId) {
+        var ids = ['1', '2', '3'].map(function(number) { return groupId + number; }).filter(function(id) {
+          return Boolean(assignments[id]);
+        });
+        var groupPairs = ids.length === 3
+          ? [[ids[0], ids[1]], [ids[1], ids[2]], [ids[2], ids[0]]]
+          : ids.length === 2 ? [[ids[0], ids[1]]] : [];
+        while (groupPairs.length < 3) groupPairs.push(['', '']);
+        pairs = pairs.concat(groupPairs.slice(0, 3));
+      });
+      return pairs;
+    }
+
+    function getPreliminaryPhase(participantCount, index) {
+      if (participantCount === 4) return '4チーム総当たり予選';
+      return index < 3 ? 'Aグループ予選' : 'Bグループ予選';
+    }
+
+    function getParticipatingTeams() {
+      return unique((appState.groups || []).map(function(group) {
+        return String(group.team || '').trim();
+      }).filter(Boolean));
+    }
+
+    function isFourTeamRoundRobin() {
+      return getParticipatingTeams().length === 4;
+    }
+
+    function randomizeGroups() {
+      var participants = getParticipatingTeams();
+      var capacity = (appState.groupSizes || []).reduce(function(total, size) { return total + Number(size || 0); }, 0);
+      (appState.teams || []).forEach(function(team) {
+        if (participants.length < capacity && participants.indexOf(team) < 0) participants.push(team);
+      });
+      if (!participants.length) {
+        setStatus('参加チームを1チーム以上選択してください。', 'error');
+        return;
+      }
+      for (var index = participants.length - 1; index > 0; index -= 1) {
+        var target = Math.floor(Math.random() * (index + 1));
+        var temporary = participants[index]; participants[index] = participants[target]; participants[target] = temporary;
+      }
+      var nextGroups = []; var participantIndex = 0;
+      (appState.groupSizes || []).forEach(function(size, groupIndex) {
+        var group = groupLabel(groupIndex);
+        for (var slot = 1; slot <= Number(size); slot += 1) {
+          nextGroups.push({ id: group + slot, group: group, team: participants[participantIndex++] || '' });
+        }
+      });
+      appState.groups = nextGroups;
+      appState.standings = nextGroups.map(function(group) {
+        return { id: group.id, group: group.group, team: group.team, points: 0, score: 0, purple: 0, violations: 0, rank: 0, seed: false };
+      });
+      syncGroupSchedule();
+      markDirty();
+      render();
+      setStatus('組み分けと予選順を端末へ一時保存しました。「変更を保存」で確定してください。', 'success');
+    }
+
+    async function openGroupSyncPreview() {
+      if (!appState || !isEditing()) return;
+      if (!navigator.onLine) { setStatus('オフライン中はスプレッドシートへ反映できません。接続後にもう一度実行してください。', 'warning'); return; }
+      setLoading(true);
+      try {
+        var response = await callServer('previewGroupsToPreliminaryResult', editorKey, buildCompetitionPayload());
+        if (!response || !response.success) throw new Error(response && response.message || '反映内容を確認できませんでした。');
+        document.getElementById('groupSyncDescription').textContent = response.spreadsheetName + '／' + response.sheetName + 'へ、次の' + response.writtenCount + 'チームを反映します。';
+        var preview = document.getElementById('groupSyncPreview');
+        var table = document.createElement('table');
+        table.innerHTML = '<thead><tr><th>書込先</th><th>枠</th><th>グループ</th><th>チーム名</th></tr></thead>';
+        var body = document.createElement('tbody');
+        (response.items || []).forEach(function(item) {
+          var row = document.createElement('tr');
+          [item.cell, item.id, item.group, item.team].forEach(function(value) { appendTextCell(row, String(value || '')); });
+          body.appendChild(row);
+        });
+        table.appendChild(body); preview.textContent = ''; preview.appendChild(table);
+        var hold = document.getElementById('groupSyncHold'); hold.disabled = false; hold.textContent = '1秒長押しで反映';
+        document.getElementById('groupSyncDialog').showModal();
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    function startGroupSyncHold(event) {
+      event.preventDefault();
+      var button = document.getElementById('groupSyncHold');
+      if (button.disabled || groupSyncHoldTimer) return;
+      button.classList.add('is-holding'); button.textContent = 'そのまま長押し…';
+      groupSyncHoldTimer = window.setTimeout(function() {
+        groupSyncHoldTimer = null; button.classList.remove('is-holding'); button.textContent = '反映中…'; button.disabled = true;
+        syncGroupsToPreliminaryResult();
+      }, 1000);
+    }
+
+    function cancelGroupSyncHold() {
+      if (groupSyncHoldTimer) window.clearTimeout(groupSyncHoldTimer);
+      groupSyncHoldTimer = null;
+      var button = document.getElementById('groupSyncHold');
+      if (button && !button.disabled) { button.classList.remove('is-holding'); button.textContent = '1秒長押しで反映'; }
+    }
+
+    function closeGroupSyncDialog() {
+      cancelGroupSyncHold();
+      var dialog = document.getElementById('groupSyncDialog');
+      if (dialog.open) dialog.close();
+    }
+
+    async function syncGroupsToPreliminaryResult() {
+      setLoading(true);
+      try {
+        var response = await callServer('syncGroupsToPreliminaryResult', editorKey, buildCompetitionPayload());
+        if (!response || !response.success) throw new Error(response && response.message || 'グループ分けを反映できませんでした。');
+        closeGroupSyncDialog();
+        setStatus(response.message || 'グループ分けをスプレッドシートへ反映しました。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally {
+        var button = document.getElementById('groupSyncHold'); button.disabled = false; button.textContent = '1秒長押しで反映';
+        setLoading(false);
+      }
+    }
+
+    async function applyRecommendedBracket() {
+      var confirmMessage = '現在の順位から' + appState.tournamentParticipantCount + '枠の初期トーナメントを作成します。手動変更中のトーナメント対戦は上書きされます。';
+      if (!confirm(confirmMessage)) return;
+      setLoading(true);
+      try {
+        var response = await callServer(
+          'applyRecommendedBracket',
+          editorKey,
+          appState.tournamentParticipantCount,
+          Boolean(appState.thirdPlaceEnabled)
+        );
+        if (!response || !response.success) throw new Error(response && response.message || '初期配置を作成できませんでした。');
+        setCompetitionState(response);
+        isDirty = false;
+        render();
+        showView('tournament');
+        setStatus('順位から' + appState.tournamentParticipantCount + '枠の初期配置を作成しました。必要に応じて手動変更できます。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    function buildCompetitionPayload() {
+      return {
+        groups: appState.groups,
+        schedule: appState.schedule,
+        groupCount: appState.groupCount,
+        teamsPerGroup: appState.teamsPerGroup,
+        groupSizes: appState.groupSizes,
+        teamGroupConfigSignature: appState.teamGroupConfigSignature,
+        tournamentParticipantCount: appState.tournamentParticipantCount,
+        qualifiersPerGroup: appState.qualifiersPerGroup,
+        tournamentParticipants: appState.tournamentParticipants,
+        seedSlots: appState.seedSlots,
+        courtCount: appState.courtCount,
+        courtCountManual: Boolean(appState.courtCountManual),
+        rankingPolicies: appState.rankingPolicies,
+        thirdPlaceEnabled: Boolean(appState.thirdPlaceEnabled),
+        bracketDisplaySettings: Object.assign({}, bracketDisplaySettings),
+        scheduleDisplaySettings: JSON.parse(JSON.stringify(scheduleDisplaySettings))
+      };
+    }
+
+    function openTeamSyncConfirmation() {
+      if (!teamListDirty) return;
+      cancelTeamSyncHold();
+      document.getElementById('teamSyncDescription').textContent = appState.teamList.length + '件のチーム情報をスプレッドシートへ送信します。変更内容と対象大会を確認してください。';
+      document.getElementById('teamSyncNext').hidden = false;
+      document.getElementById('teamSyncHold').hidden = true;
+      document.getElementById('teamSyncDialog').showModal();
+    }
+
+    function showFinalTeamSyncConfirmation() {
+      document.getElementById('teamSyncDescription').textContent = '最終確認：スプレッドシートのチームリストを現在の内容で上書きし、大会編成の変更も保存します。決定する場合は赤いボタンを1秒間長押ししてください。';
+      document.getElementById('teamSyncNext').hidden = true;
+      document.getElementById('teamSyncHold').hidden = false;
+    }
+
+    function startTeamSyncHold(event) {
+      event.preventDefault();
+      var button = document.getElementById('teamSyncHold');
+      if (button.disabled || teamSyncHoldTimer) return;
+      button.classList.add('is-holding'); button.textContent = 'そのまま長押し…';
+      teamSyncHoldTimer = window.setTimeout(function() {
+        teamSyncHoldTimer = null; button.classList.remove('is-holding'); button.textContent = '反映中…'; button.disabled = true;
+        sendTeamListToSpreadsheet();
+      }, 1000);
+    }
+
+    function cancelTeamSyncHold() {
+      if (teamSyncHoldTimer) window.clearTimeout(teamSyncHoldTimer);
+      teamSyncHoldTimer = null;
+      var button = document.getElementById('teamSyncHold');
+      if (button && !button.disabled) { button.classList.remove('is-holding'); button.textContent = '1秒長押しで反映'; }
+    }
+
+    function closeTeamSyncDialog() {
+      cancelTeamSyncHold();
+      var dialog = document.getElementById('teamSyncDialog');
+      if (dialog.open) dialog.close();
+    }
+
+    async function sendTeamListToSpreadsheet() {
+      setLoading(true);
+      try {
+        var response = await callServer('saveTeamList', editorKey, appState.teamList, buildCompetitionPayload());
+        if (!response || !response.success) throw new Error(response && response.message || 'チームリストを反映できませんでした。');
+        setCompetitionState(response); isDirty = false; teamListDirty = false; clearDraftCache(); closeTeamSyncDialog(); render();
+        setStatus('チームリストと大会編成をスプレッドシートへ反映しました。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally {
+        var button = document.getElementById('teamSyncHold'); button.disabled = false; button.textContent = '1秒長押しで反映';
+        setLoading(false);
+      }
+    }
+
+    async function saveState() {
+      if (!appState || !isEditing()) return;
+      if (teamListDirty) { setStatus('先に「スプレッドシートへ反映」からチームリストを確定してください。', 'error'); return; }
+      if (!navigator.onLine) { saveDraftCache(); setStatus('オフラインのため端末へ一時保存しました。接続後に「変更を保存」を押してください。', 'warning'); return; }
+      if (!confirm('グループ・時刻・トーナメント枠の変更を保存しますか？')) return;
+      setLoading(true);
+      try {
+        var payload = buildCompetitionPayload();
+        var response = await callServer('saveCompetitionState', payload, editorKey);
+        if (!response || !response.success) throw new Error(response && response.message || '保存に失敗しました。');
+        setCompetitionState(response);
+        isDirty = false;
+        clearDraftCache();
+        render();
+        setStatus('ログイン中の管理者アカウントへ大会編成を保存しました。', 'success');
+      } catch (error) { setStatus(error.message, 'error'); }
+      finally { setLoading(false); }
+    }
+
+    function openEditDialog(forceLogin) {
+      if (!appState && !forceLogin) return;
+      if (isEditing()) {
+        if (isDirty && !confirm('未保存の変更があります。編集を終了しますか？')) return;
+        editModeActive = false;
+        render();
+        setStatus('閲覧表示に戻りました。', '');
+        return;
+      }
+      var dialog = document.getElementById('editDialog');
+      var closeButton = dialog.querySelector('[data-close-dialog]');
+      dialog.dataset.forceLogin = forceLogin ? 'true' : 'false';
+      if (closeButton) closeButton.hidden = Boolean(forceLogin);
+      dialog.querySelector('h2').textContent = forceLogin ? '管理者ログイン' : '管理編集';
+      document.getElementById('editorKey').value = editorKey;
+      dialog.showModal();
+    }
+
+    async function submitEditorKey(event) {
+      event.preventDefault();
+      if (loginInFlight) return;
+      var candidate = document.getElementById('editorKey').value;
+      loginInFlight = true;
+      setLoading(true);
+      try {
+        var response = null;
+        for (var attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            response = await callServer('authorizeEditor', candidate);
+            break;
+          } catch (authorizeError) { if (attempt === 1) throw authorizeError; }
+          if (attempt === 0) await new Promise(function(resolve) { window.setTimeout(resolve, 250); });
+        }
+        if (!response || !response.success) throw new Error(response && response.message || '編集キーを確認できませんでした。');
+        var state = null;
+        for (var stateAttempt = 0; stateAttempt < 2; stateAttempt += 1) {
+          try { state = await callServer('getCompetitionState', candidate); }
+          catch (stateError) { if (stateAttempt === 1) throw stateError; }
+          if (state && state.success) break;
+          if (stateAttempt === 0) await new Promise(function(resolve) { window.setTimeout(resolve, 250); });
+        }
+        if (!state || !state.success) throw new Error(state && state.message || '大会情報を読み込めませんでした。');
+        editorKey = candidate;
+        sessionStorage.removeItem('tournamentAdminPassword');
+        var dialog = document.getElementById('editDialog');
+        dialog.dataset.forceLogin = 'false';
+        var closeButton = dialog.querySelector('[data-close-dialog]');
+        if (closeButton) closeButton.hidden = false;
+        editModeActive = true;
+        setCompetitionState(state);
+        lastStateSignature = createStateSignature(state);
+        var restoredDraft = restoreDraftCache(state);
+        isDirty = Boolean(restoredDraft);
+        dialog.close();
+        render();
+        setStatus(restoredDraft
+          ? (response.accountLabel || '') + 'へ接続し、この端末の未保存変更を復元しました。'
+          : (response.accountLabel || '') + 'のGASへ接続しました。', restoredDraft ? 'warning' : 'success');
+      } catch (error) {
+        setStatus(error.message, 'error');
+        if (!appState && !document.getElementById('editDialog').open) openEditDialog(true);
+      }
+      finally { loginInFlight = false; setLoading(false); }
+    }
+
+    function openSpreadsheet() {
+      if (!appState || !appState.spreadsheetUrl) return;
+      window.open(appState.spreadsheetUrl, '_blank', 'noopener');
+    }
+
+    function markDirty() {
+      isDirty = true;
+      recordUndoSnapshot();
+      saveDraftCache();
+      var saveButton = document.getElementById('saveButton'); if (saveButton) saveButton.disabled = !isEditing();
+      var undoButton = document.getElementById('undoButton'); if (undoButton) undoButton.disabled = !isEditing() || undoHistory.length < 2;
+      setStatus('変更を端末へ一時保存しました。「変更を保存」でアカウントへ確定します。', 'warning');
+    }
+
+    function recordUndoSnapshot() {
+      if (!appState) return;
+      var snapshot = JSON.stringify({ appState: appState, teamListDirty: Boolean(teamListDirty) });
+      if (undoHistory.length && undoHistory[undoHistory.length - 1] === snapshot) return;
+      undoHistory.push(snapshot);
+      if (undoHistory.length > 50) { undoHistory.shift(); undoBaselineAvailable = false; }
+    }
+
+    function undoLastChange() {
+      if (!isEditing() || undoHistory.length < 2) return;
+      undoHistory.pop();
+      var restored = JSON.parse(undoHistory[undoHistory.length - 1]);
+      appState = restored.appState;
+      teamListDirty = Boolean(restored.teamListDirty);
+      bracketDisplaySettings = loadBracketDisplaySettings(appState.bracketDisplaySettings);
+      scheduleDisplaySettings = loadScheduleDisplaySettings(appState.scheduleDisplaySettings);
+      saveBracketDisplaySettings();
+      isDirty = undoHistory.length > 1 || !undoBaselineAvailable;
+      if (isDirty) saveDraftCache(); else clearDraftCache();
+      render();
+      setStatus(isDirty ? '直前の変更を元に戻しました。現在の状態は端末へ一時保存されています。' : '変更前の保存済み状態へ戻しました。', isDirty ? 'warning' : 'success');
+    }
+
+    function getDraftCacheKey(state) {
+      state = state || appState || {};
+      var identity = String(state.accountLabel || '') + '|' + String(state.spreadsheetUrl || '');
+      return identity === '|' ? '' : DRAFT_CACHE_PREFIX + encodeURIComponent(identity);
+    }
+
+    function saveDraftCache() {
+      var key = getDraftCacheKey();
+      if (!key || !appState) return;
+      try {
+        localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), appState: appState, teamListDirty: Boolean(teamListDirty), bracketDisplaySettings: bracketDisplaySettings }));
+      } catch (error) {
+        setStatus('端末の一時保存容量が不足しています。「変更を保存」で確定してください。', 'error');
+      }
+    }
+
+    function restoreDraftCache(serverState) {
+      var key = getDraftCacheKey(serverState);
+      if (!key) return false;
+      try {
+        var cached = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!cached || !cached.appState) return false;
+        if (!cached.savedAt || Date.now() - Number(cached.savedAt) > DRAFT_CACHE_MAX_AGE_MS) {
+          localStorage.removeItem(key);
+          return false;
+        }
+        var trusted = {
+          success: serverState.success,
+          canEdit: serverState.canEdit,
+          editorKeyRequired: serverState.editorKeyRequired,
+          accountLabel: serverState.accountLabel,
+          spreadsheetName: serverState.spreadsheetName,
+          spreadsheetUrl: serverState.spreadsheetUrl,
+          gasUrl: serverState.gasUrl,
+          viewerUrl: serverState.viewerUrl,
+          isMaster: Boolean(serverState.isMaster),
+          securityNotice: serverState.securityNotice
+        };
+        appState = Object.assign({}, serverState, cached.appState, trusted);
+        teamListDirty = Boolean(cached.teamListDirty);
+        if (cached.bracketDisplaySettings) bracketDisplaySettings = loadBracketDisplaySettings(cached.bracketDisplaySettings);
+        if (cached.appState.scheduleDisplaySettings) scheduleDisplaySettings = loadScheduleDisplaySettings(cached.appState.scheduleDisplaySettings);
+        recordUndoSnapshot();
+        return true;
+      } catch (error) {
+        localStorage.removeItem(key);
+        return false;
+      }
+    }
+
+    function clearDraftCache() {
+      var key = getDraftCacheKey();
+      if (key) localStorage.removeItem(key);
+    }
+
+    function clearDraftAndReload() {
+      if (!confirm('この端末に一時保存された未確定の変更を削除し、アカウントに保存済みの内容を再読込しますか？')) return;
+      clearDraftCache();
+      isDirty = false;
+      teamListDirty = false;
+      loadState();
+    }
+
+    function isEditing() {
+      return Boolean(appState && appState.canEdit && editModeActive);
+    }
+
+    function setStatus(message, type) {
+      var element = document.getElementById('statusMessage');
+      element.className = 'status-message ' + (type || '');
+      element.textContent = message;
+    }
+
+    function setLoading(loading) {
+      document.getElementById('loadingOverlay').hidden = !loading;
+    }
+
+    function normalizeTime(value) {
+      var match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+      if (!match) return '';
+      return String(match[1]).padStart(2, '0') + ':' + match[2];
+    }
+
+    function unique(values) {
+      return values.filter(function(value, index) { return values.indexOf(value) === index; });
+    }
+</script>
