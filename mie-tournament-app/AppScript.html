@@ -10,6 +10,7 @@
     var refreshInFlight = false;
     var versionCheckInFlight = false;
     var loginInFlight = false;
+    var sessionReauthInProgress = false;
     var teamListDirty = false;
     var teamSyncHoldTimer = null;
     var groupSyncHoldTimer = null;
@@ -118,7 +119,7 @@
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(eventName) { groupSyncHold.addEventListener(eventName, cancelGroupSyncHold); });
       groupSyncHold.addEventListener('click', function(event) { event.preventDefault(); });
       document.getElementById('editDialog').addEventListener('cancel', function(event) {
-        if (!appState) event.preventDefault();
+        if (event.currentTarget.dataset.forceLogin === 'true') event.preventDefault();
       });
       document.querySelectorAll('[data-close-dialog]').forEach(function(button) {
         button.addEventListener('click', function() { document.getElementById('editDialog').close(); });
@@ -172,8 +173,13 @@
           reject(new Error('Google Apps ScriptのWebアプリから開いてください。'));
           return;
         }
-        var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(function(error) {
-          reject(new Error(error && error.message ? error.message : 'GASとの通信に失敗しました。'));
+        var runner = google.script.run.withSuccessHandler(function(response) {
+          if (response && response.success === false && isEditorSessionError(response.message)) handleExpiredEditorSession(response.message);
+          resolve(response);
+        }).withFailureHandler(function(error) {
+          var message = error && error.message ? error.message : 'GASとの通信に失敗しました。';
+          if (isEditorSessionError(message)) handleExpiredEditorSession(message);
+          reject(new Error(message));
         });
         var serverMethod = runner[method];
         if (typeof serverMethod !== 'function') {
@@ -182,6 +188,22 @@
         }
         serverMethod.apply(runner, args);
       });
+    }
+
+    function isEditorSessionError(message) {
+      return /編集セッション(?:を確認できません|の有効期限が切れました)/.test(String(message || ''));
+    }
+
+    function handleExpiredEditorSession(message) {
+      if (viewerMode || sessionReauthInProgress) return;
+      sessionReauthInProgress = true;
+      if (isDirty) saveDraftCache();
+      editorKey = '';
+      editModeActive = false;
+      if (appState) render();
+      var dialog = document.getElementById('editDialog');
+      if (!dialog.open) openEditDialog(true);
+      setStatus(message || '編集セッションの有効期限が切れました。もう一度ログインしてください。端末保存中の変更はログイン後に復元できます。', 'warning');
     }
 
     async function loadState(options) {
@@ -1794,7 +1816,7 @@
       container.appendChild(createSectionHeading('リンク', viewerMode ? '公式サイト・大会資料と、現在表示している大会専用ページの共有情報です。' : '公式サイト・大会資料・公開URLをまとめています。リンクは新しいタブで開きます。', []));
       var version = document.createElement('p');
       version.className = 'links-app-version';
-      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.7.2';
+      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.7.5';
       container.appendChild(version);
       var grid = document.createElement('div');
       grid.className = 'links-grid';
@@ -1829,8 +1851,9 @@
       var publicSection = document.createElement('article'); publicSection.className = 'link-section public-url-section';
       var publicTitle = document.createElement('h3'); publicTitle.textContent = '公開URL QRコード'; publicSection.appendChild(publicTitle);
       var publicGrid = document.createElement('div'); publicGrid.className = 'public-url-grid';
+      var viewerPageUrl = (document.body.dataset.serviceUrl || '') + '?viewer=' + encodeURIComponent(viewerToken) + '&sig=' + encodeURIComponent(viewerSignature);
       var publicUrls = viewerMode
-        ? [['現在表示している大会専用ページ', window.location.href]]
+        ? [['現在表示している大会専用ページ', viewerPageUrl]]
         : [
             ['大会 審判用', 'https://ecleaire.github.io/Tennis-Assist-Web/'],
             ['選手 練習用 / general', 'https://ecleaire.github.io/Tennis-Assist-Web/general/']
@@ -2236,6 +2259,7 @@
     }
 
     function appendConnectionSourcePort(card, value, label, className) {
+      if (!isEditing()) return;
       var port = document.createElement('button'); port.type = 'button'; port.className = 'connection-port connection-source ' + className;
       port.textContent = className === 'is-loser-port' ? '敗' : / 勝者$/.test(value) ? '勝' : '枠'; port.title = label; port.draggable = true;
       port.addEventListener('dragstart', function(event) { event.dataTransfer.setData('text/plain', value); event.dataTransfer.effectAllowed = 'link'; });
@@ -2248,6 +2272,7 @@
     }
 
     function appendConnectionTargetControls(slot, match, field) {
+      if (!isEditing()) return;
       var port = document.createElement('button'); port.type = 'button'; port.className = 'connection-port connection-target'; port.textContent = '●'; port.title = match.id + 'の' + (field === 'team1' ? 'チーム1' : 'チーム2') + 'へ接続';
       function connect(value) {
         value = String(value || '').trim(); if (!value) return;
@@ -3218,9 +3243,13 @@
       if (!appState && !forceLogin) return;
       if (isEditing()) {
         if (isDirty && !confirm('未保存の変更があります。編集を終了しますか？')) return;
+        if (isDirty) saveDraftCache();
+        var sessionToken = editorKey;
+        editorKey = '';
         editModeActive = false;
         render();
-        setStatus('閲覧表示に戻りました。', '');
+        if (sessionToken) callServer('revokeEditorSession', sessionToken).catch(function() {});
+        setStatus('編集セッションを終了しました。再編集する場合は管理者パスワードでログインしてください。', '');
         return;
       }
       var dialog = document.getElementById('editDialog');
@@ -3259,6 +3288,7 @@
         }
         if (!state || !state.success) throw new Error(state && state.message || '大会情報を読み込めませんでした。');
         editorKey = sessionToken;
+        sessionReauthInProgress = false;
         sessionStorage.removeItem('tournamentAdminPassword');
         var dialog = document.getElementById('editDialog');
         dialog.dataset.forceLogin = 'false';
@@ -3279,7 +3309,12 @@
         setStatus(error.message, 'error');
         if (!appState && !document.getElementById('editDialog').open) openEditDialog(true);
       }
-      finally { loginInFlight = false; setLoading(false); }
+      finally {
+        candidate = '';
+        document.getElementById('editorKey').value = '';
+        loginInFlight = false;
+        setLoading(false);
+      }
     }
 
     function openSpreadsheet() {

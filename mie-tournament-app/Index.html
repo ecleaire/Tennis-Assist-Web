@@ -8,12 +8,12 @@
   <title>WRO 大会編成・進行管理</title>
   <?!= include('Styles'); ?>
 </head>
-<body data-viewer-mode="<?= viewerMode ?>" data-viewer-token="<?= viewerToken ?>" data-viewer-signature="<?= viewerSignature ?>">
+<body data-viewer-mode="<?= viewerMode ?>" data-viewer-token="<?= viewerToken ?>" data-viewer-signature="<?= viewerSignature ?>" data-service-url="<?= serviceUrl ?>">
   <div class="shell">
     <header class="app-header">
       <div>
         <p class="eyebrow">WRO / TOURNAMENT OPERATIONS</p>
-        <div class="title-row"><h1>大会編成・進行管理</h1><span class="app-version" aria-label="バージョン 3.7.2">v3.7.2</span></div>
+        <div class="title-row"><h1>大会編成・進行管理</h1><span class="app-version" aria-label="バージョン 3.7.5">v3.7.5</span></div>
       </div>
       <div class="header-actions">
         <button id="helpButton" class="secondary" type="button">使い方</button>
@@ -134,7 +134,7 @@
     </div>
   </dialog>
 
-  <div id="loadingOverlay" class="loading-overlay">処理中です...</div>
+  <div id="loadingOverlay" class="loading-overlay" hidden>処理中です...</div>
 
   <?!= include('QrCode'); ?>
   <?!= include('AppScript'); ?>

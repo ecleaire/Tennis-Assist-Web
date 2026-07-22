@@ -45,6 +45,7 @@ var ADMIN_TARGETS = {
 
 function doGet(event) {
   var template = HtmlService.createTemplateFromFile('Index');
+  template.serviceUrl = ScriptApp.getService().getUrl();
   template.viewerMode = Boolean(event && event.parameter && event.parameter.viewer);
   template.viewerToken = event && event.parameter ? normalizeValue_(event.parameter.viewer) : '';
   template.viewerSignature = event && event.parameter ? normalizeValue_(event.parameter.sig) : '';
@@ -64,6 +65,13 @@ function authorizeEditor(editorKey) {
     if (isMaster) appendMasterAudit_('ログイン', target.label);
     return { success: true, canEdit: true, editorKeyRequired: true, accountLabel: target.label, spreadsheetName: spreadsheet.getName(), gasUrl: target.gasUrl || '', sessionToken: sessionToken, sessionExpiresIn: EDITOR_SESSION_TTL_SECONDS, message: target.label + 'へ接続しました。' };
   } catch (error) { return createErrorResponse_(error); }
+}
+
+function revokeEditorSession(sessionToken) {
+  sessionToken = normalizeValue_(sessionToken);
+  if (!/^[a-f0-9]{64}$/i.test(sessionToken)) return { success: true };
+  try { CacheService.getScriptCache().remove('editor-session-' + sessionToken); } catch (error) {}
+  return { success: true };
 }
 
 function getCompetitionState(editorKey) {
@@ -114,6 +122,9 @@ function getMasterAuditLog(editorKey) {
 function rotateViewerAccess(editorKey, requestedExpiry) {
   var context = openContext_(editorKey);
   var properties = PropertiesService.getScriptProperties();
+  var previousToken = normalizeValue_(properties.getProperty(viewerTokenPropertyKey_(context.target.spreadsheetId)));
+  if (previousToken) properties.deleteProperty(viewerRecordPropertyKey_(previousToken));
+  properties.deleteProperty(viewerTokenPropertyKey_(context.target.spreadsheetId));
   properties.setProperty(viewerRevisionPropertyKey_(context.target.spreadsheetId), Utilities.getUuid());
   writeViewerExpiry_(context.target.spreadsheetId, requestedExpiry);
   clearViewerStateCache_(context.target.spreadsheetId);
@@ -618,9 +629,16 @@ function signViewerToken_(token, allowCreate) {
 }
 
 function createViewerAccess_(target) {
+  var properties = PropertiesService.getScriptProperties();
   var expiresAt = readViewerExpiry_(target.spreadsheetId);
-  var payload = JSON.stringify({ spreadsheetId: target.spreadsheetId, label: target.label, revision: getViewerRevision_(target.spreadsheetId, true), expiresAt: expiresAt || '' });
-  var token = Utilities.base64EncodeWebSafe(payload, Utilities.Charset.UTF_8).replace(/=+$/, '');
+  var tokenKey = viewerTokenPropertyKey_(target.spreadsheetId);
+  var token = normalizeValue_(properties.getProperty(tokenKey));
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
+    token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    properties.setProperty(tokenKey, token);
+  }
+  var payload = { spreadsheetId: target.spreadsheetId, label: target.label, revision: getViewerRevision_(target.spreadsheetId, true), expiresAt: expiresAt || '' };
+  properties.setProperty(viewerRecordPropertyKey_(token), JSON.stringify(payload));
   return { token: token, signature: signViewerToken_(token, true) };
 }
 
@@ -628,8 +646,16 @@ function verifyViewerAccess_(token, signature) {
   token = normalizeValue_(token); signature = normalizeValue_(signature);
   if (!token || !signature || signViewerToken_(token, false) !== signature) throw new Error('この表示専用URLは無効です。大会管理者から最新のURLまたはQRコードを受け取ってください。');
   var payload;
-  try { payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(token)).getDataAsString('UTF-8')); }
-  catch (error) { throw new Error('表示専用URLを確認できません。'); }
+  if (/^[a-f0-9]{64}$/i.test(token)) {
+    var storedPayload = PropertiesService.getScriptProperties().getProperty(viewerRecordPropertyKey_(token));
+    if (!storedPayload) throw new Error('この表示専用URLは無効化されています。大会管理者から最新のURLまたはQRコードを受け取ってください。');
+    try { payload = JSON.parse(storedPayload); }
+    catch (storedError) { throw new Error('表示専用URLを確認できません。'); }
+  } else {
+    // v3.7.2以前に発行した署名付きURLは、再発行されるまで互換表示する。
+    try { payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(token)).getDataAsString('UTF-8')); }
+    catch (legacyError) { throw new Error('表示専用URLを確認できません。'); }
+  }
   var spreadsheetId = normalizeValue_(payload.spreadsheetId);
   var label = normalizeValue_(payload.label);
   if (!spreadsheetId || !label || !/^[a-zA-Z0-9_-]{20,}$/.test(spreadsheetId)) throw new Error('表示専用URLの大会アカウントを確認できません。');
@@ -642,6 +668,8 @@ function verifyViewerAccess_(token, signature) {
 }
 
 function viewerRevisionPropertyKey_(spreadsheetId) { return 'VIEWER_REVISION_' + normalizeValue_(spreadsheetId); }
+function viewerTokenPropertyKey_(spreadsheetId) { return 'VIEWER_OPAQUE_TOKEN_' + normalizeValue_(spreadsheetId); }
+function viewerRecordPropertyKey_(token) { return 'VIEWER_OPAQUE_RECORD_' + normalizeValue_(token); }
 
 function getViewerRevision_(spreadsheetId, allowCreate) {
   var properties = PropertiesService.getScriptProperties();
