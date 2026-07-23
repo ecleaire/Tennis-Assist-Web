@@ -740,7 +740,7 @@ class TimerAudioCueController {
   private master: DynamicsCompressorNode | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
   private scheduled = false;
-  private readonly volumeBoost = 1.4;
+  private readonly volumeBoost = 1.85;
 
   async prepare(): Promise<void> {
     const context = this.audioContext();
@@ -881,7 +881,7 @@ class TimerAudioCueController {
     const context = this.audioContext();
     if (!context || !this.master) return;
     const startAt = Math.max(context.currentTime, when);
-    const boostedVolume = Math.min(3.2, volume * this.volumeBoost);
+    const boostedVolume = Math.min(4.4, volume * this.volumeBoost);
     const oscillator = context.createOscillator();
     const overtone = context.createOscillator();
     const upper = context.createOscillator();
