@@ -697,6 +697,23 @@ output.digital.dashboard-digital {
   white-space: nowrap;
 }
 
+.home-operation-summary .home-operation-state {
+  background: rgba(36, 231, 113, 0.14);
+  border-color: rgba(36, 231, 113, 0.44);
+  color: #dfffea;
+}
+
+.home-operation-summary .home-operation-state.warning {
+  background: rgba(255, 180, 76, 0.16);
+  border-color: rgba(255, 180, 76, 0.58);
+  color: #fff0cf;
+}
+
+.home-operation-summary .button {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
 .home-risk-panel {
   align-items: center;
   display: flex;
@@ -737,6 +754,19 @@ output.digital.dashboard-digital {
   content: " 開く";
   font-size: 0.86em;
   font-weight: 1000;
+}
+
+.day-checklist {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.day-checklist li {
+  color: var(--text);
+  font-weight: 850;
+  line-height: 1.55;
 }
 
 .home-risk-details[open] > summary {
@@ -6650,6 +6680,18 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   background: #e7f8eb;
   border-color: #4faf68;
   color: #154b25;
+}
+
+:root.venue-light-accent .home-operation-summary .home-operation-state {
+  background: #e7f8eb;
+  border-color: #4faf68;
+  color: #154b25;
+}
+
+:root.venue-light-accent .home-operation-summary .home-operation-state.warning {
+  background: #fff2d7;
+  border-color: #cc8a22;
+  color: #5c3a00;
 }
 
 :root.venue-light-accent .home-risk-chip.warn {

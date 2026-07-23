@@ -4088,6 +4088,18 @@ class ContentController {
         </div>
       </article>
     `;
+    const dayChecklist = `
+      <article class="link-section day-checklist-section">
+        <h3>大会前チェックリスト</h3>
+        <ul class="day-checklist">
+          <li>強制更新を実行し、アプリバージョンを確認</li>
+          <li>管理画面で「接続・設定読込」を実行</li>
+          <li>チーム数、使用コート、試合種別、タイマー設定を確認</li>
+          <li>音声確認と10秒同期確認を実行</li>
+          <li>対戦履歴と統計で未送信0件を確認</li>
+        </ul>
+      </article>
+    `;
     const credits = `
       <article class="link-section credit-section">
         <h3>ライセンス / クレジット</h3>
@@ -4117,7 +4129,7 @@ class ContentController {
         </div>
       </article>
     `;
-    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${credits}`;
+    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${dayChecklist}${credits}`;
   }
 
   private setRuleMenu(open: boolean): void {
@@ -5427,7 +5439,10 @@ class Application {
     if (screen === "records") {
       this.records.openHistoryView();
     }
-    if (screen === this.operationScreen() && this.operationStep === "home") this.updatePausedOperationPanel(true);
+    if (screen === this.operationScreen() && this.operationStep === "home") {
+      this.updateHomeSyncAlert();
+      this.updatePausedOperationPanel(true);
+    }
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 
@@ -6003,7 +6018,47 @@ class Application {
   private updateHomeOperationSummary(): void {
     const panel = document.getElementById("home-operation-summary");
     if (!panel) return;
-    if (panel.innerHTML) panel.innerHTML = "";
+    const resume = this.records.operationResumeState();
+    const paused = this.readPausedOperation();
+    const currentMatch = resume?.match ?? this.operationMatch;
+    let markup = "";
+    let action: "resume-current" | "resume-paused" | "" = "";
+    if (this.operationActive || resume) {
+      const step = resume?.step;
+      const label =
+        this.operationStep === "team" ? "コート・チーム選択中" :
+        this.operationStep === "draw" || step === "draw" ? `第${currentMatch}マッチ 抽選中` :
+        step === "result" ? `第${currentMatch}マッチ リザルト入力中` :
+        step === "between" ? `第${Math.max(1, currentMatch - 1)}マッチ終了 / 第${currentMatch}マッチ準備中` :
+        step === "final" || this.operationStep === "finished" ? "最終試合結果 確認中" :
+        "試合進行中";
+      markup =
+        `<span class="home-operation-state">現在: ${escapeText(label)}</span>` +
+        `<span>迷った場合はこのボタンから進行中の画面へ戻れます。</span>` +
+        `<button id="home-operation-resume-current" class="button compact" type="button">進行中の画面へ</button>`;
+      action = "resume-current";
+    } else if (paused) {
+      const stage = paused.step === "result" ? `第${paused.match}マッチ リザルト入力` : `第${paused.match}マッチ 抽選`;
+      const series = paused.progress.series;
+      markup =
+        `<span class="home-operation-state warning">中断中: ${escapeText(series.teamA)} vs ${escapeText(series.teamB)}</span>` +
+        `<span>${escapeText(stage)}で中断しています。</span>` +
+        `<button id="home-operation-resume-paused" class="button compact" type="button">中断記録を再開</button>`;
+      action = "resume-paused";
+    }
+    panel.classList.toggle("hidden", !markup);
+    if (!markup) {
+      if (panel.innerHTML) panel.innerHTML = "";
+      return;
+    }
+    if (panel.innerHTML !== markup) panel.innerHTML = markup;
+    if (action === "resume-current") {
+      const button = panel.querySelector<HTMLButtonElement>("#home-operation-resume-current");
+      if (button) button.onclick = () => this.restoreOperationProgress();
+    } else if (action === "resume-paused") {
+      const button = panel.querySelector<HTMLButtonElement>("#home-operation-resume-paused");
+      if (button) button.onclick = () => this.resumePausedOperation();
+    }
   }
 
   private async retryHomeUnsent(): Promise<void> {
