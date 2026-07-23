@@ -755,8 +755,8 @@ try {
     await refereePage.waitForTimeout(30);
     if (await refereePage.locator("#timer-start").isVisible()) failures.push("main-timer: pause control is visible after start");
     const mainCuePlan = await refereePage.evaluate(() => window.__timerAudioStarts.filter((_, index) => index % 3 === 0));
-    const expectedMainFrequencies = [1568, 1760, 1397, 1397, 1397, 1397, 1397, 2093];
-    const expectedMainOffsets = [30, mainTotal - 10, mainTotal - 5, mainTotal - 4, mainTotal - 3, mainTotal - 2, mainTotal - 1, mainTotal];
+    const expectedMainFrequencies = [2093, 1568, 1760, 1397, 1397, 1397, 1397, 1397, 2093];
+    const expectedMainOffsets = [10, 30, mainTotal - 10, mainTotal - 5, mainTotal - 4, mainTotal - 3, mainTotal - 2, mainTotal - 1, mainTotal];
     const mainCueOffsets = mainCuePlan.map((cue) => cue.when - 100);
     const mainFrequencies = mainCuePlan.map((cue) => cue.frequency);
     if (JSON.stringify(mainFrequencies) !== JSON.stringify(expectedMainFrequencies)) failures.push(`main-timer: audio pitches are incorrect (${mainFrequencies.join(",")})`);
