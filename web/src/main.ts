@@ -5889,7 +5889,7 @@ class Application {
       `<span class="home-risk-chip ${onlineState}">${online ? "オンライン" : "オフライン"}</span>` +
       `<span class="home-risk-chip ${checkedState}">${escapeText(checked)}</span>` +
       `</div>` +
-      `<div class="home-risk-actions"><button id="home-force-update" class="button primary tiny home-force-update-button" type="button">強制更新</button><button id="home-sound-test" class="button tiny home-sound-test-button" type="button">開始30秒音を再生</button></div>` +
+      `<div class="home-risk-actions"><button id="home-force-update" class="button primary tiny home-force-update-button" type="button">強制更新</button><button id="home-sound-test" class="button tiny home-sound-test-button" type="button">30秒音再生</button></div>` +
       `<div class="home-audio-sync">` +
       `<div class="home-audio-sync-title"><strong>10秒音声同期確認</strong><span>10秒表示と音のタイミングを確認</span></div>` +
       `<output id="home-audio-sync-time" class="digital audio-sync-time home-audio-sync-time" aria-live="polite" role="timer">00 : 10</output>` +

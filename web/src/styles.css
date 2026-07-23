@@ -700,8 +700,12 @@ output.digital.dashboard-digital {
 }
 
 .home-risk-details > summary {
+  align-items: center;
   cursor: pointer;
+  display: flex;
+  justify-content: center;
   list-style: none;
+  min-height: 38px;
   text-align: center;
 }
 
@@ -726,7 +730,7 @@ output.digital.dashboard-digital {
 
 .home-risk-chips,
 .home-risk-actions {
-  align-items: center;
+  align-items: stretch;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -762,19 +766,27 @@ output.digital.dashboard-digital {
 }
 
 .home-risk-actions .button {
-  min-height: 38px;
+  flex: 1 1 180px;
+  min-height: 42px;
+  min-width: min(180px, 100%);
   padding: 8px 12px;
+  white-space: normal;
 }
 
 .home-force-update-button {
+  flex-basis: 190px !important;
   font-size: 1.04rem;
   min-height: 48px !important;
   padding: 11px 18px !important;
 }
 
 .home-sound-test-button {
-  min-height: 42px !important;
+  flex: 1 1 210px !important;
+  min-width: min(210px, 100%) !important;
+  min-height: 44px !important;
+  line-height: 1.15;
   padding-inline: 14px !important;
+  white-space: normal !important;
 }
 
 .home-audio-sync {
@@ -2251,9 +2263,13 @@ body.operation-record-focus #record-status {
 }
 
 .history-import-actions .button {
-  flex: 1 1 112px;
-  min-height: 40px;
-  padding: 8px 10px;
+  flex: 1 1 180px;
+  min-height: 46px;
+  min-width: min(180px, 100%);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  padding: 8px 12px;
+  white-space: normal !important;
 }
 
 .team-import-actions {
@@ -2335,6 +2351,14 @@ tr.win td {
   min-height: 36px;
   padding: 6px 10px;
   white-space: nowrap;
+}
+
+.button.tiny.home-sound-test-button,
+.home-sound-test-button {
+  flex: 1 1 210px !important;
+  min-height: 44px !important;
+  min-width: min(210px, 100%) !important;
+  white-space: normal !important;
 }
 
 .agreement {
@@ -2970,11 +2994,13 @@ tr.win td {
 }
 
 .compact-details summary {
+  align-items: center;
   color: var(--text);
   cursor: pointer;
+  display: flex;
   font-weight: 900;
   list-style-position: inside;
-  min-height: 32px;
+  min-height: 40px;
 }
 
 .compact-details[open] {
@@ -4966,7 +4992,7 @@ body.compact #timer-five {
 
   .history-import-actions .button {
     min-width: 0;
-    padding-inline: 6px;
+    padding-inline: 8px;
   }
 
   .team-import-actions .button {
