@@ -666,14 +666,20 @@ try {
       const finalTeams = await operationPage.locator("#final-matches .final-match-team strong").evaluateAll((elements) => elements.map((element) => element.textContent?.trim()));
       if (finalTeams[0] !== teamB.trim() || finalTeams[1] !== teamA.trim()) failures.push(`${label}: corrected team names did not reach final match rows (${finalTeams.slice(0, 2).join(" / ")})`);
       if (!(await operationPage.locator("#record-status").textContent())?.includes("両チームでもう一度確認")) failures.push(`${label}: final correction did not reset the agreement flow`);
+      if (!(await operationPage.locator("#finalize").isDisabled())) failures.push(`${label}: final confirmation button was enabled before agreements`);
+      if (await operationPage.locator("#finalize").evaluate((button) => button.classList.contains("ready"))) failures.push(`${label}: final confirmation button looked ready before agreements`);
       await operationPage.locator("#agree-a").click();
       await operationPage.locator("#agreement-confirm").waitFor({ state: "visible" });
       await holdButton(operationPage, "#agreement-accept", 1150);
       if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data after only the first team agreed`);
+      if (!(await operationPage.locator("#finalize").isDisabled())) failures.push(`${label}: final confirmation button was enabled after only one agreement`);
+      if (await operationPage.locator("#finalize").evaluate((button) => button.classList.contains("ready"))) failures.push(`${label}: final confirmation button looked ready after only one agreement`);
       await operationPage.locator("#agree-b").click();
       await operationPage.locator("#agreement-confirm").waitFor({ state: "visible" });
       await holdButton(operationPage, "#agreement-accept", 1150);
       if (sentSeriesBodies.length !== 0) failures.push(`${label}: GAS received data before the final confirmation`);
+      if (await operationPage.locator("#finalize").isDisabled()) failures.push(`${label}: final confirmation button stayed disabled after both agreements`);
+      if (!(await operationPage.locator("#finalize").evaluate((button) => button.classList.contains("ready")))) failures.push(`${label}: final confirmation button did not turn ready after both agreements`);
       await operationPage.locator("#finalize").click();
       await operationPage.waitForFunction(() => document.querySelector("#completion-panel")?.classList.contains("hidden"), null, { timeout: 10_000 });
       if (sentSeriesBodies.length !== 1) {

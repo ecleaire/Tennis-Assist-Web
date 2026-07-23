@@ -305,7 +305,6 @@ input:hover {
 #next-match,
 #record-save,
 #completion-reset,
-#finalize,
 #agreement-accept,
 #confirm-save,
 #operation-ready-confirm,
@@ -325,12 +324,32 @@ input:hover {
 #next-match:hover,
 #record-save:hover,
 #completion-reset:hover,
-#finalize:hover,
 #agreement-accept:hover,
 #confirm-save:hover,
 #operation-ready-confirm:hover,
 #gas-save:hover,
 #team-save:hover {
+  background: #56bdff;
+}
+
+#finalize {
+  background: rgba(35, 52, 86, 0.82);
+  border-color: rgba(122, 148, 196, 0.58);
+  box-shadow: none;
+  color: rgba(226, 238, 255, 0.74);
+  cursor: not-allowed;
+  font-weight: 900;
+}
+
+#finalize.ready {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.18) inset, 0 14px 30px rgba(46, 168, 255, 0.16);
+  color: #041525;
+  cursor: pointer;
+}
+
+#finalize.ready:hover {
   background: #56bdff;
 }
 
@@ -6469,7 +6488,6 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent #next-match,
 :root.venue-light-accent #record-save,
 :root.venue-light-accent #completion-reset,
-:root.venue-light-accent #finalize,
 :root.venue-light-accent #agreement-accept,
 :root.venue-light-accent #confirm-save,
 :root.venue-light-accent #timer-end-confirm,
@@ -6477,6 +6495,20 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 :root.venue-light-accent #operation-start-check-confirm,
 :root.venue-light-accent #gas-save,
 :root.venue-light-accent #team-save {
+  background: #005ea8;
+  border-color: #004f8e;
+  box-shadow: 0 12px 24px rgba(0, 94, 168, 0.2);
+  color: #ffffff;
+}
+
+:root.venue-light-accent #finalize {
+  background: #e8eef7;
+  border-color: #b7c5d8;
+  box-shadow: none;
+  color: #607089;
+}
+
+:root.venue-light-accent #finalize.ready {
   background: #005ea8;
   border-color: #004f8e;
   box-shadow: 0 12px 24px rgba(0, 94, 168, 0.2);

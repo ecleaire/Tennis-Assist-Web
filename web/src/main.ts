@@ -2897,7 +2897,11 @@ class RecordsController {
     agreeB.classList.toggle("agreed", this.agreedB);
     agreeA.disabled = this.agreedA || this.finalized;
     agreeB.disabled = this.agreedB || this.finalized;
-    el<HTMLButtonElement>("finalize").disabled = this.finalized || !(this.agreedA && this.agreedB);
+    const finalizeButton = el<HTMLButtonElement>("finalize");
+    const canFinalize = this.agreedA && this.agreedB && !this.finalized;
+    finalizeButton.disabled = !canFinalize;
+    finalizeButton.classList.toggle("ready", canFinalize);
+    finalizeButton.setAttribute("aria-disabled", String(!canFinalize));
   }
 
   private requestAgreement(side: "a" | "b"): void {
