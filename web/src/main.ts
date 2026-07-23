@@ -808,7 +808,7 @@ class TimerAudioCueController {
     const cues = currentAudioCueSettings();
     const elapsed = total - remaining;
     const now = context.currentTime;
-    if (includeElapsedTen && elapsed < 10 && remaining > 10) this.scheduleChime(2093, now + Math.max(0, 10 - elapsed), 0.32, 1.9);
+    if (includeElapsedTen && elapsed < 10 && remaining > 10) this.scheduleChime(2093, now + Math.max(0, 10 - elapsed), 0.9, 2.08);
     if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.45, 1.82);
     if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 1.02, 1.72);
     if (cues.remainingFiveSequence && remaining > 5) this.scheduleFiveSecondSequence(now + (remaining - 5));
@@ -1679,11 +1679,10 @@ class RefereeTimerController {
   private activeLabel = "10カウント / 5カウントを選択";
   private readonly audioCues = new TimerAudioCueController();
 
-  constructor(private readonly returnToTimer: () => void) {
+  constructor() {
     el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
     el<HTMLButtonElement>("referee-five").addEventListener("click", () => this.start(5, "オーバーボール"));
     el<HTMLButtonElement>("referee-reset").addEventListener("click", () => this.reset());
-    el<HTMLButtonElement>("referee-return-timer").addEventListener("click", () => void this.leaveAndReturnToTimer());
     this.center.addEventListener("click", () => {
       if (this.running) this.reset();
     });
@@ -1710,12 +1709,6 @@ class RefereeTimerController {
       }
     }
     this.setCompact(false);
-  }
-
-  private async leaveAndReturnToTimer(): Promise<void> {
-    this.reset();
-    await this.leaveFullscreen();
-    this.returnToTimer();
   }
 
   private start(seconds: 10 | 5, label: string): void {
@@ -2398,6 +2391,11 @@ class RecordsController {
     const leftScore = swapped ? score.teamBScore : score.teamAScore;
     const rightScore = swapped ? score.teamAScore : score.teamBScore;
     [el("a-score"), el("b-score"), el("winner-preview")].forEach((node) => node.classList.toggle("score-error", Boolean(issue)));
+    const saveButton = el<HTMLButtonElement>("record-save");
+    saveButton.classList.toggle("input-error", Boolean(issue));
+    saveButton.setAttribute("aria-disabled", issue ? "true" : "false");
+    saveButton.title = issue ? "入力エラーがあります。ボール数を確認してください。" : "";
+    this.renderRecordInputStep(issue);
     if (issue) {
       el("a-score").textContent = "得点 エラー";
       el("b-score").textContent = "得点 エラー";
@@ -2407,6 +2405,18 @@ class RecordsController {
     el("a-score").textContent = `得点 ${leftScore}`;
     el("b-score").textContent = `得点 ${rightScore}`;
     el("winner-preview").textContent = `${leftScore} VS ${rightScore} / 勝者: ${score.winner}`;
+  }
+
+  private renderRecordInputStep(issue = this.ballInputIssue()): void {
+    const category = el<HTMLSelectElement>("reason-category").value as Category;
+    const targetTeam = el<HTMLSelectElement>("target-team").value;
+    const step = category !== scoringCategory && targetTeam === "対象チーム未選択" ? 1 : issue ? 2 : 3;
+    const root = el("record-input");
+    root.classList.toggle("record-step-1", step === 1);
+    root.classList.toggle("record-step-2", step === 2);
+    root.classList.toggle("record-step-3", step === 3);
+    root.classList.toggle("record-step-1-done", step > 1);
+    root.classList.toggle("record-step-2-done", step > 2);
   }
 
   private buildRecord(): MatchRecord | null {
@@ -5283,7 +5293,7 @@ class Application {
     );
     this.timer.setExternalTimerSetting(AdminController.timerSetting());
     this.timer.setDashboardUsesExternalSetting(this.variant.id === "venue");
-    this.refereeTimer = new RefereeTimerController(() => this.show("timer"));
+    this.refereeTimer = new RefereeTimerController();
     this.balls = new BallController((match) => {
       this.setFlow(match, "タイマー待機中");
       this.recordTimerPending = true;

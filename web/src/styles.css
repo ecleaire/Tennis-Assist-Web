@@ -1686,9 +1686,12 @@ body.operation-timer-active #timer-ten {
   min-height: 72px;
 }
 
-#referee-reset,
-#referee-return-timer {
+#referee-reset {
   opacity: 0.86;
+}
+
+#referee-reset {
+  grid-column: 1 / -1;
 }
 
 body.referee-compact {
@@ -2026,13 +2029,27 @@ label {
   position: relative;
 }
 
+#record-input.record-step-1 .form-grid,
+#record-input.record-step-2 .score-pair,
+#record-input.record-step-3 .toolbar {
+  background: rgba(46, 168, 255, 0.12);
+  border-color: rgba(46, 168, 255, 0.72);
+  box-shadow: 0 0 0 2px rgba(46, 168, 255, 0.14), 0 12px 28px rgba(46, 168, 255, 0.08);
+}
+
+#record-input.record-step-1-done .form-grid,
+#record-input.record-step-2-done .score-pair {
+  background: rgba(52, 211, 153, 0.09);
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
 #record-input .form-grid::before,
 #record-input .score-pair::before,
 #record-input .toolbar::before {
   align-self: center;
-  background: var(--accent);
+  background: rgba(90, 122, 170, 0.48);
   border-radius: 999px;
-  color: #041525;
+  color: rgba(232, 241, 255, 0.84);
   content: "";
   font-size: clamp(0.9rem, 1.5vw, 1.04rem);
   font-weight: 900;
@@ -2040,6 +2057,19 @@ label {
   line-height: 1.2;
   padding: 6px 12px;
   width: 100%;
+}
+
+#record-input.record-step-1 .form-grid::before,
+#record-input.record-step-2 .score-pair::before,
+#record-input.record-step-3 .toolbar::before {
+  background: var(--accent);
+  color: #041525;
+}
+
+#record-input.record-step-1-done .form-grid::before,
+#record-input.record-step-2-done .score-pair::before {
+  background: #35d487;
+  color: #042011;
 }
 
 #record-input .form-grid::before {
@@ -2212,6 +2242,18 @@ fieldset strong {
   font-weight: 900;
   min-height: clamp(64px, 8vw, 86px);
   padding-inline: clamp(22px, 4vw, 36px);
+}
+
+#record-save.input-error {
+  background: linear-gradient(180deg, rgba(184, 50, 66, 0.36), rgba(104, 34, 46, 0.8));
+  border-color: rgba(255, 83, 104, 0.82);
+  box-shadow: 0 0 0 2px rgba(255, 83, 104, 0.16);
+  color: #ffd7dc;
+}
+
+#record-save.input-error:hover {
+  background: linear-gradient(180deg, rgba(206, 60, 78, 0.42), rgba(122, 38, 52, 0.86));
+  border-color: rgba(255, 119, 135, 0.92);
 }
 
 #record-input #back-balls,
@@ -3486,18 +3528,35 @@ tr.win td {
 
 .admin-status-message.ready-ok {
   align-items: center;
-  background: linear-gradient(135deg, rgba(35, 138, 78, 0.9), rgba(20, 96, 64, 0.86));
-  border: 2px solid rgba(113, 239, 143, 0.86);
-  box-shadow: 0 0 0 1px rgba(113, 239, 143, 0.18) inset, 0 12px 30px rgba(17, 105, 65, 0.24);
+  background: linear-gradient(135deg, rgba(38, 176, 90, 0.98), rgba(19, 118, 70, 0.95));
+  border: 3px solid rgba(144, 255, 169, 0.96);
+  box-shadow: 0 0 0 2px rgba(144, 255, 169, 0.24) inset, 0 18px 42px rgba(23, 140, 82, 0.34);
   color: #f1fff6;
   display: flex;
-  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  font-size: clamp(1.48rem, 2.35vw, 2.05rem);
   font-weight: 1000;
   justify-content: center;
   letter-spacing: 0;
   line-height: 1.25;
-  min-height: 62px;
+  min-height: 78px;
+  padding: 14px 18px;
   text-align: center;
+}
+
+.admin-status-message.ready-ok::before {
+  content: "OK";
+  align-items: center;
+  background: #f1fff6;
+  border-radius: 999px;
+  color: #147243;
+  display: inline-flex;
+  font-size: 0.82em;
+  font-weight: 1000;
+  justify-content: center;
+  margin-right: 12px;
+  min-height: 38px;
+  min-width: 58px;
+  padding: 2px 12px;
 }
 
 .admin-status-message.warn,
@@ -5749,8 +5808,7 @@ html.phone-portrait .referee-controls .referee-primary-count {
   min-height: 84px;
 }
 
-html.phone-portrait #referee-reset,
-html.phone-portrait #referee-return-timer {
+html.phone-portrait #referee-reset {
   min-height: 50px;
   width: 100%;
 }
@@ -5773,8 +5831,7 @@ html.phone-portrait body.referee-compact .referee-controls .referee-primary-coun
   min-height: 88px;
 }
 
-html.phone-portrait body.referee-compact #referee-reset,
-html.phone-portrait body.referee-compact #referee-return-timer {
+html.phone-portrait body.referee-compact #referee-reset {
   min-height: 52px;
 }
 
@@ -6543,6 +6600,33 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   border-color: #004f8e;
   box-shadow: 0 12px 24px rgba(0, 94, 168, 0.2);
   color: #ffffff;
+}
+
+:root.venue-light-accent #record-input .form-grid::before,
+:root.venue-light-accent #record-input .score-pair::before,
+:root.venue-light-accent #record-input .toolbar::before {
+  background: #d8e5f2;
+  color: #4b6076;
+}
+
+:root.venue-light-accent #record-input.record-step-1 .form-grid::before,
+:root.venue-light-accent #record-input.record-step-2 .score-pair::before,
+:root.venue-light-accent #record-input.record-step-3 .toolbar::before {
+  background: #35aef3;
+  color: #041525;
+}
+
+:root.venue-light-accent #record-input.record-step-1-done .form-grid::before,
+:root.venue-light-accent #record-input.record-step-2-done .score-pair::before {
+  background: #42c684;
+  color: #052411;
+}
+
+:root.venue-light-accent #record-save.input-error {
+  background: #ffe5e8;
+  border-color: #d73d55;
+  box-shadow: 0 0 0 2px rgba(215, 61, 85, 0.14);
+  color: #7b1728;
 }
 
 :root.venue-light-accent #dashboard-timer-fullscreen,

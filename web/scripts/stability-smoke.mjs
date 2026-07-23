@@ -800,9 +800,9 @@ try {
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "05") failures.push("referee-timer: 5-count could not restart after count-area reset");
     await refereePage.waitForTimeout(5100);
     if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "00") failures.push("referee-timer: 5-count did not finish at 00");
-    await refereePage.locator("#referee-return-timer").click();
-    await refereePage.locator("#screen-timer").waitFor({ state: "visible" });
-    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "10") failures.push("referee-timer: returning to the timer did not reset the countdown");
+    if (await refereePage.locator("#referee-return-timer").count()) failures.push("referee-timer: return-to-timer button should not be visible");
+    await refereePage.locator("#referee-reset").click();
+    if ((await refereePage.locator("#referee-time").textContent())?.trim() !== "10") failures.push("referee-timer: reset did not restore the countdown after finish");
     process.stdout.write("PASS referee-timer/countdown-timing\n");
   } catch (error) {
     failures.push(`referee-timer/countdown-timing: ${error instanceof Error ? error.message : String(error)}`);
