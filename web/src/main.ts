@@ -142,6 +142,7 @@ type TeamImportResult = {
   count: number;
   courtCount?: number | null;
   priorityCount?: number;
+  sourceLabel?: string;
 };
 
 type TimerSettingLoadResult = {
@@ -3362,9 +3363,9 @@ class RecordsController {
     this.applyCourtCount(data.court_count ?? null);
     const courtMessage = `使用コート: ${courtRangeLabel()}`;
     if (nextTeams.length < 2) {
-      const message = `GASから読み込みましたが、チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
+      const message = `GAS接続は成功しましたが、スプレッドシートのチームリストが空のため、初期チームリストを使用しています。スプレッドシートを確認してください。${courtMessage}`;
       this.applyTeams([...defaultTeams], false, message);
-      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0 };
+      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0, sourceLabel: "初期チームリスト" };
     }
     const message = `GASから${data.team_sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。端末に残す場合は「チームリストを端末に保存」を押してください。`;
     this.applyTeams(nextTeams, false, message);
@@ -3409,9 +3410,9 @@ class RecordsController {
     this.applyCourtCount(data.court_count ?? null);
     const courtMessage = `使用コート: ${courtRangeLabel()}`;
     if (nextTeams.length < 2) {
-      const message = `GASから読み込みましたが、チームリストに入力がないので初期チームリストを反映しました。スプレッドシートを確認してください。${courtMessage}`;
+      const message = `GAS接続は成功しましたが、スプレッドシートのチームリストが空のため、初期チームリストを使用しています。スプレッドシートを確認してください。${courtMessage}`;
       this.applyTeams([...defaultTeams], false, message);
-      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0 };
+      return { status: "default", message, count: defaultTeams.length, courtCount: data.court_count ?? null, priorityCount: 0, sourceLabel: "初期チームリスト" };
     }
     const priorityMessage = priorityCount > 0 ? ` ${options.matchType}候補${priorityCount}チームを上に表示します。` : "";
     const message = `GASから${data.sheet_name ?? "チームリスト"}の${nextTeams.length}チームを読み込みました。${courtMessage}。${priorityMessage}端末に残す場合は「チームリストを端末に保存」を押してください。`;
@@ -5025,13 +5026,13 @@ class AdminController {
 
   private teamImportGasStatusMessage(prefix: string, result: TeamImportResult): string {
     if (result.status === "loaded") return `${prefix} チームリストも読み込みました。${result.count}チーム、${courtRangeLabel()}を反映しています。`;
-    if (result.status === "default") return `${prefix} ${result.message}`;
+    if (result.status === "default") return `${prefix} ${result.message} 現在のチーム候補は初期チームリストです。`;
     return `${prefix} ${result.message}`;
   }
 
   private teamImportSummaryLabel(result: TeamImportResult): string {
     if (result.status === "loaded") return `チーム ${result.count}件 / ${courtRangeLabel()}`;
-    if (result.status === "default") return "初期リスト";
+    if (result.status === "default") return `初期チームリスト ${result.count}件`;
     return "チーム失敗";
   }
 
