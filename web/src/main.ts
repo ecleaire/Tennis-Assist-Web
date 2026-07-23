@@ -296,12 +296,14 @@ const managedSheets = {
   self: "https://docs.google.com/spreadsheets/d/1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8Ngk6lZwcTA/edit?usp=sharing",
   shukugawa: "https://docs.google.com/spreadsheets/d/1tOyTdp7DD1lFZr5XsYnB3Zc4JEM9rGeMoH_6B43Yeg4/edit?usp=sharing",
   train: "https://docs.google.com/spreadsheets/d/1Bh5FpSOjkTRRV9feZ90dLXl86v3UNsG896DfhSPHst0/edit?usp=sharing",
+  nara: "https://docs.google.com/spreadsheets/d/1qaT1lLCqUjw__0jkR51KIqLXur3jO7EBoc8R0gWgnZ8/edit?usp=sharing",
 } as const;
 
 const managedGasUrlsByPassword = new Map<string, ManagedGasConfig>([
   ["hyogo", { label: "WRO兵庫", url: "https://script.google.com/macros/s/AKfycbw0wWKqqar4adDt9SXKmQdO82twKvUjomcrfYGvb7_2mi1cP5rVW7QR62Ijuc5uNpJRgQ/exec", spreadsheetUrl: managedSheets.hyogo }],
   ["mie", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
   ["mie_judge", { label: "WRO三重", url: "https://script.google.com/macros/s/AKfycbx6OkFR799hYZ3DaYWxfluCTuDKf6sE34HtVuzMHTfJQd5Hs0YcQujZiVxtEOxzvN5-/exec", spreadsheetUrl: managedSheets.mie }],
+  ["nara", { label: "WRO奈良", url: "https://script.google.com/macros/s/AKfycbya7EhTdbZzvZIPR2HKMBha7ciFLpG-iFr1T5PZitsLgsWTXE-5lNbACIN9Bkgf_ZdE4g/exec", spreadsheetUrl: managedSheets.nara }],
   ["judge", { label: "WRO共有確認用", url: "https://script.google.com/macros/s/AKfycbyniW9kgzwtMI0i5X5ZtDlnqGz1yaeuHnXZZ7s67fIS54tdzg1U__sZUzLDoLqUY8lt/exec", spreadsheetUrl: managedSheets.shared }],
   ["train", { label: "審判練習", url: "https://script.google.com/macros/s/AKfycbxd1h_jzSECSjtQIxKvoX-joGUEy2yHcJYc2nQ14-YHze9OpqXrfy9JsEg_6gi03KpA/exec", spreadsheetUrl: managedSheets.train }],
   ["practice", { label: "審判練習", url: "https://script.google.com/macros/s/AKfycbxd1h_jzSECSjtQIxKvoX-joGUEy2yHcJYc2nQ14-YHze9OpqXrfy9JsEg_6gi03KpA/exec", spreadsheetUrl: managedSheets.train }],
@@ -4322,7 +4324,7 @@ class AdminController {
   private static readonly storageKey = adminStorageKey;
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
-  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "train", "practice", "hyogo", "mie", "mie_judge", "shukugawa"]);
+  private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "train", "practice", "hyogo", "mie", "mie_judge", "nara", "shukugawa"]);
   private mode: AdminMode = "standard";
   private connectionVerified = false;
   private timerSettingLoaded = Boolean(AdminController.timerSetting());
