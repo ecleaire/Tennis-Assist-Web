@@ -957,6 +957,7 @@ class TimerController {
   private forceExternalForNextReset = false;
   private initialReset = true;
   private secret = false;
+  private hyogoMode = false;
   private stateVersion = 0;
   private autoResetTimer = 0;
   private dashboardOverride: string | null = null;
@@ -1004,6 +1005,7 @@ class TimerController {
       this.chooseStep();
     }));
     this.setupManualOptions();
+    el<HTMLSelectElement>("manual-minute").addEventListener("change", () => this.syncManualSecondOptions());
     el<HTMLButtonElement>("manual-apply").addEventListener("click", () => this.applyManual());
     document.addEventListener("keydown", (event) => this.onKey(event));
     document.addEventListener("fullscreenchange", () => {
@@ -1056,10 +1058,14 @@ class TimerController {
 
   setSecret(active: boolean): void {
     this.secret = active;
+    this.manualSeconds = this.clampManualSeconds(this.manualSeconds);
     this.setupManualOptions();
   }
 
   setHyogoMode(active: boolean): void {
+    this.hyogoMode = active;
+    this.manualSeconds = this.clampManualSeconds(this.manualSeconds);
+    this.setupManualOptions();
     if (active) {
       this.randomStep = 5;
       this.step.value = "5";
@@ -1242,17 +1248,43 @@ class TimerController {
   }
 
   private setupManualOptions(): void {
-    const maxMinutes = this.secret ? 120 : 2;
+    this.manualSeconds = this.clampManualSeconds(this.manualSeconds);
+    const maxMinutes = this.manualMaxMinutes();
     const minute = Math.min(Math.floor(this.manualSeconds / 60), maxMinutes);
     rangeOptions(el<HTMLSelectElement>("manual-minute"), maxMinutes, minute);
-    rangeOptions(el<HTMLSelectElement>("manual-second"), 59, this.manualSeconds % 60);
+    this.syncManualSecondOptions();
+  }
+
+  private manualMaxMinutes(): number {
+    return this.hyogoMode ? 2 : this.secret ? 120 : 2;
+  }
+
+  private manualMaxSecondsForMinute(minutes: number): number {
+    return this.hyogoMode && minutes >= 2 ? 0 : 59;
+  }
+
+  private manualLimitSeconds(): number {
+    return this.hyogoMode ? 120 : this.manualMaxMinutes() * 60 + 59;
+  }
+
+  private clampManualSeconds(seconds: number): number {
+    return Math.max(1, Math.min(Math.round(seconds), this.manualLimitSeconds()));
+  }
+
+  private syncManualSecondOptions(): void {
+    const minuteSelect = el<HTMLSelectElement>("manual-minute");
+    const secondSelect = el<HTMLSelectElement>("manual-second");
+    const minutes = Number(minuteSelect.value);
+    const currentSeconds = Number(secondSelect.value || this.manualSeconds % 60);
+    const maxSeconds = this.manualMaxSecondsForMinute(minutes);
+    rangeOptions(secondSelect, maxSeconds, Math.min(currentSeconds, maxSeconds));
   }
 
   private applyManual(): void {
     this.touchTimerState();
     const minutes = Number(el<HTMLSelectElement>("manual-minute").value);
     const seconds = Number(el<HTMLSelectElement>("manual-second").value);
-    this.manualSeconds = Math.max(1, minutes * 60 + seconds);
+    this.manualSeconds = this.clampManualSeconds(minutes * 60 + seconds);
     this.randomStep = "manual";
     this.step.value = "manual";
     if (!this.dashboardUsesExternalSetting) this.dashboardSteps.forEach((step) => { step.value = "manual"; });
