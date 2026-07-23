@@ -64,7 +64,7 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 body {
@@ -92,6 +92,54 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+#app,
+.screen,
+.button,
+.nav,
+.operation-step,
+.operation-prepare,
+.operation-numbered,
+.operation-action-button,
+.dashboard-court,
+summary,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select,
+input,
+textarea,
+summary,
+.button,
+.nav,
+.operation-prepare,
+.operation-numbered,
+.operation-action-button,
+.dashboard-court,
+.team-card,
+.timer-face,
+.referee-timer-face {
+  touch-action: manipulation;
+}
+
+html,
+body {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+button,
+.button,
+.nav,
+select,
+.operation-numbered,
+.operation-prepare,
+.operation-match-title,
+.operation-court-row label,
+.operation-team-grid label {
+  word-break: keep-all;
 }
 
 h1,
@@ -6984,6 +7032,93 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
   .operation-draw-side .operation-numbered {
     font-size: clamp(1.65rem, 3.3vw, 2.1rem) !important;
     min-height: 94px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1366px) {
+  .app-header,
+  .screen,
+  .operation-step,
+  .dialog,
+  .result-dialog-card {
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body.operation-step-home .operation-home.active,
+  body.operation-step-team .operation-team.active {
+    align-content: center;
+  }
+
+  body.operation-step-home .operation-prepare {
+    font-size: clamp(2.9rem, 5.8vw, 4.9rem);
+    min-height: clamp(210px, 24vw, 300px);
+    min-width: min(820px, 84vw);
+  }
+
+  .operation-team label,
+  .operation-court-row label,
+  .operation-team-grid label {
+    font-size: clamp(1.35rem, 2.35vw, 2rem);
+  }
+
+  .operation-team select,
+  .operation-court-row select,
+  .operation-team-grid select {
+    font-size: clamp(1.28rem, 2.2vw, 1.85rem);
+    min-height: clamp(66px, 7.4vw, 86px);
+  }
+
+  body.operation-step-draw .operation-draw-side .operation-numbered {
+    font-size: clamp(2.15rem, 3.25vw, 3.1rem) !important;
+    line-height: 1.08;
+    min-height: clamp(108px, 11vw, 154px);
+    padding-inline: clamp(12px, 1.6vw, 24px);
+    white-space: nowrap;
+  }
+
+  body.operation-step-draw .operation-draw-side {
+    min-width: min(420px, 100%);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1366px) and (orientation: landscape) {
+  body.operation-step-home,
+  body.operation-step-team {
+    overflow-y: hidden;
+  }
+
+  body.operation-step-home #app,
+  body.operation-step-team #app {
+    height: calc(var(--viewport-height) - 24px);
+    min-height: 0;
+  }
+
+  body.operation-step-home #screen-dashboard,
+  body.operation-step-team #screen-dashboard,
+  body.operation-step-home .operation-shell,
+  body.operation-step-team .operation-shell,
+  body.operation-step-home .operation-step.active,
+  body.operation-step-team .operation-step.active {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.operation-step-home .operation-home.active,
+  body.operation-step-team .operation-team.active {
+    height: 100%;
+    min-height: 0;
+  }
+
+  body.operation-step-draw .operation-draw-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.46fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
+  body.operation-step-draw .operation-draw-side .operation-numbered {
+    font-size: clamp(2.05rem, 5vw, 2.85rem) !important;
+    min-height: clamp(104px, 14vw, 138px);
   }
 }
 

@@ -740,6 +740,7 @@ class TimerAudioCueController {
   private master: DynamicsCompressorNode | null = null;
   private readonly scheduledSources: AudioScheduledSourceNode[] = [];
   private scheduled = false;
+  private readonly volumeBoost = 1.4;
 
   async prepare(): Promise<void> {
     const context = this.audioContext();
@@ -749,12 +750,16 @@ class TimerAudioCueController {
 
   playElapsedThirty(): void {
     if (!currentAudioCueSettings().elapsedThirty) return;
-    this.chime(1568, 0, 1.35, 1.65);
+    this.chime(1568, 0, 1.45, 1.82);
+  }
+
+  playElapsedTen(): void {
+    this.chime(2093, 0, 0.32, 1.9);
   }
 
   playRemainingTen(): void {
     if (!currentAudioCueSettings().remainingTen) return;
-    this.chime(1760, 0, 0.95, 1.55);
+    this.chime(1760, 0, 1.02, 1.72);
   }
 
   playRemainingFiveSequence(): void {
@@ -796,15 +801,16 @@ class TimerAudioCueController {
     return leadSeconds;
   }
 
-  scheduleMainCues(remaining: number, total: number): boolean {
+  scheduleMainCues(remaining: number, total: number, includeElapsedTen = false): boolean {
     const context = this.audioContext();
     if (!context || remaining <= 0) return false;
     this.stopScheduled();
     const cues = currentAudioCueSettings();
     const elapsed = total - remaining;
     const now = context.currentTime;
-    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.35, 1.65);
-    if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 0.95, 1.55);
+    if (includeElapsedTen && elapsed < 10 && remaining > 10) this.scheduleChime(2093, now + Math.max(0, 10 - elapsed), 0.32, 1.9);
+    if (cues.elapsedThirty && elapsed < 30 && remaining > 30) this.scheduleChime(1568, now + Math.max(0, 30 - elapsed), 1.45, 1.82);
+    if (cues.remainingTen && remaining > 10) this.scheduleChime(1760, now + (remaining - 10), 1.02, 1.72);
     if (cues.remainingFiveSequence && remaining > 5) this.scheduleFiveSecondSequence(now + (remaining - 5));
     this.scheduled = this.scheduledSources.length > 0;
     return this.scheduled;
@@ -875,6 +881,7 @@ class TimerAudioCueController {
     const context = this.audioContext();
     if (!context || !this.master) return;
     const startAt = Math.max(context.currentTime, when);
+    const boostedVolume = Math.min(3.2, volume * this.volumeBoost);
     const oscillator = context.createOscillator();
     const overtone = context.createOscillator();
     const upper = context.createOscillator();
@@ -886,7 +893,7 @@ class TimerAudioCueController {
     overtone.frequency.setValueAtTime(frequency * 2, startAt);
     upper.frequency.setValueAtTime(frequency * 1.5, startAt);
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.006);
+    gain.gain.exponentialRampToValueAtTime(boostedVolume, startAt + 0.006);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
     oscillator.connect(gain);
     overtone.connect(gain);
@@ -956,6 +963,7 @@ class TimerController {
   private readonly audioCues = new TimerAudioCueController();
   private readonly subAudioCues = new TimerAudioCueController();
   private wakeLock: WakeLockSentinelLike | null = null;
+  private elapsedTenCuePlayed = false;
   private thirtyCuePlayed = false;
   private remainingTenCuePlayed = false;
   private remainingFiveSequencePlayed = false;
@@ -1109,6 +1117,7 @@ class TimerController {
     this.notifiedFinish = false;
     this.endAt = 0;
     this.audioCues.stopScheduled();
+    this.elapsedTenCuePlayed = false;
     this.thirtyCuePlayed = false;
     this.remainingTenCuePlayed = false;
     this.remainingFiveSequencePlayed = false;
@@ -1148,6 +1157,7 @@ class TimerController {
     this.notifiedFinish = false;
     this.endAt = 0;
     this.audioCues.stopScheduled();
+    this.elapsedTenCuePlayed = false;
     this.thirtyCuePlayed = false;
     this.remainingTenCuePlayed = false;
     this.remainingFiveSequencePlayed = false;
@@ -1274,6 +1284,7 @@ class TimerController {
     this.notifiedFinish = false;
     this.endAt = 0;
     this.audioCues.stopScheduled();
+    this.elapsedTenCuePlayed = false;
     this.thirtyCuePlayed = false;
     this.remainingTenCuePlayed = false;
     this.remainingFiveSequencePlayed = false;
@@ -1325,7 +1336,7 @@ class TimerController {
     void this.requestWakeLock();
     void this.audioCues.prepare().then(() => {
       if (!this.running || !this.endAt) return;
-      this.audioCues.scheduleMainCues(Math.max(0, (this.endAt - performance.now()) / 1000), this.total);
+      this.audioCues.scheduleMainCues(Math.max(0, (this.endAt - performance.now()) / 1000), this.total, true);
     });
   }
 
@@ -1410,6 +1421,7 @@ class TimerController {
     this.lastFrame = now;
     if (this.running) {
       this.remaining = this.endAt ? Math.max(0, (this.endAt - now) / 1000) : Math.max(0, this.remaining - delta);
+      this.playElapsedTenCue();
       if (!this.coldShown && this.total - this.remaining >= 30) {
         this.coldShown = true;
         this.coldUntil = now + 10000;
@@ -1508,6 +1520,13 @@ class TimerController {
     this.thirtyCuePlayed = true;
     if (this.audioCues.hasScheduledMainCues()) return;
     this.audioCues.playElapsedThirty();
+  }
+
+  private playElapsedTenCue(): void {
+    if (this.elapsedTenCuePlayed || this.total - this.remaining < 10) return;
+    this.elapsedTenCuePlayed = true;
+    if (this.audioCues.hasScheduledMainCues()) return;
+    this.audioCues.playElapsedTen();
   }
 
   private playRemainingTenCue(): void {
@@ -5238,6 +5257,7 @@ class Application {
 
   constructor() {
     syncViewportMetrics();
+    this.setupDoubleTapZoomGuard();
     window.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     window.visualViewport?.addEventListener("resize", scheduleViewportMetricsSync, { passive: true });
     this.timer = new TimerController(
@@ -5368,6 +5388,22 @@ class Application {
         if (document.visibilityState === "visible") updateServiceWorker();
       });
     }
+  }
+
+  private setupDoubleTapZoomGuard(): void {
+    let lastSingleTouchEnd = 0;
+    document.addEventListener(
+      "touchend",
+      (event) => {
+        if (event.touches.length > 0 || event.changedTouches.length !== 1) return;
+        const now = Date.now();
+        if (now - lastSingleTouchEnd < 320) {
+          event.preventDefault();
+        }
+        lastSingleTouchEnd = now;
+      },
+      { passive: false },
+    );
   }
 
   private show(screen: Screen): void {
