@@ -7072,6 +7072,16 @@ body.compact.timer-running:not(.operation-timer-active) #timer-five {
 }
 
 @media (min-width: 901px) and (max-height: 950px) and (orientation: landscape) {
+  body.operation-step-draw #app {
+    gap: 10px;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  body.operation-step-draw .app-header {
+    min-height: 0;
+    padding-block: 7px;
+  }
+
   body.operation-step-draw .operation-shell,
   body.operation-step-draw .operation-step.active {
     min-height: 0;
