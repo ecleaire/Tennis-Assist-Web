@@ -259,6 +259,15 @@ const featureScopes = {
 
 const deviceRoleOptions: DeviceRole[] = ["", "Aコート用", "Bコート用", "Cコート用", "Dコート用", "Eコート用", "Fコート用", "Gコート用", "Hコート用", "本部用", "予備端末"];
 const adminStorageKey = "tennis-assist-admin-v1";
+const adminSessionStorageKey = "tennis-assist-admin-session-v1";
+
+type AdminSessionState = {
+  active: boolean;
+  mode: AdminMode;
+  adminKey: string;
+  updatedAt: string;
+};
+
 const defaultAudioCueSettings: AudioCueSettings = {
   elapsedThirty: true,
   remainingTen: true,
@@ -4400,6 +4409,7 @@ class QrScanner {
 
 class AdminController {
   private static readonly storageKey = adminStorageKey;
+  private static readonly sessionStorageKey = adminSessionStorageKey;
   private static readonly timerSettingStorageKey = "tennis-assist-timer-setting-v1";
   private static readonly gateHash = "31749b1d44f155c116ce285a185146310ce0cd131f77cc1e4e1546d97feef275";
   private static readonly plainPasswords = new Set(["rsam", "gas", "wrorsam", "judge", "train", "practice", "hyogo", "mie", "mie_judge", "nara", "shukugawa"]);
@@ -4420,6 +4430,7 @@ class AdminController {
     private readonly portableStateProvider?: () => unknown,
     private readonly portableStateApplier?: (value: unknown) => void,
     private readonly persistPortableState?: () => void,
+    private readonly onUnlocked?: () => void,
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
     el<HTMLButtonElement>("admin-password-toggle").addEventListener("click", () => this.toggleSecretInput("admin-password", "admin-password-toggle"));
@@ -4521,6 +4532,28 @@ class AdminController {
     }
   }
 
+  static loadPersistedSession(): { mode: AdminMode; adminKey: string } | null {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.sessionStorageKey) ?? "{}") as Partial<AdminSessionState>;
+      const adminKey = this.normalizeAdminPassword(String(parsed.adminKey ?? ""));
+      if (!parsed.active || adminKey !== "hyogo") return null;
+      return { mode: this.modeForPassword(adminKey), adminKey };
+    } catch {
+      return null;
+    }
+  }
+
+  static clearPersistedSession(): void {
+    localStorage.removeItem(this.sessionStorageKey);
+  }
+
+  private static modeForPassword(normalizedPassword: string): AdminMode {
+    if (normalizedPassword === "hyogo") return "hyogo";
+    if (normalizedPassword === "mie" || normalizedPassword === "mie_judge") return "mie";
+    if (normalizedPassword === "rsam") return "rsam";
+    return "standard";
+  }
+
   private populate(): void {
     const settings = AdminController.settings();
     const gasUrlInput = el<HTMLInputElement>("gas-url");
@@ -4610,14 +4643,21 @@ class AdminController {
       el("gas-status").textContent = "パスワードを確認してください。";
       return;
     }
-    this.mode =
-      normalizedPassword === "hyogo" ? "hyogo" :
-        normalizedPassword === "mie" || normalizedPassword === "mie_judge" ? "mie" :
-          normalizedPassword === "rsam" ? "rsam" :
-            "standard";
+    this.openAdminSettingsForKey(normalizedPassword, true);
+  }
+
+  restorePersistedSession(adminKey: string): void {
+    const normalizedPassword = AdminController.normalizeAdminPassword(adminKey);
+    this.openAdminSettingsForKey(normalizedPassword, false);
+  }
+
+  private openAdminSettingsForKey(normalizedPassword: string, persistSession: boolean): void {
+    this.mode = AdminController.modeForPassword(normalizedPassword);
+    if (persistSession) this.persistAdminSession(normalizedPassword);
     el("admin-login-context").textContent = `${this.adminContextLabel(normalizedPassword)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
+    this.onUnlocked?.();
     el("venue-color-setting").classList.remove("hidden");
     el<HTMLDetailsElement>("venue-color-setting").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
@@ -4627,6 +4667,20 @@ class AdminController {
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
     if (!managedUrlApplied) el("gas-status").textContent = "";
+  }
+
+  private persistAdminSession(normalizedPassword: string): void {
+    if (AdminController.modeForPassword(normalizedPassword) !== "hyogo") {
+      AdminController.clearPersistedSession();
+      return;
+    }
+    const session: AdminSessionState = {
+      active: true,
+      mode: "hyogo",
+      adminKey: normalizedPassword,
+      updatedAt: timestamp(),
+    };
+    localStorage.setItem(AdminController.sessionStorageKey, JSON.stringify(session));
   }
 
   private applyManagedGasUrl(password: string): boolean {
@@ -4644,9 +4698,12 @@ class AdminController {
     gasUrlInput.dataset.autoGasUrl = "true";
     el<HTMLDetailsElement>("gas-url-details").open = false;
     const settings = AdminController.settings();
+    const gasUrlChanged = settings.gasUrl !== gasUrl;
     settings.gasUrl = gasUrl;
-    settings.gasConnectedAt = "";
-    settings.gasConnectedUrl = "";
+    if (gasUrlChanged) {
+      settings.gasConnectedAt = "";
+      settings.gasConnectedUrl = "";
+    }
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     el("gas-status").textContent = "";
     this.updateConnectionCard();
@@ -4920,7 +4977,8 @@ class AdminController {
     this.updateConnectionCard();
   }
 
-  lock(): void {
+  lock(options: { clearSession?: boolean } = {}): void {
+    if (options.clearSession) AdminController.clearPersistedSession();
     this.mode = "standard";
     el<HTMLInputElement>("admin-password").value = "";
     el("admin-login-context").textContent = "";
@@ -5392,6 +5450,7 @@ class Application {
     el<HTMLButtonElement>("admin-exit-confirm").addEventListener("click", () => this.deactivateSecret());
     el<HTMLButtonElement>("admin-exit-cancel").addEventListener("click", () => el<HTMLDialogElement>("admin-exit-dialog").close());
     this.content.init();
+    this.restorePersistedAdminSession();
     this.show(this.currentScreen());
     this.restoreOperationProgress();
     this.showUpdateCompleteNotice();
@@ -5465,6 +5524,7 @@ class Application {
   }
 
   private show(screen: Screen): void {
+    if (screen === "development") this.ensureAdminController();
     this.timer.noteActivity();
     if (screen !== "development") this.admin?.stopTransientChecks();
     if (screen !== this.operationScreen()) this.stopHomeAudioSync();
@@ -6997,6 +7057,23 @@ class Application {
   }
 
   private activateSecret(): void {
+    this.ensureAdminController();
+    this.setSecretDisplayActive();
+  }
+
+  private setSecretDisplayActive(): void {
+    this.secret = true;
+    this.linksClicks = 0;
+    this.rulesClicks = 0;
+    document.documentElement.classList.add("secret");
+    this.updateTitle();
+    el("development-nav").classList.remove("hidden");
+    el("admin-exit").classList.remove("hidden");
+    this.timer.setSecret(true);
+    this.content.renderLinks(true);
+  }
+
+  private ensureAdminController(): AdminController {
     this.admin ??= new AdminController(
       this.qrScanner,
       () => this.records.importTeamsFromGasConnection(),
@@ -7007,16 +7084,17 @@ class Application {
       () => this.records.portableState(),
       (value) => this.records.applyPortableState(value),
       () => this.records.persistCurrentTeams(),
+      () => this.setSecretDisplayActive(),
     );
-    this.secret = true;
-    this.linksClicks = 0;
-    this.rulesClicks = 0;
-    document.documentElement.classList.add("secret");
-    this.updateTitle();
+    return this.admin;
+  }
+
+  private restorePersistedAdminSession(): void {
     el("development-nav").classList.remove("hidden");
-    el("admin-exit").classList.remove("hidden");
-    this.timer.setSecret(true);
-    this.content.renderLinks(true);
+    const session = AdminController.loadPersistedSession();
+    if (!session) return;
+    this.activateSecret();
+    this.admin?.restorePersistedSession(session.adminKey);
   }
 
   private confirmDeactivateSecret(): void {
@@ -7066,7 +7144,7 @@ class Application {
     document.documentElement.classList.remove("venue-light-accent");
     document.documentElement.classList.remove("rsam-admin-mode");
     this.updateTitle();
-    el("development-nav").classList.add("hidden");
+    el("development-nav").classList.remove("hidden");
     el("admin-exit").classList.add("hidden");
     this.timer.setSecret(false);
     this.timer.setHyogoMode(false);
@@ -7074,7 +7152,7 @@ class Application {
     this.timer.setTokyoClockModeAvailable(false);
     this.balls.setHyogoMode(false);
     this.admin?.stopTransientChecks();
-    this.admin?.lock();
+    this.admin?.lock({ clearSession: true });
     this.content.renderLinks(false);
     this.content.setRestrictedRulesVisible(false);
     this.show("dashboard");

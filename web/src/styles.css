@@ -2139,6 +2139,27 @@ body.operation-record-focus #record-input {
   align-items: stretch;
 }
 
+#record-input,
+#record-input .score-pair,
+#record-input .score-pair fieldset,
+#record-input .score-pair legend,
+#record-input .score-pair label,
+#record-input .score-pair strong,
+#record-input .score-pair select,
+#match-title,
+#match-teams,
+#winner-preview {
+  text-orientation: mixed !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#record-input .score-pair legend,
+#record-input .score-pair label,
+#record-input .score-pair strong {
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
 fieldset {
   background: #0e1830;
   border: 1px solid var(--border);
