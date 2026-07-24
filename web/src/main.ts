@@ -3719,7 +3719,7 @@ class RecordsController {
     await this.sendSeriesResult(record);
   }
 
-  async retryPendingSends(reason: "startup" | "online" | "manual"): Promise<void> {
+  async retryPendingSends(reason: "startup" | "online" | "manual" | "connection"): Promise<void> {
     if (this.retryingPendingSends || !navigator.onLine) return;
     const settings = AdminController.settings();
     if (!settings.sendEnabled || !settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
@@ -3730,7 +3730,13 @@ class RecordsController {
     if (!pending.length) return;
     this.retryingPendingSends = true;
     this.renderSyncAlert();
-    el("history-status").textContent = reason === "online" ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...` : reason === "manual" ? `未送信・送信失敗 ${pending.length}件を一斉再送信しています...` : `未送信 ${pending.length}件を確認しました。送信しています...`;
+    el("history-status").textContent = reason === "online"
+      ? `オンライン復帰を検知しました。未送信 ${pending.length}件を送信しています...`
+      : reason === "manual"
+        ? `未送信・送信失敗 ${pending.length}件を一斉再送信しています...`
+        : reason === "connection"
+          ? `接続確認後、未送信・送信失敗 ${pending.length}件を自動再送信しています...`
+          : `未送信 ${pending.length}件を確認しました。送信しています...`;
     try {
       for (const [index, record] of pending.entries()) {
         await this.sendSeriesResult(record);
@@ -4419,6 +4425,7 @@ class AdminController {
   private readonly audioCheck = new TimerAudioCueController();
   private audioSyncStatusTimer = 0;
   private audioSyncFrame = 0;
+  private hyogoAutoConnectRunning = false;
 
   constructor(
     private readonly qrScanner: QrScanner,
@@ -4430,6 +4437,7 @@ class AdminController {
     private readonly portableStateProvider?: () => unknown,
     private readonly portableStateApplier?: (value: unknown) => void,
     private readonly persistPortableState?: () => void,
+    private readonly retryPendingSends?: () => Promise<void>,
     private readonly onUnlocked?: () => void,
   ) {
     el<HTMLButtonElement>("admin-unlock").addEventListener("click", () => void this.unlock());
@@ -4654,7 +4662,10 @@ class AdminController {
   private openAdminSettingsForKey(normalizedPassword: string, persistSession: boolean): void {
     this.mode = AdminController.modeForPassword(normalizedPassword);
     if (persistSession) this.persistAdminSession(normalizedPassword);
-    el("admin-login-context").textContent = `${this.adminContextLabel(normalizedPassword)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
+    const shouldAutoConnect = this.mode === "hyogo";
+    el("admin-login-context").textContent = shouldAutoConnect
+      ? `${this.adminContextLabel(normalizedPassword)}でログイン中。GAS接続と設定読込を自動実行しています。`
+      : `${this.adminContextLabel(normalizedPassword)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
     el("admin-settings").classList.remove("hidden");
     el("admin-gate").classList.add("hidden");
     this.onUnlocked?.();
@@ -4662,11 +4673,15 @@ class AdminController {
     el<HTMLDetailsElement>("venue-color-setting").open = false;
     el<HTMLDetailsElement>("timer-setting-details").open = false;
     this.updateColorOptions();
-    const managedUrlApplied = this.applyManagedGasUrl(normalizedPassword);
+    const managedUrlApplied = this.applyManagedGasUrl(normalizedPassword, shouldAutoConnect);
+    const canAutoConnect = shouldAutoConnect && this.prepareHyogoAutoConnection(normalizedPassword);
     this.onModeChanged?.(this.mode, AdminController.settings(), { applyTheme: false });
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
     if (!managedUrlApplied) el("gas-status").textContent = "";
+    if (canAutoConnect) {
+      window.setTimeout(() => void this.autoConnectHyogo(), 0);
+    }
   }
 
   private persistAdminSession(normalizedPassword: string): void {
@@ -4683,13 +4698,13 @@ class AdminController {
     localStorage.setItem(AdminController.sessionStorageKey, JSON.stringify(session));
   }
 
-  private applyManagedGasUrl(password: string): boolean {
+  private applyManagedGasUrl(password: string, forceManaged = false): boolean {
     const config = managedGasUrlsByPassword.get(AdminController.normalizeAdminPassword(password));
     if (!config) return false;
     const gasUrl = config.url;
     const gasUrlInput = el<HTMLInputElement>("gas-url");
     const current = gasUrlInput.value.trim();
-    const isAutoManaged = gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
+    const isAutoManaged = forceManaged || gasUrlInput.dataset.autoGasUrl !== "false" || !current || managedGasUrls.has(current);
     if (!isAutoManaged) {
       el("gas-status").textContent = "手動指定のGAS URLを使用しています。";
       return true;
@@ -4708,6 +4723,31 @@ class AdminController {
     el("gas-status").textContent = "";
     this.updateConnectionCard();
     return true;
+  }
+
+  private prepareHyogoAutoConnection(normalizedPassword: string): boolean {
+    if (this.mode !== "hyogo") return false;
+    const gasUrl = el<HTMLInputElement>("gas-url").value.trim();
+    el<HTMLInputElement>("gas-key").value = "GAS";
+    el<HTMLInputElement>("gas-enabled").checked = true;
+    const settings = AdminController.settings();
+    settings.gasUrl = gasUrl;
+    settings.apiKey = "GAS";
+    settings.sendEnabled = true;
+    localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
+    el("admin-login-context").textContent = `${this.adminContextLabel(normalizedPassword)}でログイン中。GAS接続と設定読込を自動実行しています。`;
+    document.dispatchEvent(new CustomEvent("admin-settings-updated"));
+    return gasUrl.endsWith("/exec");
+  }
+
+  private async autoConnectHyogo(): Promise<void> {
+    if (this.hyogoAutoConnectRunning) return;
+    this.hyogoAutoConnectRunning = true;
+    try {
+      await this.test();
+    } finally {
+      this.hyogoAutoConnectRunning = false;
+    }
   }
 
   private save(): void {
@@ -5114,6 +5154,20 @@ class AdminController {
       this.timerSettingLoaded = timerResult.status === "loaded" || timerResult.status === "cached";
       this.updateConnectionCard();
       this.setSummaryChip("admin-summary-timer", this.timerSettingSummary(AdminController.timerSetting() ?? this.effectiveTimerSetting()), timerResult.status === "failed" ? "danger" : timerResult.status === "cached" ? "warn" : "ok");
+      const pendingBeforeRetry = this.syncSummaryProvider?.().unsent ?? 0;
+      if (pendingBeforeRetry > 0 && this.retryPendingSends) {
+        el("gas-status").textContent = `接続と設定読込が完了しました。未送信・送信失敗 ${pendingBeforeRetry}件を自動再送信しています...`;
+        try {
+          await this.retryPendingSends();
+          const pendingAfterRetry = this.syncSummaryProvider?.().unsent ?? 0;
+          const sentCount = Math.max(0, pendingBeforeRetry - pendingAfterRetry);
+          el("gas-status").textContent = pendingAfterRetry > 0
+            ? `接続と設定読込が完了しました。${sentCount}件を送信し、未送信・送信失敗が${pendingAfterRetry}件残っています。試合記録から確認してください。`
+            : `接続と設定読込が完了しました。未送信・送信失敗 ${pendingBeforeRetry}件を自動送信しました。`;
+        } catch {
+          el("gas-status").textContent = "接続と設定読込は完了しましたが、未送信データの自動再送信に失敗しました。試合記録から再送信してください。";
+        }
+      }
       this.completeDayCheck();
       el("admin-success-summary").classList.remove("hidden");
     } catch (error) {
@@ -6762,7 +6816,7 @@ class Application {
       this.operationTimerFinishDelay = window.setTimeout(() => {
         this.operationTimerFinishDelay = 0;
         this.completeTimerFinished();
-      }, 1000);
+      }, 3000);
       return;
     }
     this.clearOperationTimerFinishDelay();
@@ -7084,6 +7138,7 @@ class Application {
       () => this.records.portableState(),
       (value) => this.records.applyPortableState(value),
       () => this.records.persistCurrentTeams(),
+      () => this.records.retryPendingSends("connection"),
       () => this.setSecretDisplayActive(),
     );
     return this.admin;
