@@ -1858,7 +1858,10 @@ class BallController {
   beginWorkflow(match: number): void {
     this.workflowMatch = match;
     if (!this.hyogo || match === 1 || !this.seriesOrangeSide) this.seriesOrangeSide = null;
-    this.randomize();
+    // Start each match from the initial layout. The operator must explicitly
+    // draw the ball layout for every match.
+    this.draw(this.defaults);
+    el("balls-status").textContent = "";
     el<HTMLButtonElement>("balls-ready").classList.remove("hidden");
   }
 
