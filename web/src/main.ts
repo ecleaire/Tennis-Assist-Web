@@ -157,6 +157,7 @@ type VenueScreenVisibility = Record<ConfigurableVenueScreen, boolean>;
 type AppVariant = "venue" | "general";
 type AdminModeApplyOptions = {
   applyTheme?: boolean;
+  adminKey?: string;
 };
 
 type AppVariantConfig = {
@@ -541,6 +542,23 @@ function normalizeDeviceRole(value: unknown): DeviceRole {
   return deviceRoleOptions.includes(value as DeviceRole) ? value as DeviceRole : "";
 }
 
+function courtFromDeviceRole(value: DeviceRole): string | null {
+  const match = value.match(/^([A-H])コート用$/);
+  return match ? `${match[1]}コート` : null;
+}
+
+function adminTitleSuffix(adminKey: string): string {
+  const key = adminKey.trim().toLowerCase();
+  if (key === "hyogo") return "HYOGO";
+  if (key === "nara") return "NARA";
+  if (key === "mie" || key === "mie_judge") return "MIE";
+  if (key === "judge") return "JUDGE";
+  if (key === "train" || key === "practice") return "TRAINING";
+  if (key === "rsam" || key === "gas" || key === "wrorsam") return "RSAM";
+  if (key === "shukugawa") return "SHUKUGAWA";
+  return "ADMIN";
+}
+
 function deviceLabel(settings = AdminController.settings()): string {
   const role = normalizeDeviceRole(settings.deviceRole);
   return role ? `${role} / ${shortDeviceId()}` : shortDeviceId();
@@ -692,12 +710,18 @@ function csvEscape(value: unknown): string {
 }
 
 function csvRow(record: MatchRecord): string[] {
+  const teamAViolations = record.recordKind === "試合結果"
+    ? record.teamAViolations ?? 0
+    : isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamA ? 1 : 0;
+  const teamBViolations = record.recordKind === "試合結果"
+    ? record.teamBViolations ?? 0
+    : isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamB ? 1 : 0;
   return [
     record.timestamp, record.recordKind, record.matchType, record.competitionId, record.court, record.seriesNumber, record.matchNumber,
     record.teamA, record.teamB, record.teamAWins ?? "", record.teamALosses ?? "", record.teamAOrange, record.teamAPurple,
-    record.teamAScore, record.teamAViolations ?? (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamA ? 1 : 0),
+    record.teamAScore, teamAViolations,
     record.teamBWins ?? "", record.teamBLosses ?? "", record.teamBOrange, record.teamBPurple, record.teamBScore,
-    record.teamBViolations ?? (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
+    teamBViolations, record.draws ?? "",
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
     record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "", record.teamAAgreed === true ? "TRUE" : "FALSE",
     record.teamBAgreed === true ? "TRUE" : "FALSE", record.completedMatchCount ?? "", record.finalized === true ? "TRUE" : "FALSE",
@@ -1035,6 +1059,10 @@ class TimerController {
     private readonly activated: () => void,
     private readonly displayFullscreenExited: () => void = () => {},
   ) {
+    document.addEventListener("click", () => {
+      void this.audioCues.prepare().catch(() => {});
+      void this.subAudioCues.prepare().catch(() => {});
+    }, { capture: true });
     this.startButton.addEventListener("click", () => void this.toggle());
     this.dashboardStartButtons.forEach((button) => button.addEventListener("click", () => {
       if (this.dashboardUsesExternalSetting && !this.started && !this.running) this.prepare(true);
@@ -1776,6 +1804,7 @@ class RefereeTimerController {
   private readonly audioCues = new TimerAudioCueController();
 
   constructor() {
+    document.addEventListener("click", () => void this.audioCues.prepare().catch(() => {}), { capture: true });
     el<HTMLButtonElement>("referee-ten").addEventListener("click", () => this.start(10, "コールドカウント"));
     el<HTMLButtonElement>("referee-five").addEventListener("click", () => this.start(5, "オーバーボール"));
     el<HTMLButtonElement>("referee-reset").addEventListener("click", () => this.reset());
@@ -1884,7 +1913,7 @@ class BallController {
   private readonly court = el<HTMLElement>("court");
   private readonly dashboardCourts = els<HTMLElement>("dashboard-court");
   private workflowMatch = 0;
-  private lastRandomKey = "";
+  private lastOrangeKey = "";
   private readonly leftRows = [19.35, 40.15, 68.54, 89.51];
   private readonly rightRows = [10.16, 31.45, 59.68, 80.65];
   private readonly leftSlots = [22.03, 28.35];
@@ -1929,19 +1958,19 @@ class BallController {
   randomize(): void {
     let side: number[] = [];
     let purpleRow = 0;
-    let randomKey = "";
+    let orangeKey = "";
     let attempts = 0;
     do {
       side = this.leftRows.map(() => Math.round(Math.random()));
       purpleRow = Math.floor(Math.random() * 4);
-      randomKey = `${side.join("")}:${purpleRow}`;
+      orangeKey = side.join("");
       attempts += 1;
-    } while (randomKey === this.lastRandomKey && attempts < 8);
-    if (randomKey === this.lastRandomKey) {
+    } while (orangeKey === this.lastOrangeKey && attempts < 8);
+    if (orangeKey === this.lastOrangeKey) {
       side[0] = 1 - side[0];
-      randomKey = `${side.join("")}:${purpleRow}`;
+      orangeKey = side.join("");
     }
-    this.lastRandomKey = randomKey;
+    this.lastOrangeKey = orangeKey;
     const generated: Array<readonly [string, number, number]> = [];
     this.leftRows.forEach((row, index) => {
       generated.push(["orange", this.leftSlots[side[index]], row]);
@@ -2811,6 +2840,7 @@ class RecordsController {
   }
 
   private matchViolationCount(record: MatchRecord, team: string): number {
+    if (record.reasonCategory !== scoringCategory && !isRankingViolation(record.reasonCategory, record.endReason)) return 0;
     if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === team) return 1;
     if (isRankingViolation(record.reasonCategory, record.endReason)) {
       if (team === record.teamA && record.teamAScore === 9 && record.teamBScore === -4) return 1;
@@ -3836,7 +3866,17 @@ class RecordsController {
       el("record-status").textContent = "送信条件を満たしていないため、端末内保存のみとしました。";
       return "local-only";
     }
+    record.teamAViolations = matches.reduce((total, match) => total + this.matchViolationCount(match, match.teamA), 0);
+    record.teamBViolations = matches.reduce((total, match) => total + this.matchViolationCount(match, match.teamB), 0);
     const settings = AdminController.settings();
+    const assignedCourt = courtFromDeviceRole(normalizeDeviceRole(record.deviceRole || settings.deviceRole));
+    if (assignedCourt && record.court !== assignedCourt) {
+      const reason = `端末役割は${assignedCourt}用ですが、試合結果は${record.court}です`;
+      this.updateSendStatus(record, "failed", reason);
+      this.updateCompletionState("failed", reason);
+      el("record-status").textContent = `${reason}。誤送信防止のためGASへ送信していません。`;
+      return "failed";
+    }
     if (!settings.sendEnabled) {
       this.updateSendStatus(record, "local-only", "送信OFF");
       this.updateCompletionState("local-only", "スプレッドシート送信はOFFです。端末内に保存しました。");
@@ -4613,7 +4653,7 @@ class AdminController {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.sessionStorageKey) ?? "{}") as Partial<AdminSessionState>;
       const adminKey = this.normalizeAdminPassword(String(parsed.adminKey ?? ""));
-      if (!parsed.active || (adminKey !== "hyogo" && adminKey !== "nara")) return null;
+      if (!parsed.active || !this.plainPasswords.has(adminKey)) return null;
       return { mode: this.modeForPassword(adminKey), adminKey };
     } catch {
       return null;
@@ -4628,7 +4668,7 @@ class AdminController {
     if (normalizedPassword === "hyogo") return "hyogo";
     if (normalizedPassword === "nara") return "nara";
     if (normalizedPassword === "mie" || normalizedPassword === "mie_judge") return "mie";
-    if (normalizedPassword === "rsam") return "rsam";
+    if (normalizedPassword === "rsam" || normalizedPassword === "gas" || normalizedPassword === "wrorsam") return "rsam";
     return "standard";
   }
 
@@ -4749,7 +4789,7 @@ class AdminController {
     this.updateColorOptions();
     const managedUrlApplied = this.applyManagedGasUrl(normalizedPassword, shouldAutoConnect);
     const canAutoConnect = shouldAutoConnect && this.prepareHyogoAutoConnection(normalizedPassword);
-    this.onModeChanged?.(this.mode, AdminController.settings(), { applyTheme: false });
+    this.onModeChanged?.(this.mode, AdminController.settings(), { applyTheme: false, adminKey: normalizedPassword });
     this.applyEffectiveTimerSetting();
     this.updateConnectionCard();
     if (!managedUrlApplied) el("gas-status").textContent = "";
@@ -4760,10 +4800,6 @@ class AdminController {
 
   private persistAdminSession(normalizedPassword: string): void {
     const mode = AdminController.modeForPassword(normalizedPassword);
-    if (mode !== "hyogo" && mode !== "nara") {
-      AdminController.clearPersistedSession();
-      return;
-    }
     const session: AdminSessionState = {
       active: true,
       mode,
@@ -5460,7 +5496,7 @@ class Application {
   private rulesClicks = 0;
   private secret = false;
   private hyogo = false;
-  private adminMode: AdminMode = "standard";
+  private activeAdminKey = "";
   private readonly variant = currentAppVariant();
   private readonly timer: TimerController;
   private readonly refereeTimer: RefereeTimerController;
@@ -5899,6 +5935,7 @@ class Application {
     document.addEventListener("admin-settings-updated", () => {
       this.updateHomeSyncAlert();
       this.updateOperationTimerMatchLabel();
+      if (!this.operationActive) this.syncOperationTeams();
     });
     window.addEventListener("online", () => this.updateHomeSyncAlert());
     window.addEventListener("offline", () => this.updateHomeSyncAlert());
@@ -5916,7 +5953,11 @@ class Application {
   }
 
   private syncOperationTeams(): void {
-    options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, el<HTMLSelectElement>("court-select").value || activeCourtOptions[0]);
+    const assignedCourt = courtFromDeviceRole(AdminController.settings().deviceRole);
+    const selectedCourt = assignedCourt && activeCourtOptions.includes(assignedCourt)
+      ? assignedCourt
+      : el<HTMLSelectElement>("court-select").value || activeCourtOptions[0];
+    options(el<HTMLSelectElement>("operation-court"), activeCourtOptions, selectedCourt);
     options(el<HTMLSelectElement>("operation-match-type"), operationMatchTypeOptions, "試合種別を選択");
     this.records.clearTeamPriority();
     this.syncOperationTeamSelects();
@@ -5980,6 +6021,11 @@ class Application {
       this.setOperationTeamStatus("左右で別のチームを選択してください。", true);
       return;
     }
+    const assignedCourt = courtFromDeviceRole(AdminController.settings().deviceRole);
+    if (assignedCourt && court !== assignedCourt) {
+      this.setOperationTeamStatus(`この端末は「${assignedCourt}用」です。コート選択を${assignedCourt}に合わせてください。`, true);
+      return;
+    }
     const matchType = this.operationMatchType();
     if (!matchType) {
       this.setOperationTeamStatus("試合種別を選択してください。", true);
@@ -6001,6 +6047,11 @@ class Application {
     const teamB = el<HTMLSelectElement>("operation-team-b").value;
     if (teamA === teamB) {
       this.setOperationTeamStatus("左右で別のチームを選択してください。", true);
+      return;
+    }
+    const assignedCourt = courtFromDeviceRole(AdminController.settings().deviceRole);
+    if (assignedCourt && court !== assignedCourt) {
+      this.setOperationTeamStatus(`この端末は「${assignedCourt}用」です。コート選択を${assignedCourt}に合わせてください。`, true);
       return;
     }
     const matchType = this.operationMatchType();
@@ -7259,7 +7310,7 @@ class Application {
   }
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings, options: AdminModeApplyOptions = {}): void {
-    this.adminMode = mode;
+    if (options.adminKey) this.activeAdminKey = options.adminKey;
     this.hyogo = mode === "hyogo";
     this.rsamMode = mode === "rsam";
     const shouldApplyTheme = options.applyTheme !== false;
@@ -7285,7 +7336,7 @@ class Application {
   }
 
   private updateTitle(): void {
-    const edition = this.adminMode === "hyogo" ? "HYOGO" : this.adminMode === "nara" ? "NARA" : "";
+    const edition = this.secret ? adminTitleSuffix(this.activeAdminKey) : "";
     const base = ["RoboSports Assist", edition].filter(Boolean).join(" ");
     const title = [base, this.variant.titleSuffix].filter(Boolean).join(" ");
     el("title").textContent = title;
@@ -7295,7 +7346,7 @@ class Application {
   private deactivateSecret(): void {
     this.secret = false;
     this.hyogo = false;
-    this.adminMode = "standard";
+    this.activeAdminKey = "";
     this.rsamMode = false;
     this.linksClicks = 0;
     this.rulesClicks = 0;
@@ -7320,4 +7371,32 @@ class Application {
   }
 }
 
+function installDialogFallback(): void {
+  if (typeof HTMLDialogElement !== "undefined" && typeof HTMLDialogElement.prototype.showModal === "function") return;
+  document.documentElement.classList.add("dialog-fallback");
+  document.querySelectorAll<HTMLElement>("dialog").forEach((element) => {
+    const dialog = element as unknown as HTMLDialogElement;
+    Object.defineProperty(dialog, "open", {
+      configurable: true,
+      get: () => element.hasAttribute("open"),
+      set: (value: boolean) => element.toggleAttribute("open", Boolean(value)),
+    });
+    dialog.showModal = () => element.setAttribute("open", "");
+    dialog.close = (returnValue = "") => {
+      dialog.returnValue = returnValue;
+      element.removeAttribute("open");
+      element.dispatchEvent(new Event("close"));
+    };
+  });
+  document.addEventListener("click", (event) => {
+    const button = (event.target as Element | null)?.closest<HTMLButtonElement>('dialog form[method="dialog"] button[value]');
+    if (!button) return;
+    const dialog = button.closest("dialog") as HTMLDialogElement | null;
+    if (!dialog) return;
+    event.preventDefault();
+    dialog.close(button.value);
+  });
+}
+
+installDialogFallback();
 new Application();

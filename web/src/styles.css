@@ -4116,6 +4116,18 @@ tr.win td {
   backdrop-filter: blur(3px);
 }
 
+.dialog-fallback dialog[open] {
+  box-shadow: 0 0 0 100vmax rgba(2, 7, 18, 0.9);
+  display: block;
+  left: 50%;
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
 .dialog form,
 .dialog article {
   display: grid;
