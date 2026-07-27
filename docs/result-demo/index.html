@@ -6,36 +6,74 @@
 <meta name="theme-color" content="#061014">
 <title>GAME RESULT</title>
 <style>
-:root{--bg:#061014;--text:#dcfcff;--muted:#82adb3;--panel:#0a1b20;--divider-delay:900ms}
+:root{
+  --bg:#061014;
+  --text:#dcfcff;
+  --muted:#82adb3;
+  --panel:#0a1b20;
+  --divider-delay:900ms;
+  --card-scale:1;
+}
 *{box-sizing:border-box}
 html,body{width:100%;min-height:100%;margin:0;background:var(--bg);color:var(--text)}
 body{min-height:100svh;overflow:hidden;font-family:"Arial Narrow","Roboto Condensed","Yu Gothic","Noto Sans JP",system-ui,sans-serif;-webkit-font-smoothing:antialiased;touch-action:manipulation}
-button,input,select{font:inherit}button{cursor:pointer}
-.stage{position:relative;isolation:isolate;display:grid;align-items:center;min-height:100svh;overflow:hidden;padding:max(24px,env(safe-area-inset-top)) max(20px,calc(env(safe-area-inset-right) + 16px)) max(80px,calc(env(safe-area-inset-bottom) + 64px)) max(20px,calc(env(safe-area-inset-left) + 16px));background:radial-gradient(90% 65% at 85% 10%,rgba(44,120,132,.22),transparent 58%),linear-gradient(145deg,#0a191d,#061014 65%);cursor:pointer;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.stage{
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  align-items:center;
+  min-height:100svh;
+  overflow:hidden;
+  padding:max(24px,env(safe-area-inset-top)) max(20px,calc(env(safe-area-inset-right) + 16px)) max(80px,calc(env(safe-area-inset-bottom) + 64px)) max(20px,calc(env(safe-area-inset-left) + 16px));
+  background:radial-gradient(90% 65% at 85% 10%,rgba(44,120,132,.22),transparent 58%),linear-gradient(145deg,#0a191d,#061014 65%);
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
 .stage:before{content:"";position:absolute;z-index:-1;inset:0;opacity:.14;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(220,252,255,.13) 4px)}
-.card{width:min(100%,740px);margin:auto;transform:translateY(-1vh)}
-.reveal{position:relative;width:fit-content;max-width:100%;margin:0}
+.card{
+  width:min(100%,740px);
+  min-width:0;
+  margin:auto;
+  transform:translateY(-1vh) scale(var(--card-scale));
+  transform-origin:center center;
+}
+.reveal{position:relative;width:fit-content;max-width:100%;min-width:0;margin:0}
 .reveal>.ink{display:block;visibility:hidden}
 .reveal.prepared>.ink{visibility:visible}
 .char{display:inline-block;white-space:pre;opacity:0;transform:translateY(.28em) scaleX(.55);transform-origin:center bottom;filter:blur(4px);will-change:opacity,transform,filter,text-shadow}
 .playing .char{animation:char-in 120ms steps(2,end) var(--char-delay) both}
-@keyframes char-in{0%{opacity:0;transform:translateY(.28em) scaleX(.55);filter:blur(4px);text-shadow:5px 0 rgba(220,252,255,.28)}45%{opacity:1;transform:translateY(-.06em) scaleX(1.08);filter:blur(0);text-shadow:-2px 0 rgba(220,252,255,.35)}100%{opacity:1;transform:none;filter:none;text-shadow:none}}
-.eyebrow,.meta,.result-label{color:var(--muted);font-weight:900;letter-spacing:.13em}
-.eyebrow{font-size:clamp(.65rem,2.5vw,.88rem)}
+@keyframes char-in{
+  0%{opacity:0;transform:translateY(.28em) scaleX(.55);filter:blur(4px);text-shadow:5px 0 rgba(220,252,255,.28)}
+  45%{opacity:1;transform:translateY(-.06em) scaleX(1.08);filter:blur(0);text-shadow:-2px 0 rgba(220,252,255,.35)}
+  100%{opacity:1;transform:none;filter:none;text-shadow:none}
+}
+.eyebrow,.meta,.result-label{color:var(--muted);font-weight:900;letter-spacing:.13em;white-space:nowrap}
+.eyebrow{font-size:clamp(.56rem,2.5vw,.88rem)}
 .title{width:max-content;max-width:none;margin-top:5px;font-size:clamp(3rem,14.5vw,7rem);font-weight:1000;letter-spacing:-.055em;line-height:.84;white-space:nowrap}
-.title>.ink{display:inline-block;white-space:nowrap}
+.title>.ink{display:inline-flex;white-space:nowrap}
 .divider{width:min(100%,650px);height:1px;margin:clamp(18px,4.8vw,30px) 0;background:rgba(220,252,255,.2);transform:scaleX(0);transform-origin:left}
 .playing .divider{animation:line .45s ease var(--divider-delay) both}
 @keyframes line{to{transform:scaleX(1)}}
-.meta{font-size:clamp(.64rem,2.6vw,.84rem)}
-.matchup{margin-top:9px;font-size:clamp(1.6rem,7.6vw,3.5rem);font-weight:950;line-height:1.12;letter-spacing:-.035em;overflow-wrap:anywhere}
-.matchup .vs{display:inline-block;margin:0 .26em;color:var(--muted);font-size:.42em;letter-spacing:.1em;vertical-align:.18em}
-.score{margin-top:clamp(16px,4.7vw,28px);font-size:clamp(4.7rem,25vw,10.4rem);font-weight:1000;letter-spacing:-.075em;line-height:.78;white-space:nowrap;font-variant-numeric:tabular-nums}
-.score>.ink{display:inline-flex;align-items:center;white-space:nowrap}
-.score b{display:inline-flex;flex:0 0 var(--score-side-width,auto);width:var(--score-side-width,auto);align-items:center;justify-content:center;font-weight:inherit}
-.score .vs{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;margin:0 clamp(9px,2.2vw,20px);color:var(--muted);font-size:clamp(.68rem,2.6vw,1.25rem);font-style:normal;font-weight:950;line-height:1;letter-spacing:.08em}
-.result-label{margin-top:clamp(28px,7vw,44px);font-size:clamp(.65rem,2.7vw,.86rem)}
-.outcome{margin-top:5px;font-size:clamp(2rem,10vw,5rem);font-weight:1000;line-height:1.05;overflow-wrap:anywhere}
+.meta{font-size:clamp(.56rem,2.6vw,.84rem)}
+.matchup{width:max-content;max-width:none;margin-top:9px;font-size:clamp(1.6rem,7.6vw,3.5rem);font-weight:950;line-height:1.12;letter-spacing:-.035em}
+.matchup>.ink{display:inline-flex;align-items:baseline;white-space:nowrap}
+.matchup #va,.matchup #vb{display:inline-flex;min-width:0;white-space:nowrap}
+.matchup .vs{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;margin:0 .26em;color:var(--muted);font-size:.42em;line-height:1;letter-spacing:.1em;vertical-align:.18em}
+.matchup.stacked{width:100%;max-width:100%}
+.matchup.stacked>.ink{display:grid;width:100%;grid-template-columns:minmax(0,1fr);justify-items:start;white-space:normal;row-gap:.06em}
+.matchup.stacked #va,.matchup.stacked #vb{display:block;width:100%;white-space:normal;overflow-wrap:anywhere}
+.matchup.stacked .vs{justify-self:center;margin:.08em 0;font-size:.38em}
+.score{width:max-content;max-width:none;margin-top:clamp(16px,4.7vw,28px);font-size:clamp(4.7rem,25vw,10.4rem);font-weight:1000;letter-spacing:-.075em;line-height:.78;white-space:nowrap;font-variant-numeric:tabular-nums}
+.score>.ink{display:inline-grid;grid-template-columns:var(--score-side-width,auto) auto var(--score-side-width,auto);align-items:center;white-space:nowrap}
+.score b{display:inline-flex;min-width:0;align-items:center;justify-content:center;font-weight:inherit}
+.score .vs{display:inline-flex;align-items:center;justify-content:center;margin:0 clamp(9px,2.2vw,20px);color:var(--muted);font-size:clamp(.68rem,2.6vw,1.25rem);font-style:normal;font-weight:950;line-height:1;letter-spacing:.08em}
+.result-label{margin-top:clamp(28px,7vw,44px);font-size:clamp(.58rem,2.7vw,.86rem)}
+.outcome{width:fit-content;max-width:100%;margin-top:5px;font-size:clamp(2rem,10vw,5rem);font-weight:1000;line-height:1.05;overflow-wrap:anywhere}
+.outcome>.ink{display:block;max-width:100%}
+.outcome.wrap{width:100%}
+.outcome.wrap>.ink{width:100%;white-space:normal}
 .actions{position:fixed;z-index:10;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:7px}
 .pill{min-height:46px;padding:10px 14px;border:1px solid rgba(220,252,255,.28);border-radius:999px;color:var(--text);background:rgba(5,13,16,.72);backdrop-filter:blur(12px);font-size:.69rem;font-weight:900;letter-spacing:.08em}
 .pill:active{transform:scale(.95)}
@@ -60,13 +98,22 @@ select{appearance:none}
 .secondary{border:1px solid rgba(220,252,255,.24);color:var(--text);background:rgba(255,255,255,.05)}
 .notice{min-height:18px;margin:10px 2px 0;color:var(--muted);font-size:.72rem}
 @media(min-width:700px){.editor{align-items:center;padding:24px}.sheet{border-bottom:1px solid rgba(220,252,255,.15);border-radius:24px}}
-@media(orientation:landscape) and (max-height:560px){.stage{align-items:start;padding-top:max(16px,env(safe-area-inset-top))}.card{width:88vw;margin-left:4vw;transform:none}.title{font-size:clamp(2.5rem,8vw,4.4rem)}.divider{margin:12px 0}.matchup{font-size:clamp(1.35rem,4.7vw,2.6rem)}.score{margin-top:10px;font-size:clamp(3.5rem,11vw,6.2rem)}.result-label{margin-top:16px}.outcome{font-size:clamp(1.8rem,5.6vw,3.3rem)}}
+@media(orientation:landscape) and (max-height:560px){
+  .stage{align-items:start;padding-top:max(16px,env(safe-area-inset-top))}
+  .card{width:88vw;margin-left:4vw;transform:scale(var(--card-scale));transform-origin:left top}
+  .title{font-size:clamp(2.5rem,8vw,4.4rem)}
+  .divider{margin:12px 0}
+  .matchup{font-size:clamp(1.35rem,4.7vw,2.6rem)}
+  .score{margin-top:10px;font-size:clamp(3.5rem,11vw,6.2rem)}
+  .result-label{margin-top:16px}
+  .outcome{font-size:clamp(1.8rem,5.6vw,3.3rem)}
+}
 @media(prefers-reduced-motion:reduce){.reveal>.ink{visibility:visible}.char{opacity:1;transform:none;filter:none}.playing .char,.playing .divider{animation:none}.divider{transform:none}}
 </style>
 </head>
 <body>
 <main class="stage" id="stage" aria-label="リザルト表示。画面をクリックすると演出を再生します">
-<section class="card">
+<section class="card" id="card">
 <p class="reveal eyebrow" data-step="12" data-gap="30" data-max="500"><span class="ink">ROBO SPORTS / MATCH RESULT</span></p>
 <h1 class="reveal title" data-step="34" data-gap="90" data-max="650"><span class="ink">GAME RESULT</span></h1>
 <div class="divider"></div>
@@ -97,29 +144,261 @@ select{appearance:none}
 </form>
 </div>
 <script>
-const $=id=>document.getElementById(id),D={a:"チーム名A",b:"チーム名B",sa:"2",sb:"1",r:"チーム名A"};
-const stage=$("stage"),editor=$("editor"),form=$("form"),a=$("a"),b=$("b"),sa=$("sa"),sb=$("sb"),type=$("type"),custom=$("custom"),wrap=$("custom-wrap"),notice=$("notice"),divider=document.querySelector(".divider"),title=document.querySelector(".title"),titleInk=title.querySelector(".ink"),scoreLine=$("score"),scoreAView=$("vsa"),scoreBView=$("vsb"),lines=[...document.querySelectorAll(".reveal")];
+const $=id=>document.getElementById(id);
+const D={a:"チーム名A",b:"チーム名B",sa:"2",sb:"1",r:"チーム名A"};
+const stage=$("stage");
+const card=$("card");
+const editor=$("editor");
+const form=$("form");
+const a=$("a");
+const b=$("b");
+const sa=$("sa");
+const sb=$("sb");
+const type=$("type");
+const custom=$("custom");
+const wrap=$("custom-wrap");
+const notice=$("notice");
+const title=document.querySelector(".title");
+const titleInk=title.querySelector(".ink");
+const matchup=document.querySelector(".matchup");
+const matchupInk=matchup.querySelector(".ink");
+const teamAView=$("va");
+const teamBView=$("vb");
+const scoreLine=$("score");
+const scoreInk=scoreLine.querySelector(".ink");
+const scoreAView=$("vsa");
+const scoreBView=$("vsb");
+const outcome=document.querySelector(".outcome");
+const outcomeInk=$("vr");
+const lines=[...document.querySelectorAll(".reveal")];
 const segmenter=typeof Intl.Segmenter==="function"?new Intl.Segmenter("ja",{granularity:"grapheme"}):null;
 const characters=text=>segmenter?[...segmenter.segment(text)].map(item=>item.segment):Array.from(text);
-const clean=(v,f)=>String(v??"").trim()||f,score=v=>String(Math.max(0,Math.min(99,parseInt(v,10)||0))),draw=v=>/^(引き分け|引分け|draw)$/i.test(String(v).trim());
-function result(){return type.value==="a"?clean(a.value,D.a):type.value==="b"?clean(b.value,D.b):type.value==="custom"?clean(custom.value,"結果未入力"):"引き分け"}
-function options(){type.options[1].text=`${clean(a.value,"チームA")} の勝利`;type.options[2].text=`${clean(b.value,"チームB")} の勝利`}
-function toggle(){wrap.hidden=type.value!=="custom";if(!wrap.hidden)setTimeout(()=>custom.focus(),0)}
-function data(){return{a:clean(a.value,D.a),b:clean(b.value,D.b),sa:score(sa.value),sb:score(sb.value),r:result()}}
-function setForm(x){a.value=x.a;b.value=x.b;sa.value=x.sa;sb.value=x.sb;options();if(draw(x.r)){type.value="draw";custom.value=""}else if(x.r===x.a){type.value="a";custom.value=""}else if(x.r===x.b){type.value="b";custom.value=""}else{type.value="custom";custom.value=x.r}toggle()}
-function setView(x){$("va").textContent=x.a;$("vb").textContent=x.b;scoreAView.textContent=x.sa;scoreBView.textContent=x.sb;scoreLine.ariaLabel=`${x.sa} 対 ${x.sb}`;$("label").textContent=draw(x.r)?"DRAW":"WINNER";$("vr").textContent=x.r;document.title=`GAME RESULT | ${x.a} vs ${x.b}`}
-function urlFor(x){const u=new URL(location.href);u.search="";u.searchParams.set("a",x.a);u.searchParams.set("b",x.b);u.searchParams.set("sa",x.sa);u.searchParams.set("sb",x.sb);u.searchParams.set("r",x.r);return u}
-function splitCharacters(root){const label=root.textContent||"";root.setAttribute("aria-label",label);const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){if(!node.nodeValue||node.parentElement?.closest(".char"))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(node=>{const fragment=document.createDocumentFragment();characters(node.nodeValue).forEach(value=>{const span=document.createElement("span");span.className="char";span.textContent=value;span.setAttribute("aria-hidden","true");fragment.append(span)});node.replaceWith(fragment)})}
-function fitTitle(){title.style.fontSize="";const available=Math.max(1,title.closest(".card").clientWidth);const natural=Math.max(1,titleInk.scrollWidth);if(natural>available){const base=parseFloat(getComputedStyle(title).fontSize);title.style.fontSize=`${Math.max(30,base*(available/natural)*.985)}px`}}
-function fitScore(){scoreLine.style.removeProperty("--score-side-width");const width=Math.ceil(Math.max(scoreAView.scrollWidth,scoreBView.scrollWidth));scoreLine.style.setProperty("--score-side-width",`${Math.max(width,1)}px`)}
-function prepareTimeline(){lines.forEach(line=>{const ink=line.querySelector(".ink");splitCharacters(ink);line.classList.add("prepared")});fitTitle();fitScore();let cursor=40,dividerDelay=700;lines.forEach((line,index)=>{const chars=[...line.querySelectorAll(".char")],preferred=Number(line.dataset.step||32),maxSpan=Number(line.dataset.max||800),step=Math.max(12,Math.min(preferred,maxSpan/Math.max(chars.length-1,1)));chars.forEach((char,i)=>char.style.setProperty("--char-delay",`${Math.round(cursor+i*step)}ms`));const end=cursor+Math.max(chars.length-1,0)*step+120;if(index===1)dividerDelay=end+35;cursor=end+Number(line.dataset.gap||50)});stage.style.setProperty("--divider-delay",`${Math.round(dividerDelay)}ms`)}
-function play(){stage.classList.remove("playing");prepareTimeline();void stage.offsetWidth;stage.classList.add("playing")}
-function closeEditor(){editor.classList.remove("open");document.activeElement?.blur()}
-function openEditor(){editor.classList.add("open");setTimeout(()=>a.focus(),180)}
-function apply(closeSheet=true){const x=data();setForm(x);setView(x);history.replaceState(null,"",urlFor(x));if(closeSheet)closeEditor();requestAnimationFrame(()=>requestAnimationFrame(play));return x}
-async function copy(text){if(navigator.clipboard&&isSecureContext)return navigator.clipboard.writeText(text);const t=document.createElement("textarea");t.value=text;t.style.position="fixed";t.style.opacity=0;document.body.append(t);t.select();document.execCommand("copy");t.remove()}
-async function share(){const x=apply(false),url=urlFor(x).toString(),text=`${x.a} VS ${x.b}\n${x.sa} VS ${x.sb}\n${x.r}`;try{if(navigator.share)return await navigator.share({title:"GAME RESULT",text,url});await copy(url);notice.textContent="共有URLをコピーしました。";openEditor()}catch(e){if(e?.name!=="AbortError"){await copy(url);notice.textContent="共有URLをコピーしました。";openEditor()}}}
-function fromUrl(){const p=new URLSearchParams(location.search);if(!p.has("a")&&!p.has("b")&&!p.has("r"))return null;return{a:clean(p.get("a"),D.a),b:clean(p.get("b"),D.b),sa:score(p.get("sa")??D.sa),sb:score(p.get("sb")??D.sb),r:clean(p.get("r"),D.r)}}
+const clean=(v,f)=>String(v??"").replace(/[\r\n\t]+/g," ").replace(/\s{2,}/g," ").trim()||f;
+const score=v=>String(Math.max(0,Math.min(99,parseInt(v,10)||0)));
+const draw=v=>/^(引き分け|引分け|draw)$/i.test(String(v).trim());
+
+function result(){
+  return type.value==="a"?clean(a.value,D.a):type.value==="b"?clean(b.value,D.b):type.value==="custom"?clean(custom.value,"結果未入力"):"引き分け";
+}
+function options(){
+  type.options[1].text=`${clean(a.value,"チームA")} の勝利`;
+  type.options[2].text=`${clean(b.value,"チームB")} の勝利`;
+}
+function toggle(){
+  wrap.hidden=type.value!=="custom";
+  if(!wrap.hidden)setTimeout(()=>custom.focus(),0);
+}
+function data(){
+  return{a:clean(a.value,D.a),b:clean(b.value,D.b),sa:score(sa.value),sb:score(sb.value),r:result()};
+}
+function setForm(x){
+  a.value=x.a;
+  b.value=x.b;
+  sa.value=x.sa;
+  sb.value=x.sb;
+  options();
+  if(draw(x.r)){type.value="draw";custom.value=""}
+  else if(x.r===x.a){type.value="a";custom.value=""}
+  else if(x.r===x.b){type.value="b";custom.value=""}
+  else{type.value="custom";custom.value=x.r}
+  toggle();
+}
+function setView(x){
+  teamAView.textContent=x.a;
+  teamBView.textContent=x.b;
+  scoreAView.textContent=x.sa;
+  scoreBView.textContent=x.sb;
+  scoreLine.ariaLabel=`${x.sa} 対 ${x.sb}`;
+  $("label").textContent=draw(x.r)?"DRAW":"WINNER";
+  outcomeInk.textContent=x.r;
+  document.title=`GAME RESULT | ${x.a} vs ${x.b}`;
+}
+function urlFor(x){
+  const u=new URL(location.href);
+  u.search="";
+  u.searchParams.set("a",x.a);
+  u.searchParams.set("b",x.b);
+  u.searchParams.set("sa",x.sa);
+  u.searchParams.set("sb",x.sb);
+  u.searchParams.set("r",x.r);
+  return u;
+}
+function splitCharacters(root){
+  const label=root.textContent||"";
+  root.setAttribute("aria-label",label);
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
+    if(!node.nodeValue||node.parentElement?.closest(".char"))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(node=>{
+    const fragment=document.createDocumentFragment();
+    characters(node.nodeValue).forEach(value=>{
+      const span=document.createElement("span");
+      span.className="char";
+      span.textContent=value;
+      span.setAttribute("aria-hidden","true");
+      fragment.append(span);
+    });
+    node.replaceWith(fragment);
+  });
+}
+function fitSingleLine(element,inner,minSize){
+  element.style.removeProperty("font-size");
+  const available=Math.max(1,card.clientWidth);
+  const natural=Math.max(1,inner.scrollWidth);
+  if(natural<=available)return true;
+  const base=parseFloat(getComputedStyle(element).fontSize)||minSize;
+  element.style.fontSize=`${Math.max(minSize,base*(available/natural)*.985)}px`;
+  return inner.scrollWidth<=available+1;
+}
+function fitTitle(){
+  fitSingleLine(title,titleInk,24);
+}
+function fitMatchup(){
+  matchup.classList.remove("stacked");
+  matchup.style.removeProperty("font-size");
+  const available=Math.max(1,card.clientWidth);
+  const natural=Math.max(1,matchupInk.scrollWidth);
+  if(natural<=available)return;
+  const base=parseFloat(getComputedStyle(matchup).fontSize)||24;
+  const target=base*(available/natural)*.985;
+  if(target>=18){
+    matchup.style.fontSize=`${target}px`;
+    return;
+  }
+  matchup.classList.add("stacked");
+  matchup.style.removeProperty("font-size");
+  const widest=Math.max(teamAView.scrollWidth,teamBView.scrollWidth,1);
+  if(widest>available){
+    const stackedBase=parseFloat(getComputedStyle(matchup).fontSize)||24;
+    matchup.style.fontSize=`${Math.max(17,stackedBase*(available/widest)*.985)}px`;
+  }
+}
+function syncScoreSides(){
+  scoreLine.style.removeProperty("--score-side-width");
+  const width=Math.ceil(Math.max(scoreAView.scrollWidth,scoreBView.scrollWidth,1));
+  scoreLine.style.setProperty("--score-side-width",`${width}px`);
+}
+function fitScore(){
+  scoreLine.style.removeProperty("font-size");
+  syncScoreSides();
+  const available=Math.max(1,card.clientWidth);
+  const natural=Math.max(1,scoreInk.scrollWidth);
+  if(natural>available){
+    const base=parseFloat(getComputedStyle(scoreLine).fontSize)||72;
+    scoreLine.style.fontSize=`${Math.max(36,base*(available/natural)*.985)}px`;
+    syncScoreSides();
+  }
+}
+function fitOutcome(){
+  outcome.classList.remove("wrap");
+  outcome.style.removeProperty("font-size");
+  const available=Math.max(1,card.clientWidth);
+  const natural=Math.max(1,outcomeInk.scrollWidth);
+  if(natural<=available)return;
+  const base=parseFloat(getComputedStyle(outcome).fontSize)||32;
+  outcome.style.fontSize=`${Math.max(22,base*(available/natural)*.985)}px`;
+  if(outcomeInk.scrollWidth>available+1)outcome.classList.add("wrap");
+}
+function fitCard(){
+  stage.style.setProperty("--card-scale","1");
+  const style=getComputedStyle(stage);
+  const available=Math.max(1,stage.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom));
+  const height=Math.max(1,card.offsetHeight);
+  const scale=Math.min(1,available/height);
+  stage.style.setProperty("--card-scale",String(Math.max(.72,scale*.985)));
+}
+function layout(){
+  stage.style.setProperty("--card-scale","1");
+  fitTitle();
+  fitMatchup();
+  fitScore();
+  fitOutcome();
+  fitCard();
+}
+function prepareTimeline(){
+  lines.forEach(line=>{
+    const ink=line.querySelector(".ink");
+    splitCharacters(ink);
+    line.classList.add("prepared");
+  });
+  layout();
+  let cursor=40;
+  let dividerDelay=700;
+  lines.forEach((line,index)=>{
+    const chars=[...line.querySelectorAll(".char")];
+    const preferred=Number(line.dataset.step||32);
+    const maxSpan=Number(line.dataset.max||800);
+    const step=Math.max(12,Math.min(preferred,maxSpan/Math.max(chars.length-1,1)));
+    chars.forEach((char,i)=>char.style.setProperty("--char-delay",`${Math.round(cursor+i*step)}ms`));
+    const end=cursor+Math.max(chars.length-1,0)*step+120;
+    if(index===1)dividerDelay=end+35;
+    cursor=end+Number(line.dataset.gap||50);
+  });
+  stage.style.setProperty("--divider-delay",`${Math.round(dividerDelay)}ms`);
+}
+function play(){
+  stage.classList.remove("playing");
+  prepareTimeline();
+  void stage.offsetWidth;
+  stage.classList.add("playing");
+}
+function closeEditor(){
+  editor.classList.remove("open");
+  document.activeElement?.blur();
+}
+function openEditor(){
+  editor.classList.add("open");
+  setTimeout(()=>a.focus(),180);
+}
+function apply(closeSheet=true){
+  const x=data();
+  setForm(x);
+  setView(x);
+  history.replaceState(null,"",urlFor(x));
+  if(closeSheet)closeEditor();
+  requestAnimationFrame(()=>requestAnimationFrame(play));
+  return x;
+}
+async function copy(text){
+  if(navigator.clipboard&&isSecureContext)return navigator.clipboard.writeText(text);
+  const t=document.createElement("textarea");
+  t.value=text;
+  t.style.position="fixed";
+  t.style.opacity=0;
+  document.body.append(t);
+  t.select();
+  document.execCommand("copy");
+  t.remove();
+}
+async function share(){
+  const x=apply(false);
+  const url=urlFor(x).toString();
+  const text=`${x.a} VS ${x.b}\n${x.sa} VS ${x.sb}\n${x.r}`;
+  try{
+    if(navigator.share)return await navigator.share({title:"GAME RESULT",text,url});
+    await copy(url);
+    notice.textContent="共有URLをコピーしました。";
+    openEditor();
+  }catch(e){
+    if(e?.name!=="AbortError"){
+      await copy(url);
+      notice.textContent="共有URLをコピーしました。";
+      openEditor();
+    }
+  }
+}
+function fromUrl(){
+  const p=new URLSearchParams(location.search);
+  if(!p.has("a")&&!p.has("b")&&!p.has("r"))return null;
+  return{a:clean(p.get("a"),D.a),b:clean(p.get("b"),D.b),sa:score(p.get("sa")??D.sa),sb:score(p.get("sb")??D.sb),r:clean(p.get("r"),D.r)};
+}
+function scheduleLayout(){
+  cancelAnimationFrame(scheduleLayout.frame);
+  scheduleLayout.frame=requestAnimationFrame(layout);
+}
 form.addEventListener("submit",e=>{e.preventDefault();apply()});
 type.addEventListener("change",toggle);
 a.addEventListener("input",options);
@@ -131,11 +410,14 @@ $("close").onclick=closeEditor;
 $("reset").onclick=()=>{setForm(D);notice.textContent="初期値に戻しました。"};
 stage.addEventListener("click",()=>{if(!editor.classList.contains("open"))play()});
 editor.addEventListener("click",e=>{if(e.target===editor)closeEditor()});
-let resizeFrame=0;
-window.addEventListener("resize",()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{fitTitle();fitScore()})},{passive:true});
-const initial=fromUrl();setForm(initial||D);setView(initial||D);
+window.addEventListener("resize",scheduleLayout,{passive:true});
+window.addEventListener("orientationchange",()=>setTimeout(scheduleLayout,120),{passive:true});
+const initial=fromUrl();
+setForm(initial||D);
+setView(initial||D);
 window.addEventListener("pageshow",()=>setTimeout(()=>{play();if(!initial)openEditor()},150));
-if(document.fonts?.ready)document.fonts.ready.then(()=>{fitTitle();fitScore()});
+if(document.fonts?.ready)document.fonts.ready.then(scheduleLayout);
+if(typeof ResizeObserver==="function")new ResizeObserver(scheduleLayout).observe(stage);
 </script>
 </body>
 </html>
