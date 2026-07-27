@@ -5586,6 +5586,7 @@ class Application {
         this.closeMobileMenu();
       });
     });
+    el<HTMLElement>("navigation").addEventListener("keydown", (event) => this.handleNavigationKey(event));
     el<HTMLButtonElement>("mobile-menu-toggle").addEventListener("click", (event) => {
       event.stopPropagation();
       this.setMobileMenu(!this.mobileMenuOpen);
@@ -5593,6 +5594,13 @@ class Application {
     document.addEventListener("click", (event) => {
       const target = event.target as Node;
       if (this.mobileMenuOpen && !el("app-header").contains(target)) this.closeMobileMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && this.mobileMenuOpen) {
+        event.preventDefault();
+        this.closeMobileMenu();
+        el<HTMLButtonElement>("mobile-menu-toggle").focus();
+      }
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
     els<HTMLButtonElement>("dashboard-timer-fullscreen").forEach((button) => button.addEventListener("click", () => {
@@ -5713,9 +5721,18 @@ class Application {
     if (screen !== "balls" && this.ballsFullscreen) void this.leaveBallsFullscreen();
     document.body.classList.remove("operation-step-home", "operation-step-team", "operation-step-draw", "operation-step-between", "operation-step-finished");
     if (screen === this.operationScreen()) document.body.classList.add(`operation-step-${this.operationStep}`);
-    document.querySelectorAll(".screen").forEach((element) => element.classList.remove("active"));
-    el(`screen-${screen}`).classList.add("active");
-    document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => button.classList.toggle("active", button.dataset.screen === screen));
+    document.querySelectorAll<HTMLElement>(".screen").forEach((element) => {
+      const active = element.id === `screen-${screen}`;
+      element.classList.toggle("active", active);
+      element.setAttribute("aria-hidden", String(!active));
+    });
+    document.querySelectorAll<HTMLButtonElement>(".nav").forEach((button) => {
+      const active = button.dataset.screen === screen;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
     el("current-mode-label").textContent = screenLabels[screen];
     this.content.open(screen, this.secret);
     if (screen === "records") {
@@ -5731,6 +5748,21 @@ class Application {
   private currentScreen(): Screen {
     const activeId = document.querySelector<HTMLElement>(".screen.active")?.id.replace(/^screen-/, "");
     return activeId && activeId in screenLabels ? activeId as Screen : "dashboard";
+  }
+
+  private handleNavigationKey(event: KeyboardEvent): void {
+    if (!(["ArrowLeft", "ArrowRight", "Home", "End"] as string[]).includes(event.key)) return;
+    const buttons = Array.from(el<HTMLElement>("navigation").querySelectorAll<HTMLButtonElement>(".nav")).filter((button) =>
+      !button.hidden && button.getAttribute("aria-disabled") !== "true" && button.getClientRects().length > 0,
+    );
+    if (!buttons.length) return;
+    const currentIndex = Math.max(0, buttons.indexOf(document.activeElement as HTMLButtonElement));
+    const nextIndex = event.key === "Home" ? 0
+      : event.key === "End" ? buttons.length - 1
+        : event.key === "ArrowRight" ? (currentIndex + 1) % buttons.length
+          : (currentIndex - 1 + buttons.length) % buttons.length;
+    event.preventDefault();
+    buttons[nextIndex]?.focus();
   }
 
   private prepareFullscreenReturn(sourceScreen: Screen = this.currentScreen()): void {
@@ -7121,7 +7153,9 @@ class Application {
   private setMobileMenu(open: boolean): void {
     this.mobileMenuOpen = open;
     el("app-header").classList.toggle("mobile-menu-open", open);
-    el<HTMLButtonElement>("mobile-menu-toggle").setAttribute("aria-expanded", String(open));
+    const toggle = el<HTMLButtonElement>("mobile-menu-toggle");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-label", open ? "機能メニューを閉じる" : "機能メニューを開く");
   }
 
   private closeMobileMenu(): void {

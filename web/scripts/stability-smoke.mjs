@@ -96,6 +96,15 @@ async function holdReturnButton(page, selector, duration = 1150) {
   await holdButton(page, selector, duration);
 }
 
+async function openMode(page, screen) {
+  const button = page.locator(`#navigation [data-screen="${screen}"]`);
+  if (!(await button.isVisible())) {
+    await page.locator("#mobile-menu-toggle").click();
+    await button.waitFor({ state: "visible" });
+  }
+  await button.click();
+}
+
 try {
   for (const edition of activeEditions) {
     for (const target of activeTargets) {
@@ -139,14 +148,30 @@ try {
         }
         await page.locator("#operation-prepare").waitFor({ state: "visible", timeout: 10_000 });
 
+        if (target.name === "desktop") {
+          const visibleModes = await page.locator("#navigation .nav").evaluateAll((buttons) => buttons
+            .filter((button) => button.getClientRects().length > 0 && button.getAttribute("aria-disabled") !== "true")
+            .map((button) => button.getAttribute("data-screen")));
+          if (visibleModes.length > 1) {
+            await page.locator(`#navigation [data-screen="${visibleModes[0]}"]`).focus();
+            await page.keyboard.press("ArrowRight");
+            const focusedMode = await page.evaluate(() => document.activeElement?.getAttribute("data-screen"));
+            if (focusedMode !== visibleModes[1]) failures.push(`${label}: keyboard mode navigation expected ${visibleModes[1]}, got ${focusedMode}`);
+          }
+        }
+
         if (edition.name === "general") {
+          if (!(await page.locator('#navigation [data-screen="dashboard"]').isVisible())) {
+            await page.locator("#mobile-menu-toggle").click();
+            await page.locator('#navigation [data-screen="dashboard"]').waitFor({ state: "visible" });
+          }
           for (const screen of ["dashboard", "operation", "timer", "referee", "balls", "records", "rules", "news", "links"]) {
             const nav = page.locator(`#navigation [data-screen="${screen}"]`);
             if (!(await nav.isVisible())) failures.push(`${label}: general mode hidden by default: ${screen}`);
             if (await nav.getAttribute("aria-disabled") === "true") failures.push(`${label}: general mode disabled by default: ${screen}`);
           }
 
-          await page.locator('[data-screen="dashboard"]').click();
+          await openMode(page, "dashboard");
           await page.locator("#dashboard-timer-fullscreen").click();
           await page.waitForFunction(() => document.body.classList.contains("compact"));
           await page.locator("#timer-fullscreen").click();
@@ -156,11 +181,7 @@ try {
             failures.push(`${label}: dashboard timer fullscreen did not return to dashboard`);
           }
 
-          if (!(await page.locator('[data-screen="timer"]').isVisible())) {
-            const state = await page.evaluate(() => ({ bodyClass: document.body.className, fullscreen: Boolean(document.fullscreenElement) }));
-            failures.push(`${label}: navigation hidden after dashboard fullscreen ${JSON.stringify(state)}`);
-          }
-          await page.evaluate(() => (document.querySelector('[data-screen="timer"]'))?.click());
+          await page.evaluate(() => (document.querySelector('#navigation [data-screen="timer"]'))?.click());
           await page.locator("#timer-fullscreen").click();
           await page.waitForFunction(() => document.body.classList.contains("compact"));
           await page.locator("#timer-fullscreen").click();
@@ -178,6 +199,14 @@ try {
           await page.waitForTimeout(40);
           const active = await page.locator(`#screen-${screen}`).evaluate((element) => !element.classList.contains("hidden"));
           if (!active) failures.push(`${label}: ${screen} did not activate`);
+          const accessibilityState = await page.evaluate((name) => ({
+            current: document.querySelector(`#navigation [data-screen="${name}"]`)?.getAttribute("aria-current"),
+            pressed: document.querySelector(`#navigation [data-screen="${name}"]`)?.getAttribute("aria-pressed"),
+            screenHidden: document.querySelector(`#screen-${name}`)?.getAttribute("aria-hidden"),
+          }), screen);
+          if (accessibilityState.current !== "page" || accessibilityState.pressed !== "true" || accessibilityState.screenHidden !== "false") {
+            failures.push(`${label}: ${screen} accessibility state is stale ${JSON.stringify(accessibilityState)}`);
+          }
           const widthState = await page.evaluate(() => ({
             client: document.documentElement.clientWidth,
             scroll: document.documentElement.scrollWidth,
@@ -229,11 +258,11 @@ try {
           if (await page.locator("body").evaluate((body) => body.classList.contains("operation-navigation-locked"))) {
             failures.push(`${label}: general navigation was locked during match flow`);
           }
-          await page.locator('[data-screen="rules"]').click();
+          await openMode(page, "rules");
           if (!(await page.locator("#screen-rules").evaluate((screen) => screen.classList.contains("active")))) {
             failures.push(`${label}: general rules mode was blocked during match flow`);
           }
-          await page.locator('[data-screen="operation"]').click();
+          await openMode(page, "operation");
           await page.locator("#operation-team").waitFor({ state: "visible" });
         }
         for (const selector of ["#operation-court", "#operation-match-type", "#operation-team-a", "#operation-team-b", "#operation-team-ok"]) {
