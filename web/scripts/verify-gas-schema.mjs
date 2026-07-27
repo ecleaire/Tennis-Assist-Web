@@ -4,7 +4,7 @@ import vm from "node:vm";
 const source = fs.readFileSync(new URL("../../GAS_WebApp.gs", import.meta.url), "utf8");
 const context = {};
 vm.createContext(context);
-vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader, validateFinalizedSeriesSubmission };`, context);
+vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader, validateFinalizedSeriesSubmission, collectFinalizedSeriesRecords, normalizeFinalizedSeriesRecords };`, context);
 
 class MockRange {
   constructor(sheet, row, column, rows = 1, columns = 1) {
@@ -106,10 +106,35 @@ api.ensureExactHeader(archive, archiveHeader);
 if (archive.value(1, 35) !== "H35" || archive.value(1, 37) !== "H37") throw new Error("Trailing archive headers were not extended.");
 if (archive.rows[0].slice(0, 34).some((value, index) => value !== archiveHeader[index])) throw new Error("Existing archive headers were changed.");
 
-const submissionColumns = ["日時", "記録種別", "対戦ID", "マッチ番号"];
-const submissionRow = (kind, matchNumber) => ["2026-07-18 10:00:00", kind, "series-1", String(matchNumber)];
+const submissionColumns = [
+  "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
+  "チームA違反数", "チームB違反数", "終了カテゴリ", "終了理由", "対象チーム",
+];
+const scoringCategory = "【終了・その時点で採点】（通常の試合停止）";
+const violationCategory = "【違反・自動敗北 / 失格】試合中の違反";
+const submissionRow = (kind, matchNumber, overrides = {}) => {
+  const values = {
+    "日時": "2026-07-18 10:00:00",
+    "記録種別": kind,
+    "種別": "予選",
+    "対戦ID": kind === "試合結果" ? "A_01_RESULT" : `A_01_${matchNumber}`,
+    "コート": "Aコート",
+    "試合番号": "1",
+    "マッチ番号": String(matchNumber),
+    "チームA": "ALFA",
+    "チームB": "BRAVO",
+    "チームA違反数": "0",
+    "チームB違反数": "0",
+    "終了カテゴリ": scoringCategory,
+    "終了理由": "時間切れでの終了(6.32.1)",
+    "対象チーム": "ALFA",
+    ...overrides,
+  };
+  return submissionColumns.map((name) => values[name]);
+};
 const finalizedSubmission = {
   event: "series_result",
+  source_device_role: "Aコート用",
   payload: {
     recordKind: "試合結果",
     teamAAgreed: true,
@@ -117,6 +142,7 @@ const finalizedSubmission = {
     completedMatchCount: 3,
     finalized: true,
     endReason: "3マッチ終了・代表同意済み",
+    court: "Aコート",
   },
   csv_columns: submissionColumns,
   detail_rows: [
@@ -131,4 +157,28 @@ if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, payload: { .
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: finalizedSubmission.detail_rows.slice(0, 3) }).ok) throw new Error("A submission without all four detail rows must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, event: "match_result" }).ok) throw new Error("A non-series event must be rejected.");
 
-console.log("GAS schema verification passed: canonical, legacy, reordered, duplicate, archive, and finalized-series gate cases.");
+const wrongCourtRows = finalizedSubmission.detail_rows.map((detail, index) => index === 1
+  ? { csv_row: submissionRow("マッチ", 2, { "コート": "Bコート" }) }
+  : detail);
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: wrongCourtRows }).ok) throw new Error("Mixed courts must be rejected.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, source_device_role: "Bコート用" }).ok) throw new Error("A device-role/court mismatch must be rejected.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, payload: { ...finalizedSubmission.payload, court: "Bコート" } }).ok) throw new Error("A payload/CSV court mismatch must be rejected.");
+
+const violationSubmission = {
+  ...finalizedSubmission,
+  detail_rows: [
+    { csv_row: submissionRow("マッチ", 1, { "チームA違反数": "1", "終了カテゴリ": violationCategory, "終了理由": "両ロボットの撤去(6.21 / 6.32.10)", "対象チーム": "ALFA" }) },
+    { csv_row: submissionRow("マッチ", 2, { "終了カテゴリ": violationCategory, "終了理由": "分離パーツの違反(6.23)", "対象チーム": "BRAVO" }) },
+    { csv_row: submissionRow("マッチ", 3) },
+    { csv_row: submissionRow("試合結果", 0, { "チームA違反数": "1", "チームB違反数": "0", "終了理由": "3マッチ終了・代表同意済み" }) },
+  ],
+};
+const normalizedRecords = api.collectFinalizedSeriesRecords(violationSubmission);
+const normalized = api.normalizeFinalizedSeriesRecords(normalizedRecords, submissionColumns);
+const violationAt = (record, header) => record.csv_row[submissionColumns.indexOf(header)];
+if (violationAt(normalizedRecords[0], "チームA違反数") !== "0") throw new Error("Robot-removal automatic loss must not add a ranking violation.");
+if (violationAt(normalizedRecords[1], "チームB違反数") !== "1") throw new Error("The actual violating team must receive the violation.");
+if (violationAt(normalizedRecords[3], "チームA違反数") !== "0" || violationAt(normalizedRecords[3], "チームB違反数") !== "1") throw new Error("Final violation totals must be rebuilt from the three matches.");
+if (normalized.changedRows !== 3) throw new Error(`Expected three corrected rows, got ${normalized.changedRows}.`);
+
+console.log("GAS schema verification passed: layouts, finalized-series identity/court gates, and server-side violation normalization.");

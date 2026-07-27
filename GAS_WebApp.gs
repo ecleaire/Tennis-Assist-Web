@@ -16,7 +16,6 @@ const GROUP_PRELIM_TEMPLATE_SPREADSHEET_ID = '1PKAZgb8HZFww-P9CZTkzVqleAtIOFgkl8
 const MATCH_HEADER_PREFIX = ['受信日時', 'イベント', '送信元', '送信時刻', 'record_id'];
 const TEST_HEADER = ['受信日時', 'イベント', '送信元', '送信時刻', '記録種別', 'メッセージ', 'payload_json'];
 const SERIES_RESULT_HEADER = ['日時', 'コート', '種別', 'チーム名', '対戦相手', '勝ち点', '違反数', '得点', '紫'];
-const RECORD_KIND_INDEX = 1; // csv_columns の「記録種別」
 
 function getApiKeys(props) {
   const all = props.getProperties();
@@ -419,7 +418,10 @@ function doPost(e) {
     }
 
     const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
-    const records = collectRecords(body);
+    // detail_rows の4件だけを正本とし、GAS側で違反数を再計算してから全シートへ書き込みます。
+    // これにより古いキャッシュ版クライアントから誤った集計値が届いても、そのまま保存されません。
+    const records = collectFinalizedSeriesRecords(body);
+    const normalization = normalizeFinalizedSeriesRecords(records, csvColumns);
     const sheets = ensureResultSheetStructure(ss);
 
     const seriesArchiveResult = appendFilteredRows(sheets.seriesArchiveSheet, records, eventName, body, csvColumns, '試合結果');
@@ -449,6 +451,7 @@ function doPost(e) {
       history_archive_sheet_name: sheets.historyArchiveSheet.getName(),
       history_archive_appended: historyArchiveResult.appended,
       history_archive_duplicates: historyArchiveResult.duplicates,
+      normalized_violation_rows: normalization.changedRows,
       group_prelim_result: groupPrelimResult
     });
   } catch (err) {
@@ -624,7 +627,7 @@ function backfillSeriesResultFromArchive(seriesResultSheet, seriesArchiveSheet) 
   const records = [];
   for (let rowIndex = 1; rowIndex < values.length; rowIndex += 1) {
     const csvRow = values[rowIndex].slice(csvStart);
-    if (getRecordKind(csvRow) !== '試合結果') continue;
+    if (getRecordKind(csvRow, csvColumns) !== '試合結果') continue;
     records.push({
       record_id: hasPrefix ? String(values[rowIndex][4] || '') : '',
       csv_row: csvRow
@@ -795,7 +798,7 @@ function toNumber(value) {
 }
 
 function appendSeriesResultRows(sheet, records, csvColumns) {
-  const filtered = records.filter(function (record) { return getRecordKind(record.csv_row) === '試合結果'; });
+  const filtered = records.filter(function (record) { return getRecordKind(record.csv_row, csvColumns) === '試合結果'; });
   if (!filtered.length) return { appended: 0, duplicates: 0 };
   ensureSeriesResultHeader(sheet);
   const existingKeys = readSeriesResultKeys(sheet);
@@ -1056,9 +1059,83 @@ function collectRecords(body) {
   return records;
 }
 
+function collectFinalizedSeriesRecords(body) {
+  const detailRows = Array.isArray(body && body.detail_rows) ? body.detail_rows : [];
+  return detailRows.map(function (detail) {
+    return {
+      record_id: String((detail && detail.record_id) || ''),
+      csv_row: Array.isArray(detail && detail.csv_row) ? detail.csv_row.slice() : []
+    };
+  });
+}
+
 function csvValueByHeader(csvRow, csvColumns, headerName) {
   const index = (csvColumns || []).indexOf(headerName);
   return index >= 0 ? String((csvRow || [])[index] || '').trim() : '';
+}
+
+function csvSetValueByHeader(csvRow, csvColumns, headerName, value) {
+  const index = (csvColumns || []).indexOf(headerName);
+  if (index >= 0) csvRow[index] = String(value);
+}
+
+function courtFromSourceDeviceRole(value) {
+  const match = String(value || '').trim().match(/^([A-H])コート用$/);
+  return match ? match[1] + 'コート' : '';
+}
+
+function isRankingViolationCsv(category, endReason) {
+  const reason = String(endReason || '').trim();
+  if (String(category || '').trim() === '【終了・その時点で採点】（通常の試合停止）') return false;
+  return reason.indexOf('開始後10秒間の不動(6.20)') !== 0
+    && reason.indexOf('両ロボットの撤去(6.21 / 6.32.10)') !== 0;
+}
+
+function matchViolationCountsFromCsv(csvRow, csvColumns) {
+  const teamA = csvValueByHeader(csvRow, csvColumns, 'チームA');
+  const teamB = csvValueByHeader(csvRow, csvColumns, 'チームB');
+  const category = csvValueByHeader(csvRow, csvColumns, '終了カテゴリ');
+  const reason = csvValueByHeader(csvRow, csvColumns, '終了理由');
+  const targetTeam = csvValueByHeader(csvRow, csvColumns, '対象チーム');
+  if (!isRankingViolationCsv(category, reason)) return { teamA: 0, teamB: 0 };
+  if (targetTeam === teamA) return { teamA: 1, teamB: 0 };
+  if (targetTeam === teamB) return { teamA: 0, teamB: 1 };
+  return { teamA: 0, teamB: 0 };
+}
+
+function normalizeFinalizedSeriesRecords(records, csvColumns) {
+  let teamATotal = 0;
+  let teamBTotal = 0;
+  let changedRows = 0;
+  let finalRecord = null;
+
+  records.forEach(function (record) {
+    const row = record.csv_row || [];
+    const kind = csvValueByHeader(row, csvColumns, '記録種別');
+    if (kind === '試合結果') {
+      finalRecord = record;
+      return;
+    }
+    if (kind !== 'マッチ') return;
+    const counts = matchViolationCountsFromCsv(row, csvColumns);
+    const beforeA = csvValueByHeader(row, csvColumns, 'チームA違反数');
+    const beforeB = csvValueByHeader(row, csvColumns, 'チームB違反数');
+    if (Number(beforeA || 0) !== counts.teamA || Number(beforeB || 0) !== counts.teamB) changedRows += 1;
+    csvSetValueByHeader(row, csvColumns, 'チームA違反数', counts.teamA);
+    csvSetValueByHeader(row, csvColumns, 'チームB違反数', counts.teamB);
+    teamATotal += counts.teamA;
+    teamBTotal += counts.teamB;
+  });
+
+  if (finalRecord) {
+    const row = finalRecord.csv_row || [];
+    const beforeA = csvValueByHeader(row, csvColumns, 'チームA違反数');
+    const beforeB = csvValueByHeader(row, csvColumns, 'チームB違反数');
+    if (Number(beforeA || 0) !== teamATotal || Number(beforeB || 0) !== teamBTotal) changedRows += 1;
+    csvSetValueByHeader(row, csvColumns, 'チームA違反数', teamATotal);
+    csvSetValueByHeader(row, csvColumns, 'チームB違反数', teamBTotal);
+  }
+  return { teamAViolations: teamATotal, teamBViolations: teamBTotal, changedRows: changedRows };
 }
 
 function validateFinalizedSeriesSubmission(body) {
@@ -1080,36 +1157,78 @@ function validateFinalizedSeriesSubmission(body) {
     return { ok: false, message: '3マッチ分の結果確定と両チーム同意が完了した試合結果だけ送信できます。' };
   }
 
-  const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns : [];
+  const csvColumns = Array.isArray(body.csv_columns) ? body.csv_columns.map(function (value) { return String(value || '').trim(); }) : [];
   const detailRows = Array.isArray(body.detail_rows) ? body.detail_rows : [];
-  if (detailRows.length !== 4 || csvColumns.indexOf('記録種別') < 0 || csvColumns.indexOf('マッチ番号') < 0) {
+  const requiredColumns = ['記録種別', '種別', '対戦ID', 'コート', '試合番号', 'マッチ番号', 'チームA', 'チームB',
+    'チームA違反数', 'チームB違反数', '終了カテゴリ', '終了理由', '対象チーム'];
+  if (detailRows.length !== 4 || requiredColumns.some(function (name) { return csvColumns.indexOf(name) < 0; })) {
     return { ok: false, message: '第1〜第3マッチと最終試合結果の4件が揃っていません。' };
   }
 
   const matchNumbers = [];
   let resultCount = 0;
+  let resultRow = null;
+  const identityHeaders = ['種別', 'コート', '試合番号', 'チームA', 'チームB'];
+  const identities = {};
   detailRows.forEach(function (detail) {
     const csvRow = Array.isArray(detail && detail.csv_row) ? detail.csv_row : [];
     const kind = csvValueByHeader(csvRow, csvColumns, '記録種別');
     if (kind === 'マッチ') matchNumbers.push(Number(csvValueByHeader(csvRow, csvColumns, 'マッチ番号')));
-    if (kind === '試合結果') resultCount += 1;
+    if (kind === '試合結果') {
+      resultCount += 1;
+      resultRow = csvRow;
+    }
+    identityHeaders.forEach(function (name) {
+      const value = csvValueByHeader(csvRow, csvColumns, name);
+      if (!identities[name]) identities[name] = [];
+      identities[name].push(value);
+    });
   });
   matchNumbers.sort(function (a, b) { return a - b; });
   if (resultCount !== 1 || matchNumbers.length !== 3 || matchNumbers.join(',') !== '1,2,3') {
     return { ok: false, message: '第1〜第3マッチの確定結果が正しく揃っていません。' };
   }
+
+  const inconsistentIdentity = identityHeaders.find(function (name) {
+    const values = identities[name] || [];
+    return !values[0] || values.some(function (value) { return value !== values[0]; });
+  });
+  if (inconsistentIdentity) {
+    return { ok: false, message: '4件の' + inconsistentIdentity + 'が一致していないため、誤送信防止のため保存しません。' };
+  }
+
+  const matchRows = detailRows.map(function (detail) { return detail.csv_row; }).filter(function (row) {
+    return csvValueByHeader(row, csvColumns, '記録種別') === 'マッチ';
+  });
+  const seriesIds = matchRows.map(function (row) {
+    return csvValueByHeader(row, csvColumns, '対戦ID').replace(/_(?:[123]|RESULT)$/i, '');
+  });
+  const finalSeriesId = csvValueByHeader(resultRow, csvColumns, '対戦ID').replace(/_(?:[123]|RESULT)$/i, '');
+  if (!finalSeriesId || seriesIds.some(function (value) { return !value || value !== finalSeriesId; })) {
+    return { ok: false, message: '4件の対戦IDが同じ試合を示していないため保存しません。' };
+  }
+
+  const court = csvValueByHeader(resultRow, csvColumns, 'コート');
+  const payloadCourt = String(payload.court || '').trim();
+  if (payloadCourt && payloadCourt !== court) {
+    return { ok: false, message: '送信データ内のコート指定が一致していないため保存しません。' };
+  }
+  const assignedCourt = courtFromSourceDeviceRole(body && body.source_device_role);
+  if (assignedCourt && assignedCourt !== court) {
+    return { ok: false, message: '端末役割は' + assignedCourt + '用ですが、試合結果は' + court + 'です。' };
+  }
   return { ok: true, message: '' };
 }
 
 function appendFilteredRows(sheet, records, eventName, body, csvColumns, recordKind) {
-  const filtered = records.filter((record) => getRecordKind(record.csv_row) === recordKind);
+  const filtered = records.filter(function (record) { return getRecordKind(record.csv_row, csvColumns) === recordKind; });
   return appendRows(sheet, filtered, eventName, body, csvColumns, {
     dedupeByResult: recordKind === '試合結果'
   });
 }
 
-function getRecordKind(csvRow) {
-  return String((csvRow || [])[RECORD_KIND_INDEX] || '');
+function getRecordKind(csvRow, csvColumns) {
+  return csvValueByHeader(csvRow, csvColumns, '記録種別');
 }
 
 function appendRows(sheet, records, eventName, body, csvColumns, options) {
