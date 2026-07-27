@@ -267,6 +267,7 @@ const adminSessionStorageKey = "tennis-assist-admin-session-v1";
 
 type AdminSessionState = {
   active: boolean;
+  verified: boolean;
   mode: AdminMode;
   adminKey: string;
   updatedAt: string;
@@ -4653,7 +4654,7 @@ class AdminController {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.sessionStorageKey) ?? "{}") as Partial<AdminSessionState>;
       const adminKey = this.normalizeAdminPassword(String(parsed.adminKey ?? ""));
-      if (!parsed.active || !this.plainPasswords.has(adminKey)) return null;
+      if (!parsed.active || !adminKey || (!this.plainPasswords.has(adminKey) && parsed.verified !== true)) return null;
       return { mode: this.modeForPassword(adminKey), adminKey };
     } catch {
       return null;
@@ -4802,6 +4803,7 @@ class AdminController {
     const mode = AdminController.modeForPassword(normalizedPassword);
     const session: AdminSessionState = {
       active: true,
+      verified: true,
       mode,
       adminKey: normalizedPassword,
       updatedAt: timestamp(),
