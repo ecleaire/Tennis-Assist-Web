@@ -30,8 +30,10 @@ button,input,select{font:inherit}button{cursor:pointer}
 .meta{font-size:clamp(.64rem,2.6vw,.84rem)}
 .matchup{margin-top:9px;font-size:clamp(1.6rem,7.6vw,3.5rem);font-weight:950;line-height:1.12;letter-spacing:-.035em;overflow-wrap:anywhere}
 .matchup .vs{display:inline-block;margin:0 .26em;color:var(--muted);font-size:.42em;letter-spacing:.1em;vertical-align:.18em}
-.score{margin-top:clamp(16px,4.7vw,28px);font-size:clamp(4.7rem,25vw,10.4rem);font-weight:1000;letter-spacing:-.075em;line-height:.78;white-space:nowrap}
-.score .vs{display:inline-block;margin:0 .2em;color:var(--muted);font-size:.15em;font-style:normal;letter-spacing:.08em;vertical-align:.32em}
+.score{margin-top:clamp(16px,4.7vw,28px);font-size:clamp(4.7rem,25vw,10.4rem);font-weight:1000;letter-spacing:-.075em;line-height:.78;white-space:nowrap;font-variant-numeric:tabular-nums}
+.score>.ink{display:inline-flex;align-items:center;white-space:nowrap}
+.score b{display:inline-flex;flex:0 0 var(--score-side-width,auto);width:var(--score-side-width,auto);align-items:center;justify-content:center;font-weight:inherit}
+.score .vs{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;margin:0 clamp(9px,2.2vw,20px);color:var(--muted);font-size:clamp(.68rem,2.6vw,1.25rem);font-style:normal;font-weight:950;line-height:1;letter-spacing:.08em}
 .result-label{margin-top:clamp(28px,7vw,44px);font-size:clamp(.65rem,2.7vw,.86rem)}
 .outcome{margin-top:5px;font-size:clamp(2rem,10vw,5rem);font-weight:1000;line-height:1.05;overflow-wrap:anywhere}
 .actions{position:fixed;z-index:10;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:7px}
@@ -96,7 +98,7 @@ select{appearance:none}
 </div>
 <script>
 const $=id=>document.getElementById(id),D={a:"チーム名A",b:"チーム名B",sa:"2",sb:"1",r:"チーム名A"};
-const stage=$("stage"),editor=$("editor"),form=$("form"),a=$("a"),b=$("b"),sa=$("sa"),sb=$("sb"),type=$("type"),custom=$("custom"),wrap=$("custom-wrap"),notice=$("notice"),divider=document.querySelector(".divider"),title=document.querySelector(".title"),titleInk=title.querySelector(".ink"),lines=[...document.querySelectorAll(".reveal")];
+const stage=$("stage"),editor=$("editor"),form=$("form"),a=$("a"),b=$("b"),sa=$("sa"),sb=$("sb"),type=$("type"),custom=$("custom"),wrap=$("custom-wrap"),notice=$("notice"),divider=document.querySelector(".divider"),title=document.querySelector(".title"),titleInk=title.querySelector(".ink"),scoreLine=$("score"),scoreAView=$("vsa"),scoreBView=$("vsb"),lines=[...document.querySelectorAll(".reveal")];
 const segmenter=typeof Intl.Segmenter==="function"?new Intl.Segmenter("ja",{granularity:"grapheme"}):null;
 const characters=text=>segmenter?[...segmenter.segment(text)].map(item=>item.segment):Array.from(text);
 const clean=(v,f)=>String(v??"").trim()||f,score=v=>String(Math.max(0,Math.min(99,parseInt(v,10)||0))),draw=v=>/^(引き分け|引分け|draw)$/i.test(String(v).trim());
@@ -105,11 +107,12 @@ function options(){type.options[1].text=`${clean(a.value,"チームA")} の勝�
 function toggle(){wrap.hidden=type.value!=="custom";if(!wrap.hidden)setTimeout(()=>custom.focus(),0)}
 function data(){return{a:clean(a.value,D.a),b:clean(b.value,D.b),sa:score(sa.value),sb:score(sb.value),r:result()}}
 function setForm(x){a.value=x.a;b.value=x.b;sa.value=x.sa;sb.value=x.sb;options();if(draw(x.r)){type.value="draw";custom.value=""}else if(x.r===x.a){type.value="a";custom.value=""}else if(x.r===x.b){type.value="b";custom.value=""}else{type.value="custom";custom.value=x.r}toggle()}
-function setView(x){$("va").textContent=x.a;$("vb").textContent=x.b;$("vsa").textContent=x.sa;$("vsb").textContent=x.sb;$("score").ariaLabel=`${x.sa} 対 ${x.sb}`;$("label").textContent=draw(x.r)?"DRAW":"WINNER";$("vr").textContent=x.r;document.title=`GAME RESULT | ${x.a} vs ${x.b}`}
+function setView(x){$("va").textContent=x.a;$("vb").textContent=x.b;scoreAView.textContent=x.sa;scoreBView.textContent=x.sb;scoreLine.ariaLabel=`${x.sa} 対 ${x.sb}`;$("label").textContent=draw(x.r)?"DRAW":"WINNER";$("vr").textContent=x.r;document.title=`GAME RESULT | ${x.a} vs ${x.b}`}
 function urlFor(x){const u=new URL(location.href);u.search="";u.searchParams.set("a",x.a);u.searchParams.set("b",x.b);u.searchParams.set("sa",x.sa);u.searchParams.set("sb",x.sb);u.searchParams.set("r",x.r);return u}
 function splitCharacters(root){const label=root.textContent||"";root.setAttribute("aria-label",label);const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){if(!node.nodeValue||node.parentElement?.closest(".char"))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(node=>{const fragment=document.createDocumentFragment();characters(node.nodeValue).forEach(value=>{const span=document.createElement("span");span.className="char";span.textContent=value;span.setAttribute("aria-hidden","true");fragment.append(span)});node.replaceWith(fragment)})}
 function fitTitle(){title.style.fontSize="";const available=Math.max(1,title.closest(".card").clientWidth);const natural=Math.max(1,titleInk.scrollWidth);if(natural>available){const base=parseFloat(getComputedStyle(title).fontSize);title.style.fontSize=`${Math.max(30,base*(available/natural)*.985)}px`}}
-function prepareTimeline(){lines.forEach(line=>{const ink=line.querySelector(".ink");splitCharacters(ink);line.classList.add("prepared")});fitTitle();let cursor=40,dividerDelay=700;lines.forEach((line,index)=>{const chars=[...line.querySelectorAll(".char")],preferred=Number(line.dataset.step||32),maxSpan=Number(line.dataset.max||800),step=Math.max(12,Math.min(preferred,maxSpan/Math.max(chars.length-1,1)));chars.forEach((char,i)=>char.style.setProperty("--char-delay",`${Math.round(cursor+i*step)}ms`));const end=cursor+Math.max(chars.length-1,0)*step+120;if(index===1)dividerDelay=end+35;cursor=end+Number(line.dataset.gap||50)});stage.style.setProperty("--divider-delay",`${Math.round(dividerDelay)}ms`)}
+function fitScore(){scoreLine.style.removeProperty("--score-side-width");const width=Math.ceil(Math.max(scoreAView.scrollWidth,scoreBView.scrollWidth));scoreLine.style.setProperty("--score-side-width",`${Math.max(width,1)}px`)}
+function prepareTimeline(){lines.forEach(line=>{const ink=line.querySelector(".ink");splitCharacters(ink);line.classList.add("prepared")});fitTitle();fitScore();let cursor=40,dividerDelay=700;lines.forEach((line,index)=>{const chars=[...line.querySelectorAll(".char")],preferred=Number(line.dataset.step||32),maxSpan=Number(line.dataset.max||800),step=Math.max(12,Math.min(preferred,maxSpan/Math.max(chars.length-1,1)));chars.forEach((char,i)=>char.style.setProperty("--char-delay",`${Math.round(cursor+i*step)}ms`));const end=cursor+Math.max(chars.length-1,0)*step+120;if(index===1)dividerDelay=end+35;cursor=end+Number(line.dataset.gap||50)});stage.style.setProperty("--divider-delay",`${Math.round(dividerDelay)}ms`)}
 function play(){stage.classList.remove("playing");prepareTimeline();void stage.offsetWidth;stage.classList.add("playing")}
 function closeEditor(){editor.classList.remove("open");document.activeElement?.blur()}
 function openEditor(){editor.classList.add("open");setTimeout(()=>a.focus(),180)}
@@ -129,10 +132,10 @@ $("reset").onclick=()=>{setForm(D);notice.textContent="初期値に戻しまし�
 stage.addEventListener("click",()=>{if(!editor.classList.contains("open"))play()});
 editor.addEventListener("click",e=>{if(e.target===editor)closeEditor()});
 let resizeFrame=0;
-window.addEventListener("resize",()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(fitTitle)},{passive:true});
+window.addEventListener("resize",()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{fitTitle();fitScore()})},{passive:true});
 const initial=fromUrl();setForm(initial||D);setView(initial||D);
 window.addEventListener("pageshow",()=>setTimeout(()=>{play();if(!initial)openEditor()},150));
-if(document.fonts?.ready)document.fonts.ready.then(fitTitle);
+if(document.fonts?.ready)document.fonts.ready.then(()=>{fitTitle();fitScore()});
 </script>
 </body>
 </html>
