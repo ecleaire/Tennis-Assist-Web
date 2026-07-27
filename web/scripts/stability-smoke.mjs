@@ -137,6 +137,26 @@ try {
       try {
         await page.goto(`${baseUrl}${edition.path}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
         await page.waitForFunction(() => document.querySelectorAll("#operation-court option").length > 0);
+        const teamNameLayout = await page.evaluate(() => {
+          const selectors = ["#a-name", "#b-name", "#match-teams"];
+          return selectors.map((selector) => {
+            const element = document.querySelector(selector);
+            if (!(element instanceof HTMLElement)) return { selector, missing: true };
+            const style = getComputedStyle(element);
+            return {
+              selector,
+              overflowWrap: style.overflowWrap,
+              whiteSpace: style.whiteSpace,
+              wordBreak: style.wordBreak,
+              writingMode: style.writingMode,
+            };
+          });
+        });
+        for (const state of teamNameLayout) {
+          if (state.missing || state.writingMode !== "horizontal-tb" || state.whiteSpace !== "nowrap" || state.wordBreak !== "keep-all" || state.overflowWrap === "anywhere") {
+            failures.push(`${label}: team name can collapse into vertical text ${JSON.stringify(state)}`);
+          }
+        }
         if (edition.name === "general") {
           await page.waitForFunction(() => {
             const button = document.querySelector('[data-screen="operation"]');
@@ -316,6 +336,22 @@ try {
         await page.locator("#operation-team-b").selectOption({ index: 1 });
         await page.locator("#operation-team-ok").click();
         await page.locator("#operation-start-check-dialog").waitFor({ state: "visible" });
+        const startCheckTeamLayout = await page.locator(".start-check-team-card strong").evaluateAll((elements) => elements.map((element, index) => {
+          element.textContent = `兵庫県代表ロボスポーツチーム長名称確認${index + 1}ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`;
+          const style = getComputedStyle(element);
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          return {
+            lineRects: range.getClientRects().length,
+            overflowWrap: style.overflowWrap,
+            whiteSpace: style.whiteSpace,
+            wordBreak: style.wordBreak,
+            writingMode: style.writingMode,
+          };
+        }));
+        if (startCheckTeamLayout.length !== 2 || startCheckTeamLayout.some((state) => state.lineRects !== 1 || state.writingMode !== "horizontal-tb" || state.whiteSpace !== "nowrap" || state.wordBreak !== "keep-all" || state.overflowWrap === "anywhere")) {
+          failures.push(`${label}: start-check team name can collapse into vertical text ${JSON.stringify(startCheckTeamLayout)}`);
+        }
         await page.locator("#operation-start-check-confirm").click();
         await page.locator("#operation-draw").waitFor({ state: "visible" });
 

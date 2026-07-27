@@ -86,6 +86,11 @@ textarea {
 select {
   -webkit-appearance: menulist;
   appearance: auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 select option {
@@ -1379,11 +1384,19 @@ body.timer-started .operation-timer-match-label {
 
 .start-check-team-card strong {
   color: var(--text);
+  display: block;
   font-size: clamp(1.75rem, 3vw, 2.7rem);
   font-weight: 900;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal;
+  text-orientation: mixed !important;
+  white-space: nowrap;
   word-break: keep-all;
+  writing-mode: horizontal-tb !important;
 }
 
 .history-role-badge {
@@ -2125,10 +2138,17 @@ body.operation-record-focus #record-input .section-head h2 {
   font-size: clamp(1.75rem, 3vw, 2.5rem);
 }
 
-body.operation-record-focus #match-teams {
+#match-teams {
   color: var(--text);
+  display: block;
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-weight: 800;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 body.operation-record-focus #record-input {
@@ -2188,19 +2208,44 @@ body.operation-record-focus #record-input {
   float: none;
   inline-size: calc(100% - 12px);
   max-inline-size: calc(100% - 12px);
+  max-width: calc(100% - 12px);
   min-inline-size: 0;
+  min-width: 0;
+  width: calc(100% - 12px);
 }
 
-#record-input .record-team-name {
+#record-input .score-pair legend .record-team-name {
   display: block;
   inline-size: 100%;
   max-inline-size: 100%;
+  max-width: 100%;
+  min-width: 0;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal !important;
   text-align: left;
   text-orientation: mixed !important;
-  white-space: normal;
-  word-break: normal;
+  white-space: nowrap !important;
+  width: 100%;
+  word-break: keep-all !important;
+  writing-mode: horizontal-tb !important;
+}
+
+.history-card h3,
+.operation-result-winner,
+.final-result-winner,
+.final-match-team strong,
+.confirm-winner strong {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal;
+  text-orientation: mixed !important;
+  white-space: nowrap;
+  word-break: keep-all;
   writing-mode: horizontal-tb !important;
 }
 
