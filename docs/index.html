@@ -8,8 +8,8 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./assist_icon_512.png" />
     <title>RoboSports Assist</title>
-    <script type="module" crossorigin src="./assets/index-DHIZH-2T.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-D7Fu2n3c.css">
+    <script type="module" crossorigin src="./assets/index-CK4kwHZs.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CTzl8tpv.css">
   </head>
   <body>
     <main id="app">
@@ -26,12 +26,12 @@
           </button>
           <nav id="navigation" aria-label="機能メニュー">
             <button class="nav active" data-screen="dashboard">ホーム</button>
-            <button class="nav" data-screen="timer">タイマー</button>
+            <button class="nav venue-default-hidden" data-screen="timer" hidden>タイマー</button>
             <button class="nav" data-screen="referee">審判タイマー</button>
-            <button class="nav" data-screen="balls">ボール配置</button>
+            <button class="nav venue-default-hidden" data-screen="balls" hidden>ボール配置</button>
             <button class="nav" data-screen="records">試合記録</button>
-            <button class="nav" data-screen="rules">ルール</button>
-            <button class="nav" data-screen="links">リンク</button>
+            <button class="nav venue-default-hidden" data-screen="rules" hidden>ルール</button>
+            <button class="nav venue-default-hidden" data-screen="links" hidden>リンク</button>
           </nav>
           <div class="secret-navigation">
             <button id="development-nav" class="nav" data-screen="development">管理</button>
@@ -634,6 +634,17 @@
                   <output id="audio-sync-time" class="digital audio-sync-time">00 : 11</output>
                   <button id="audio-test-sync" class="button admin-action-primary" type="button">11秒タイマーで同期確認</button>
                   <p id="audio-sync-status" class="muted compact-note">実際のタイマー表示と音声のタイミングを確認できます。</p>
+                </div>
+              </details>
+              <details id="venue-screen-setting" class="admin-details nested-details hidden">
+                <summary>使用モード</summary>
+                <p class="muted compact-note">ホームと試合記録は常に使用できます。審判タイマーは初期状態で表示します。</p>
+                <div class="venue-screen-options">
+                  <label class="checkbox"><input id="venue-screen-timer" type="checkbox" /> タイマー</label>
+                  <label class="checkbox"><input id="venue-screen-referee" type="checkbox" checked /> 審判タイマー</label>
+                  <label class="checkbox"><input id="venue-screen-balls" type="checkbox" /> ボール配置</label>
+                  <label class="checkbox"><input id="venue-screen-rules" type="checkbox" /> ルール</label>
+                  <label class="checkbox"><input id="venue-screen-links" type="checkbox" /> リンク</label>
                 </div>
               </details>
             </details>

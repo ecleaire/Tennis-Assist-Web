@@ -119,6 +119,7 @@ interface AdminSettings {
   audioCues: AudioCueSettings;
   showOperationMatchLabel: boolean;
   operationMatchLabelSize: number;
+  venueScreenVisibility: VenueScreenVisibility;
   gasConnectedAt?: string;
   gasConnectedUrl?: string;
   dayCheckAt?: string;
@@ -150,7 +151,9 @@ type TimerSettingLoadResult = {
   message: string;
 };
 
-type AdminMode = "standard" | "hyogo" | "mie" | "rsam";
+type AdminMode = "standard" | "hyogo" | "nara" | "mie" | "rsam";
+type ConfigurableVenueScreen = "timer" | "referee" | "balls" | "rules" | "links";
+type VenueScreenVisibility = Record<ConfigurableVenueScreen, boolean>;
 type AppVariant = "venue" | "general";
 type AdminModeApplyOptions = {
   applyTheme?: boolean;
@@ -274,6 +277,24 @@ const defaultAudioCueSettings: AudioCueSettings = {
   remainingFiveSequence: true,
 };
 const defaultOperationMatchLabelSize = 32;
+const defaultVenueScreenVisibility: VenueScreenVisibility = {
+  timer: false,
+  referee: true,
+  balls: false,
+  rules: false,
+  links: false,
+};
+
+function normalizeVenueScreenVisibility(value: unknown): VenueScreenVisibility {
+  const parsed = value && typeof value === "object" ? value as Partial<VenueScreenVisibility> : {};
+  return {
+    timer: parsed.timer === true,
+    referee: parsed.referee !== false,
+    balls: parsed.balls === true,
+    rules: parsed.rules === true,
+    links: parsed.links === true,
+  };
+}
 
 function normalizeOperationMatchLabelSize(value: unknown): number {
   const parsed = Number(value);
@@ -409,6 +430,18 @@ const reasons: Record<Category, string[]> = {
     "ボールの破損(6.32.7)", "フィールド・設備の破損(6.32.8)", "無許可の移動・撤去(6.33)",
   ],
 };
+
+// Appendix 12 marks only rows carrying the explicit "[Violation]" remark as
+// ranking violations. A 9:-4 automatic loss is not necessarily a violation.
+function isRankingViolation(category: Category, endReason: string): boolean {
+  if (category === scoringCategory) return false;
+  return !endReason.startsWith("開始後10秒間の不動(6.20)")
+    && !endReason.startsWith("両ロボットの撤去(6.21 / 6.32.10)");
+}
+
+function courtCompetitionCode(court: string): string {
+  return court.trim().match(/[A-Z]/i)?.[0]?.toUpperCase() ?? "A";
+}
 
 function courtOptionsFromCount(count: number | null | undefined): string[] {
   const normalized = Number.isFinite(count) ? Math.floor(Number(count)) : 0;
@@ -660,11 +693,11 @@ function csvEscape(value: unknown): string {
 
 function csvRow(record: MatchRecord): string[] {
   return [
-    record.timestamp, record.recordKind, record.matchType, record.seriesId, record.court, record.seriesNumber, record.matchNumber,
+    record.timestamp, record.recordKind, record.matchType, record.competitionId, record.court, record.seriesNumber, record.matchNumber,
     record.teamA, record.teamB, record.teamAWins ?? "", record.teamALosses ?? "", record.teamAOrange, record.teamAPurple,
-    record.teamAScore, record.teamAViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamA ? 1 : 0),
+    record.teamAScore, record.teamAViolations ?? (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamA ? 1 : 0),
     record.teamBWins ?? "", record.teamBLosses ?? "", record.teamBOrange, record.teamBPurple, record.teamBScore,
-    record.teamBViolations ?? (record.reasonCategory !== scoringCategory && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
+    record.teamBViolations ?? (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamB ? 1 : 0), record.draws ?? "",
     record.overallWinner ?? "", record.winner, record.result, record.reasonCategory, record.endReason, record.targetTeam, record.notes ?? "",
     record.deviceRole ?? "", record.deviceId ?? "", record.appVersion ?? "", record.teamAAgreed === true ? "TRUE" : "FALSE",
     record.teamBAgreed === true ? "TRUE" : "FALSE", record.completedMatchCount ?? "", record.finalized === true ? "TRUE" : "FALSE",
@@ -752,9 +785,23 @@ class TimerAudioCueController {
   private readonly volumeBoost = 1.85;
 
   async prepare(): Promise<void> {
-    const context = this.audioContext();
-    if (context?.state === "suspended") void context.resume();
-    if (context?.state === "suspended") await context.resume().catch(() => {});
+    let context = this.audioContext();
+    if (!context) throw new Error("audio_context_unavailable");
+    if (context.state === "closed") {
+      this.context = null;
+      this.master = null;
+      context = this.audioContext();
+    }
+    if (!context) throw new Error("audio_context_unavailable");
+    if (context.state !== "running") await context.resume();
+    // Starting a silent source in the user gesture unlocks Web Audio on older
+    // iOS/Safari versions that otherwise resume the context without output.
+    if (typeof context.createBuffer === "function" && typeof context.createBufferSource === "function") {
+      const source = context.createBufferSource();
+      source.buffer = context.createBuffer(1, 1, context.sampleRate);
+      source.connect(context.destination);
+      source.start(context.currentTime);
+    }
   }
 
   playElapsedThirty(): void {
@@ -841,7 +888,9 @@ class TimerAudioCueController {
   }
 
   private audioContext(): AudioContext | null {
-    if (this.context) return this.context;
+    if (this.context && this.context.state !== "closed") return this.context;
+    this.context = null;
+    this.master = null;
     const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextCtor) return null;
     try {
@@ -1029,7 +1078,13 @@ class TimerController {
       if (!document.fullscreenElement || timerFullscreen) this.setCompact(timerFullscreen);
     });
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && this.running) void this.requestWakeLock();
+      if (document.visibilityState === "visible" && this.running) {
+        void this.requestWakeLock();
+        void this.audioCues.prepare().then(() => {
+          if (!this.running || !this.endAt) return;
+          this.audioCues.scheduleMainCues(Math.max(0, (this.endAt - performance.now()) / 1000), this.total, true);
+        }).catch(() => {});
+      }
     });
     this.step.value = String(this.randomStep);
     this.dashboardSteps.forEach((step) => { step.value = String(this.randomStep); });
@@ -1829,8 +1884,7 @@ class BallController {
   private readonly court = el<HTMLElement>("court");
   private readonly dashboardCourts = els<HTMLElement>("dashboard-court");
   private workflowMatch = 0;
-  private hyogo = false;
-  private seriesOrangeSide: number[] | null = null;
+  private lastRandomKey = "";
   private readonly leftRows = [19.35, 40.15, 68.54, 89.51];
   private readonly rightRows = [10.16, 31.45, 59.68, 80.65];
   private readonly leftSlots = [22.03, 28.35];
@@ -1850,14 +1904,10 @@ class BallController {
     this.draw(this.defaults);
   }
 
-  setHyogoMode(active: boolean): void {
-    this.hyogo = active;
-    if (!active) this.seriesOrangeSide = null;
-  }
+  setHyogoMode(_active: boolean): void {}
 
   beginWorkflow(match: number): void {
     this.workflowMatch = match;
-    if (!this.hyogo || match === 1 || !this.seriesOrangeSide) this.seriesOrangeSide = null;
     // Start each match from the initial layout. The operator must explicitly
     // draw the ball layout for every match.
     this.draw(this.defaults);
@@ -1877,11 +1927,21 @@ class BallController {
   }
 
   randomize(): void {
-    const side = this.hyogo && this.workflowMatch
-      ? this.seriesOrangeSide ?? this.leftRows.map(() => Math.round(Math.random()))
-      : this.leftRows.map(() => Math.round(Math.random()));
-    if (this.hyogo && this.workflowMatch && !this.seriesOrangeSide) this.seriesOrangeSide = side;
-    const purpleRow = Math.floor(Math.random() * 4);
+    let side: number[] = [];
+    let purpleRow = 0;
+    let randomKey = "";
+    let attempts = 0;
+    do {
+      side = this.leftRows.map(() => Math.round(Math.random()));
+      purpleRow = Math.floor(Math.random() * 4);
+      randomKey = `${side.join("")}:${purpleRow}`;
+      attempts += 1;
+    } while (randomKey === this.lastRandomKey && attempts < 8);
+    if (randomKey === this.lastRandomKey) {
+      side[0] = 1 - side[0];
+      randomKey = `${side.join("")}:${purpleRow}`;
+    }
+    this.lastRandomKey = randomKey;
     const generated: Array<readonly [string, number, number]> = [];
     this.leftRows.forEach((row, index) => {
       generated.push(["orange", this.leftSlots[side[index]], row]);
@@ -1891,7 +1951,9 @@ class BallController {
     generated.push(["purple", this.rightSlots[side[purpleRow]], this.rightRows[3 - purpleRow]]);
     generated.push(["orange", 50.08, 49.99]);
     this.draw(generated);
-    el("balls-status").textContent = this.hyogo && this.workflowMatch ? "ボール配置を生成しました。" : "ボール配置を生成しました。";
+    el("balls-status").textContent = this.workflowMatch
+      ? `第${this.workflowMatch}マッチのボール配置を抽選しました。`
+      : "ボール配置を生成しました。";
   }
 
   private draw(layout: BallLayout): void {
@@ -1929,7 +1991,6 @@ class BallController {
 
   resetWorkflow(): void {
     this.workflowMatch = 0;
-    this.seriesOrangeSide = null;
     el<HTMLButtonElement>("balls-ready").classList.add("hidden");
   }
 }
@@ -2477,7 +2538,7 @@ class RecordsController {
     }
     const matchNumber = this.inputMatchNumber();
     const counts = this.resultInputCounts(matchNumber);
-    const competitionId = `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_${matchNumber}`;
+    const competitionId = `${courtCompetitionCode(this.series.court)}_${String(this.series.seriesNumber).padStart(2, "0")}_${matchNumber}`;
     return {
       recordId: `${this.series.id}_match_${matchNumber}`,
       timestamp: timestamp(),
@@ -2697,7 +2758,7 @@ class RecordsController {
     const hasSeries = Boolean(this.series);
     const entries = this.series?.records.length ?? 0;
     const finished = Boolean(this.series && this.isFinished());
-    el("team-management-panel").classList.toggle("hidden", hasSeries);
+    el("team-management-panel").classList.toggle("hidden", currentAppVariant().id === "venue" || hasSeries);
     el("history-stats-panel").classList.toggle("hidden", hasSeries);
     el("record-input").classList.toggle("hidden", !hasSeries || this.awaitingNextMatch || this.finalized || (finished && !this.editing));
     el("intermediate-results").classList.toggle("hidden", !hasSeries || entries === 0 || finished);
@@ -2716,8 +2777,8 @@ class RecordsController {
       if (record.winner === this.series?.teamA) sum.teamAWins += 1;
       else if (record.winner === this.series?.teamB) sum.teamBWins += 1;
       else sum.draws += 1;
-      if (record.reasonCategory !== scoringCategory && record.targetTeam === this.series?.teamA) sum.teamAViolations += 1;
-      if (record.reasonCategory !== scoringCategory && record.targetTeam === this.series?.teamB) sum.teamBViolations += 1;
+      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === this.series?.teamA) sum.teamAViolations += 1;
+      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === this.series?.teamB) sum.teamBViolations += 1;
       return sum;
     }, empty);
   }
@@ -2750,8 +2811,8 @@ class RecordsController {
   }
 
   private matchViolationCount(record: MatchRecord, team: string): number {
-    if (record.reasonCategory !== scoringCategory && record.targetTeam === team) return 1;
-    if (record.reasonCategory !== scoringCategory) {
+    if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === team) return 1;
+    if (isRankingViolation(record.reasonCategory, record.endReason)) {
       if (team === record.teamA && record.teamAScore === 9 && record.teamBScore === -4) return 1;
       if (team === record.teamB && record.teamBScore === 9 && record.teamAScore === -4) return 1;
     }
@@ -2900,8 +2961,8 @@ class RecordsController {
       record.court = selection.court;
       record.matchType = selection.matchType;
       record.competitionId = record.matchNumber === 0
-        ? `${selection.court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
-        : `${selection.court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
+        ? `${courtCompetitionCode(selection.court)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
+        : `${courtCompetitionCode(selection.court)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
       updatedRecords.add(record);
     });
     this.records.filter((record) => record.seriesId === this.series?.id).forEach((record) => {
@@ -2910,8 +2971,8 @@ class RecordsController {
       record.court = selection.court;
       record.matchType = selection.matchType;
       record.competitionId = record.matchNumber === 0
-        ? `${selection.court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
-        : `${selection.court.charAt(0)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
+        ? `${courtCompetitionCode(selection.court)}_${String(record.seriesNumber).padStart(2, "0")}_RESULT`
+        : `${courtCompetitionCode(selection.court)}_${String(record.seriesNumber).padStart(2, "0")}_${record.matchNumber}`;
     });
     this.agreedA = false;
     this.agreedB = false;
@@ -3035,7 +3096,7 @@ class RecordsController {
       seriesId: this.series.id,
       seriesNumber: this.series.seriesNumber,
       court: this.series.court,
-      competitionId: `${this.series.court.charAt(0)}_${String(this.series.seriesNumber).padStart(2, "0")}_RESULT`,
+      competitionId: `${courtCompetitionCode(this.series.court)}_${String(this.series.seriesNumber).padStart(2, "0")}_RESULT`,
       matchNumber: 0,
       matchType: this.series.matchType,
       teamA: this.series.teamA,
@@ -4484,6 +4545,9 @@ class AdminController {
     el<HTMLInputElement>("operation-match-label-enabled").addEventListener("change", () => this.save());
     el<HTMLInputElement>("operation-match-label-size").addEventListener("input", () => this.updateOperationMatchLabelSizeOutput());
     el<HTMLInputElement>("operation-match-label-size").addEventListener("change", () => this.save());
+    (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).forEach((screen) => {
+      el<HTMLInputElement>(`venue-screen-${screen}`).addEventListener("change", () => this.save());
+    });
     this.populate();
   }
 
@@ -4512,6 +4576,7 @@ class AdminController {
         audioCues: normalizeAudioCueSettings(parsed.audioCues),
         showOperationMatchLabel: parsed.showOperationMatchLabel === true,
         operationMatchLabelSize: normalizeOperationMatchLabelSize(parsed.operationMatchLabelSize),
+        venueScreenVisibility: normalizeVenueScreenVisibility(parsed.venueScreenVisibility),
         gasConnectedAt: parsed.gasConnectedAt,
         gasConnectedUrl: parsed.gasConnectedUrl,
         dayCheckAt: parsed.dayCheckAt,
@@ -4527,6 +4592,7 @@ class AdminController {
         audioCues: { ...defaultAudioCueSettings },
         showOperationMatchLabel: false,
         operationMatchLabelSize: defaultOperationMatchLabelSize,
+        venueScreenVisibility: { ...defaultVenueScreenVisibility },
       };
     }
   }
@@ -4547,7 +4613,7 @@ class AdminController {
     try {
       const parsed = JSON.parse(localStorage.getItem(this.sessionStorageKey) ?? "{}") as Partial<AdminSessionState>;
       const adminKey = this.normalizeAdminPassword(String(parsed.adminKey ?? ""));
-      if (!parsed.active || adminKey !== "hyogo") return null;
+      if (!parsed.active || (adminKey !== "hyogo" && adminKey !== "nara")) return null;
       return { mode: this.modeForPassword(adminKey), adminKey };
     } catch {
       return null;
@@ -4560,6 +4626,7 @@ class AdminController {
 
   private static modeForPassword(normalizedPassword: string): AdminMode {
     if (normalizedPassword === "hyogo") return "hyogo";
+    if (normalizedPassword === "nara") return "nara";
     if (normalizedPassword === "mie" || normalizedPassword === "mie_judge") return "mie";
     if (normalizedPassword === "rsam") return "rsam";
     return "standard";
@@ -4586,6 +4653,10 @@ class AdminController {
     el<HTMLInputElement>("audio-cue-remaining-five-sequence").checked = settings.audioCues.remainingFiveSequence;
     el<HTMLInputElement>("operation-match-label-enabled").checked = settings.showOperationMatchLabel;
     el<HTMLInputElement>("operation-match-label-size").value = String(settings.operationMatchLabelSize);
+    (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).forEach((screen) => {
+      el<HTMLInputElement>(`venue-screen-${screen}`).checked = settings.venueScreenVisibility[screen];
+    });
+    el("venue-screen-setting").classList.toggle("hidden", AdminController.variant().id !== "venue");
     this.updateOperationMatchLabelSizeOutput();
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
@@ -4688,13 +4759,14 @@ class AdminController {
   }
 
   private persistAdminSession(normalizedPassword: string): void {
-    if (AdminController.modeForPassword(normalizedPassword) !== "hyogo") {
+    const mode = AdminController.modeForPassword(normalizedPassword);
+    if (mode !== "hyogo" && mode !== "nara") {
       AdminController.clearPersistedSession();
       return;
     }
     const session: AdminSessionState = {
       active: true,
-      mode: "hyogo",
+      mode,
       adminKey: normalizedPassword,
       updatedAt: timestamp(),
     };
@@ -4768,6 +4840,10 @@ class AdminController {
       },
       showOperationMatchLabel: el<HTMLInputElement>("operation-match-label-enabled").checked,
       operationMatchLabelSize: normalizeOperationMatchLabelSize(el<HTMLInputElement>("operation-match-label-size").value),
+      venueScreenVisibility: (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).reduce((visibility, screen) => {
+        visibility[screen] = el<HTMLInputElement>(`venue-screen-${screen}`).checked;
+        return visibility;
+      }, { ...defaultVenueScreenVisibility }),
       gasConnectedAt: AdminController.settings().gasConnectedAt,
       gasConnectedUrl: AdminController.settings().gasConnectedUrl,
       dayCheckAt: AdminController.settings().dayCheckAt,
@@ -5384,6 +5460,7 @@ class Application {
   private rulesClicks = 0;
   private secret = false;
   private hyogo = false;
+  private adminMode: AdminMode = "standard";
   private readonly variant = currentAppVariant();
   private readonly timer: TimerController;
   private readonly refereeTimer: RefereeTimerController;
@@ -5581,6 +5658,7 @@ class Application {
   }
 
   private show(screen: Screen): void {
+    if (this.operationActive && screen === "rules") screen = this.operationScreen();
     if (screen === "development") this.ensureAdminController();
     this.timer.noteActivity();
     if (screen !== "development") this.admin?.stopTransientChecks();
@@ -5630,6 +5708,27 @@ class Application {
     document.querySelectorAll<HTMLElement>('[data-screen="news"], #screen-news, #news-dialog').forEach((element) => {
       element.classList.toggle("hidden", !showNews);
       element.toggleAttribute("hidden", !showNews);
+    });
+    if (this.variant.id === "general") {
+      document.querySelectorAll<HTMLElement>("#navigation .venue-default-hidden").forEach((button) => {
+        button.classList.remove("venue-default-hidden");
+        button.removeAttribute("hidden");
+        button.removeAttribute("aria-disabled");
+      });
+    }
+    this.applyVenueScreenVisibility(AdminController.settings().venueScreenVisibility);
+  }
+
+  private applyVenueScreenVisibility(visibility: VenueScreenVisibility): void {
+    if (this.variant.id !== "venue") return;
+    (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).forEach((screen) => {
+      document.querySelectorAll<HTMLElement>(`#navigation [data-screen="${screen}"]`).forEach((button) => {
+        const visible = visibility[screen];
+        button.classList.toggle("venue-default-hidden", !visible);
+        button.classList.toggle("venue-screen-disabled", !visible);
+        button.toggleAttribute("hidden", !visible);
+        button.setAttribute("aria-disabled", String(!visible));
+      });
     });
   }
 
@@ -7160,6 +7259,7 @@ class Application {
   }
 
   private applyAdminMode(mode: AdminMode, settings: AdminSettings, options: AdminModeApplyOptions = {}): void {
+    this.adminMode = mode;
     this.hyogo = mode === "hyogo";
     this.rsamMode = mode === "rsam";
     const shouldApplyTheme = options.applyTheme !== false;
@@ -7175,6 +7275,7 @@ class Application {
     this.timer.setHyogoMode(this.hyogo);
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
+    this.applyVenueScreenVisibility(settings.venueScreenVisibility);
     this.updateTitle();
     this.updateHomeSyncAlert();
   }
@@ -7184,7 +7285,8 @@ class Application {
   }
 
   private updateTitle(): void {
-    const base = this.hyogo ? "RoboSports Assist HYOGO" : "RoboSports Assist";
+    const edition = this.adminMode === "hyogo" ? "HYOGO" : this.adminMode === "nara" ? "NARA" : "";
+    const base = ["RoboSports Assist", edition].filter(Boolean).join(" ");
     const title = [base, this.variant.titleSuffix].filter(Boolean).join(" ");
     el("title").textContent = title;
     document.title = title;
@@ -7193,6 +7295,7 @@ class Application {
   private deactivateSecret(): void {
     this.secret = false;
     this.hyogo = false;
+    this.adminMode = "standard";
     this.rsamMode = false;
     this.linksClicks = 0;
     this.rulesClicks = 0;

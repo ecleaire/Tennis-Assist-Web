@@ -493,11 +493,13 @@ try {
       await restrictedRulesPage.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 20_000 });
       const restrictedRules = restrictedRulesPage.locator("[data-admin-rule]");
       if (await restrictedRules.first().isVisible()) failures.push(`${label}: restricted rule is visible before admin login`);
-      for (let index = 0; index < 10; index += 1) await restrictedRulesPage.locator('[data-screen="rules"]').click();
       await restrictedRulesPage.locator("#development-nav").click();
       await restrictedRulesPage.locator("#admin-password").fill("mie");
       await restrictedRulesPage.locator("#admin-unlock").click();
       await restrictedRulesPage.locator("#admin-settings").waitFor({ state: "visible" });
+      await restrictedRulesPage.locator("#admin-advanced-details").evaluate((element) => { element.open = true; });
+      await restrictedRulesPage.locator("#venue-screen-setting").evaluate((element) => { element.open = true; });
+      await restrictedRulesPage.locator("#venue-screen-rules").check();
       await restrictedRulesPage.locator('[data-screen="rules"]').click();
       if (!(await restrictedRules.first().isVisible())) failures.push(`${label}: restricted rule is hidden after Mie admin login`);
       process.stdout.write(`PASS ${label}\n`);

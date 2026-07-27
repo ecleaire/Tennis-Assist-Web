@@ -12,6 +12,6 @@ export default defineConfig({
     outDir: "../docs",
     // Publish only the current bundle; the service worker owns offline copies.
     emptyOutDir: true,
-    target: "es2020",
+    target: "es2017",
   },
 });

@@ -69,6 +69,7 @@ body {
 
 body {
   line-height: 1.55;
+  min-height: 100vh;
   min-height: 100dvh;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
     max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -80,6 +81,16 @@ input,
 textarea {
   font: inherit;
   color: inherit;
+}
+
+select {
+  -webkit-appearance: menulist;
+  appearance: auto;
+}
+
+select option {
+  background: #172441;
+  color: #dcecff;
 }
 
 button {
@@ -354,11 +365,23 @@ input:hover {
 }
 
 body.operation-navigation-locked #navigation .nav[data-screen="timer"],
-body.operation-navigation-locked #navigation .nav[data-screen="referee"],
 body.operation-navigation-locked #navigation .nav[data-screen="balls"],
 body.operation-navigation-locked #navigation .nav[data-screen="news"],
+body.operation-navigation-locked #navigation .nav[data-screen="rules"],
 body.operation-navigation-locked #navigation .nav[data-screen="links"] {
   display: none;
+}
+
+#navigation .venue-default-hidden,
+#navigation .venue-screen-disabled {
+  display: none !important;
+}
+
+.venue-screen-options {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  padding: 12px 14px;
 }
 
 .button.accent {
