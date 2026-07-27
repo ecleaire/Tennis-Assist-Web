@@ -5,20 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#060d10" />
   <meta name="color-scheme" content="dark" />
-  <title>GAME RESULT | CHAN-PON vs POISON</title>
+  <title>GAME RESULT</title>
   <style>
     :root {
       --bg: #060d10;
-      --bg-glow: #102a30;
       --text: #d9fbff;
       --muted: #83b2b9;
       --line: rgba(217, 251, 255, 0.22);
       --edge: rgba(217, 251, 255, 0.72);
+      --panel: rgba(5, 13, 16, 0.82);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html,
     body {
@@ -47,11 +45,12 @@
       -webkit-user-select: none;
     }
 
-    button {
+    button,
+    input {
       font: inherit;
     }
 
-    .result-stage {
+    .stage {
       position: relative;
       isolation: isolate;
       min-height: 100svh;
@@ -69,7 +68,7 @@
         linear-gradient(145deg, #091519 0%, var(--bg) 64%);
     }
 
-    .result-stage::before {
+    .stage::before {
       content: "";
       position: absolute;
       z-index: -1;
@@ -84,7 +83,7 @@
       );
     }
 
-    .result-stage::after {
+    .stage::after {
       content: "";
       position: absolute;
       z-index: -1;
@@ -99,14 +98,14 @@
         0 0 0 24vmax rgba(217, 251, 255, 0.012);
     }
 
-    .result-card {
+    .card {
       position: relative;
       width: min(100%, 740px);
       margin-inline: auto;
       transform: translateY(-1.5svh);
     }
 
-    .line {
+    .reveal {
       position: relative;
       width: fit-content;
       max-width: 100%;
@@ -114,7 +113,7 @@
       overflow: visible;
     }
 
-    .line__text {
+    .reveal > span {
       display: block;
       opacity: 0;
       clip-path: inset(0 100% 0 0);
@@ -123,8 +122,8 @@
       will-change: clip-path, opacity, transform, filter;
     }
 
-    .line::before,
-    .line::after {
+    .reveal::before,
+    .reveal::after {
       content: "";
       position: absolute;
       z-index: 2;
@@ -136,7 +135,7 @@
       will-change: transform, opacity;
     }
 
-    .line::before {
+    .reveal::before {
       width: clamp(28px, 12vw, 92px);
       background: repeating-linear-gradient(
         135deg,
@@ -149,24 +148,24 @@
       transform: translateX(-135%);
     }
 
-    .line::after {
+    .reveal::after {
       width: 2px;
       background: var(--edge);
       box-shadow: 0 0 16px rgba(217, 251, 255, 0.6);
       transform: translateX(-24px);
     }
 
-    .line.is-playing .line__text {
+    .stage.playing .reveal > span {
       animation:
         reveal-text 640ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both,
         settle-text 240ms steps(2, end) calc(var(--delay) + 430ms) both;
     }
 
-    .line.is-playing::before {
+    .stage.playing .reveal::before {
       animation: hatch-sweep 700ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both;
     }
 
-    .line.is-playing::after {
+    .stage.playing .reveal::after {
       animation: edge-sweep 650ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both;
     }
 
@@ -177,9 +176,7 @@
         transform: translate3d(-0.07em, 0, 0);
         filter: blur(2px);
       }
-      14% {
-        opacity: 1;
-      }
+      14% { opacity: 1; }
       100% {
         opacity: 1;
         clip-path: inset(0 0 0 0);
@@ -189,52 +186,23 @@
     }
 
     @keyframes hatch-sweep {
-      0% {
-        opacity: 0;
-        transform: translateX(-135%);
-      }
-      12% {
-        opacity: 0.92;
-      }
-      72% {
-        opacity: 0.9;
-      }
-      100% {
-        opacity: 0;
-        transform: translateX(calc(var(--travel) + 20px));
-      }
+      0% { opacity: 0; transform: translateX(-135%); }
+      12% { opacity: 0.92; }
+      72% { opacity: 0.9; }
+      100% { opacity: 0; transform: translateX(calc(var(--travel) + 20px)); }
     }
 
     @keyframes edge-sweep {
-      0% {
-        opacity: 0;
-        transform: translateX(-24px);
-      }
-      10% {
-        opacity: 0.95;
-      }
-      86% {
-        opacity: 0.7;
-      }
-      100% {
-        opacity: 0;
-        transform: translateX(var(--travel));
-      }
+      0% { opacity: 0; transform: translateX(-24px); }
+      10% { opacity: 0.95; }
+      86% { opacity: 0.7; }
+      100% { opacity: 0; transform: translateX(var(--travel)); }
     }
 
     @keyframes settle-text {
-      0%, 100% {
-        translate: 0 0;
-        text-shadow: none;
-      }
-      28% {
-        translate: -1px 0;
-        text-shadow: 3px 0 rgba(217, 251, 255, 0.24);
-      }
-      58% {
-        translate: 1px 0;
-        text-shadow: -2px 0 rgba(217, 251, 255, 0.2);
-      }
+      0%, 100% { translate: 0 0; text-shadow: none; }
+      28% { translate: -1px 0; text-shadow: 3px 0 rgba(217, 251, 255, 0.24); }
+      58% { translate: 1px 0; text-shadow: -2px 0 rgba(217, 251, 255, 0.2); }
     }
 
     .eyebrow {
@@ -273,15 +241,12 @@
       background: linear-gradient(90deg, var(--line), rgba(217, 251, 255, 0.03));
     }
 
-    .result-stage.is-playing .divider::after {
+    .stage.playing .divider::after {
       animation: divider-in 560ms cubic-bezier(0.16, 0.82, 0.18, 1) 620ms both;
     }
 
     @keyframes divider-in {
-      to {
-        opacity: 1;
-        transform: scaleX(1);
-      }
+      to { opacity: 1; transform: scaleX(1); }
     }
 
     .meta {
@@ -295,7 +260,7 @@
 
     .matchup {
       margin-top: clamp(7px, 2.1vw, 12px);
-      font-size: clamp(1.18rem, 5.8vw, 2.25rem);
+      font-size: clamp(1.12rem, 5.35vw, 2.25rem);
       font-weight: 950;
       letter-spacing: -0.025em;
       line-height: 1.18;
@@ -312,11 +277,16 @@
       white-space: nowrap;
     }
 
-    .score__vs {
+    .score b {
+      font-weight: inherit;
+    }
+
+    .vs {
       display: inline-block;
       margin-inline: 0.22em 0.2em;
       color: var(--muted);
       font-size: 0.19em;
+      font-style: normal;
       font-weight: 950;
       letter-spacing: 0.08em;
       vertical-align: 0.28em;
@@ -337,38 +307,43 @@
       font-weight: 1000;
       letter-spacing: -0.05em;
       line-height: 1;
+      overflow-wrap: anywhere;
     }
 
+    .editor-toggle,
     .replay {
       position: fixed;
-      z-index: 10;
-      right: max(14px, env(safe-area-inset-right));
-      bottom: max(14px, env(safe-area-inset-bottom));
-      min-width: 88px;
+      z-index: 30;
       min-height: 46px;
       padding: 10px 17px;
       border: 1px solid rgba(217, 251, 255, 0.3);
       border-radius: 999px;
-      color: rgba(217, 251, 255, 0.88);
-      background: rgba(5, 13, 16, 0.62);
+      color: rgba(217, 251, 255, 0.9);
+      background: rgba(5, 13, 16, 0.64);
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       font-size: 0.72rem;
       font-weight: 900;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      transition: opacity 180ms ease, transform 120ms ease, border-color 180ms ease;
     }
 
-    .replay:active {
-      transform: scale(0.95);
+    .editor-toggle {
+      top: max(14px, env(safe-area-inset-top));
+      right: max(14px, env(safe-area-inset-right));
     }
 
-    .replay:focus-visible {
-      outline: 2px solid var(--text);
-      outline-offset: 3px;
+    .replay {
+      right: max(14px, env(safe-area-inset-right));
+      bottom: max(14px, env(safe-area-inset-bottom));
+    }
+
+    .editor-toggle:active,
+    .replay:active,
+    .editor button:active {
+      transform: scale(0.96);
     }
 
     .tap-hint {
@@ -384,8 +359,146 @@
       pointer-events: none;
     }
 
+    .editor {
+      position: fixed;
+      z-index: 40;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      max-height: calc(100svh - 82px);
+      overflow: auto;
+      padding: 15px;
+      border: 1px solid rgba(217, 251, 255, 0.18);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(calc(100% + 20px));
+      transition: opacity 180ms ease, transform 220ms ease;
+    }
+
+    body.editor-open .editor {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .editor h2 {
+      margin: 0 0 3px;
+      font-size: 1rem;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .editor p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+      margin-top: 9px;
+    }
+
+    .field span,
+    .score-caption {
+      color: rgba(217, 251, 255, 0.72);
+      font-size: 0.72rem;
+      font-weight: 850;
+      letter-spacing: 0.06em;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid rgba(217, 251, 255, 0.2);
+      border-radius: 13px;
+      padding: 10px 12px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.055);
+      outline: none;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .field input:focus {
+      border-color: rgba(217, 251, 255, 0.58);
+      box-shadow: 0 0 0 3px rgba(217, 251, 255, 0.1);
+    }
+
+    .score-editor {
+      margin-top: 10px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: end;
+      margin-top: 5px;
+    }
+
+    .score-row .field {
+      margin-top: 0;
+    }
+
+    .score-vs {
+      display: grid;
+      place-items: center;
+      min-height: 44px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    .editor button {
+      min-height: 45px;
+      border: 1px solid rgba(217, 251, 255, 0.24);
+      border-radius: 14px;
+      color: var(--text);
+      background: rgba(217, 251, 255, 0.09);
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+
+    .editor button.primary {
+      color: #041012;
+      background: var(--text);
+      border-color: var(--text);
+    }
+
+    .status {
+      min-height: 1.2em;
+      margin: 9px 2px 0;
+      color: rgba(217, 251, 255, 0.6);
+      font-size: 0.7rem;
+      line-height: 1.35;
+    }
+
+    @media (min-width: 760px) {
+      .editor {
+        left: auto;
+        width: 390px;
+      }
+    }
+
     @media (max-width: 360px) {
-      .result-stage {
+      .stage {
         padding-inline: max(18px, calc(env(safe-area-inset-left) + 14px));
       }
 
@@ -399,142 +512,295 @@
     }
 
     @media (orientation: landscape) and (max-height: 560px) {
-      .result-stage {
+      .stage {
         align-items: start;
         padding-top: max(18px, env(safe-area-inset-top));
         padding-bottom: max(18px, env(safe-area-inset-bottom));
       }
 
-      .result-card {
+      .card {
         width: min(88vw, 760px);
         margin-inline: max(4vw, env(safe-area-inset-left)) auto;
         transform: none;
       }
 
-      .title {
-        font-size: clamp(2.6rem, 8vw, 4.5rem);
-      }
+      .title { font-size: clamp(2.6rem, 8vw, 4.5rem); }
+      .divider { margin-block: 12px; }
+      .matchup { margin-top: 5px; font-size: clamp(1rem, 3.2vw, 1.7rem); }
+      .score { margin-top: 12px; font-size: clamp(3.6rem, 11vw, 6.4rem); }
+      .result-label { margin-top: 18px; }
+      .outcome { font-size: clamp(2rem, 6vw, 3.4rem); }
 
-      .divider {
-        margin-block: 12px;
-      }
-
-      .matchup {
-        margin-top: 5px;
-        font-size: clamp(1rem, 3.2vw, 1.7rem);
-      }
-
-      .score {
-        margin-top: 12px;
-        font-size: clamp(3.6rem, 11vw, 6.4rem);
-      }
-
-      .result-label {
-        margin-top: 18px;
-      }
-
-      .outcome {
-        font-size: clamp(2rem, 6vw, 3.4rem);
+      .editor {
+        left: auto;
+        right: max(10px, env(safe-area-inset-right));
+        bottom: max(10px, env(safe-area-inset-bottom));
+        width: min(380px, 44vw);
+        max-height: calc(100svh - 20px);
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .line.is-playing .line__text,
-      .line.is-playing::before,
-      .line.is-playing::after,
-      .result-stage.is-playing .divider::after {
+      .stage.playing .reveal > span,
+      .stage.playing .reveal::before,
+      .stage.playing .reveal::after,
+      .stage.playing .divider::after {
         animation: none;
       }
 
-      .line__text {
+      .reveal > span {
         opacity: 1;
         clip-path: none;
         transform: none;
         filter: none;
       }
 
-      .line::before,
-      .line::after {
-        display: none;
-      }
-
-      .divider::after {
-        opacity: 1;
-        transform: none;
-      }
+      .reveal::before,
+      .reveal::after { display: none; }
+      .divider::after { opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
-  <main class="result-stage" id="result-stage" aria-label="試合結果">
-    <section class="result-card">
-      <p class="line eyebrow" data-delay="100">
-        <span class="line__text">ROBO SPORTS / MATCH RESULT</span>
-      </p>
-
-      <h1 class="line title" data-delay="230">
-        <span class="line__text">GAME RESULT</span>
-      </h1>
-
+  <main class="stage" id="stage" aria-label="試合結果">
+    <section class="card">
+      <p class="reveal eyebrow" data-delay="90"><span>ROBO SPORTS / MATCH RESULT</span></p>
+      <h1 class="reveal title" data-delay="220"><span>GAME RESULT</span></h1>
       <div class="divider" aria-hidden="true"></div>
-
-      <p class="line meta" data-delay="720">
-        <span class="line__text">MATCH COMPLETE</span>
-      </p>
-
-      <p class="line matchup" data-delay="860">
-        <span class="line__text">CHAN-PON　対　POISON</span>
-      </p>
-
-      <p class="line score" data-delay="1090" aria-label="1 対 1">
-        <span class="line__text"><span>1</span><span class="score__vs">VS</span><span>1</span></span>
-      </p>
-
-      <p class="line result-label" data-delay="1390">
-        <span class="line__text">DRAW</span>
-      </p>
-
-      <p class="line outcome" data-delay="1510">
-        <span class="line__text">引き分け</span>
-      </p>
+      <p class="reveal meta" data-delay="700"><span>MATCH COMPLETE</span></p>
+      <p class="reveal matchup" data-delay="840"><span id="matchupText">エンジェルチェンジ　対　POISON</span></p>
+      <p class="reveal score" data-delay="1070" id="scoreLine" aria-label="1 対 1"><span><b id="scoreAText">1</b><i class="vs">VS</i><b id="scoreBText">1</b></span></p>
+      <p class="reveal result-label" data-delay="1370"><span id="resultLabel">DRAW</span></p>
+      <p class="reveal outcome" data-delay="1490"><span id="outcomeText">引き分け</span></p>
     </section>
   </main>
 
   <p class="tap-hint">画面タップでも再生</p>
+  <button class="editor-toggle" id="editorToggle" type="button" aria-expanded="false" aria-controls="editor">EDIT</button>
   <button class="replay" id="replay" type="button" aria-label="演出をもう一度再生">REPLAY</button>
 
-  <script>
-    const stage = document.getElementById("result-stage");
-    const replayButton = document.getElementById("replay");
-    const lines = [...document.querySelectorAll(".line")];
+  <aside class="editor" id="editor" aria-label="リザルト入力">
+    <form id="resultForm">
+      <h2>リザルト入力</h2>
+      <p>入力して「演出表示」。共有するときは「共有URLコピー」。</p>
 
-    function prepareLine(line) {
+      <label class="field">
+        <span>チーム名A</span>
+        <input id="teamA" name="teamA" autocomplete="off" required />
+      </label>
+
+      <label class="field">
+        <span>チーム名B</span>
+        <input id="teamB" name="teamB" autocomplete="off" required />
+      </label>
+
+      <div class="score-editor">
+        <div class="score-caption">勝敗 / スコア（A VS B）</div>
+        <div class="score-row">
+          <label class="field">
+            <span>A</span>
+            <input id="scoreA" name="scoreA" inputmode="numeric" autocomplete="off" required />
+          </label>
+          <div class="score-vs">VS</div>
+          <label class="field">
+            <span>B</span>
+            <input id="scoreB" name="scoreB" inputmode="numeric" autocomplete="off" required />
+          </label>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>勝者 / 結果</span>
+        <input id="winner" name="winner" list="winnerOptions" autocomplete="off" placeholder="引き分け / チーム名" required />
+        <datalist id="winnerOptions"></datalist>
+      </label>
+
+      <div class="actions">
+        <button class="primary" type="submit">演出表示</button>
+        <button id="copyUrl" type="button">共有URLコピー</button>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+    </form>
+  </aside>
+
+  <script>
+    const DEFAULTS = {
+      teamA: "エンジェルチェンジ",
+      teamB: "POISON",
+      scoreA: "1",
+      scoreB: "1",
+      winner: "引き分け"
+    };
+
+    const resultKeys = ["teamA", "teamB", "scoreA", "scoreB", "winner", "a", "b", "sa", "sb", "w"];
+    const stage = document.getElementById("stage");
+    const replay = document.getElementById("replay");
+    const editor = document.getElementById("editor");
+    const editorToggle = document.getElementById("editorToggle");
+    const form = document.getElementById("resultForm");
+    const status = document.getElementById("status");
+    const lines = [...document.querySelectorAll(".reveal")];
+
+    const fields = {
+      teamA: document.getElementById("teamA"),
+      teamB: document.getElementById("teamB"),
+      scoreA: document.getElementById("scoreA"),
+      scoreB: document.getElementById("scoreB"),
+      winner: document.getElementById("winner")
+    };
+
+    const views = {
+      matchup: document.getElementById("matchupText"),
+      scoreA: document.getElementById("scoreAText"),
+      scoreB: document.getElementById("scoreBText"),
+      scoreLine: document.getElementById("scoreLine"),
+      label: document.getElementById("resultLabel"),
+      outcome: document.getElementById("outcomeText"),
+      datalist: document.getElementById("winnerOptions")
+    };
+
+    function clean(value, fallback) {
+      const text = String(value ?? "").trim();
+      return text || fallback;
+    }
+
+    function dataFromUrl() {
+      const params = new URLSearchParams(location.search);
+      return {
+        teamA: clean(params.get("teamA") ?? params.get("a"), DEFAULTS.teamA),
+        teamB: clean(params.get("teamB") ?? params.get("b"), DEFAULTS.teamB),
+        scoreA: clean(params.get("scoreA") ?? params.get("sa"), DEFAULTS.scoreA),
+        scoreB: clean(params.get("scoreB") ?? params.get("sb"), DEFAULTS.scoreB),
+        winner: clean(params.get("winner") ?? params.get("w"), DEFAULTS.winner)
+      };
+    }
+
+    function hasResultQuery() {
+      const params = new URLSearchParams(location.search);
+      return resultKeys.some((key) => params.has(key));
+    }
+
+    function readForm() {
+      return {
+        teamA: clean(fields.teamA.value, DEFAULTS.teamA),
+        teamB: clean(fields.teamB.value, DEFAULTS.teamB),
+        scoreA: clean(fields.scoreA.value, DEFAULTS.scoreA),
+        scoreB: clean(fields.scoreB.value, DEFAULTS.scoreB),
+        winner: clean(fields.winner.value, DEFAULTS.winner)
+      };
+    }
+
+    function writeForm(data) {
+      fields.teamA.value = data.teamA;
+      fields.teamB.value = data.teamB;
+      fields.scoreA.value = data.scoreA;
+      fields.scoreB.value = data.scoreB;
+      fields.winner.value = data.winner;
+      refreshWinnerOptions(data);
+    }
+
+    function isDrawResult(winner) {
+      const normalized = winner.trim().toLowerCase();
+      return normalized === "draw" || normalized === "引き分け" || normalized === "同点";
+    }
+
+    function applyResult(data) {
+      const draw = isDrawResult(data.winner);
+      views.matchup.textContent = `${data.teamA}　対　${data.teamB}`;
+      views.scoreA.textContent = data.scoreA;
+      views.scoreB.textContent = data.scoreB;
+      views.scoreLine.setAttribute("aria-label", `${data.scoreA} 対 ${data.scoreB}`);
+      views.label.textContent = draw ? "DRAW" : "WINNER";
+      views.outcome.textContent = draw ? "引き分け" : data.winner;
+      document.title = `${data.teamA} vs ${data.teamB} | GAME RESULT`;
+      refreshWinnerOptions(data);
+    }
+
+    function refreshWinnerOptions(data = readForm()) {
+      views.datalist.textContent = "";
+      ["引き分け", data.teamA, data.teamB]
+        .filter(Boolean)
+        .forEach((value) => {
+          const option = document.createElement("option");
+          option.value = value;
+          views.datalist.append(option);
+        });
+    }
+
+    function updateUrl(data) {
+      const params = new URLSearchParams();
+      params.set("teamA", data.teamA);
+      params.set("teamB", data.teamB);
+      params.set("scoreA", data.scoreA);
+      params.set("scoreB", data.scoreB);
+      params.set("winner", data.winner);
+      history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+    }
+
+    function setEditorOpen(open) {
+      document.body.classList.toggle("editor-open", open);
+      editorToggle.setAttribute("aria-expanded", String(open));
+      editorToggle.textContent = open ? "CLOSE" : "EDIT";
+    }
+
+    function prepare(line) {
       const delay = Number(line.dataset.delay || 0);
       const width = Math.max(line.getBoundingClientRect().width, 40);
       line.style.setProperty("--delay", `${delay}ms`);
       line.style.setProperty("--travel", `${Math.ceil(width + 12)}px`);
     }
 
-    function playResult() {
-      stage.classList.remove("is-playing");
-      lines.forEach((line) => line.classList.remove("is-playing"));
-
+    function play() {
+      stage.classList.remove("playing");
       void stage.offsetWidth;
-
-      lines.forEach(prepareLine);
-      stage.classList.add("is-playing");
-      lines.forEach((line) => line.classList.add("is-playing"));
+      lines.forEach(prepare);
+      stage.classList.add("playing");
     }
 
-    replayButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      playResult();
+    async function copyShareUrl() {
+      const data = readForm();
+      applyResult(data);
+      updateUrl(data);
+      const url = location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        status.textContent = "共有URLをコピーしました。";
+      } catch (error) {
+        status.textContent = "コピーできない場合は、表示されたURLを長押しでコピーしてください。";
+        window.prompt("共有URL", url);
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = readForm();
+      applyResult(data);
+      updateUrl(data);
+      setEditorOpen(false);
+      status.textContent = "";
+      play();
     });
 
-    stage.addEventListener("click", playResult);
-    window.addEventListener("resize", () => lines.forEach(prepareLine), { passive: true });
-    window.addEventListener("orientationchange", () => setTimeout(playResult, 180), { passive: true });
-    window.addEventListener("pageshow", () => setTimeout(playResult, 180));
+    document.getElementById("copyUrl").addEventListener("click", copyShareUrl);
+    editorToggle.addEventListener("click", () => setEditorOpen(!document.body.classList.contains("editor-open")));
+    replay.addEventListener("click", (event) => { event.stopPropagation(); play(); });
+    stage.addEventListener("click", () => {
+      if (!document.body.classList.contains("editor-open")) play();
+    });
+
+    [fields.teamA, fields.teamB].forEach((field) => {
+      field.addEventListener("input", () => refreshWinnerOptions());
+    });
+
+    window.addEventListener("resize", () => lines.forEach(prepare), { passive: true });
+    window.addEventListener("orientationchange", () => setTimeout(play, 180), { passive: true });
+    window.addEventListener("pageshow", () => {
+      const data = dataFromUrl();
+      writeForm(data);
+      applyResult(data);
+      setEditorOpen(!hasResultQuery());
+      setTimeout(play, 160);
+    });
   </script>
 </body>
 </html>
