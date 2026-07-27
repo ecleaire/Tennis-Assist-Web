@@ -5596,25 +5596,25 @@ class Application {
     });
     document.querySelectorAll<HTMLButtonElement>(".jump").forEach((button) => button.addEventListener("click", () => this.show(button.dataset.target as Screen)));
     els<HTMLButtonElement>("dashboard-timer-fullscreen").forEach((button) => button.addEventListener("click", () => {
-      this.prepareFullscreenReturn();
+      this.prepareFullscreenReturn("dashboard");
       this.show("timer");
       void this.timer.enterDisplayFullscreen();
     }));
     els<HTMLButtonElement>("dashboard-balls-fullscreen").forEach((button) => button.addEventListener("click", () => {
-      this.prepareFullscreenReturn();
+      this.prepareFullscreenReturn("dashboard");
       void this.enterBallsFullscreen();
     }));
     el<HTMLButtonElement>("operation-balls-fullscreen").addEventListener("click", () => {
       void this.toggleOperationBallsFullscreen();
     });
     el<HTMLButtonElement>("timer-fullscreen").addEventListener("click", () => {
-      if (!document.fullscreenElement && !document.body.classList.contains("compact")) this.prepareFullscreenReturn();
+      if (!document.fullscreenElement && !document.body.classList.contains("compact")) this.prepareFullscreenReturn("timer");
     }, { capture: true });
     el<HTMLButtonElement>("referee-fullscreen").addEventListener("click", () => {
-      if (!document.fullscreenElement && !document.body.classList.contains("referee-compact")) this.prepareFullscreenReturn();
+      if (!document.fullscreenElement && !document.body.classList.contains("referee-compact")) this.prepareFullscreenReturn("referee");
     }, { capture: true });
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => {
-      if (!this.ballsFullscreen) this.prepareFullscreenReturn();
+      if (!this.ballsFullscreen) this.prepareFullscreenReturn("balls");
     }, { capture: true });
     el<HTMLButtonElement>("balls-fullscreen").addEventListener("click", () => void this.toggleBallsFullscreen());
     document.addEventListener("fullscreenchange", () => {
@@ -5703,7 +5703,7 @@ class Application {
   }
 
   private show(screen: Screen): void {
-    if (this.operationActive && screen === "rules") screen = this.operationScreen();
+    if (this.variant.id === "venue" && this.operationActive && screen === "rules") screen = this.operationScreen();
     if (screen === "development") this.ensureAdminController();
     this.timer.noteActivity();
     if (screen !== "development") this.admin?.stopTransientChecks();
@@ -5733,8 +5733,8 @@ class Application {
     return activeId && activeId in screenLabels ? activeId as Screen : "dashboard";
   }
 
-  private prepareFullscreenReturn(): void {
-    this.fullscreenReturnScreen = this.currentScreen();
+  private prepareFullscreenReturn(sourceScreen: Screen = this.currentScreen()): void {
+    this.fullscreenReturnScreen = sourceScreen;
   }
 
   private restoreFullscreenReturn(activeFullscreenScreen?: Screen): void {
@@ -5755,11 +5755,13 @@ class Application {
       element.toggleAttribute("hidden", !showNews);
     });
     if (this.variant.id === "general") {
-      document.querySelectorAll<HTMLElement>("#navigation .venue-default-hidden").forEach((button) => {
+      document.querySelectorAll<HTMLElement>("#navigation [data-screen]").forEach((button) => {
         button.classList.remove("venue-default-hidden");
+        button.classList.remove("venue-screen-disabled");
         button.removeAttribute("hidden");
         button.removeAttribute("aria-disabled");
       });
+      document.body.classList.remove("operation-navigation-locked");
     }
     this.applyVenueScreenVisibility(AdminController.settings().venueScreenVisibility);
   }
@@ -6863,7 +6865,7 @@ class Application {
   }
 
   private setOperationNavigationLocked(active: boolean): void {
-    document.body.classList.toggle("operation-navigation-locked", active);
+    document.body.classList.toggle("operation-navigation-locked", active && this.variant.id === "venue");
   }
 
   private setOperationTimerActive(active: boolean): void {
@@ -7016,6 +7018,7 @@ class Application {
   }
 
   private handleOperationNavGuard(screen: Screen): boolean {
+    if (this.variant.id === "general") return false;
     if (!this.operationActive) return false;
     if (screen === "timer" || screen === "referee" || screen === "balls" || screen === "links" || screen === "news") {
       return true;

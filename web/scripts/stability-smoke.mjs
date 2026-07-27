@@ -139,6 +139,37 @@ try {
         }
         await page.locator("#operation-prepare").waitFor({ state: "visible", timeout: 10_000 });
 
+        if (edition.name === "general") {
+          for (const screen of ["dashboard", "operation", "timer", "referee", "balls", "records", "rules", "news", "links"]) {
+            const nav = page.locator(`#navigation [data-screen="${screen}"]`);
+            if (!(await nav.isVisible())) failures.push(`${label}: general mode hidden by default: ${screen}`);
+            if (await nav.getAttribute("aria-disabled") === "true") failures.push(`${label}: general mode disabled by default: ${screen}`);
+          }
+
+          await page.locator('[data-screen="dashboard"]').click();
+          await page.locator("#dashboard-timer-fullscreen").click();
+          await page.waitForFunction(() => document.body.classList.contains("compact"));
+          await page.locator("#timer-fullscreen").click();
+          await page.waitForFunction(() => !document.body.classList.contains("compact"));
+          await page.waitForFunction(() => !document.fullscreenElement);
+          if (!(await page.locator("#screen-dashboard").evaluate((screen) => screen.classList.contains("active")))) {
+            failures.push(`${label}: dashboard timer fullscreen did not return to dashboard`);
+          }
+
+          if (!(await page.locator('[data-screen="timer"]').isVisible())) {
+            const state = await page.evaluate(() => ({ bodyClass: document.body.className, fullscreen: Boolean(document.fullscreenElement) }));
+            failures.push(`${label}: navigation hidden after dashboard fullscreen ${JSON.stringify(state)}`);
+          }
+          await page.evaluate(() => (document.querySelector('[data-screen="timer"]'))?.click());
+          await page.locator("#timer-fullscreen").click();
+          await page.waitForFunction(() => document.body.classList.contains("compact"));
+          await page.locator("#timer-fullscreen").click();
+          await page.waitForFunction(() => !document.body.classList.contains("compact"));
+          if (!(await page.locator("#screen-timer").evaluate((screen) => screen.classList.contains("active")))) {
+            failures.push(`${label}: standalone timer fullscreen did not return to timer`);
+          }
+        }
+
         for (const screen of screens) {
           await page.evaluate((name) => {
             const button = document.querySelector(`[data-screen="${name}"]`);
@@ -194,6 +225,17 @@ try {
         }, edition.name === "general" ? "operation" : "dashboard");
         await page.locator("#operation-prepare").click();
         await page.locator("#operation-team").waitFor({ state: "visible" });
+        if (edition.name === "general") {
+          if (await page.locator("body").evaluate((body) => body.classList.contains("operation-navigation-locked"))) {
+            failures.push(`${label}: general navigation was locked during match flow`);
+          }
+          await page.locator('[data-screen="rules"]').click();
+          if (!(await page.locator("#screen-rules").evaluate((screen) => screen.classList.contains("active")))) {
+            failures.push(`${label}: general rules mode was blocked during match flow`);
+          }
+          await page.locator('[data-screen="operation"]').click();
+          await page.locator("#operation-team").waitFor({ state: "visible" });
+        }
         for (const selector of ["#operation-court", "#operation-match-type", "#operation-team-a", "#operation-team-b", "#operation-team-ok"]) {
           const box = await page.locator(selector).boundingBox();
           if (!box || box.x < -1 || box.x + box.width > target.width + 1) {
