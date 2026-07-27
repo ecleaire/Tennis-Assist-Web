@@ -1087,8 +1087,14 @@ function courtFromSourceDeviceRole(value) {
 function isRankingViolationCsv(category, endReason) {
   const reason = String(endReason || '').trim();
   if (String(category || '').trim() === '【終了・その時点で採点】（通常の試合停止）') return false;
-  return reason.indexOf('開始後10秒間の不動(6.20)') !== 0
-    && reason.indexOf('両ロボットの撤去(6.21 / 6.32.10)') !== 0;
+  const violationPrefixes = [
+    '倫理規定違反(3.1-3.10)', '車検（チェック）不合格(6.1.2)', '遅刻(6.10)', '不正なデータ入力(6.17)',
+    '分離パーツの違反(6.23)', '外部からの合図・入力(6.24)', 'レッドゾーンへの接触(6.27)',
+    '故意のロボット接触(6.28)', '相手陣地・ロボットへの接触(6.29 / 6.32.2)',
+    'サイズ制限の超過(6.32.3)', '人間による接触(6.32.5)', '両ロボットの脱走(6.32.6)',
+    'ボールの破損(6.32.7)', 'フィールド・設備の破損(6.32.8)', '無許可の移動・撤去(6.33)'
+  ];
+  return violationPrefixes.some(function (prefix) { return reason.indexOf(prefix) === 0; });
 }
 
 function matchViolationCountsFromCsv(csvRow, csvColumns) {

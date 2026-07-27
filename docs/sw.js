@@ -1,9 +1,9 @@
-const CACHE_NAME = "tennis-assist-web-b39394ce4fc8";
+const CACHE_NAME = "tennis-assist-web-7351fa4aa5ab";
 const CORE = [
   "./",
   "./index.html",
   "./assets/DSEG7Modern-Bold-B_JOyP8w.woff2",
-  "./assets/index-CXNNQcbl.js",
+  "./assets/index-BAMUDXEc.js",
   "./assets/index-DrVBeIk0.css",
   "./assets/playfield-BvIRyTeo.jpg",
   "./favicon.svg",
@@ -16,7 +16,8 @@ const OPTIONAL = [
   "./assist_icon_512.png",
   "./data/news.json",
   "./data/rules_sections.json",
-  "./data/team_list_example.csv"
+  "./data/team_list_example.csv",
+  "./result-demo/index.html"
 ];
 
 async function fetchNavigationWithTimeout(request, timeoutMs = 5000) {

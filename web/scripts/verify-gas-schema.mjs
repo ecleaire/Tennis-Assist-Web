@@ -4,7 +4,7 @@ import vm from "node:vm";
 const source = fs.readFileSync(new URL("../../GAS_WebApp.gs", import.meta.url), "utf8");
 const context = {};
 vm.createContext(context);
-vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader, validateFinalizedSeriesSubmission, collectFinalizedSeriesRecords, normalizeFinalizedSeriesRecords };`, context);
+vm.runInContext(`${source}\nthis.verifyApi = { SERIES_RESULT_HEADER, seriesResultHeaderInfo, writeSeriesResultRows, readSeriesResultKeys, ensureExactHeader, validateFinalizedSeriesSubmission, collectFinalizedSeriesRecords, normalizeFinalizedSeriesRecords, isRankingViolationCsv };`, context);
 
 class MockRange {
   constructor(sheet, row, column, rows = 1, columns = 1) {
@@ -181,4 +181,21 @@ if (violationAt(normalizedRecords[1], "チームB違反数") !== "1") throw new 
 if (violationAt(normalizedRecords[3], "チームA違反数") !== "0" || violationAt(normalizedRecords[3], "チームB違反数") !== "1") throw new Error("Final violation totals must be rebuilt from the three matches.");
 if (normalized.changedRows !== 3) throw new Error(`Expected three corrected rows, got ${normalized.changedRows}.`);
 
-console.log("GAS schema verification passed: layouts, finalized-series identity/court gates, and server-side violation normalization.");
+const appendixViolationCases = [
+  ["倫理規定違反(3.1-3.10)", true], ["車検（チェック）不合格(6.1.2)", true], ["遅刻(6.10)", true],
+  ["不正なデータ入力(6.17)", true], ["開始後10秒間の不動(6.20)", false],
+  ["両ロボットの撤去(6.21 / 6.32.10)", false], ["分離パーツの違反(6.23)", true],
+  ["外部からの合図・入力(6.24)", true], ["レッドゾーンへの接触(6.27)", true],
+  ["故意のロボット接触(6.28)", true], ["相手陣地・ロボットへの接触(6.29 / 6.32.2)", true],
+  ["サイズ制限の超過(6.32.3)", true], ["意図的なコールド誘発(6.32.4)", false],
+  ["人間による接触(6.32.5)", true], ["両ロボットの脱走(6.32.6)", true],
+  ["ボールの破損(6.32.7)", true], ["フィールド・設備の破損(6.32.8)", true],
+  ["無許可の移動・撤去(6.33)", true], ["未知の終了理由", false],
+];
+for (const [reason, expected] of appendixViolationCases) {
+  const actual = api.isRankingViolationCsv(violationCategory, reason);
+  if (actual !== expected) throw new Error(`Appendix violation mismatch for ${reason}: expected ${expected}, got ${actual}.`);
+}
+if (api.isRankingViolationCsv(scoringCategory, "故意のロボット接触(6.28)")) throw new Error("A scoring-category row must not add a violation.");
+
+console.log("GAS schema verification passed: layouts, identity/court gates, and all appendix violation classifications.");

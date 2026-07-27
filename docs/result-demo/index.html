@@ -1,22 +1,27 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#061014">
-  <meta name="color-scheme" content="dark">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#060d10" />
+  <meta name="color-scheme" content="dark" />
   <title>GAME RESULT | CHAN-PON vs POISON</title>
   <style>
     :root {
-      --bg: #061014;
-      --text: #dcfcff;
-      --muted: #82adb3;
-      --line: rgba(220,252,255,.22);
+      --bg: #060d10;
+      --bg-glow: #102a30;
+      --text: #d9fbff;
+      --muted: #83b2b9;
+      --line: rgba(217, 251, 255, 0.22);
+      --edge: rgba(217, 251, 255, 0.72);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       min-height: 100%;
       margin: 0;
@@ -25,163 +30,236 @@
     }
 
     body {
-      min-height: 100vh;
       min-height: 100svh;
       overflow: hidden;
-      font-family: "Arial Narrow", "Roboto Condensed", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+      font-family:
+        "Arial Narrow",
+        "Roboto Condensed",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        "Noto Sans JP",
+        system-ui,
+        sans-serif;
       -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
       touch-action: manipulation;
       user-select: none;
       -webkit-user-select: none;
     }
 
-    .stage {
+    button {
+      font: inherit;
+    }
+
+    .result-stage {
       position: relative;
       isolation: isolate;
-      min-height: 100vh;
       min-height: 100svh;
-      display: grid;
-      place-items: center;
       overflow: hidden;
-      padding: max(28px, env(safe-area-inset-top)) max(22px, calc(env(safe-area-inset-right) + 18px)) max(34px, env(safe-area-inset-bottom)) max(22px, calc(env(safe-area-inset-left) + 18px));
+      display: grid;
+      align-items: center;
+      padding:
+        max(26px, env(safe-area-inset-top))
+        max(22px, calc(env(safe-area-inset-right) + 18px))
+        max(30px, env(safe-area-inset-bottom))
+        max(22px, calc(env(safe-area-inset-left) + 18px));
       background:
-        radial-gradient(80% 55% at 84% 8%, rgba(46,126,139,.23), transparent 62%),
-        radial-gradient(75% 70% at 0% 100%, rgba(24,75,84,.19), transparent 62%),
-        linear-gradient(145deg, #0a1a1f 0%, var(--bg) 68%);
+        radial-gradient(90% 62% at 84% 8%, rgba(37, 102, 113, 0.22), transparent 58%),
+        radial-gradient(80% 80% at 2% 98%, rgba(16, 55, 62, 0.22), transparent 58%),
+        linear-gradient(145deg, #091519 0%, var(--bg) 64%);
     }
 
-    .stage::before {
-      content: "";
-      position: absolute;
-      z-index: -2;
-      inset: 0;
-      opacity: .15;
-      pointer-events: none;
-      background: repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(220,252,255,.12) 4px);
-    }
-
-    .stage::after {
+    .result-stage::before {
       content: "";
       position: absolute;
       z-index: -1;
-      width: 74vmax;
-      aspect-ratio: 1;
-      right: -50vmax;
-      top: -46vmax;
-      border: 1px solid rgba(220,252,255,.07);
-      border-radius: 50%;
-      box-shadow: 0 0 0 12vmax rgba(220,252,255,.016), 0 0 0 24vmax rgba(220,252,255,.01);
+      inset: 0;
       pointer-events: none;
+      opacity: 0.15;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 3px,
+        rgba(221, 253, 255, 0.13) 4px
+      );
     }
 
-    .card {
-      width: min(100%, 720px);
+    .result-stage::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      width: 70vmax;
+      aspect-ratio: 1;
+      right: -47vmax;
+      top: -42vmax;
+      border: 1px solid rgba(217, 251, 255, 0.08);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 12vmax rgba(217, 251, 255, 0.018),
+        0 0 0 24vmax rgba(217, 251, 255, 0.012);
+    }
+
+    .result-card {
+      position: relative;
+      width: min(100%, 740px);
+      margin-inline: auto;
       transform: translateY(-1.5svh);
     }
 
-    .reveal {
-      --delay: 0ms;
+    .line {
       position: relative;
       width: fit-content;
       max-width: 100%;
       margin: 0;
+      overflow: visible;
     }
 
-    .reveal > span {
+    .line__text {
       display: block;
       opacity: 0;
       clip-path: inset(0 100% 0 0);
-      transform: translate3d(-4px,0,0);
+      transform: translate3d(-0.07em, 0, 0);
       filter: blur(2px);
       will-change: clip-path, opacity, transform, filter;
     }
 
-    .reveal::before,
-    .reveal::after {
+    .line::before,
+    .line::after {
       content: "";
       position: absolute;
       z-index: 2;
-      top: -.08em;
-      bottom: -.08em;
+      top: -0.08em;
+      bottom: -0.08em;
       left: 0;
-      opacity: 0;
       pointer-events: none;
+      opacity: 0;
       will-change: transform, opacity;
     }
 
-    .reveal::before {
-      width: clamp(30px, 13vw, 92px);
-      background: repeating-linear-gradient(135deg, rgba(220,252,255,.9) 0, rgba(220,252,255,.9) 2px, transparent 2px, transparent 6px);
+    .line::before {
+      width: clamp(28px, 12vw, 92px);
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(217, 251, 255, 0.9) 0,
+        rgba(217, 251, 255, 0.9) 2px,
+        transparent 2px,
+        transparent 6px
+      );
       mix-blend-mode: screen;
-      transform: translateX(-140%);
+      transform: translateX(-135%);
     }
 
-    .reveal::after {
+    .line::after {
       width: 2px;
-      background: rgba(220,252,255,.75);
-      box-shadow: 0 0 15px rgba(220,252,255,.55);
-      transform: translateX(-20px);
+      background: var(--edge);
+      box-shadow: 0 0 16px rgba(217, 251, 255, 0.6);
+      transform: translateX(-24px);
     }
 
-    .playing .reveal > span {
-      animation: text-in 620ms cubic-bezier(.16,.82,.18,1) var(--delay) both, glitch 220ms steps(2,end) calc(var(--delay) + 420ms) both;
+    .line.is-playing .line__text {
+      animation:
+        reveal-text 640ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both,
+        settle-text 240ms steps(2, end) calc(var(--delay) + 430ms) both;
     }
 
-    .playing .reveal::before {
-      animation: hatch 680ms cubic-bezier(.16,.82,.18,1) var(--delay) both;
+    .line.is-playing::before {
+      animation: hatch-sweep 700ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both;
     }
 
-    .playing .reveal::after {
-      animation: edge 640ms cubic-bezier(.16,.82,.18,1) var(--delay) both;
+    .line.is-playing::after {
+      animation: edge-sweep 650ms cubic-bezier(0.16, 0.82, 0.18, 1) var(--delay) both;
     }
 
-    @keyframes text-in {
-      0% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-4px,0,0); filter: blur(2px); }
-      14% { opacity: 1; }
-      100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0,0,0); filter: blur(0); }
+    @keyframes reveal-text {
+      0% {
+        opacity: 0;
+        clip-path: inset(0 100% 0 0);
+        transform: translate3d(-0.07em, 0, 0);
+        filter: blur(2px);
+      }
+      14% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+        transform: translate3d(0, 0, 0);
+        filter: blur(0);
+      }
     }
 
-    @keyframes hatch {
-      0% { opacity: 0; transform: translateX(-140%); }
-      14% { opacity: .95; }
-      72% { opacity: .88; }
-      100% { opacity: 0; transform: translateX(calc(var(--travel) + 18px)); }
+    @keyframes hatch-sweep {
+      0% {
+        opacity: 0;
+        transform: translateX(-135%);
+      }
+      12% {
+        opacity: 0.92;
+      }
+      72% {
+        opacity: 0.9;
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(calc(var(--travel) + 20px));
+      }
     }
 
-    @keyframes edge {
-      0% { opacity: 0; transform: translateX(-20px); }
-      12% { opacity: .95; }
-      84% { opacity: .65; }
-      100% { opacity: 0; transform: translateX(var(--travel)); }
+    @keyframes edge-sweep {
+      0% {
+        opacity: 0;
+        transform: translateX(-24px);
+      }
+      10% {
+        opacity: 0.95;
+      }
+      86% {
+        opacity: 0.7;
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(var(--travel));
+      }
     }
 
-    @keyframes glitch {
-      0%,100% { translate: 0 0; text-shadow: none; }
-      35% { translate: -1px 0; text-shadow: 3px 0 rgba(220,252,255,.24); }
-      68% { translate: 1px 0; text-shadow: -2px 0 rgba(220,252,255,.2); }
+    @keyframes settle-text {
+      0%, 100% {
+        translate: 0 0;
+        text-shadow: none;
+      }
+      28% {
+        translate: -1px 0;
+        text-shadow: 3px 0 rgba(217, 251, 255, 0.24);
+      }
+      58% {
+        translate: 1px 0;
+        text-shadow: -2px 0 rgba(217, 251, 255, 0.2);
+      }
     }
 
     .eyebrow {
       color: var(--muted);
-      font-size: clamp(.66rem, 2.55vw, .9rem);
+      font-size: clamp(0.66rem, 2.55vw, 0.9rem);
       font-weight: 900;
-      letter-spacing: .15em;
+      letter-spacing: 0.15em;
       line-height: 1.2;
     }
 
     .title {
-      margin-top: 6px;
-      font-size: clamp(3rem, 14.5vw, 7rem);
+      margin-top: 5px;
+      font-size: clamp(3.05rem, 14.8vw, 7rem);
       font-weight: 1000;
-      letter-spacing: -.058em;
-      line-height: .84;
+      letter-spacing: -0.055em;
+      line-height: 0.84;
+      text-transform: uppercase;
     }
 
     .divider {
       width: min(100%, 650px);
       height: 1px;
-      margin: clamp(19px, 5vw, 30px) 0 clamp(17px, 4.5vw, 26px);
+      margin: clamp(18px, 4.8vw, 30px) 0 clamp(16px, 4.4vw, 26px);
       overflow: hidden;
+      background: transparent;
     }
 
     .divider::after {
@@ -192,64 +270,72 @@
       opacity: 0;
       transform: scaleX(0);
       transform-origin: left;
-      background: linear-gradient(90deg, var(--line), rgba(220,252,255,.03));
+      background: linear-gradient(90deg, var(--line), rgba(217, 251, 255, 0.03));
     }
 
-    .playing .divider::after {
-      animation: divider-in 560ms cubic-bezier(.16,.82,.18,1) 610ms both;
+    .result-stage.is-playing .divider::after {
+      animation: divider-in 560ms cubic-bezier(0.16, 0.82, 0.18, 1) 620ms both;
     }
 
     @keyframes divider-in {
-      to { opacity: 1; transform: scaleX(1); }
+      to {
+        opacity: 1;
+        transform: scaleX(1);
+      }
     }
 
-    .meta,
-    .result-label {
+    .meta {
       color: var(--muted);
-      font-size: clamp(.65rem, 2.7vw, .88rem);
-      font-weight: 950;
-      letter-spacing: .14em;
+      font-size: clamp(0.65rem, 2.6vw, 0.86rem);
+      font-weight: 900;
+      letter-spacing: 0.1em;
       line-height: 1.2;
+      text-transform: uppercase;
     }
 
     .matchup {
-      margin-top: clamp(8px, 2.2vw, 13px);
-      font-size: clamp(1.22rem, 6vw, 2.35rem);
+      margin-top: clamp(7px, 2.1vw, 12px);
+      font-size: clamp(1.18rem, 5.8vw, 2.25rem);
       font-weight: 950;
-      letter-spacing: -.025em;
+      letter-spacing: -0.025em;
       line-height: 1.18;
       overflow-wrap: anywhere;
     }
 
     .score {
-      margin-top: clamp(18px, 5vw, 30px);
+      margin-top: clamp(16px, 4.7vw, 28px);
       font-size: clamp(4.8rem, 25vw, 10.5rem);
       font-weight: 1000;
-      letter-spacing: -.075em;
-      line-height: .78;
+      letter-spacing: -0.075em;
+      line-height: 0.78;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
 
-    .score .vs {
+    .score__vs {
       display: inline-block;
-      margin-inline: .22em .2em;
+      margin-inline: 0.22em 0.2em;
       color: var(--muted);
-      font-size: .19em;
+      font-size: 0.19em;
       font-weight: 950;
-      letter-spacing: .08em;
-      vertical-align: .28em;
+      letter-spacing: 0.08em;
+      vertical-align: 0.28em;
     }
 
     .result-label {
-      margin-top: clamp(31px, 7vw, 48px);
+      margin-top: clamp(30px, 7vw, 46px);
+      color: var(--muted);
+      font-size: clamp(0.65rem, 2.7vw, 0.88rem);
+      font-weight: 950;
+      letter-spacing: 0.16em;
+      line-height: 1.2;
     }
 
     .outcome {
-      margin-top: 6px;
-      font-size: clamp(2.35rem, 11.5vw, 5.3rem);
+      margin-top: 5px;
+      font-size: clamp(2.25rem, 11vw, 5.2rem);
       font-weight: 1000;
-      letter-spacing: -.05em;
+      letter-spacing: -0.05em;
       line-height: 1;
     }
 
@@ -258,111 +344,197 @@
       z-index: 10;
       right: max(14px, env(safe-area-inset-right));
       bottom: max(14px, env(safe-area-inset-bottom));
-      min-width: 90px;
+      min-width: 88px;
       min-height: 46px;
       padding: 10px 17px;
-      border: 1px solid rgba(220,252,255,.31);
+      border: 1px solid rgba(217, 251, 255, 0.3);
       border-radius: 999px;
-      color: rgba(220,252,255,.9);
-      background: rgba(5,13,16,.64);
-      box-shadow: 0 8px 30px rgba(0,0,0,.22);
+      color: rgba(217, 251, 255, 0.88);
+      background: rgba(5, 13, 16, 0.62);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      font-size: .72rem;
+      font-size: 0.72rem;
       font-weight: 900;
-      letter-spacing: .12em;
+      letter-spacing: 0.12em;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      transition: opacity 180ms ease, transform 120ms ease, border-color 180ms ease;
     }
 
-    .replay:active { transform: scale(.95); }
-    .replay:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+    .replay:active {
+      transform: scale(0.95);
+    }
 
-    .hint {
+    .replay:focus-visible {
+      outline: 2px solid var(--text);
+      outline-offset: 3px;
+    }
+
+    .tap-hint {
       position: fixed;
       z-index: 9;
       left: max(16px, env(safe-area-inset-left));
-      bottom: max(28px, calc(env(safe-area-inset-bottom) + 6px));
+      bottom: max(27px, calc(env(safe-area-inset-bottom) + 5px));
       margin: 0;
-      color: rgba(220,252,255,.35);
-      font-size: .64rem;
+      color: rgba(217, 251, 255, 0.35);
+      font-size: 0.64rem;
       font-weight: 700;
-      letter-spacing: .06em;
+      letter-spacing: 0.06em;
       pointer-events: none;
     }
 
     @media (max-width: 360px) {
-      .stage { padding-inline: max(18px, calc(env(safe-area-inset-left) + 14px)); }
-      .title { font-size: clamp(2.75rem, 14vw, 3.2rem); }
-      .score { font-size: clamp(4.2rem, 24vw, 5.3rem); }
+      .result-stage {
+        padding-inline: max(18px, calc(env(safe-area-inset-left) + 14px));
+      }
+
+      .title {
+        font-size: clamp(2.8rem, 14.5vw, 3.25rem);
+      }
+
+      .score {
+        font-size: clamp(4.25rem, 24vw, 5.4rem);
+      }
     }
 
     @media (orientation: landscape) and (max-height: 560px) {
-      .stage { place-items: start; padding-top: max(18px, env(safe-area-inset-top)); }
-      .card { width: min(88vw, 760px); margin-left: max(4vw, env(safe-area-inset-left)); transform: none; }
-      .title { font-size: clamp(2.55rem, 8vw, 4.5rem); }
-      .divider { margin-block: 12px; }
-      .matchup { margin-top: 5px; font-size: clamp(1rem, 3.2vw, 1.7rem); }
-      .score { margin-top: 12px; font-size: clamp(3.55rem, 11vw, 6.3rem); }
-      .result-label { margin-top: 18px; }
-      .outcome { font-size: clamp(2rem, 6vw, 3.4rem); }
+      .result-stage {
+        align-items: start;
+        padding-top: max(18px, env(safe-area-inset-top));
+        padding-bottom: max(18px, env(safe-area-inset-bottom));
+      }
+
+      .result-card {
+        width: min(88vw, 760px);
+        margin-inline: max(4vw, env(safe-area-inset-left)) auto;
+        transform: none;
+      }
+
+      .title {
+        font-size: clamp(2.6rem, 8vw, 4.5rem);
+      }
+
+      .divider {
+        margin-block: 12px;
+      }
+
+      .matchup {
+        margin-top: 5px;
+        font-size: clamp(1rem, 3.2vw, 1.7rem);
+      }
+
+      .score {
+        margin-top: 12px;
+        font-size: clamp(3.6rem, 11vw, 6.4rem);
+      }
+
+      .result-label {
+        margin-top: 18px;
+      }
+
+      .outcome {
+        font-size: clamp(2rem, 6vw, 3.4rem);
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .playing .reveal > span,
-      .playing .reveal::before,
-      .playing .reveal::after,
-      .playing .divider::after { animation: none; }
-      .reveal > span { opacity: 1; clip-path: none; transform: none; filter: none; }
-      .reveal::before, .reveal::after { display: none; }
-      .divider::after { opacity: 1; transform: none; }
+      .line.is-playing .line__text,
+      .line.is-playing::before,
+      .line.is-playing::after,
+      .result-stage.is-playing .divider::after {
+        animation: none;
+      }
+
+      .line__text {
+        opacity: 1;
+        clip-path: none;
+        transform: none;
+        filter: none;
+      }
+
+      .line::before,
+      .line::after {
+        display: none;
+      }
+
+      .divider::after {
+        opacity: 1;
+        transform: none;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="stage" id="stage" aria-label="試合結果">
-    <section class="card">
-      <p class="reveal eyebrow" data-delay="90"><span>ROBO SPORTS / MATCH RESULT</span></p>
-      <h1 class="reveal title" data-delay="220"><span>GAME RESULT</span></h1>
+  <main class="result-stage" id="result-stage" aria-label="試合結果">
+    <section class="result-card">
+      <p class="line eyebrow" data-delay="100">
+        <span class="line__text">ROBO SPORTS / MATCH RESULT</span>
+      </p>
+
+      <h1 class="line title" data-delay="230">
+        <span class="line__text">GAME RESULT</span>
+      </h1>
+
       <div class="divider" aria-hidden="true"></div>
-      <p class="reveal meta" data-delay="700"><span>MATCH COMPLETE</span></p>
-      <p class="reveal matchup" data-delay="840"><span>CHAN-PON　対　POISON</span></p>
-      <p class="reveal score" data-delay="1070" aria-label="1 対 1"><span><b>1</b><i class="vs">VS</i><b>1</b></span></p>
-      <p class="reveal result-label" data-delay="1370"><span>DRAW</span></p>
-      <p class="reveal outcome" data-delay="1490"><span>引き分け</span></p>
+
+      <p class="line meta" data-delay="720">
+        <span class="line__text">MATCH COMPLETE</span>
+      </p>
+
+      <p class="line matchup" data-delay="860">
+        <span class="line__text">CHAN-PON　対　POISON</span>
+      </p>
+
+      <p class="line score" data-delay="1090" aria-label="1 対 1">
+        <span class="line__text"><span>1</span><span class="score__vs">VS</span><span>1</span></span>
+      </p>
+
+      <p class="line result-label" data-delay="1390">
+        <span class="line__text">DRAW</span>
+      </p>
+
+      <p class="line outcome" data-delay="1510">
+        <span class="line__text">引き分け</span>
+      </p>
     </section>
   </main>
 
-  <p class="hint">画面タップでも再生</p>
+  <p class="tap-hint">画面タップでも再生</p>
   <button class="replay" id="replay" type="button" aria-label="演出をもう一度再生">REPLAY</button>
 
   <script>
-    const stage = document.getElementById('stage');
-    const replay = document.getElementById('replay');
-    const lines = [...document.querySelectorAll('.reveal')];
+    const stage = document.getElementById("result-stage");
+    const replayButton = document.getElementById("replay");
+    const lines = [...document.querySelectorAll(".line")];
 
-    function prepare(line) {
+    function prepareLine(line) {
       const delay = Number(line.dataset.delay || 0);
       const width = Math.max(line.getBoundingClientRect().width, 40);
-      line.style.setProperty('--delay', `${delay}ms`);
-      line.style.setProperty('--travel', `${Math.ceil(width + 12)}px`);
+      line.style.setProperty("--delay", `${delay}ms`);
+      line.style.setProperty("--travel", `${Math.ceil(width + 12)}px`);
     }
 
-    function play() {
-      stage.classList.remove('playing');
+    function playResult() {
+      stage.classList.remove("is-playing");
+      lines.forEach((line) => line.classList.remove("is-playing"));
+
       void stage.offsetWidth;
-      lines.forEach(prepare);
-      stage.classList.add('playing');
+
+      lines.forEach(prepareLine);
+      stage.classList.add("is-playing");
+      lines.forEach((line) => line.classList.add("is-playing"));
     }
 
-    replay.addEventListener('click', event => {
+    replayButton.addEventListener("click", (event) => {
       event.stopPropagation();
-      play();
+      playResult();
     });
-    stage.addEventListener('click', play);
-    window.addEventListener('resize', () => lines.forEach(prepare), { passive: true });
-    window.addEventListener('orientationchange', () => setTimeout(play, 180), { passive: true });
-    window.addEventListener('pageshow', () => setTimeout(play, 160));
+
+    stage.addEventListener("click", playResult);
+    window.addEventListener("resize", () => lines.forEach(prepareLine), { passive: true });
+    window.addEventListener("orientationchange", () => setTimeout(playResult, 180), { passive: true });
+    window.addEventListener("pageshow", () => setTimeout(playResult, 180));
   </script>
 </body>
 </html>

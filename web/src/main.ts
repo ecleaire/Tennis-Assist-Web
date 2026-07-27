@@ -428,17 +428,24 @@ const reasons: Record<Category, string[]> = {
     "開始後10秒間の不動(6.20)", "両ロボットの撤去(6.21 / 6.32.10)", "分離パーツの違反(6.23)",
     "外部からの合図・入力(6.24)", "レッドゾーンへの接触(6.27)", "故意のロボット接触(6.28)",
     "相手陣地・ロボットへの接触(6.29 / 6.32.2)", "サイズ制限の超過(6.32.3)",
-    "意図的なコールド誘発(6.32.4)", "人間による接触(6.32.5)", "両ロボットの脱走(6.32.6)",
+    "人間による接触(6.32.5)", "両ロボットの脱走(6.32.6)",
     "ボールの破損(6.32.7)", "フィールド・設備の破損(6.32.8)", "無許可の移動・撤去(6.33)",
   ],
 };
 
-// Appendix 12 marks only rows carrying the explicit "[Violation]" remark as
-// ranking violations. A 9:-4 automatic loss is not necessarily a violation.
+const rankingViolationReasonPrefixes = [
+  "倫理規定違反(3.1-3.10)", "車検（チェック）不合格(6.1.2)", "遅刻(6.10)", "不正なデータ入力(6.17)",
+  "分離パーツの違反(6.23)", "外部からの合図・入力(6.24)", "レッドゾーンへの接触(6.27)",
+  "故意のロボット接触(6.28)", "相手陣地・ロボットへの接触(6.29 / 6.32.2)",
+  "サイズ制限の超過(6.32.3)", "人間による接触(6.32.5)", "両ロボットの脱走(6.32.6)",
+  "ボールの破損(6.32.7)", "フィールド・設備の破損(6.32.8)", "無許可の移動・撤去(6.33)",
+];
+
+// 付録12の備考欄に明記された【違反】だけをランキング違反として数えます。
+// 9:-4の自動敗北でも、6.20・6.21・6.32.4・6.32.10は違反数に加算しません。
 function isRankingViolation(category: Category, endReason: string): boolean {
   if (category === scoringCategory) return false;
-  return !endReason.startsWith("開始後10秒間の不動(6.20)")
-    && !endReason.startsWith("両ロボットの撤去(6.21 / 6.32.10)");
+  return rankingViolationReasonPrefixes.some((prefix) => endReason.startsWith(prefix));
 }
 
 function courtCompetitionCode(court: string): string {
