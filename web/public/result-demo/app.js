@@ -25,9 +25,13 @@ const scoreBView=$("vsb");
 const outcome=document.querySelector(".outcome");
 const outcomeInk=$("vr");
 const lines=[...document.querySelectorAll(".reveal")];
+
 const clean=(v,f)=>String(v??"").replace(/[\r\n\t]+/g," ").replace(/\s{2,}/g," ").trim()||f;
 const score=v=>String(Math.max(0,Math.min(99,parseInt(v,10)||0)));
 const draw=v=>/^(引き分け|引分け|draw)$/i.test(String(v).trim());
+const rand=(min,max)=>Math.random()*(max-min)+min;
+const randInt=(min,max)=>Math.floor(rand(min,max+1));
+const px=value=>`${Math.round(value)}px`;
 
 function result(){
   return type.value==="a"?clean(a.value,D.a):type.value==="b"?clean(b.value,D.b):type.value==="custom"?clean(custom.value,"結果未入力"):"引き分け";
@@ -129,39 +133,83 @@ function layout(){
   stage.style.setProperty("--card-scale","1");
   fitTitle();fitMatchup();fitScore();fitOutcome();fitCard();
 }
+
+function randomizeLineNoise(line,width){
+  const previous=Number(line.dataset.noise);
+  let variant=randInt(0,5);
+  if(Number.isFinite(previous)&&variant===previous)variant=(variant+randInt(1,5))%6;
+  line.dataset.noise=String(variant);
+
+  const skew=rand(-7,7);
+  const topLeft=randInt(0,8);
+  const topRight=randInt(0,7);
+  const bottomRight=randInt(93,100);
+  const bottomLeft=randInt(92,100);
+
+  line.style.setProperty("--noise-brightness",rand(1.28,1.62).toFixed(2));
+  line.style.setProperty("--noise-contrast",rand(1.35,1.95).toFixed(2));
+  line.style.setProperty("--noise-opacity",rand(.94,1).toFixed(2));
+  line.style.setProperty("--noise-skew",`${skew.toFixed(2)}deg`);
+  line.style.setProperty("--noise-offset-x",px(rand(-12,12)));
+  line.style.setProperty("--noise-offset-y",px(rand(-8,8)));
+  line.style.setProperty("--noise-clip",`polygon(0 ${topLeft}%,100% ${topRight}%,100% ${bottomRight}%,0 ${bottomLeft}%)`);
+  line.style.setProperty("--edge-width",px(rand(2,4)));
+
+  line.style.setProperty("--noise-x1",px(rand(-9,9)));
+  line.style.setProperty("--noise-x2",px(rand(-7,7)));
+  line.style.setProperty("--noise-x3",px(rand(-9,9)));
+  line.style.setProperty("--noise-y0",px(rand(-2,2)));
+  line.style.setProperty("--noise-y1",px(rand(-5,5)));
+  line.style.setProperty("--noise-y2",px(rand(-4,4)));
+  line.style.setProperty("--noise-y3",px(rand(-5,5)));
+  line.style.setProperty("--noise-y4",px(rand(-2,2)));
+
+  line.style.setProperty("--text-x1",px(rand(-2.5,2.5)));
+  line.style.setProperty("--text-x2",px(rand(-2.5,2.5)));
+  line.style.setProperty("--text-x3",px(rand(-1.8,1.8)));
+  line.style.setProperty("--glitch-x1",px(rand(-4,-2)));
+  line.style.setProperty("--glitch-x2",px(rand(2,4)));
+  line.style.setProperty("--glitch-x3",px(rand(-3,-1)));
+  line.style.setProperty("--glitch-x4",px(rand(1,2.5)));
+  line.style.setProperty("--glitch-y1",px(rand(-1.5,1.5)));
+  line.style.setProperty("--glitch-y2",px(rand(-1.5,1.5)));
+
+  const scanWidth=Math.min(160,Math.max(54,width*rand(.25,.42)));
+  const travel=Math.max(1,width-scanWidth);
+  line.style.setProperty("--scan-width",px(scanWidth));
+  line.style.setProperty("--scan-start",px(-scanWidth-rand(10,22)));
+  line.style.setProperty("--scan-q1",px(travel*.25));
+  line.style.setProperty("--scan-mid",px(travel*.5));
+  line.style.setProperty("--scan-q3",px(travel*.75));
+  line.style.setProperty("--scan-end",px(width+rand(8,20)));
+}
+
 function prepareTimeline(){
   lines.forEach(line=>line.classList.add("prepared"));
   layout();
   let cursor=70;
   let dividerDelay=850;
+
   lines.forEach((line,index)=>{
     const width=Math.max(1,line.offsetWidth,line.scrollWidth);
-    const scanWidth=Math.min(112,Math.max(38,width*.2));
+    randomizeLineNoise(line,width);
+
     const baseDuration=Number(line.dataset.duration||520);
-    const duration=Math.round(Math.min(820,Math.max(baseDuration,width*.72)));
-    const gap=Number(line.dataset.gap||45);
+    const distanceDuration=width*rand(.68,.88);
+    const duration=Math.round(Math.min(940,Math.max(baseDuration*rand(.92,1.16),distanceDuration)));
+    const gap=Math.max(16,Number(line.dataset.gap||45)+randInt(-12,18));
+
     line.style.setProperty("--line-delay",`${cursor}ms`);
     line.style.setProperty("--wipe-duration",`${duration}ms`);
-    line.style.setProperty("--glitch-delay",`${cursor+Math.round(duration*.62)}ms`);
-    line.style.setProperty("--scan-width",`${Math.round(scanWidth)}px`);
-    line.style.setProperty("--scan-start",`${Math.round(-scanWidth-8)}px`);
-    line.style.setProperty("--scan-end",`${Math.round(width+4)}px`);
-    line.style.setProperty("--scan-mid",`${Math.round((width-scanWidth)/2)}px`);
+    line.style.setProperty("--glitch-delay",`${cursor+Math.round(duration*rand(.58,.7))}ms`);
+
     if(index===1)dividerDelay=cursor+duration+35;
     cursor+=duration+gap;
   });
   stage.style.setProperty("--divider-delay",`${dividerDelay}ms`);
 }
-let lastNoise=-1;
-function randomizeNoise(){
-  let next=Math.floor(Math.random()*6);
-  if(next===lastNoise)next=(next+1+Math.floor(Math.random()*5))%6;
-  lastNoise=next;
-  stage.dataset.noise=String(next);
-}
 function play(){
   stage.classList.remove("playing");
-  randomizeNoise();
   prepareTimeline();
   void stage.offsetWidth;
   stage.classList.add("playing");
