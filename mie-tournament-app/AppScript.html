@@ -18,7 +18,6 @@
     var liveClockTimer = null;
     var lastStateSignature = '';
     var consecutiveRefreshFailures = 0;
-    var tournamentCountInputTimer = null;
     var rankingPolicyOpen = { preliminary: false, tournament: false };
     var teamListEditorOpen = false;
     var masterViewerAccounts = null;
@@ -527,20 +526,42 @@
       var label = document.createElement('label');
       label.appendChild(document.createTextNode(labelText));
       var input = document.createElement('input');
-      input.type = 'number'; input.min = minimum; input.max = maximum; input.value = value;
+      var inputTimer = null;
+      var lastCommitted = Math.min(maximum, Math.max(minimum, Number(value) || minimum));
+      input.type = 'number'; input.min = minimum; input.max = maximum; input.value = lastCommitted;
+      input.inputMode = 'numeric';
+      input.setAttribute('aria-label', labelText);
       input.disabled = !isEditing();
       function commitValue() {
-        window.clearTimeout(tournamentCountInputTimer);
-        tournamentCountInputTimer = null;
-        var normalized = Math.min(maximum, Math.max(minimum, Number(input.value) || minimum));
+        window.clearTimeout(inputTimer);
+        inputTimer = null;
+        var raw = String(input.value || '').trim();
+        var requested = Number(raw);
+        if (!raw || !Number.isFinite(requested)) {
+          input.value = lastCommitted;
+          return;
+        }
+        var normalized = Math.min(maximum, Math.max(minimum, requested));
         input.value = normalized;
+        if (normalized === lastCommitted) return;
+        lastCommitted = normalized;
         onChange(normalized);
       }
       input.addEventListener('change', commitValue);
+      input.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        commitValue();
+      });
       if (live) {
         input.addEventListener('input', function() {
-          window.clearTimeout(tournamentCountInputTimer);
-          tournamentCountInputTimer = window.setTimeout(commitValue, 250);
+          window.clearTimeout(inputTimer);
+          inputTimer = null;
+          var raw = String(input.value || '').trim();
+          var requested = Number(raw);
+          // 空欄や「10」を入力途中の「1」などでは再描画しない。
+          if (!raw || !Number.isFinite(requested) || requested < minimum || requested > maximum) return;
+          inputTimer = window.setTimeout(commitValue, 800);
         });
       }
       label.appendChild(input);
@@ -1816,7 +1837,7 @@
       container.appendChild(createSectionHeading('リンク', viewerMode ? '公式サイト・大会資料と、現在表示している大会専用ページの共有情報です。' : '公式サイト・大会資料・公開URLをまとめています。リンクは新しいタブで開きます。', []));
       var version = document.createElement('p');
       version.className = 'links-app-version';
-      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.7.5';
+      version.textContent = (viewerMode ? '大会情報・進行状況 general版' : '大会編成・進行管理') + ' アプリバージョン v3.7.6';
       container.appendChild(version);
       var grid = document.createElement('div');
       grid.className = 'links-grid';

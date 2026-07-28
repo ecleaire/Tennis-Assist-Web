@@ -15,6 +15,8 @@ new vm.Script(clientSource, { filename: 'AppScript.html' });
 assert.match(indexHtml, /data-service-url="<\?= serviceUrl \?>"/, '表示専用ページURLの基準URLをテンプレートから渡す');
 assert.match(indexHtml, /id="loadingOverlay" class="loading-overlay" hidden/, '初回ログインを覆わないよう処理中表示は初期非表示');
 assert.match(clientSource, /if \(!isEditing\(\)\) return;\s+var port = document\.createElement\('button'\)/, '閲覧表示では接続編集ボタンを生成しない');
+assert.doesNotMatch(clientSource, /tournamentCountInputTimer/, '数値設定は入力ごとに独立したタイマーを使用する');
+assert.match(clientSource, /requested < minimum \|\| requested > maximum/, '入力途中の範囲外値では画面を再描画しない');
 
 const properties = new Map();
 const cache = new Map();
