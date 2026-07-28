@@ -17,6 +17,8 @@ assert.match(indexHtml, /id="loadingOverlay" class="loading-overlay" hidden/, '�
 assert.match(clientSource, /if \(!isEditing\(\)\) return;\s+var port = document\.createElement\('button'\)/, '閲覧表示では接続編集ボタンを生成しない');
 assert.doesNotMatch(clientSource, /tournamentCountInputTimer/, '数値設定は入力ごとに独立したタイマーを使用する');
 assert.match(clientSource, /requested < minimum \|\| requested > maximum/, '入力途中の範囲外値では画面を再描画しない');
+assert.match(clientSource, /window\.matchMedia\('\(pointer: coarse\), \(max-width: 820px\)'\)/, 'スマホ・タブレットでは入力中の再描画を延期する');
+assert.match(clientSource, /input\.addEventListener\('blur', commitValue\)/, 'スマホの数字キーボードを閉じた時に数値を反映する');
 
 const properties = new Map();
 const cache = new Map();
