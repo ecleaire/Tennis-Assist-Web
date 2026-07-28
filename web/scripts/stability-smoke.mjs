@@ -919,6 +919,36 @@ try {
     await refereeContext.close();
   }
 
+  const resultDemoContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const resultDemoPage = await resultDemoContext.newPage();
+  try {
+    await resultDemoPage.goto(`${baseUrl}/result-demo/?a=BLUE&b=RED&sa=2&sb=1&r=BLUE`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await resultDemoPage.waitForFunction(() => document.querySelector("#stage")?.getAttribute("data-noise") !== null);
+    const initialResultDemo = await resultDemoPage.evaluate(() => {
+      const stage = document.querySelector("#stage");
+      const title = document.querySelector(".title");
+      const outcome = document.querySelector(".outcome");
+      const reveal = document.querySelector(".reveal");
+      if (!(stage instanceof HTMLElement) || !(title instanceof HTMLElement) || !(outcome instanceof HTMLElement) || !(reveal instanceof HTMLElement)) return null;
+      return {
+        noise: stage.dataset.noise,
+        noiseImage: getComputedStyle(reveal, "::before").backgroundImage,
+        outcomeSize: Number.parseFloat(getComputedStyle(outcome).fontSize),
+        titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
+      };
+    });
+    if (!initialResultDemo || initialResultDemo.noiseImage === "none" || !(initialResultDemo.outcomeSize > initialResultDemo.titleSize)) {
+      failures.push(`result-demo: title/winner sizing or noise layer is incorrect ${JSON.stringify(initialResultDemo)}`);
+    }
+    await resultDemoPage.locator("#replay").click();
+    await resultDemoPage.waitForFunction((previous) => document.querySelector("#stage")?.getAttribute("data-noise") !== previous, initialResultDemo?.noise);
+    process.stdout.write("PASS result-demo/random-noise-and-type-scale\n");
+  } catch (error) {
+    failures.push(`result-demo/random-noise-and-type-scale: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    await resultDemoContext.close();
+  }
+
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
   const page = await context.newPage();
   try {

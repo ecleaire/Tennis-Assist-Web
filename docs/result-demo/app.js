@@ -114,7 +114,7 @@ function fitOutcome(){
   const natural=Math.max(1,outcomeInk.scrollWidth);
   if(natural<=available)return;
   const base=parseFloat(getComputedStyle(outcome).fontSize)||32;
-  outcome.style.fontSize=`${Math.max(22,base*(available/natural)*.985)}px`;
+  outcome.style.fontSize=`${Math.max(28,base*(available/natural)*.985)}px`;
   if(outcomeInk.scrollWidth>available+1)outcome.classList.add("wrap");
 }
 function fitCard(){
@@ -152,8 +152,16 @@ function prepareTimeline(){
   });
   stage.style.setProperty("--divider-delay",`${dividerDelay}ms`);
 }
+let lastNoise=-1;
+function randomizeNoise(){
+  let next=Math.floor(Math.random()*6);
+  if(next===lastNoise)next=(next+1+Math.floor(Math.random()*5))%6;
+  lastNoise=next;
+  stage.dataset.noise=String(next);
+}
 function play(){
   stage.classList.remove("playing");
+  randomizeNoise();
   prepareTimeline();
   void stage.offsetWidth;
   stage.classList.add("playing");

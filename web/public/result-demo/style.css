@@ -71,6 +71,38 @@ button{cursor:pointer}
   mix-blend-mode:screen;
   filter:drop-shadow(0 0 9px rgba(164,241,249,.42));
 }
+.stage[data-noise="0"] .reveal::before{
+  background:
+    repeating-linear-gradient(to bottom,rgba(220,252,255,.96) 0 2px,transparent 2px 5px),
+    linear-gradient(90deg,transparent,rgba(220,252,255,.26) 34%,rgba(220,252,255,.78) 62%,transparent);
+}
+.stage[data-noise="1"] .reveal::before{
+  background:
+    repeating-linear-gradient(137deg,rgba(220,252,255,.9) 0 1px,transparent 1px 5px),
+    linear-gradient(90deg,transparent,rgba(104,211,224,.35) 30%,rgba(220,252,255,.82) 66%,transparent);
+}
+.stage[data-noise="2"] .reveal::before{
+  background:
+    radial-gradient(circle,rgba(220,252,255,.95) 0 1px,transparent 1.5px) 0 0/6px 6px,
+    linear-gradient(90deg,transparent,rgba(220,252,255,.72) 56%,transparent);
+}
+.stage[data-noise="3"] .reveal::before{
+  background:
+    repeating-linear-gradient(90deg,rgba(220,252,255,.84) 0 2px,transparent 2px 7px),
+    repeating-linear-gradient(0deg,transparent 0 3px,rgba(103,211,224,.62) 3px 4px),
+    linear-gradient(90deg,transparent,rgba(220,252,255,.68),transparent);
+}
+.stage[data-noise="4"] .reveal::before{
+  background:
+    linear-gradient(90deg,transparent 0 9%,rgba(220,252,255,.92) 10% 18%,transparent 19% 39%,rgba(104,211,224,.76) 40% 58%,transparent 59% 100%),
+    repeating-linear-gradient(0deg,transparent 0 5px,rgba(220,252,255,.52) 5px 7px);
+}
+.stage[data-noise="5"] .reveal::before{
+  background:
+    repeating-linear-gradient(156deg,transparent 0 4px,rgba(220,252,255,.82) 4px 6px,transparent 6px 11px),
+    repeating-linear-gradient(24deg,transparent 0 8px,rgba(93,198,211,.4) 8px 9px),
+    linear-gradient(90deg,transparent,rgba(220,252,255,.7),transparent);
+}
 .reveal::after{
   left:calc(var(--scan-width) - 2px);
   top:-.18em;
@@ -117,7 +149,7 @@ button{cursor:pointer}
 }
 .eyebrow,.meta,.result-label{color:var(--muted);font-weight:900;letter-spacing:.13em;white-space:nowrap}
 .eyebrow{font-size:clamp(.56rem,2.5vw,.88rem)}
-.title{width:max-content;max-width:none;margin-top:5px;font-size:clamp(3rem,14.5vw,7rem);font-weight:1000;letter-spacing:-.055em;line-height:.84;white-space:nowrap}
+.title{width:max-content;max-width:none;margin-top:5px;font-size:clamp(2.55rem,12.2vw,6rem);font-weight:1000;letter-spacing:-.055em;line-height:.84;white-space:nowrap}
 .title>.ink{display:inline-flex;white-space:nowrap}
 .divider{width:min(100%,650px);height:1px;margin:clamp(18px,4.8vw,30px) 0;background:rgba(220,252,255,.2);transform:scaleX(0);transform-origin:left}
 .playing .divider{animation:line-in .45s ease var(--divider-delay) both}
@@ -136,7 +168,7 @@ button{cursor:pointer}
 .score b{display:inline-flex;min-width:0;align-items:center;justify-content:center;font-weight:inherit;line-height:.78}
 .score .vs{display:inline-flex;align-items:center;justify-content:center;justify-self:center;margin:0;color:var(--muted);font-size:clamp(.82rem,2.8vw,1.5rem);font-style:normal;font-weight:950;line-height:1;letter-spacing:.08em}
 .result-label{margin-top:clamp(28px,7vw,44px);font-size:clamp(.58rem,2.7vw,.86rem)}
-.outcome{width:fit-content;max-width:100%;margin-top:5px;font-size:clamp(2rem,10vw,5rem);font-weight:1000;line-height:1.05;overflow-wrap:anywhere}
+.outcome{width:fit-content;max-width:100%;margin-top:5px;font-size:clamp(2.6rem,13vw,6.5rem);font-weight:1000;line-height:1.02;overflow-wrap:anywhere}
 .outcome>.ink{display:block;max-width:100%}
 .outcome.wrap{width:100%}
 .outcome.wrap>.ink{display:flex;width:100%;flex-wrap:wrap;white-space:normal}
@@ -167,12 +199,12 @@ select{appearance:none}
 @media(orientation:landscape) and (max-height:560px){
   .stage{align-items:start;padding-top:max(16px,env(safe-area-inset-top))}
   .card{width:88vw;margin-left:4vw;transform:scale(var(--card-scale));transform-origin:left top}
-  .title{font-size:clamp(2.5rem,8vw,4.4rem)}
+  .title{font-size:clamp(2.15rem,7vw,3.8rem)}
   .divider{margin:12px 0}
   .matchup{font-size:clamp(1.35rem,4.7vw,2.6rem)}
   .score{margin-top:10px;font-size:clamp(3.5rem,11vw,6.2rem)}
   .result-label{margin-top:16px}
-  .outcome{font-size:clamp(1.8rem,5.6vw,3.3rem)}
+  .outcome{font-size:clamp(2.3rem,7.2vw,4.2rem)}
 }
 @media(prefers-reduced-motion:reduce){
   .reveal>.ink{visibility:visible;opacity:1;clip-path:none;transform:none;filter:none}
