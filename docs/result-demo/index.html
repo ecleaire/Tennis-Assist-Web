@@ -7,6 +7,26 @@
 <meta name="color-scheme" content="dark">
 <title>GAME RESULT</title>
 <link rel="stylesheet" href="./style.css">
+<style>
+.score{
+  font-size:clamp(1.6rem,7.6vw,3.5rem);
+  letter-spacing:-.035em;
+  line-height:1.12;
+}
+.score>.ink{
+  column-gap:clamp(8px,1.6vw,14px);
+  align-items:baseline;
+}
+.score b{line-height:1.12}
+.score .vs{
+  font-size:.42em;
+  line-height:1;
+  letter-spacing:.1em;
+}
+@media(orientation:landscape) and (max-height:560px){
+  .score{font-size:clamp(1.35rem,4.7vw,2.6rem)}
+}
+</style>
 </head>
 <body>
 <main class="stage" id="stage" aria-label="リザルト表示。画面をクリックすると演出を再生します">
@@ -41,5 +61,24 @@
 </form>
 </div>
 <script src="./app.js"></script>
+<script>
+(()=>{
+  fitScore=function(){
+    const scoreLine=document.getElementById("score");
+    const scoreInk=scoreLine.querySelector(".ink");
+    const matchup=document.querySelector(".matchup");
+    const card=document.getElementById("card");
+    scoreLine.style.removeProperty("font-size");
+    const teamSize=parseFloat(getComputedStyle(matchup).fontSize)||24;
+    scoreLine.style.fontSize=`${teamSize}px`;
+    const available=Math.max(1,card.clientWidth);
+    const natural=Math.max(1,scoreInk.scrollWidth);
+    if(natural>available){
+      scoreLine.style.fontSize=`${Math.max(17,teamSize*(available/natural)*.985)}px`;
+    }
+  };
+  if(typeof scheduleLayout==="function")scheduleLayout();
+})();
+</script>
 </body>
 </html>
