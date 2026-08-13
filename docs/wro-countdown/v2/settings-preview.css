@@ -1,0 +1,60 @@
+/* Buttons, custom reminder chips, preview, and audio controls. */
+.btn, .primary {
+  min-height: 43px;
+  border-radius: 11px;
+  padding: 9px 14px;
+  font-weight: 850;
+}
+.btn { border: 1px solid var(--border); color: var(--text); background: var(--bg); }
+.primary { border: 1px solid var(--accent); color: var(--accentText); background: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 33px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 7px 5px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.chip button {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--panel);
+}
+.previewBox {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: 112px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, var(--previewLine) 4px), var(--bg);
+}
+.previewText {
+  position: relative;
+  z-index: 2;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  padding: .08em .12em;
+  overflow: visible;
+  font-size: clamp(23px, 7vw, 42px);
+  font-weight: 950;
+  letter-spacing: -.045em;
+  white-space: nowrap;
+}
+.previewNoiseLayer { z-index: 1; }
+.fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fileBox { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; }
+.fileName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.audioActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.audioStatus { min-height: 18px; color: var(--muted); font-size: 11px; line-height: 1.5; }
