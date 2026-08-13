@@ -1,11 +1,11 @@
-import { WRO_TARGET } from "./config.js";
+import { WRO_TARGET } from "./config.js?v=20260814f";
 import {
   renderCurrentTime,
   renderTimer,
   renderWro,
   renderLabels
-} from "./display-render.js";
-import { renderStatus } from "./display-status.js";
+} from "./display-render.js?v=20260814f";
+import { renderStatus } from "./display-status.js?v=20260814f";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   const date = new Date();
@@ -21,7 +21,7 @@ export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   if (settings.mode === "wro" || automatic.active()) {
     renderWro(refs, WRO_TARGET - now);
   } else {
-    renderTimer(refs, remaining);
+    renderTimer(refs, remaining, settings);
   }
 
   renderStatus(refs, settings, automatic, now);

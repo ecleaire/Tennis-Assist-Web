@@ -3,19 +3,32 @@ import {
   load,
   normalize,
   save
-} from "./config.js";
-import { buildSettings, refs as makeRefs } from "./ui.js";
-import { controls as makeControls } from "./controls.js";
-import { renderSettings } from "./render-settings.js";
-import { createNoise } from "./noise.js";
-import { createAudio } from "./audio.js";
-import { createDisplay } from "./display.js";
-import { bindEvents } from "./events.js";
+} from "./config.js?v=20260814f";
+import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814f";
+import { controls as makeControls } from "./controls.js?v=20260814f";
+import { renderSettings } from "./render-settings.js?v=20260814f";
+import {
+  enhanceSettings,
+  extraControls
+} from "./feature-ui.js?v=20260814f";
+import { renderFeatureSettings } from "./feature-render.js?v=20260814f";
+import { bindFeatureSettings } from "./feature-events.js?v=20260814f";
+import { createNoise } from "./noise.js?v=20260814f";
+import { createAudio } from "./audio.js?v=20260814f";
+import { createDisplay } from "./display.js?v=20260814f";
+import { bindEvents } from "./events.js?v=20260814f";
 
 buildSettings();
+enhanceSettings();
 
 const refs = makeRefs();
-const controls = makeControls();
+refs.customMessage = document.getElementById("customMessage");
+
+const controls = {
+  ...makeControls(),
+  ...extraControls()
+};
+
 let settings = load();
 let audio;
 let display;
@@ -47,6 +60,7 @@ audio = createAudio(
 
 function render() {
   renderSettings(controls, settings, setSettings, audio);
+  renderFeatureSettings(controls, settings);
 }
 
 function setSettings(patch, options = {}) {
@@ -109,6 +123,7 @@ bindEvents({
   reset,
   selectedLeads
 });
+bindFeatureSettings(controls, setSettings);
 
 async function start() {
   display.applyVisual();

@@ -1,5 +1,8 @@
-import { SETTINGS_KEY, OLD_SETTINGS_KEY } from "./config-values.js";
-import { normalize } from "./config-normalize.js";
+import {
+  SETTINGS_KEY,
+  OLD_SETTINGS_KEY
+} from "./config-values.js?v=20260814f";
+import { normalize } from "./config-normalize.js?v=20260814f";
 
 export function load() {
   try {

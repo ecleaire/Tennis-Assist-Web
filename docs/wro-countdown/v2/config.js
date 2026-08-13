@@ -1,5 +1,5 @@
 // Public configuration API used by the countdown modules.
-export * from "./config-values.js";
-export * from "./config-normalize.js";
-export * from "./config-time.js";
-export * from "./config-storage.js";
+export * from "./config-values.js?v=20260814f";
+export * from "./config-normalize.js?v=20260814f";
+export * from "./config-time.js?v=20260814f";
+export * from "./config-storage.js?v=20260814f";

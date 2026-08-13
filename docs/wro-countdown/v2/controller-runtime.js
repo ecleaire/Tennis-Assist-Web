@@ -1,9 +1,9 @@
-import { renderLabels } from "./display-render.js";
-import { fitDisplay } from "./display-fit.js";
-import { createAutoWro } from "./display-auto.js";
-import { createTimerTarget } from "./display-target.js";
-import { applyDisplayTheme } from "./display-theme.js";
-import { updateDisplay } from "./display-tick.js";
+import { renderLabels } from "./display-render.js?v=20260814f";
+import { fitDisplay } from "./display-fit.js?v=20260814f";
+import { createAutoWro } from "./display-auto.js?v=20260814f";
+import { createTimerTarget } from "./display-target.js?v=20260814f";
+import { applyDisplayTheme } from "./display-theme.js?v=20260814f";
+import { updateDisplay } from "./display-tick.js?v=20260814f";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
