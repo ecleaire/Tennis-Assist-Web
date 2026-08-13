@@ -1,0 +1,141 @@
+/* Animation timing for the main display and settings preview. */
+.app.play .display .glitch,
+.previewBox.play .glitch {
+  animation:
+    wipe var(--dur) cubic-bezier(.16, .82, .18, 1) var(--delay) both,
+    jitter 250ms steps(2, end) var(--jitter) both;
+}
+
+.app.play .display .glitch::before,
+.previewBox.play .glitch::before {
+  animation: scan var(--dur) steps(10, end) var(--delay) both;
+}
+
+.app.play .display .glitch::after,
+.previewBox.play .glitch::after {
+  animation: edge var(--dur) cubic-bezier(.16, .82, .18, 1) var(--delay) both;
+}
+
+@keyframes wipe {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: translate3d(var(--gxn), var(--gy), 0);
+    filter: blur(3px);
+  }
+  10% { opacity: 1; }
+  32% { clip-path: inset(0 70% 0 0); }
+  50% {
+    clip-path: inset(0 48% 0 0);
+    transform: translate3d(var(--gx), var(--gyn), 0);
+  }
+  70% {
+    clip-path: inset(0 22% 0 0);
+    filter: blur(.4px);
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0);
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes scan {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--start), var(--gyn), 0);
+  }
+  7% { opacity: var(--alpha); }
+  30% { opacity: .72; }
+  48% { opacity: var(--alpha); }
+  65% { opacity: .68; }
+  82% { opacity: var(--alpha); }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--end), var(--gy), 0);
+  }
+}
+
+@keyframes edge {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--start), 0, 0);
+  }
+  8% { opacity: 1; }
+  88% { opacity: .9; }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--end), 0, 0);
+  }
+}
+
+@keyframes jitter {
+  0%, 100% {
+    translate: 0 0;
+    text-shadow: none;
+  }
+  20% {
+    translate: var(--gxn) 0;
+    text-shadow: var(--gx) 0 var(--noise2);
+  }
+  45% {
+    translate: var(--gx) var(--gy);
+    text-shadow: var(--gxn) 0 var(--noise2);
+  }
+  70% { translate: -2px var(--gyn); }
+  85% { translate: 2px 0; }
+}
+
+.noiseLayer,
+.previewNoiseLayer {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.burst {
+  position: absolute;
+  left: 0;
+  width: var(--bw);
+  height: var(--bh);
+  opacity: 0;
+  background: repeating-linear-gradient(to bottom, var(--noise) 0 1px, transparent 1px 3px);
+  filter: blur(var(--blur));
+  mix-blend-mode: difference;
+  animation: burst var(--bd) steps(var(--steps), end) var(--bdelay) both;
+}
+
+@keyframes burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--bs), 0, 0) skewX(var(--skew));
+  }
+  12% { opacity: var(--ba); }
+  52% { opacity: var(--bam); }
+  75% { opacity: var(--ba); }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--be), 0, 0) skewX(var(--skew));
+  }
+}
+
+.app.flash::after {
+  content: "";
+  position: absolute;
+  z-index: 19;
+  inset: 0;
+  pointer-events: none;
+  background: var(--text);
+  animation: flash .65s steps(2, end) both;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  18% { opacity: .2; }
+  36% { opacity: 0; }
+  58% { opacity: .14; }
+  78% { opacity: 0; }
+}
