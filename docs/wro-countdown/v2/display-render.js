@@ -1,5 +1,7 @@
 import { duration, pad, WRO_DATE } from "./config.js";
 
+let currentSettings = null;
+
 export function renderCurrentTime(refs, date) {
   refs.clock.textContent = new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
@@ -23,7 +25,6 @@ function timerValues(remaining) {
   const totalHours = value.days * 24 + value.hours;
   return {
     value,
-    totalHours,
     full: `${pad(totalHours)}:${pad(value.minutes)}:${pad(value.seconds)}`,
     hourMinute: `${pad(totalHours)}時間${pad(value.minutes)}分`
   };
@@ -44,7 +45,12 @@ function renderTimerText(refs, settings, values) {
   refs.timerText.hidden = false;
 }
 
-export function renderTimer(refs, remaining, settings) {
+export function renderTimer(refs, remaining, suppliedSettings) {
+  const settings = suppliedSettings || currentSettings || {
+    showHourMinute: true,
+    timerText: "",
+    targetTime: ""
+  };
   const values = timerValues(remaining);
   renderTimerText(refs, settings, values);
   refs.subValue.hidden = !settings.showHourMinute;
@@ -79,6 +85,8 @@ export function renderWro(refs, remaining) {
 }
 
 export function renderLabels(refs, settings, temporaryWro) {
+  currentSettings = settings;
+
   if (settings.mode === "timer" && !temporaryWro) {
     refs.modeLabel.textContent = "COUNTDOWN TIMER";
     refs.targetLabel.textContent = `${settings.targetTime} まで`;
