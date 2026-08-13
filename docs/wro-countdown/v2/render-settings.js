@@ -7,6 +7,8 @@ export function renderSettings(controls, settings, setSettings, audio) {
   controls.modeWro.checked = !timerMode;
   controls.targetTimeField.hidden = !timerMode;
   controls.showTargetRow.hidden = !timerMode;
+  controls.showHourMinuteRow.hidden = !timerMode;
+  controls.timerTextField.hidden = !timerMode;
   controls.autoWroSettings.hidden = !timerMode;
   controls.autoWroSettings.classList.toggle(
     "disabled",
@@ -15,16 +17,27 @@ export function renderSettings(controls, settings, setSettings, audio) {
 
   controls.targetTime.value = settings.targetTime;
   controls.showTarget.checked = settings.showTarget;
+  controls.showHourMinute.checked = settings.showHourMinute;
+  controls.timerTextInput.value = settings.timerText;
   controls.autoWroEnabled.checked = settings.autoWroEnabled;
   controls.autoWroInterval.value = settings.autoWroIntervalMin;
   controls.autoWroDuration.value = settings.autoWroDurationMin;
 
   controls.themeDark.checked = settings.theme === "dark";
   controls.themeLight.checked = settings.theme === "light";
-  controls.clockSize.value = settings.clockSize;
-  controls.timerSize.value = settings.timerSize;
-  controls.targetSize.value = settings.targetSize;
-  controls.subSize.value = settings.subSize;
+  controls.autoSize.checked = settings.autoSize;
+
+  const sizes = [
+    [controls.clockSizeRange, controls.clockSize, settings.clockSize],
+    [controls.timerSizeRange, controls.timerSize, settings.timerSize],
+    [controls.targetSizeRange, controls.targetSize, settings.targetSize],
+    [controls.subSizeRange, controls.subSize, settings.subSize],
+    [controls.timerTextSizeRange, controls.timerTextSize, settings.timerTextSize]
+  ];
+  sizes.forEach(([range, number, value]) => {
+    range.value = value;
+    number.value = value;
+  });
 
   controls.noiseRange.value = settings.noiseStrength;
   controls.noiseStrength.value = settings.noiseStrength;
@@ -43,5 +56,5 @@ export function renderSettings(controls, settings, setSettings, audio) {
   controls.fileName.textContent = settings.fileName || "ファイル未選択";
 
   renderLeadChips(controls.leadChips, settings, setSettings);
-  audio?.status();
+  if (audio) audio.status();
 }
