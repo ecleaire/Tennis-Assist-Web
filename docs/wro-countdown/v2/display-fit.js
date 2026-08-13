@@ -9,6 +9,20 @@ const BASE = {
 const limit = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, value));
 
+function viewportSize(refs) {
+  const visual = window.visualViewport;
+  return {
+    width: Math.max(
+      280,
+      Math.min(
+        refs.display.clientWidth || window.innerWidth,
+        visual?.width || window.innerWidth
+      )
+    ),
+    height: Math.max(320, visual?.height || window.innerHeight || 720)
+  };
+}
+
 function responsiveSizes(refs, settings) {
   if (!settings.autoSize) {
     return {
@@ -20,34 +34,38 @@ function responsiveSizes(refs, settings) {
     };
   }
 
-  const width = Math.max(280, refs.display.clientWidth || window.innerWidth);
-  const progress = limit((width - 320) / 800, 0, 1);
-  const height = window.innerHeight || 720;
-  const heightScale = height < 560 ? 0.78 : height < 700 ? 0.9 : 1;
+  const viewport = viewportSize(refs);
+  const portrait = viewport.height >= viewport.width;
+  const widthProgress = limit((viewport.width - 320) / 800, 0, 1);
+  const heightScale = !portrait && viewport.height < 560
+    ? 0.78
+    : portrait && viewport.height < 620
+      ? 0.94
+      : 1;
 
   return {
     clock: limit(
-      (76 + progress * 52) * heightScale * settings.clockSize / BASE.clock,
+      (80 + widthProgress * 48) * heightScale * settings.clockSize / BASE.clock,
       20,
       180
     ),
     timer: limit(
-      (220 + progress * 40) * heightScale * settings.timerSize / BASE.timer,
+      (248 + widthProgress * 42) * heightScale * settings.timerSize / BASE.timer,
       36,
       260
     ),
     target: limit(
-      (34 + progress * 20) * heightScale * settings.targetSize / BASE.target,
+      (36 + widthProgress * 20) * heightScale * settings.targetSize / BASE.target,
       12,
       100
     ),
     sub: limit(
-      (22 + progress * 14) * heightScale * settings.subSize / BASE.sub,
+      (24 + widthProgress * 14) * heightScale * settings.subSize / BASE.sub,
       12,
       80
     ),
     timerText: limit(
-      (26 + progress * 16) * heightScale * settings.timerTextSize / BASE.timerText,
+      (27 + widthProgress * 17) * heightScale * settings.timerTextSize / BASE.timerText,
       12,
       100
     )
@@ -55,9 +73,9 @@ function responsiveSizes(refs, settings) {
 }
 
 export function fitDisplay(refs, settings) {
-  function fitElement(element, variable, size, available, minimum) {
-    const safe = Math.max(minimum * 2, available - 18);
-    refs.app.style.setProperty(variable, `${size}px`);
+  function fitSingleLine(element, variable, preferred, available, minimum) {
+    const safeWidth = Math.max(minimum * 2, available - 4);
+    refs.app.style.setProperty(variable, `${preferred}px`);
     void element.offsetWidth;
 
     let width = Math.max(
@@ -65,9 +83,12 @@ export function fitDisplay(refs, settings) {
       element.scrollWidth,
       element.getBoundingClientRect().width
     );
-    if (width <= safe) return;
+    if (width <= safeWidth) return;
 
-    let fitted = Math.max(minimum, size * safe / width * 0.965);
+    let fitted = Math.max(
+      minimum,
+      preferred * safeWidth / width * 0.985
+    );
     refs.app.style.setProperty(variable, `${fitted}px`);
     void element.offsetWidth;
 
@@ -76,8 +97,11 @@ export function fitDisplay(refs, settings) {
       element.scrollWidth,
       element.getBoundingClientRect().width
     );
-    if (width > safe && fitted > minimum) {
-      fitted = Math.max(minimum, fitted * safe / width * 0.97);
+    if (width > safeWidth && fitted > minimum) {
+      fitted = Math.max(
+        minimum,
+        fitted * safeWidth / width * 0.985
+      );
       refs.app.style.setProperty(variable, `${fitted}px`);
     }
   }
@@ -88,14 +112,14 @@ export function fitDisplay(refs, settings) {
   refs.app.style.setProperty("--timerTextFit", `${sizes.timerText}px`);
 
   const actionWidth = refs.gear.parentElement.offsetWidth;
-  fitElement(
+  fitSingleLine(
     refs.clock,
     "--clockFit",
     sizes.clock,
-    Math.max(120, refs.top.clientWidth - actionWidth - 16),
+    Math.max(120, refs.top.clientWidth - actionWidth - 12),
     20
   );
-  fitElement(
+  fitSingleLine(
     refs.mainValue,
     "--timerFit",
     sizes.timer,
