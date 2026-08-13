@@ -2,7 +2,7 @@ import {
   DEFAULTS,
   PATTERNS,
   SOUND_TYPES
-} from "./config-values.js";
+} from "./config-values.js?v=20260814f";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
