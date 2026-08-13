@@ -1,0 +1,65 @@
+/* Text-size controls and optional timer text added in the 2026-08-14 update. */
+.app {
+  --targetFit: var(--target);
+  --subFit: var(--sub);
+  --timerText: 26px;
+  --timerTextFit: var(--timerText);
+}
+
+.target {
+  font-size: var(--targetFit);
+}
+
+.sub {
+  font-size: var(--subFit);
+}
+
+.timerText {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: clamp(13px, 2.6vh, 24px) 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--timerTextFit);
+  font-weight: 800;
+  line-height: 1.32;
+  letter-spacing: -.015em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sizeControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sizeControl {
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.sizeControl.wide {
+  grid-column: 1 / -1;
+}
+
+.sizeControl .range input[type="number"] {
+  min-height: 44px;
+}
+
+.sizeControl .range input[type="range"] {
+  min-height: 30px;
+}
+
+@media (max-width: 640px) {
+  .sizeControls {
+    grid-template-columns: 1fr;
+  }
+
+  .sizeControl.wide {
+    grid-column: auto;
+  }
+}
