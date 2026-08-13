@@ -1,0 +1,38 @@
+@media (min-width: 760px) {
+  .overlay { align-items: center; padding: 24px; }
+  .panel { border-bottom: 1px solid var(--border); border-radius: 25px; }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding-left: max(18px, calc(env(safe-area-inset-left) + 14px));
+    padding-right: max(18px, calc(env(safe-area-inset-right) + 14px));
+  }
+  .badge { display: none; }
+  .date { font-size: 12px; }
+  .foot { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .foot span:last-child { text-align: left; }
+  .two { grid-template-columns: 1fr; }
+  .panelHead { padding-inline: 18px; }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  body, .app { overflow: auto; }
+  .display { padding-block: 25px; }
+  .clock { font-size: min(var(--clockFit), 10vw); }
+  .mainValue { font-size: min(var(--timerFit), 14vw); }
+  .target { font-size: min(var(--target), 5vw); }
+  .sub { font-size: min(var(--sub), 3.5vw); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app.play .glitch,
+  .app.play .glitch::before,
+  .app.play .glitch::after,
+  .previewBox.play .glitch,
+  .previewBox.play .glitch::before,
+  .previewBox.play .glitch::after,
+  .burst,
+  .app.flash::after { animation: none; }
+  .glitch { opacity: 1; clip-path: none; transform: none; filter: none; }
+}
