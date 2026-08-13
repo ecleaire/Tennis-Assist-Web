@@ -23,15 +23,19 @@ export function renderCurrentTime(refs, date) {
 function timerValues(remaining) {
   const value = duration(Math.max(0, remaining));
   const totalHours = value.days * 24 + value.hours;
+
   return {
     value,
+    totalHours,
     full: `${pad(totalHours)}:${pad(value.minutes)}:${pad(value.seconds)}`,
-    hourMinute: `${pad(totalHours)}時間${pad(value.minutes)}分`
+    hourMinuteClock: `${pad(totalHours)}:${pad(value.minutes)}`,
+    hourMinuteText: `${pad(totalHours)}時間${pad(value.minutes)}分`
   };
 }
 
 function renderTimerText(refs, settings, values) {
   const template = String(settings.timerText || "").trim();
+
   if (!template) {
     refs.timerText.hidden = true;
     refs.timerText.textContent = "";
@@ -40,8 +44,13 @@ function renderTimerText(refs, settings, values) {
 
   refs.timerText.textContent = template
     .replaceAll("{残り時間}", values.full)
-    .replaceAll("{時分}", values.hourMinute)
-    .replaceAll("{目標時刻}", settings.targetTime);
+    .replaceAll("{time}", values.full)
+    .replaceAll("{残り時分}", values.hourMinuteClock)
+    .replaceAll("{hhmm}", values.hourMinuteClock)
+    .replaceAll("{時分}", values.hourMinuteText)
+    .replaceAll("{hm}", values.hourMinuteText)
+    .replaceAll("{目標時刻}", settings.targetTime)
+    .replaceAll("{target}", settings.targetTime);
   refs.timerText.hidden = false;
 }
 
@@ -53,15 +62,16 @@ export function renderTimer(refs, remaining, suppliedSettings) {
   };
   const values = timerValues(remaining);
   renderTimerText(refs, settings, values);
-  refs.subValue.hidden = !settings.showHourMinute;
 
   if (remaining <= 0) {
     refs.mainValue.textContent = "00:00:00";
+    refs.subValue.hidden = false;
     refs.subValue.textContent = "指定時刻です";
     return;
   }
 
   refs.mainValue.textContent = values.full;
+  refs.subValue.hidden = !settings.showHourMinute;
   refs.subValue.textContent = values.value.days
     ? `あと ${values.value.days}日 ${pad(values.value.hours)}時間 ${pad(values.value.minutes)}分`
     : `あと ${values.value.hours}時間 ${pad(values.value.minutes)}分`;
