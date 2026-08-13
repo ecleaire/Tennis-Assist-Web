@@ -1,0 +1,9 @@
+/* Keep the visual scan layer and animation controller on the same variables. */
+.glitch {
+  --band-width: var(--width, 130px);
+  --scan-start: var(--start, -150px);
+  --scan-end: var(--end, 800px);
+  --shift-x: var(--gx, 5px);
+  --shift-y: var(--gy, 1px);
+  --settle-delay: var(--jitter, 520ms);
+}
