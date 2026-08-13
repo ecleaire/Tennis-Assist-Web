@@ -2,13 +2,16 @@ import { $ } from "./ui.js";
 
 const IDS = [
   "modeTimer", "modeWro", "targetTimeField", "targetTime",
-  "showTargetRow", "showTarget", "autoWroSettings",
-  "autoWroEnabled", "autoWroInterval", "autoWroDuration",
-  "themeDark", "themeLight", "clockSize", "timerSize",
-  "targetSize", "subSize", "noiseRange", "noiseStrength",
-  "noisePattern", "noiseInterval", "lineGap", "noisePreview",
-  "alarmEnabled", "atTarget", "customLead", "addLead",
-  "leadChips", "soundType", "volumeRange", "volume",
+  "showTargetRow", "showTarget", "showHourMinuteRow",
+  "showHourMinute", "timerTextField", "timerTextInput",
+  "autoWroSettings", "autoWroEnabled", "autoWroInterval",
+  "autoWroDuration", "themeDark", "themeLight", "autoSize",
+  "clockSizeRange", "clockSize", "timerSizeRange", "timerSize",
+  "targetSizeRange", "targetSize", "subSizeRange", "subSize",
+  "timerTextSizeRange", "timerTextSize", "noiseRange",
+  "noiseStrength", "noisePattern", "noiseInterval", "lineGap",
+  "noisePreview", "alarmEnabled", "atTarget", "customLead",
+  "addLead", "leadChips", "soundType", "volumeRange", "volume",
   "audioFile", "fileName", "testSound", "removeAudio",
   "audioStatus"
 ];

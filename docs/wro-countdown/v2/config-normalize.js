@@ -18,11 +18,21 @@ export function normalize(raw = {}) {
       ? value.targetTime
       : DEFAULTS.targetTime,
     showTarget: Boolean(value.showTarget),
+    showHourMinute: raw.showHourMinute === undefined
+      ? DEFAULTS.showHourMinute
+      : Boolean(raw.showHourMinute),
+    timerText: typeof value.timerText === "string"
+      ? value.timerText.slice(0, 160)
+      : "",
     theme: value.theme === "light" ? "light" : "dark",
+    autoSize: raw.autoSize === undefined
+      ? DEFAULTS.autoSize
+      : Boolean(raw.autoSize),
     clockSize: clamp(value.clockSize, 20, 180),
     timerSize: clamp(value.timerSize, 36, 260),
     targetSize: clamp(value.targetSize, 12, 100),
     subSize: clamp(value.subSize, 12, 80),
+    timerTextSize: clamp(value.timerTextSize, 12, 100),
     noiseStrength: clamp(value.noiseStrength, 0, 100),
     noisePattern: ["random", ...PATTERNS].includes(value.noisePattern)
       ? value.noisePattern

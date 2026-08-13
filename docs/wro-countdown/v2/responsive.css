@@ -21,8 +21,9 @@
   .display { padding-block: 25px; }
   .clock { font-size: min(var(--clockFit), 10vw); }
   .mainValue { font-size: min(var(--timerFit), 14vw); }
-  .target { font-size: min(var(--target), 5vw); }
-  .sub { font-size: min(var(--sub), 3.5vw); }
+  .target { font-size: min(var(--targetFit), 5vw); }
+  .timerText { font-size: min(var(--timerTextFit), 4vw); }
+  .sub { font-size: min(var(--subFit), 3.5vw); }
 }
 
 @media (prefers-reduced-motion: reduce) {

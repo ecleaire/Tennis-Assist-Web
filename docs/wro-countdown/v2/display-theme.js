@@ -4,6 +4,7 @@ export function applyDisplayTheme(refs, settings, updateLabels, scheduleFit) {
   refs.app.style.setProperty("--timer", `${settings.timerSize}px`);
   refs.app.style.setProperty("--target", `${settings.targetSize}px`);
   refs.app.style.setProperty("--sub", `${settings.subSize}px`);
+  refs.app.style.setProperty("--timerText", `${settings.timerTextSize}px`);
   document.documentElement.style.colorScheme = settings.theme;
   document.body.style.background =
     settings.theme === "dark" ? "#050708" : "#fff";

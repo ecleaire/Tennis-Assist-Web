@@ -16,6 +16,7 @@ document.body.innerHTML = `
     <main class="display" id="display" aria-live="polite">
       <p class="mode glitch" id="modeLabel">COUNTDOWN TIMER</p>
       <p class="target glitch" id="targetLabel">14:00 まで</p>
+      <p class="timerText glitch" id="timerText" hidden></p>
       <p class="mainValue glitch" id="mainValue">--:--:--</p>
       <p class="sub glitch" id="subValue">残り時間を計算中</p>
     </main>
