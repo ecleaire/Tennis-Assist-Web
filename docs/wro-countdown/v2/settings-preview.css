@@ -58,3 +58,19 @@
 .fileName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
 .audioActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .audioStatus { min-height: 18px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+/* Responsive text controls added to the display settings. */
+.app{--targetFit:var(--target);--subFit:var(--sub);--timerText:26px;--timerTextFit:var(--timerText)}
+button,input,select,textarea{font:inherit}
+.target{font-size:var(--targetFit)}
+.sub{font-size:var(--subFit)}
+.timerText{position:relative;width:fit-content;max-width:100%;margin:clamp(15px,3vh,26px) 0 0;overflow:hidden;color:var(--text);font-size:var(--timerTextFit);font-weight:850;line-height:1.25;letter-spacing:-.025em;white-space:pre-wrap;overflow-wrap:anywhere}
+.timerText:not([hidden])+.mainValue{margin-top:clamp(18px,4vh,38px)}
+.field textarea{width:100%;min-width:0;min-height:88px;border:1px solid var(--border);border-radius:11px;padding:10px 12px;resize:vertical;color:var(--text);background:var(--bg);font-size:16px;font-weight:750;line-height:1.45;outline:none}
+.field textarea::placeholder{color:var(--muted);opacity:.72}
+textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sizeControls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sizeControl{padding:11px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+.sizeControl.wide{grid-column:1/-1}
+@media(max-width:640px){.sizeControls{grid-template-columns:1fr}.sizeControl.wide{grid-column:auto}}
+@media(orientation:landscape) and (max-height:560px){.target{font-size:min(var(--targetFit),5vw)}.timerText{font-size:min(var(--timerTextFit),4vw)}.sub{font-size:min(var(--subFit),3.5vw)}}
