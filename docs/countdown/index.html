@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05080b">
+  <meta name="color-scheme" content="dark light">
+  <title>WRO Countdown Clock</title>
+  <link rel="stylesheet" href="./core.css">
+  <link rel="stylesheet" href="./glitch.css">
+  <link rel="stylesheet" href="./effects.css">
+  <link rel="stylesheet" href="./settings.css">
+  <link rel="stylesheet" href="./responsive.css">
+</head>
+<body>
+  <main class="app" id="app" data-theme="dark">
+    <div class="global-noise" id="global-noise" aria-hidden="true"></div>
+    <div class="alarm-flash" id="alarm-flash" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <section class="current-block" aria-label="現在時刻">
+        <p class="eyebrow">CURRENT TIME / JST</p>
+        <time class="current-time fit-text" id="current-time" datetime="">--:--:--</time>
+        <p class="current-date" id="current-date">----</p>
+      </section>
+
+      <button class="icon-button settings-button" id="settings-button" type="button" aria-label="設定を開く" title="設定">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm9 4.5v-1.4l-2.1-.8a7.7 7.7 0 0 0-.7-1.7l.9-2-1-1-2-.9a7.7 7.7 0 0 0-1.7-.7L13.6 2h-1.4l-.8 2.1a7.7 7.7 0 0 0-1.7.7l-2-.9-1 1-.9 2a7.7 7.7 0 0 0-.7 1.7L3 11.3v1.4l2.1.8c.2.6.4 1.2.7 1.7l-.9 2 1 1 2 .9c.5.3 1.1.5 1.7.7l.8 2.1h1.4l.8-2.1c.6-.2 1.2-.4 1.7-.7l2 .9 1-1 .9-2c.3-.5.5-1.1.7-1.7l2.1-.8Z"/>
+        </svg>
+      </button>
+    </header>
+
+    <section class="countdown-stage" id="countdown-stage" tabindex="0" role="button" aria-label="タップするとノイズ演出を再生します">
+      <p class="glitch-line mode-label" id="mode-label">COUNTDOWN TO TARGET TIME</p>
+      <p class="glitch-line target-label fit-text" id="target-label">09:00 まで</p>
+      <p class="glitch-line countdown-value fit-text" id="countdown-value">--:--:--</p>
+      <p class="glitch-line countdown-detail fit-text" id="countdown-detail">残り時間を計算中</p>
+    </section>
+
+    <footer class="footer">
+      <span>画面中央をタップすると演出を再生</span>
+      <span class="sound-state" id="sound-state">音声：未有効</span>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <section class="settings-overlay" id="settings-overlay" aria-hidden="true">
+      <button class="settings-backdrop" id="settings-backdrop" type="button" aria-label="設定を閉じる"></button>
+
+      <aside class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <header class="settings-header">
+          <div>
+            <p class="settings-kicker">SETTINGS</p>
+            <h1 id="settings-title">表示・タイマー設定</h1>
+            <p class="settings-live-time" id="settings-live-time">--:--:--</p>
+          </div>
+          <button class="icon-button close-button" id="settings-close" type="button" aria-label="設定を閉じる">×</button>
+        </header>
+
+        <div class="settings-body">
+          <details class="setting-group" open>
+            <summary>表示モード・目標時刻</summary>
+            <div class="setting-content">
+              <div class="segmented" role="group" aria-label="表示モード">
+                <button class="segment active" id="mode-timer" type="button" data-mode="timer">指定時刻タイマー</button>
+                <button class="segment" id="mode-wro" type="button" data-mode="wro">全国大会まで</button>
+              </div>
+
+              <label class="field timer-only" id="target-time-row">
+                <span>目標時刻</span>
+                <input id="target-time-input" type="time" value="09:00">
+              </label>
+
+              <label class="switch-row">
+                <span>
+                  <b>目標時刻を表示</b>
+                  <small>「09:00まで」などの行を表示します</small>
+                </span>
+                <input id="show-target-toggle" type="checkbox" checked>
+              </label>
+            </div>
+          </details>
+
+          <details class="setting-group" open>
+            <summary>テーマ・文字サイズ</summary>
+            <div class="setting-content">
+              <div class="field">
+                <span>画面テーマ</span>
+                <div class="segmented" role="group" aria-label="画面テーマ">
+                  <button class="segment active" id="theme-dark" type="button" data-theme-value="dark">ダーク</button>
+                  <button class="segment" id="theme-light" type="button" data-theme-value="light">ライト</button>
+                </div>
+              </div>
+
+              <div class="number-grid">
+                <label class="field compact">
+                  <span>現在時刻</span>
+                  <span class="number-unit"><input id="current-size-input" type="number" min="20" max="220" step="1"><i>px</i></span>
+                </label>
+                <label class="field compact">
+                  <span>タイマー</span>
+                  <span class="number-unit"><input id="countdown-size-input" type="number" min="32" max="360" step="1"><i>px</i></span>
+                </label>
+                <label class="field compact">
+                  <span>目標時刻の行</span>
+                  <span class="number-unit"><input id="target-size-input" type="number" min="12" max="120" step="1"><i>px</i></span>
+                </label>
+                <label class="field compact">
+                  <span>補足表示</span>
+                  <span class="number-unit"><input id="detail-size-input" type="number" min="12" max="120" step="1"><i>px</i></span>
+                </label>
+              </div>
+              <p class="setting-note">入力値を最大サイズとして使い、画面からはみ出す場合だけ自動で縮小します。</p>
+            </div>
+          </details>
+
+          <details class="setting-group" open>
+            <summary>アラーム・音声</summary>
+            <div class="setting-content">
+              <label class="switch-row">
+                <span>
+                  <b>タイマー音を有効化</b>
+                  <small>タイマーモードで設定時刻と事前通知時に鳴らします</small>
+                </span>
+                <input id="alarm-enabled-toggle" type="checkbox" checked>
+              </label>
+
+              <div class="field timer-only">
+                <span>音を鳴らすタイミング</span>
+                <div class="alarm-offsets" id="alarm-offsets"></div>
+                <div class="inline-add">
+                  <span class="number-unit grow"><input id="alarm-offset-input" type="number" min="0" max="1440" step="1" placeholder="例：15"><i>分前</i></span>
+                  <button class="secondary-button" id="add-alarm-offset" type="button">追加</button>
+                </div>
+                <small>「0分前」は指定時刻ちょうどです。複数追加できます。</small>
+              </div>
+
+              <label class="field">
+                <span>音声テンプレート</span>
+                <select id="sound-template-select">
+                  <option value="bell">ベル</option>
+                  <option value="chime">チャイム</option>
+                  <option value="digital">デジタル</option>
+                  <option value="alarm">アラーム</option>
+                  <option value="soft">ソフトベル</option>
+                  <option value="custom">カスタム音声</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>音量 <output id="volume-output">75%</output></span>
+                <input id="volume-input" type="range" min="0" max="100" step="1" value="75">
+              </label>
+
+              <div class="field">
+                <span>カスタム音声ファイル</span>
+                <input id="custom-audio-input" type="file" accept="audio/*">
+                <div class="file-status-row">
+                  <small id="custom-audio-name">未設定</small>
+                  <button class="text-button" id="remove-custom-audio" type="button">削除</button>
+                </div>
+              </div>
+
+              <div class="button-row">
+                <button class="secondary-button" id="sound-preview" type="button">音声をテスト</button>
+                <button class="secondary-button" id="sound-unlock" type="button">音声を有効化</button>
+              </div>
+              <p class="setting-note" id="audio-help">ブラウザの制限により、最初にページをタップするか「音声を有効化」を押す必要があります。</p>
+            </div>
+          </details>
+
+          <details class="setting-group" open>
+            <summary>グリッチ・ノイズ演出</summary>
+            <div class="setting-content">
+              <label class="field">
+                <span>ノイズの強さ <output id="noise-strength-output">86%</output></span>
+                <input id="noise-strength-input" type="range" min="0" max="100" step="1" value="86">
+              </label>
+
+              <label class="field">
+                <span>ノイズパターン</span>
+                <select id="noise-pattern-select">
+                  <option value="random">ランダム</option>
+                  <option value="mixed">ミックス</option>
+                  <option value="scanline">横走査線</option>
+                  <option value="blocks">デジタルブロック</option>
+                  <option value="diagonal">斜線</option>
+                  <option value="grid">グリッド</option>
+                </select>
+              </label>
+
+              <div class="number-grid">
+                <label class="field compact">
+                  <span>縞の間隔</span>
+                  <span class="number-unit"><input id="noise-gap-input" type="number" min="2" max="30" step="1"><i>px</i></span>
+                </label>
+                <label class="field compact">
+                  <span>走査時間</span>
+                  <span class="number-unit"><input id="noise-duration-input" type="number" min="180" max="2400" step="10"><i>ms</i></span>
+                </label>
+                <label class="field compact wide-field">
+                  <span>表示項目の間隔</span>
+                  <span class="number-unit"><input id="noise-sequence-input" type="number" min="0" max="1200" step="10"><i>ms</i></span>
+                </label>
+              </div>
+
+              <button class="secondary-button full-button" id="noise-preview" type="button">現在の設定で演出を再生</button>
+            </div>
+          </details>
+        </div>
+
+        <footer class="settings-footer">
+          <button class="danger-button" id="reset-settings" type="button">初期設定に戻す</button>
+          <button class="primary-button" id="settings-done" type="button">保存して閉じる</button>
+        </footer>
+      </aside>
+    </section>
+  </main>
+
+  <script src="./app-core.js"></script>
+  <script src="./app-display.js"></script>
+  <script src="./app-noise.js"></script>
+  <script src="./app-audio.js"></script>
+  <script src="./app-settings-ui.js"></script>
+  <script src="./app-events.js"></script>
+</body>
+</html>
