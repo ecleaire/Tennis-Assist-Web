@@ -1,13 +1,24 @@
 import {
   DEFAULTS,
   PATTERNS,
+  POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js";
+} from "./config-values.js?v=20260814j";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
 
 export const pad = value => String(value).padStart(2, "0");
+
+const position = (value, fallback) =>
+  POSITION_VALUES.includes(value) ? value : fallback;
+
+const offset = (value, fallback = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? clamp(number, -1000, 1000)
+    : fallback;
+};
 
 export function normalize(raw = {}) {
   const value = { ...DEFAULTS, ...raw };
@@ -33,6 +44,23 @@ export function normalize(raw = {}) {
     targetSize: clamp(value.targetSize, 12, 100),
     subSize: clamp(value.subSize, 12, 80),
     timerTextSize: clamp(value.timerTextSize, 12, 100),
+
+    clockPosition: position(
+      value.clockPosition,
+      DEFAULTS.clockPosition
+    ),
+    clockOffsetX: offset(value.clockOffsetX, DEFAULTS.clockOffsetX),
+    clockOffsetY: offset(value.clockOffsetY, DEFAULTS.clockOffsetY),
+    timerPosition: position(
+      value.timerPosition,
+      DEFAULTS.timerPosition
+    ),
+    timerOffsetX: offset(value.timerOffsetX, DEFAULTS.timerOffsetX),
+    timerOffsetY: offset(value.timerOffsetY, DEFAULTS.timerOffsetY),
+    wroPosition: position(value.wroPosition, DEFAULTS.wroPosition),
+    wroOffsetX: offset(value.wroOffsetX, DEFAULTS.wroOffsetX),
+    wroOffsetY: offset(value.wroOffsetY, DEFAULTS.wroOffsetY),
+
     noiseStrength: clamp(value.noiseStrength, 0, 100),
     noisePattern: ["random", ...PATTERNS].includes(value.noisePattern)
       ? value.noisePattern
