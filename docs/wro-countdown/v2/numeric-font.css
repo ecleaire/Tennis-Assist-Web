@@ -1,21 +1,32 @@
-/* Keep the labels condensed, but render all large numbers at normal width. */
+/*
+ * Large numbers must use a normal-width family.
+ *
+ * macOS can resolve a very heavy "Helvetica Neue" request to the
+ * Condensed Black face, which makes the countdown look unusually tall and
+ * narrow. Arial has no condensed face in this family, so it gives the clock
+ * stable, proportional numerals in Firefox, Safari, Chrome, and Windows.
+ */
 .clock,
 .mainValue {
   font-family:
-    "Helvetica Neue",
-    "Segoe UI",
     Arial,
+    Helvetica,
+    "Noto Sans",
     "Noto Sans JP",
-    sans-serif;
-  font-stretch: normal;
+    sans-serif !important;
+  font-stretch: 100% !important;
+  font-synthesis: none;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variation-settings: "wdth" 100;
 }
 
 .clock {
-  letter-spacing: -.035em;
+  font-weight: 700 !important;
+  letter-spacing: -.02em !important;
 }
 
 .mainValue {
-  letter-spacing: -.045em;
+  font-weight: 900 !important;
+  letter-spacing: -.012em !important;
 }
