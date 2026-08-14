@@ -1,10 +1,9 @@
 /*
  * Device-specific safe layouts.
  *
- * Free placement remains available on large desktop displays.  Compact
+ * Free placement remains available on large desktop displays. Compact
  * landscape phones use a fixed two-column layout, while notebook-sized
- * screens keep the selected placement but cap each block by viewport height
- * so the clock and countdown cannot grow into one another.
+ * screens keep the selected placement and cap each block by viewport height.
  */
 
 /* Smartphone landscape: current time on the left, countdown in the centre. */
@@ -121,7 +120,6 @@
     margin: clamp(10px, 2.5vh, 16px) 0 0;
     padding: .04em .15em .08em;
     font-size: min(var(--timerFit), 12vw, 22vh);
-    letter-spacing: -.07em;
   }
 
   .display .sub {
@@ -166,51 +164,51 @@
   }
 
   .currentBlock {
-    max-width: min(36vw, 440px);
+    max-width: min(38vw, 480px);
   }
 
   .display {
-    max-width: min(72vw, 920px);
+    max-width: min(78vw, 1020px);
   }
 
   .display[data-position$="-left"],
   .display[data-position$="-right"] {
-    max-width: min(64vw, 840px);
+    max-width: min(70vw, 920px);
   }
 
   .currentBlock .clock {
-    font-size: min(var(--clockFit), 12vh);
+    font-size: min(var(--clockFit), 15vh);
   }
 
   .display[data-position^="top-"] .mainValue,
   .display[data-position^="bottom-"] .mainValue {
-    font-size: min(var(--timerFit), 22vh);
+    font-size: min(var(--timerFit), 28vh);
   }
 
   .display[data-position^="middle-"] .mainValue,
   .display[data-position="center"] .mainValue {
-    font-size: min(var(--timerFit), 28vh);
+    font-size: min(var(--timerFit), 36vh);
   }
 
   .display .target {
-    font-size: min(var(--targetFit), 6.2vh);
+    font-size: min(var(--targetFit), 7.5vh);
   }
 
   .display .timerText {
-    font-size: min(var(--timerTextFit), 4.8vh);
+    font-size: min(var(--timerTextFit), 6vh);
   }
 
   .display .sub {
-    font-size: min(var(--subFit), 4.6vh);
+    font-size: min(var(--subFit), 5.6vh);
   }
 
   .display .mainValue {
-    margin-top: clamp(16px, 3vh, 28px);
-    padding: .04em .24em .08em .06em;
+    margin-top: clamp(14px, 2.6vh, 25px);
+    padding: .04em .2em .08em .05em;
   }
 
   .display .sub {
-    margin-top: clamp(12px, 2.2vh, 20px);
+    margin-top: clamp(10px, 1.9vh, 18px);
   }
 
   .foot {
