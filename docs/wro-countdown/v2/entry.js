@@ -15,7 +15,7 @@ document.body.innerHTML = `
     </header>
     <main class="display" id="display" aria-live="polite">
       <p class="mode glitch" id="modeLabel">COUNTDOWN TIMER</p>
-      <p class="target glitch" id="targetLabel">14:00 まで</p>
+      <p class="target glitch" id="targetLabel">20:30 まで</p>
       <p class="wroSuffix glitch" id="wroSuffix" hidden></p>
       <p class="timerText glitch" id="timerText" hidden></p>
       <p class="mainValue glitch" id="mainValue">--:--:--</p>
@@ -29,4 +29,4 @@ document.body.innerHTML = `
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 </div>`;
 
-import("./entry-settings.js?v=20260814r");
+import("./entry-settings.js?v=20260815a");

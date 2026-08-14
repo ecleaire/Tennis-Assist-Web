@@ -45,7 +45,7 @@ export const SOUND_TYPES = [...BUILT_INS, "custom"];
 
 export const DEFAULTS = {
   mode: "timer",
-  targetTime: "14:00",
+  targetTime: "20:30",
   showTarget: true,
   showHourMinute: true,
   timerText: "",
