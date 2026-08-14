@@ -4,7 +4,7 @@ document.body.innerHTML = `
   <div class="shell" id="shell">
     <header class="top" id="top">
       <div class="currentBlock" id="currentBlock">
-        <p class="eyebrow">CURRENT TIME / JST</p>
+        <p class="eyebrow currentTimeLabel" id="currentTimeLabel">現在時刻</p>
         <p class="clock" id="clock">--:--:--</p>
         <div class="date" id="date">----</div>
       </div>
@@ -16,6 +16,7 @@ document.body.innerHTML = `
     <main class="display" id="display" aria-live="polite">
       <p class="mode glitch" id="modeLabel">COUNTDOWN TIMER</p>
       <p class="target glitch" id="targetLabel">14:00 まで</p>
+      <p class="wroSuffix glitch" id="wroSuffix" hidden></p>
       <p class="timerText glitch" id="timerText" hidden></p>
       <p class="mainValue glitch" id="mainValue">--:--:--</p>
       <p class="sub glitch" id="subValue">残り時間を計算中</p>
@@ -28,4 +29,4 @@ document.body.innerHTML = `
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 </div>`;
 
-import("./entry-settings.js?v=20260814q");
+import("./entry-settings.js?v=20260814r");
