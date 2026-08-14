@@ -3,7 +3,9 @@ export const SIZE_LIMITS = {
   timerSize: { minimum: 36, maximum: 520 },
   targetSize: { minimum: 12, maximum: 180 },
   subSize: { minimum: 12, maximum: 140 },
-  timerTextSize: { minimum: 12, maximum: 180 }
+  timerTextSize: { minimum: 12, maximum: 180 },
+  wroTitleSize: { minimum: 12, maximum: 180 },
+  wroDateSuffixSize: { minimum: 12, maximum: 140 }
 };
 
 export function applySizeLimits() {
