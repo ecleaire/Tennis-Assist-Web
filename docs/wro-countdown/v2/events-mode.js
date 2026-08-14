@@ -1,4 +1,24 @@
-import { DEFAULTS } from "./config.js";
+import { DEFAULTS } from "./config.js?v=20260814j";
+
+function bindPositionChoices(choices, key, setSettings) {
+  choices.forEach(input => {
+    input.onchange = () => {
+      if (input.checked) {
+        setSettings({ [key]: input.value }, { quiet: true });
+      }
+    };
+  });
+}
+
+function bindOffset(input, key, setSettings) {
+  input.oninput = () => {
+    if (input.value === "") return;
+    setSettings({ [key]: Number(input.value) }, { quiet: true });
+  };
+  input.onchange = () => {
+    setSettings({ [key]: Number(input.value || 0) }, { quiet: true });
+  };
+}
 
 export function bindModeSettings(controls, setSettings) {
   [controls.modeTimer, controls.modeWro].forEach(input => {
@@ -89,4 +109,29 @@ export function bindModeSettings(controls, setSettings) {
       setSettings({ [key]: Number(number.value) }, { quiet: true });
     };
   });
+
+  bindPositionChoices(
+    controls.clockPositionChoices,
+    "clockPosition",
+    setSettings
+  );
+  bindPositionChoices(
+    controls.timerPositionChoices,
+    "timerPosition",
+    setSettings
+  );
+  bindPositionChoices(
+    controls.wroPositionChoices,
+    "wroPosition",
+    setSettings
+  );
+
+  [
+    [controls.clockOffsetX, "clockOffsetX"],
+    [controls.clockOffsetY, "clockOffsetY"],
+    [controls.timerOffsetX, "timerOffsetX"],
+    [controls.timerOffsetY, "timerOffsetY"],
+    [controls.wroOffsetX, "wroOffsetX"],
+    [controls.wroOffsetY, "wroOffsetY"]
+  ].forEach(([input, key]) => bindOffset(input, key, setSettings));
 }
