@@ -1,11 +1,11 @@
-import { WRO_TARGET } from "./config.js";
+import { WRO_TARGET } from "./config.js?v=20260814m";
 import {
   renderCurrentTime,
   renderTimer,
   renderWro,
   renderLabels
-} from "./display-render.js";
-import { renderStatus } from "./display-status.js";
+} from "./display-render.js?v=20260814m";
+import { renderStatus } from "./display-status.js?v=20260814m";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   const date = new Date();
