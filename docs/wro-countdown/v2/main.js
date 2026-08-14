@@ -8,7 +8,7 @@ import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814j";
 import { controls as makeControls } from "./controls.js?v=20260814j";
 import { renderSettings } from "./render-settings.js?v=20260814j";
 import { createNoise } from "./noise.js";
-import { createAudio } from "./audio.js";
+import { createAudio } from "./audio.js?v=20260814k";
 import { createDisplay } from "./display.js?v=20260814j";
 import { bindEvents } from "./events.js?v=20260814j";
 
