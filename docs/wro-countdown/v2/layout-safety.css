@@ -255,3 +255,10 @@ body,
     text-align: right;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel {
+    transition: none !important;
+  }
+}
