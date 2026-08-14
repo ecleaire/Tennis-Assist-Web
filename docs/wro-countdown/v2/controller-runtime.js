@@ -1,9 +1,12 @@
 import { renderLabels } from "./display-render.js?v=20260814m";
-import { fitDisplay } from "./display-fit.js?v=20260814m";
+import { fitDisplay } from "./display-fit.js?v=20260814p";
 import { createAutoWro } from "./display-auto.js?v=20260814m";
 import { createTimerTarget } from "./display-target.js?v=20260814m";
 import { applyDisplayTheme } from "./display-theme.js?v=20260814m";
-import { applyPositioning } from "./display-position.js?v=20260814m";
+import {
+  applyPositioning,
+  constrainPositioning
+} from "./display-position.js?v=20260814p";
 import { updateDisplay } from "./display-tick.js?v=20260814m";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
@@ -17,6 +20,7 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   function fit() {
     position();
     fitDisplay(refs, getSettings());
+    constrainPositioning(refs);
   }
 
   function tick() {
@@ -40,6 +44,7 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   }
 
   window.addEventListener("resize", fit, { passive: true });
+  window.visualViewport?.addEventListener("resize", fit, { passive: true });
   window.addEventListener("orientationchange", () => {
     window.setTimeout(fit, 120);
   }, { passive: true });

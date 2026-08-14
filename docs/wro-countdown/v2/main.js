@@ -10,7 +10,7 @@ import { renderSettings } from "./render-settings.js?v=20260814m";
 import { applySizeLimits } from "./size-limits.js?v=20260814m";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260814o";
-import { createDisplay } from "./display.js?v=20260814m";
+import { createDisplay } from "./display.js?v=20260814p";
 import { bindEvents } from "./events.js?v=20260814o";
 
 buildSettings();
