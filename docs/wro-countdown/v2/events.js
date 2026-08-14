@@ -2,7 +2,7 @@ import { bindDialog } from "./events-dialog.js";
 import { bindModeSettings } from "./events-mode.js?v=20260814j";
 import { bindNoiseSettings } from "./events-noise.js";
 import { bindAlertTimes } from "./events-alert-time.js";
-import { bindSoundSettings } from "./events-sound.js";
+import { bindSoundSettings } from "./events-sound.js?v=20260814o";
 import { bindAudioFile } from "./events-file.js";
 import { $ } from "./ui.js?v=20260814j";
 
