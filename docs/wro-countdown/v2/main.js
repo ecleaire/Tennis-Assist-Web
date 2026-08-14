@@ -3,16 +3,18 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260814j";
-import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814j";
-import { controls as makeControls } from "./controls.js?v=20260814j";
-import { renderSettings } from "./render-settings.js?v=20260814j";
-import { createNoise } from "./noise.js";
-import { createAudio } from "./audio.js?v=20260814k";
-import { createDisplay } from "./display.js?v=20260814j";
-import { bindEvents } from "./events.js?v=20260814j";
+} from "./config.js?v=20260814m";
+import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
+import { controls as makeControls } from "./controls.js?v=20260814m";
+import { renderSettings } from "./render-settings.js?v=20260814m";
+import { applySizeLimits } from "./size-limits.js?v=20260814m";
+import { createNoise } from "./noise.js?v=20260814m";
+import { createAudio } from "./audio.js?v=20260814m";
+import { createDisplay } from "./display.js?v=20260814m";
+import { bindEvents } from "./events.js?v=20260814m";
 
 buildSettings();
+applySizeLimits();
 
 const refs = makeRefs();
 const controls = makeControls();
