@@ -1,8 +1,15 @@
-import { duration, pad, WRO_DATE } from "./config.js";
+import { duration, pad, WRO_DATE } from "./config.js?v=20260814r";
 
 let currentSettings = null;
 
-export function renderCurrentTime(refs, date) {
+export function renderCurrentTime(refs, date, settings) {
+  refs.currentBlock.hidden = !settings.showCurrentTime;
+  if (!settings.showCurrentTime) return;
+
+  const label = String(settings.currentTimeLabel || "").trim();
+  refs.currentTimeLabel.hidden = !label;
+  refs.currentTimeLabel.textContent = label;
+
   refs.clock.textContent = new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
     hour: "2-digit",
@@ -96,11 +103,16 @@ export function renderWro(refs, remaining) {
 
 export function renderLabels(refs, settings, temporaryWro) {
   currentSettings = settings;
+  const wroMode = settings.mode === "wro" || temporaryWro;
 
-  if (settings.mode === "timer" && !temporaryWro) {
+  refs.modeLabel.classList.toggle("wroTitle", wroMode);
+
+  if (!wroMode) {
     refs.modeLabel.textContent = "COUNTDOWN TIMER";
     refs.targetLabel.textContent = `${settings.targetTime} まで`;
     refs.targetLabel.hidden = !settings.showTarget;
+    refs.wroSuffix.hidden = true;
+    refs.wroSuffix.textContent = "";
     return;
   }
 
@@ -109,4 +121,8 @@ export function renderLabels(refs, settings, temporaryWro) {
     : "WRO JAPAN FINAL 2026";
   refs.targetLabel.textContent = WRO_DATE;
   refs.targetLabel.hidden = false;
+
+  const suffix = String(settings.wroDateSuffix || "").trim();
+  refs.wroSuffix.textContent = suffix;
+  refs.wroSuffix.hidden = !suffix;
 }

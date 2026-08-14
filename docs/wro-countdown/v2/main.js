@@ -3,20 +3,28 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260814m";
+} from "./config.js?v=20260814r";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { controls as makeControls } from "./controls.js?v=20260814m";
 import { renderSettings } from "./render-settings.js?v=20260814m";
-import { applySizeLimits } from "./size-limits.js?v=20260814m";
+import { applySizeLimits } from "./size-limits.js?v=20260814r";
+import {
+  installExtraSettings,
+  createExtraSettingsController
+} from "./extra-settings.js?v=20260814r";
 import { createNoise } from "./noise.js?v=20260814m";
-import { createAudio } from "./audio.js?v=20260814q";
-import { createDisplay } from "./display.js?v=20260814p";
+import { createAudio } from "./audio.js?v=20260814r";
+import { createDisplay } from "./display.js?v=20260814r";
 import { bindEvents } from "./events.js?v=20260814o";
 
 buildSettings();
+installExtraSettings();
 applySizeLimits();
 
 const refs = makeRefs();
+refs.currentTimeLabel = document.getElementById("currentTimeLabel");
+refs.wroSuffix = document.getElementById("wroSuffix");
+
 const controls = makeControls();
 let settings = load();
 let audio;
@@ -24,6 +32,10 @@ let display;
 
 const getSettings = () => settings;
 const noise = createNoise(refs, getSettings);
+const extraSettings = createExtraSettingsController({
+  getSettings,
+  setSettings
+});
 
 function alarmVisual() {
   refs.app.classList.remove("flash");
@@ -49,6 +61,7 @@ audio = createAudio(
 
 function render() {
   renderSettings(controls, settings, setSettings, audio);
+  extraSettings.render();
 }
 
 function setSettings(patch, options = {}) {

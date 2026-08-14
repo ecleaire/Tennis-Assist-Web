@@ -1,11 +1,11 @@
-import { playTemplate } from "./sounds.js?v=20260814q";
+import { playTemplate } from "./sounds.js?v=20260814r";
 import {
   saveAudioFile,
   loadAudioFile,
   deleteAudioFile
 } from "./audio-storage.js?v=20260814k";
 
-const VOLUME_BOOST = 10;
+const VOLUME_BOOST = 20;
 
 export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let context = null;
@@ -22,10 +22,10 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   }
 
   function configureLimiter(limiter) {
-    limiter.threshold.value = -3;
+    limiter.threshold.value = -1;
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
-    limiter.attack.value = 0.003;
+    limiter.attack.value = 0.002;
     limiter.release.value = 0.12;
   }
 
@@ -134,7 +134,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       refs.soundBadge.className = "badge ready";
       refs.audioStatus.textContent = lastMessage
         ? `${lastMessage} — 音声は有効です。`
-        : "気づきやすい通知パターンと10倍ブーストで有効です。";
+        : "元の通知音を20倍ブーストで有効化しています。";
     } else {
       refs.soundBadge.textContent = customAudioReady
         ? "AUDIO SAVED"

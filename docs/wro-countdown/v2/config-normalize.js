@@ -3,8 +3,8 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260814m";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260814m";
+} from "./config-values.js?v=20260814r";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260814r";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
@@ -21,6 +21,11 @@ const offset = (value, fallback = 0) => {
     : fallback;
 };
 
+const text = (value, fallback, maximum) =>
+  typeof value === "string"
+    ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, maximum)
+    : fallback;
+
 export function normalize(raw = {}) {
   const value = { ...DEFAULTS, ...raw };
 
@@ -33,9 +38,33 @@ export function normalize(raw = {}) {
     showHourMinute: raw.showHourMinute === undefined
       ? DEFAULTS.showHourMinute
       : Boolean(raw.showHourMinute),
-    timerText: typeof value.timerText === "string"
-      ? value.timerText.slice(0, 160)
-      : "",
+    timerText: text(value.timerText, DEFAULTS.timerText, 160),
+
+    showCurrentTime: raw.showCurrentTime === undefined
+      ? DEFAULTS.showCurrentTime
+      : Boolean(raw.showCurrentTime),
+    currentTimeLabel: text(
+      value.currentTimeLabel,
+      DEFAULTS.currentTimeLabel,
+      40
+    ),
+
+    wroTitleSize: clamp(
+      value.wroTitleSize,
+      SIZE_LIMITS.wroTitleSize.minimum,
+      SIZE_LIMITS.wroTitleSize.maximum
+    ),
+    wroDateSuffix: text(
+      value.wroDateSuffix,
+      DEFAULTS.wroDateSuffix,
+      120
+    ),
+    wroDateSuffixSize: clamp(
+      value.wroDateSuffixSize,
+      SIZE_LIMITS.wroDateSuffixSize.minimum,
+      SIZE_LIMITS.wroDateSuffixSize.maximum
+    ),
+
     theme: value.theme === "light" ? "light" : "dark",
     autoSize: raw.autoSize === undefined
       ? DEFAULTS.autoSize
