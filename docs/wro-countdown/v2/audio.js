@@ -1,4 +1,4 @@
-import { playTemplate } from "./sounds.js?v=20260814o";
+import { playTemplate } from "./sounds.js?v=20260814q";
 import {
   saveAudioFile,
   loadAudioFile,
@@ -134,7 +134,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       refs.soundBadge.className = "badge ready";
       refs.audioStatus.textContent = lastMessage
         ? `${lastMessage} — 音声は有効です。`
-        : "音声は10倍ブーストで有効です。ブラウザを閉じずに表示してください。";
+        : "気づきやすい通知パターンと10倍ブーストで有効です。";
     } else {
       refs.soundBadge.textContent = customAudioReady
         ? "AUDIO SAVED"
