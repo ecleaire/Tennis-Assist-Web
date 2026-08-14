@@ -6,16 +6,27 @@ const BASE = {
   timerText: 26
 };
 
+const FREE_LAYOUT_QUERY =
+  "(min-width: 800px), (orientation: landscape)";
+
 const limit = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, value));
 
+function freeLayout() {
+  return window.matchMedia(FREE_LAYOUT_QUERY).matches;
+}
+
 function viewportSize(refs) {
   const visual = window.visualViewport;
+  const layoutWidth = freeLayout()
+    ? refs.app.clientWidth
+    : refs.display.clientWidth;
+
   return {
     width: Math.max(
       280,
       Math.min(
-        refs.display.clientWidth || window.innerWidth,
+        layoutWidth || window.innerWidth,
         visual?.width || window.innerWidth
       )
     ),
@@ -74,14 +85,12 @@ function responsiveSizes(refs, settings) {
 
 function layoutWidth(element) {
   // offsetWidth deliberately excludes the animated ::before/::after noise bands.
-  // scrollWidth included those pseudo-elements on some mobile browsers and made
-  // the countdown shrink much more than necessary.
   return Math.max(1, element.offsetWidth);
 }
 
 export function fitDisplay(refs, settings) {
   function fitSingleLine(element, variable, preferred, available, minimum) {
-    const safeWidth = Math.max(minimum * 2, available - 2);
+    const safeWidth = Math.max(minimum * 2, available - 18);
     refs.app.style.setProperty(variable, `${preferred}px`);
     void element.offsetWidth;
 
@@ -90,7 +99,7 @@ export function fitDisplay(refs, settings) {
 
     let fitted = Math.max(
       minimum,
-      preferred * safeWidth / width * 0.995
+      preferred * safeWidth / width * 0.99
     );
     refs.app.style.setProperty(variable, `${fitted}px`);
     void element.offsetWidth;
@@ -99,7 +108,7 @@ export function fitDisplay(refs, settings) {
     if (width > safeWidth && fitted > minimum) {
       fitted = Math.max(
         minimum,
-        fitted * safeWidth / width * 0.995
+        fitted * safeWidth / width * 0.99
       );
       refs.app.style.setProperty(variable, `${fitted}px`);
     }
@@ -110,19 +119,28 @@ export function fitDisplay(refs, settings) {
   refs.app.style.setProperty("--subFit", `${sizes.sub}px`);
   refs.app.style.setProperty("--timerTextFit", `${sizes.timerText}px`);
 
+  const wide = freeLayout();
+  const appWidth = Math.max(280, refs.app.clientWidth || window.innerWidth);
   const actionWidth = refs.gear.parentElement.offsetWidth;
+  const clockAvailable = wide
+    ? appWidth - 48
+    : refs.top.clientWidth - actionWidth - 12;
+  const timerAvailable = wide
+    ? appWidth - 48
+    : refs.display.clientWidth;
+
   fitSingleLine(
     refs.clock,
     "--clockFit",
     sizes.clock,
-    Math.max(120, refs.top.clientWidth - actionWidth - 12),
+    Math.max(120, clockAvailable),
     20
   );
   fitSingleLine(
     refs.mainValue,
     "--timerFit",
     sizes.timer,
-    Math.max(120, refs.display.clientWidth),
+    Math.max(120, timerAvailable),
     30
   );
 }
