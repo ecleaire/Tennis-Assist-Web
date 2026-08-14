@@ -14,7 +14,7 @@ import {
 } from "./extra-settings.js?v=20260814r";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260814r";
-import { createDisplay } from "./display.js?v=20260814r";
+import { createDisplay } from "./display.js?v=20260815c";
 import { bindEvents } from "./events.js?v=20260814o";
 
 buildSettings();

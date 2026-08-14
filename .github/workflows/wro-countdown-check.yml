@@ -12,6 +12,10 @@ on:
       - "scripts/wro-countdown-layout-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
+concurrency:
+  group: wro-countdown-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
