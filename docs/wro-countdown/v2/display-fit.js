@@ -12,8 +12,8 @@ const BASE = {
 
 const DESKTOP_QUERY =
   "(min-width: 1000px) and (orientation: landscape)";
-const FREE_LAYOUT_QUERY =
-  "(min-width: 800px), (orientation: landscape)";
+const PHONE_LANDSCAPE_QUERY =
+  "(max-width: 999px) and (orientation: landscape)";
 
 const limit = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, value));
@@ -22,21 +22,17 @@ function desktopLayout() {
   return window.matchMedia(DESKTOP_QUERY).matches;
 }
 
-function freeLayout() {
-  return window.matchMedia(FREE_LAYOUT_QUERY).matches;
+function phoneLandscape() {
+  return window.matchMedia(PHONE_LANDSCAPE_QUERY).matches;
 }
 
 function viewportSize(refs) {
   const visual = window.visualViewport;
-  const layoutWidth = freeLayout()
-    ? refs.app.clientWidth
-    : refs.display.clientWidth;
-
   return {
     width: Math.max(
       280,
       Math.min(
-        layoutWidth || window.innerWidth,
+        refs.app.clientWidth || window.innerWidth,
         visual?.width || window.innerWidth
       )
     ),
@@ -167,8 +163,50 @@ function responsiveSizes(refs, settings) {
   };
 }
 
-function layoutWidth(element) {
-  return Math.max(1, element.offsetWidth);
+function isVisible(element) {
+  if (!element || element.hidden) return false;
+  const style = getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  return style.display !== "none" && style.visibility !== "hidden" &&
+    Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+}
+
+function measureSingleLine(refs, element) {
+  const clone = element.cloneNode(false);
+  clone.removeAttribute("id");
+  clone.removeAttribute("hidden");
+  clone.classList.remove("glitch");
+  clone.textContent = element.textContent || "00:00:00";
+  clone.setAttribute("aria-hidden", "true");
+  Object.assign(clone.style, {
+    position: "fixed",
+    left: "-100000px",
+    top: "0",
+    right: "auto",
+    bottom: "auto",
+    width: "max-content",
+    minWidth: "0",
+    maxWidth: "none",
+    margin: "0",
+    visibility: "hidden",
+    pointerEvents: "none",
+    animation: "none",
+    clipPath: "none",
+    transform: "none",
+    whiteSpace: "nowrap"
+  });
+  refs.app.append(clone);
+  const width = Math.max(1, clone.getBoundingClientRect().width);
+  clone.remove();
+  return width;
+}
+
+function contentHeight(element) {
+  const children = [...element.children].filter(isVisible);
+  if (!children.length) return Math.max(1, element.getBoundingClientRect().height);
+  const rects = children.map(child => child.getBoundingClientRect());
+  return Math.max(...rects.map(rect => rect.bottom)) -
+    Math.min(...rects.map(rect => rect.top));
 }
 
 function positionColumn(position = "center") {
@@ -183,11 +221,15 @@ function positionRow(position = "center") {
   return "middle";
 }
 
-function horizontalBudget(kind, element, viewport) {
+function horizontalBudget(kind, refs, viewport) {
   if (!desktopLayout()) {
-    return Math.max(120, element.parentElement.clientWidth);
+    if (kind === "clock") {
+      return Math.max(100, refs.currentBlock.clientWidth || refs.top.clientWidth);
+    }
+    return Math.max(120, refs.display.clientWidth);
   }
 
+  const element = kind === "clock" ? refs.currentBlock : refs.display;
   const column = positionColumn(element.dataset.position);
   const side = column !== "center";
   const width = viewport.width;
@@ -205,25 +247,46 @@ function horizontalBudget(kind, element, viewport) {
   return Math.max(260, width * fraction);
 }
 
-function cssPixels(style, name, fallback) {
+function cssPixels(style, name, fallback = 0) {
   const value = Number.parseFloat(style.getPropertyValue(name));
   return Number.isFinite(value) ? value : fallback;
 }
 
-function verticalBudget(refs, element, viewport, kind) {
-  if (!desktopLayout()) return viewport.height;
-
-  const style = getComputedStyle(refs.shell);
-  const top = cssPixels(style, "--layout-top", 64);
-  const bottom = cssPixels(style, "--layout-bottom", 64);
-  const usable = Math.max(180, viewport.height - top - bottom);
-  const row = positionRow(element.dataset.position);
-
-  if (kind === "clock") {
-    return row === "middle" ? usable * 0.52 : usable * 0.34;
+function verticalBudget(refs, viewport) {
+  if (desktopLayout()) {
+    const style = getComputedStyle(refs.shell);
+    const top = cssPixels(style, "--layout-top", 64);
+    const bottom = cssPixels(style, "--layout-bottom", 64);
+    const usable = Math.max(180, viewport.height - top - bottom);
+    return positionRow(refs.display.dataset.position) === "middle"
+      ? usable * 0.92
+      : usable * 0.52;
   }
 
-  return row === "middle" ? usable * 0.92 : usable * 0.52;
+  const shellStyle = getComputedStyle(refs.shell);
+  const displayStyle = getComputedStyle(refs.display);
+  const shellPadding = cssPixels(shellStyle, "padding-top") +
+    cssPixels(shellStyle, "padding-bottom");
+  const rowGap = cssPixels(shellStyle, "row-gap");
+  const displayPadding = cssPixels(displayStyle, "padding-top") +
+    cssPixels(displayStyle, "padding-bottom");
+  const footerHeight = isVisible(refs.foot)
+    ? refs.foot.getBoundingClientRect().height
+    : 0;
+  const topHeight = isVisible(refs.top)
+    ? refs.top.getBoundingClientRect().height
+    : 0;
+  const fallback = phoneLandscape()
+    ? viewport.height - shellPadding - footerHeight - rowGap
+    : viewport.height - shellPadding - topHeight - footerHeight - rowGap * 2;
+  const gridArea = refs.display.clientHeight > 0
+    ? refs.display.clientHeight
+    : fallback;
+
+  return Math.max(
+    72,
+    Math.min(gridArea, fallback) - displayPadding - 4
+  );
 }
 
 function applyDisplayVariables(refs, sizes) {
@@ -237,12 +300,20 @@ function applyDisplayVariables(refs, sizes) {
 }
 
 function fitBlockHeight(refs, sizes, budget) {
-  let height = refs.display.offsetHeight;
-  if (height <= budget) return sizes;
+  refs.app.dataset.tightLayout = "false";
+  applyDisplayVariables(refs, sizes);
+  void refs.display.offsetHeight;
+
+  let height = contentHeight(refs.display);
+  if (height > budget) {
+    refs.app.dataset.tightLayout = "true";
+    void refs.display.offsetHeight;
+    height = contentHeight(refs.display);
+  }
 
   let next = { ...sizes };
-  for (let pass = 0; pass < 2 && height > budget; pass += 1) {
-    const ratio = limit(budget / height * 0.97, 0.45, 1);
+  for (let pass = 0; pass < 8 && height > budget; pass += 1) {
+    const ratio = limit(budget / height * 0.975, 0.2, 0.96);
     next = {
       ...next,
       timer: Math.max(30, next.timer * ratio),
@@ -263,7 +334,7 @@ function fitBlockHeight(refs, sizes, budget) {
     };
     applyDisplayVariables(refs, next);
     void refs.display.offsetHeight;
-    height = refs.display.offsetHeight;
+    height = contentHeight(refs.display);
   }
 
   return next;
@@ -271,11 +342,11 @@ function fitBlockHeight(refs, sizes, budget) {
 
 export function fitDisplay(refs, settings) {
   function fitSingleLine(element, variable, preferred, available, minimum) {
-    const safeWidth = Math.max(minimum * 2, available - 18);
+    const safeWidth = Math.max(minimum * 2, available - 8);
     refs.app.style.setProperty(variable, `${preferred}px`);
     void element.offsetWidth;
 
-    let width = layoutWidth(element);
+    let width = measureSingleLine(refs, element);
     if (width <= safeWidth) return preferred;
 
     let fitted = Math.max(
@@ -285,7 +356,7 @@ export function fitDisplay(refs, settings) {
     refs.app.style.setProperty(variable, `${fitted}px`);
     void element.offsetWidth;
 
-    width = layoutWidth(element);
+    width = measureSingleLine(refs, element);
     if (width > safeWidth && fitted > minimum) {
       fitted = Math.max(
         minimum,
@@ -312,7 +383,7 @@ export function fitDisplay(refs, settings) {
       refs.clock,
       "--clockFit",
       sizes.clock,
-      horizontalBudget("clock", refs.currentBlock, viewport),
+      horizontalBudget("clock", refs, viewport),
       SIZE_LIMITS.clockSize.minimum
     );
   }
@@ -321,7 +392,7 @@ export function fitDisplay(refs, settings) {
     refs.mainValue,
     "--timerFit",
     sizes.timer,
-    horizontalBudget("timer", refs.display, viewport),
+    horizontalBudget("timer", refs, viewport),
     30
   );
 
@@ -330,15 +401,11 @@ export function fitDisplay(refs, settings) {
       refs.modeLabel,
       "--wroTitleFit",
       sizes.wroTitle,
-      horizontalBudget("timer", refs.display, viewport),
+      horizontalBudget("timer", refs, viewport),
       SIZE_LIMITS.wroTitleSize.minimum
     );
   }
 
-  sizes = fitBlockHeight(
-    refs,
-    sizes,
-    verticalBudget(refs, refs.display, viewport, "timer")
-  );
+  sizes = fitBlockHeight(refs, sizes, verticalBudget(refs, viewport));
   applyDisplayVariables(refs, sizes);
 }

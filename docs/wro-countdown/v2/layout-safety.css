@@ -1,0 +1,264 @@
+/* Final defensive layout layer. Loaded after device and PC profiles. */
+html,
+body,
+.app {
+  height: 100%;
+}
+
+.app,
+.shell {
+  height: 100vh;
+  height: 100svh;
+}
+
+.shell {
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.top,
+.display,
+.foot {
+  min-width: 0;
+}
+
+.display {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.panel {
+  align-self: end;
+  max-height: 100%;
+  margin: 0 auto;
+}
+
+.app[data-tight-layout="true"] .display {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.app[data-tight-layout="true"] .display .target,
+.app[data-tight-layout="true"] .display .wroSuffix,
+.app[data-tight-layout="true"] .display .timerText,
+.app[data-tight-layout="true"] .display .mainValue,
+.app[data-tight-layout="true"] .display .sub {
+  margin-top: 5px;
+}
+
+@media (min-width: 760px) {
+  .panel {
+    align-self: center;
+    max-height: 100%;
+  }
+}
+
+@media (orientation: portrait) {
+  .display {
+    overflow: hidden;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .shell {
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-right: max(16px, calc(env(safe-area-inset-right) + 12px));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-left: max(16px, calc(env(safe-area-inset-left) + 12px));
+  }
+
+  .top {
+    padding-bottom: 12px;
+  }
+
+  .display {
+    padding-top: clamp(8px, 2.2vh, 20px);
+    padding-bottom: clamp(8px, 2.2vh, 20px);
+  }
+
+  .display .target,
+  .display .wroSuffix,
+  .display .timerText {
+    margin-top: 7px;
+  }
+
+  .display .mainValue {
+    margin-top: clamp(9px, 1.8vh, 16px);
+  }
+
+  .display .sub {
+    margin-top: clamp(7px, 1.4vh, 12px);
+  }
+
+  .foot {
+    gap: 4px;
+    padding-top: 7px;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+}
+
+/* All sub-1000px landscape viewports use the fixed two-column layout. */
+@media (orientation: landscape) and (max-width: 999px) {
+  body,
+  .app {
+    overflow: hidden;
+  }
+
+  .shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(118px, 31%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    column-gap: clamp(12px, 2.6vw, 24px);
+    row-gap: 7px;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(14px, calc(env(safe-area-inset-right) + 10px))
+      max(8px, env(safe-area-inset-bottom))
+      max(14px, calc(env(safe-area-inset-left) + 10px));
+  }
+
+  .top {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    min-width: 0;
+    max-height: 100%;
+    padding: 0;
+    border: 0;
+  }
+
+  .currentBlock,
+  .display {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    transform: none !important;
+  }
+
+  .currentBlock {
+    min-height: 0;
+    text-align: left;
+  }
+
+  .topActions {
+    position: static;
+    align-self: flex-start;
+    margin-top: clamp(8px, 2vh, 14px);
+  }
+
+  .topActions .badge {
+    display: none;
+  }
+
+  .topActions .gear {
+    width: 36px;
+    height: 36px;
+  }
+
+  .display {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    justify-self: stretch;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 2px 4px;
+    text-align: center;
+  }
+
+  .currentBlock .currentTimeLabel,
+  .currentBlock .eyebrow {
+    font-size: clamp(8px, 1.5vw, 10px);
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 8.5vw, 15vh);
+  }
+
+  .currentBlock .date {
+    margin-top: 5px;
+    font-size: clamp(8px, 1.6vw, 11px);
+  }
+
+  .display .mode {
+    font-size: clamp(8px, 1.45vw, 10px);
+  }
+
+  .display .mode.wroTitle {
+    font-size: min(var(--wroTitleFit), 4.5vw, 7vh);
+  }
+
+  .display .target {
+    margin-top: 4px;
+    font-size: min(var(--targetFit), 3.7vw, 5.8vh);
+  }
+
+  .display .wroSuffix,
+  .display .timerText {
+    margin-top: 6px;
+    font-size: min(var(--wroSuffixFit), var(--timerTextFit), 3vw, 4.7vh);
+  }
+
+  .display .mainValue {
+    margin: clamp(7px, 1.8vh, 13px) 0 0;
+    padding: .03em .12em .07em;
+    font-size: min(var(--timerFit), 12vw, 21vh);
+  }
+
+  .display .sub {
+    margin-top: clamp(6px, 1.4vh, 10px);
+    font-size: min(var(--subFit), 3vw, 4.5vh);
+  }
+
+  .foot {
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+    max-height: 24px;
+    padding: 4px 0 0;
+    overflow: hidden;
+    font-size: clamp(7px, 1.25vw, 9px);
+    line-height: 1.15;
+  }
+
+  .foot span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .foot span:last-child {
+    max-width: 58%;
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel {
+    transition: none !important;
+  }
+}
