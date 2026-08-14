@@ -1,11 +1,13 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260814p";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260814r";
 
 const BASE = {
   clock: 64,
   timer: 116,
   target: 32,
   sub: 23,
-  timerText: 26
+  timerText: 26,
+  wroTitle: 30,
+  wroSuffix: 22
 };
 
 const DESKTOP_QUERY =
@@ -64,7 +66,9 @@ function responsiveSizes(refs, settings) {
       timer: settings.timerSize,
       target: settings.targetSize,
       sub: settings.subSize,
-      timerText: settings.timerTextSize
+      timerText: settings.timerTextSize,
+      wroTitle: settings.wroTitleSize,
+      wroSuffix: settings.wroDateSuffixSize
     };
   }
 
@@ -103,6 +107,16 @@ function responsiveSizes(refs, settings) {
         40 * referenceScale * settings.timerTextSize / BASE.timerText,
         SIZE_LIMITS.timerTextSize.minimum,
         SIZE_LIMITS.timerTextSize.maximum
+      ),
+      wroTitle: limit(
+        46 * referenceScale * settings.wroTitleSize / BASE.wroTitle,
+        SIZE_LIMITS.wroTitleSize.minimum,
+        SIZE_LIMITS.wroTitleSize.maximum
+      ),
+      wroSuffix: limit(
+        30 * referenceScale * settings.wroDateSuffixSize / BASE.wroSuffix,
+        SIZE_LIMITS.wroDateSuffixSize.minimum,
+        SIZE_LIMITS.wroDateSuffixSize.maximum
       )
     };
   }
@@ -139,12 +153,21 @@ function responsiveSizes(refs, settings) {
       (27 + widthProgress * 17) * heightScale * settings.timerTextSize / BASE.timerText,
       SIZE_LIMITS.timerTextSize.minimum,
       SIZE_LIMITS.timerTextSize.maximum
+    ),
+    wroTitle: limit(
+      (26 + widthProgress * 22) * heightScale * settings.wroTitleSize / BASE.wroTitle,
+      SIZE_LIMITS.wroTitleSize.minimum,
+      SIZE_LIMITS.wroTitleSize.maximum
+    ),
+    wroSuffix: limit(
+      (19 + widthProgress * 14) * heightScale * settings.wroDateSuffixSize / BASE.wroSuffix,
+      SIZE_LIMITS.wroDateSuffixSize.minimum,
+      SIZE_LIMITS.wroDateSuffixSize.maximum
     )
   };
 }
 
 function layoutWidth(element) {
-  // offsetWidth deliberately excludes the animated ::before/::after bands.
   return Math.max(1, element.offsetWidth);
 }
 
@@ -207,6 +230,8 @@ function applyDisplayVariables(refs, sizes) {
   refs.app.style.setProperty("--targetFit", `${sizes.target}px`);
   refs.app.style.setProperty("--subFit", `${sizes.sub}px`);
   refs.app.style.setProperty("--timerTextFit", `${sizes.timerText}px`);
+  refs.app.style.setProperty("--wroTitleFit", `${sizes.wroTitle}px`);
+  refs.app.style.setProperty("--wroSuffixFit", `${sizes.wroSuffix}px`);
   refs.app.style.setProperty("--timerFit", `${sizes.timer}px`);
   refs.app.style.setProperty("--clockFit", `${sizes.clock}px`);
 }
@@ -226,6 +251,14 @@ function fitBlockHeight(refs, sizes, budget) {
       timerText: Math.max(
         SIZE_LIMITS.timerTextSize.minimum,
         next.timerText * ratio
+      ),
+      wroTitle: Math.max(
+        SIZE_LIMITS.wroTitleSize.minimum,
+        next.wroTitle * ratio
+      ),
+      wroSuffix: Math.max(
+        SIZE_LIMITS.wroDateSuffixSize.minimum,
+        next.wroSuffix * ratio
       )
     };
     applyDisplayVariables(refs, next);
@@ -274,13 +307,16 @@ export function fitDisplay(refs, settings) {
   let sizes = responsiveSizes(refs, settings);
   applyDisplayVariables(refs, sizes);
 
-  sizes.clock = fitSingleLine(
-    refs.clock,
-    "--clockFit",
-    sizes.clock,
-    horizontalBudget("clock", refs.currentBlock, viewport),
-    SIZE_LIMITS.clockSize.minimum
-  );
+  if (settings.showCurrentTime) {
+    sizes.clock = fitSingleLine(
+      refs.clock,
+      "--clockFit",
+      sizes.clock,
+      horizontalBudget("clock", refs.currentBlock, viewport),
+      SIZE_LIMITS.clockSize.minimum
+    );
+  }
+
   sizes.timer = fitSingleLine(
     refs.mainValue,
     "--timerFit",
@@ -288,6 +324,16 @@ export function fitDisplay(refs, settings) {
     horizontalBudget("timer", refs.display, viewport),
     30
   );
+
+  if (refs.modeLabel.classList.contains("wroTitle")) {
+    sizes.wroTitle = fitSingleLine(
+      refs.modeLabel,
+      "--wroTitleFit",
+      sizes.wroTitle,
+      horizontalBudget("timer", refs.display, viewport),
+      SIZE_LIMITS.wroTitleSize.minimum
+    );
+  }
 
   sizes = fitBlockHeight(
     refs,
