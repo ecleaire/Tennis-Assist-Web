@@ -3,7 +3,8 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260814j";
+} from "./config-values.js?v=20260814m";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260814m";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
@@ -39,11 +40,31 @@ export function normalize(raw = {}) {
     autoSize: raw.autoSize === undefined
       ? DEFAULTS.autoSize
       : Boolean(raw.autoSize),
-    clockSize: clamp(value.clockSize, 20, 180),
-    timerSize: clamp(value.timerSize, 36, 260),
-    targetSize: clamp(value.targetSize, 12, 100),
-    subSize: clamp(value.subSize, 12, 80),
-    timerTextSize: clamp(value.timerTextSize, 12, 100),
+    clockSize: clamp(
+      value.clockSize,
+      SIZE_LIMITS.clockSize.minimum,
+      SIZE_LIMITS.clockSize.maximum
+    ),
+    timerSize: clamp(
+      value.timerSize,
+      SIZE_LIMITS.timerSize.minimum,
+      SIZE_LIMITS.timerSize.maximum
+    ),
+    targetSize: clamp(
+      value.targetSize,
+      SIZE_LIMITS.targetSize.minimum,
+      SIZE_LIMITS.targetSize.maximum
+    ),
+    subSize: clamp(
+      value.subSize,
+      SIZE_LIMITS.subSize.minimum,
+      SIZE_LIMITS.subSize.maximum
+    ),
+    timerTextSize: clamp(
+      value.timerTextSize,
+      SIZE_LIMITS.timerTextSize.minimum,
+      SIZE_LIMITS.timerTextSize.maximum
+    ),
 
     clockPosition: position(
       value.clockPosition,
