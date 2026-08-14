@@ -1,0 +1,21 @@
+/* Keep the labels condensed, but render all large numbers at normal width. */
+.clock,
+.mainValue {
+  font-family:
+    "Helvetica Neue",
+    "Segoe UI",
+    Arial,
+    "Noto Sans JP",
+    sans-serif;
+  font-stretch: normal;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.clock {
+  letter-spacing: -.035em;
+}
+
+.mainValue {
+  letter-spacing: -.045em;
+}
