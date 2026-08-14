@@ -1,7 +1,8 @@
 export function bindSoundSettings(refs, controls, setSettings, audio) {
   controls.volumeRange.oninput = () => {
-    controls.volume.value = controls.volumeRange.value;
-    refs.audioPlayer.volume = Number(controls.volumeRange.value) / 100;
+    const volume = Number(controls.volumeRange.value);
+    controls.volume.value = volume;
+    audio.setVolume(volume);
   };
 
   controls.volumeRange.onchange = () => {
@@ -9,6 +10,14 @@ export function bindSoundSettings(refs, controls, setSettings, audio) {
       { volume: Number(controls.volumeRange.value) },
       { quiet: true }
     );
+    audio.setVolume(Number(controls.volumeRange.value));
+  };
+
+  controls.volume.oninput = () => {
+    if (controls.volume.value !== "") {
+      controls.volumeRange.value = controls.volume.value;
+      audio.setVolume(Number(controls.volume.value));
+    }
   };
 
   controls.volume.onchange = () => {
@@ -16,6 +25,7 @@ export function bindSoundSettings(refs, controls, setSettings, audio) {
       { volume: Number(controls.volume.value) },
       { quiet: true }
     );
+    audio.setVolume(Number(controls.volume.value));
   };
 
   controls.soundType.onchange = () => {
