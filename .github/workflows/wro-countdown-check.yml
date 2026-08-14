@@ -4,16 +4,54 @@ on:
   push:
     paths:
       - "docs/wro-countdown/**"
+      - "scripts/wro-countdown-layout-check.mjs"
+      - ".github/workflows/wro-countdown-check.yml"
+  pull_request:
+    paths:
+      - "docs/wro-countdown/**"
+      - "scripts/wro-countdown-layout-check.mjs"
+      - ".github/workflows/wro-countdown-check.yml"
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Check JavaScript syntax
         run: |
-          for file in docs/wro-countdown/v2/*.js; do
+          for file in docs/wro-countdown/v2/*.js scripts/wro-countdown-layout-check.mjs; do
             node --check "$file"
           done
+
+      - name: Install Chromium layout-test runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run responsive layout audit
+        run: |
+          python3 -m http.server 4173 --directory . >/tmp/wro-countdown-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:4173/docs/wro-countdown/app.html >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          node scripts/wro-countdown-layout-check.mjs
+
+      - name: Upload layout audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wro-countdown-layout-audit
+          path: artifacts/wro-countdown-layout
+          if-no-files-found: ignore
