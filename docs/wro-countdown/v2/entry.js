@@ -1,9 +1,9 @@
 document.body.innerHTML = `
 <div class="app" id="app" data-theme="dark">
   <div class="noiseLayer" id="noiseLayer" aria-hidden="true"></div>
-  <div class="shell">
+  <div class="shell" id="shell">
     <header class="top" id="top">
-      <div class="currentBlock">
+      <div class="currentBlock" id="currentBlock">
         <p class="eyebrow">CURRENT TIME / JST</p>
         <p class="clock" id="clock">--:--:--</p>
         <div class="date" id="date">----</div>
@@ -20,7 +20,7 @@ document.body.innerHTML = `
       <p class="mainValue glitch" id="mainValue">--:--:--</p>
       <p class="sub glitch" id="subValue">残り時間を計算中</p>
     </main>
-    <footer class="foot">
+    <footer class="foot" id="foot">
       <span>画面をタップするとグリッチ・ワイプを再生</span>
       <span id="status">設定を読み込んでいます</span>
     </footer>
@@ -28,4 +28,4 @@ document.body.innerHTML = `
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 </div>`;
 
-import("./entry-settings.js?v=20260814i");
+import("./entry-settings.js?v=20260814j");
