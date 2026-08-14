@@ -1,8 +1,26 @@
 import { SOUND_PATTERNS } from "./sound-data.js";
 
+const VOLUME_BOOST = 10;
+
+function createLimiter(context) {
+  const limiter = context.createDynamicsCompressor();
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.12;
+  return limiter;
+}
+
 export function playTemplate(context, type, volume) {
   const events = SOUND_PATTERNS[type] || SOUND_PATTERNS.bell;
   const baseTime = context.currentTime + 0.035;
+  const masterGain = context.createGain();
+  const limiter = createLimiter(context);
+  let activeOscillators = events.length;
+
+  masterGain.gain.setValueAtTime(VOLUME_BOOST, baseTime);
+  masterGain.connect(limiter).connect(context.destination);
 
   for (const event of events) {
     const [delay, frequency, duration, wave, gainLevel, endFrequency] = event;
@@ -22,8 +40,15 @@ export function playTemplate(context, type, volume) {
 
     gain.gain.setValueAtTime(Math.max(0.0001, level), start);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    oscillator.connect(gain).connect(context.destination);
+    oscillator.connect(gain).connect(masterGain);
     oscillator.start(start);
     oscillator.stop(start + duration + 0.03);
+    oscillator.onended = () => {
+      activeOscillators -= 1;
+      if (activeOscillators === 0) {
+        masterGain.disconnect();
+        limiter.disconnect();
+      }
+    };
   }
 }
