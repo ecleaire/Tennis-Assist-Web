@@ -159,10 +159,6 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
     showStatus();
   }
 
-  window.addEventListener("pagehide", () => {
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-  });
-
   return {
     restore,
     unlock,
