@@ -49,6 +49,16 @@ export const DEFAULTS = {
   showTarget: true,
   showHourMinute: true,
   timerText: "",
+
+  // Current-time display shared by both modes.
+  showCurrentTime: true,
+  currentTimeLabel: "現在時刻",
+
+  // WRO countdown labels.
+  wroTitleSize: 30,
+  wroDateSuffix: "",
+  wroDateSuffixSize: 22,
+
   theme: "dark",
   autoSize: true,
   clockSize: 64,
