@@ -1,9 +1,21 @@
-/* Text-size controls and optional timer text added in the 2026-08-14 update. */
+/* Text-size controls and optional timer/WRO labels. */
 .app {
   --targetFit: var(--target);
   --subFit: var(--sub);
   --timerText: 26px;
   --timerTextFit: var(--timerText);
+  --wroTitle: 30px;
+  --wroTitleFit: var(--wroTitle);
+  --wroSuffix: 22px;
+  --wroSuffixFit: var(--wroSuffix);
+}
+
+.currentTimeLabel {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: clamp(12px, 1.35vw, 18px);
+  font-weight: 950;
+  letter-spacing: .12em;
 }
 
 .target {
@@ -12,6 +24,30 @@
 
 .sub {
   font-size: var(--subFit);
+}
+
+.mode.wroTitle {
+  color: var(--text);
+  font-size: var(--wroTitleFit);
+  font-weight: 950;
+  line-height: 1.06;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.wroSuffix {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: clamp(9px, 1.8vh, 17px) 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--wroSuffixFit);
+  font-weight: 850;
+  line-height: 1.25;
+  letter-spacing: .02em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .timerText {
@@ -58,6 +94,19 @@
   background: var(--panel);
 }
 
+.extraSettingsGroup {
+  display: grid;
+  gap: 13px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.disabledField {
+  opacity: .48;
+}
+
 .sizeControls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -90,5 +139,9 @@
 
   .sizeControl.wide {
     grid-column: auto;
+  }
+
+  .mode.wroTitle {
+    white-space: normal;
   }
 }
