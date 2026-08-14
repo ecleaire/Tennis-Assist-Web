@@ -1,4 +1,9 @@
 import { playTemplate } from "./sounds.js";
+import {
+  saveAudioFile,
+  loadAudioFile,
+  deleteAudioFile
+} from "./audio-storage.js?v=20260814k";
 
 export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let context = null;
@@ -6,6 +11,14 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let fileUrl = "";
   let customAudioReady = false;
   let lastMessage = "";
+
+  function useAudioBlob(blob) {
+    if (fileUrl) URL.revokeObjectURL(fileUrl);
+    fileUrl = URL.createObjectURL(blob);
+    refs.audioPlayer.src = fileUrl;
+    refs.audioPlayer.volume = getSettings().volume / 100;
+    customAudioReady = true;
+  }
 
   async function unlock() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -77,10 +90,15 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
         ? `${lastMessage} — 音声は有効です。`
         : "音声は有効です。ブラウザを閉じずに表示してください。";
     } else {
-      refs.soundBadge.textContent = "SOUND LOCKED";
-      refs.soundBadge.className = "badge";
-      refs.audioStatus.textContent =
-        "「音声テスト・有効化」を一度押してください。";
+      refs.soundBadge.textContent = customAudioReady
+        ? "AUDIO SAVED"
+        : "SOUND LOCKED";
+      refs.soundBadge.className = customAudioReady
+        ? "badge ready"
+        : "badge";
+      refs.audioStatus.textContent = customAudioReady
+        ? "指定音声は端末に保存済みです。使用前に音声テストを押してください。"
+        : "「音声テスト・有効化」を一度押してください。";
     }
   }
 
@@ -92,22 +110,30 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       throw new Error("音声ファイルを選択してください。");
     }
 
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-    fileUrl = URL.createObjectURL(file);
-    refs.audioPlayer.src = fileUrl;
-    refs.audioPlayer.volume = getSettings().volume / 100;
-    customAudioReady = true;
+    let saved = true;
+    try {
+      await saveAudioFile(file);
+    } catch (error) {
+      saved = false;
+      console.warn("Could not persist the selected audio file.", error);
+    }
+
+    useAudioBlob(file);
     setSettings(
       { fileName: file.name, soundType: "custom" },
       { quiet: true }
     );
-    refs.audioStatus.textContent = `${file.name}を読み込みました。`;
+    refs.audioStatus.textContent = saved
+      ? `${file.name}をこの端末に保存しました。`
+      : `${file.name}を読み込みました。このブラウザでは再起動後の復元ができません。`;
   }
 
   async function remove() {
+    await deleteAudioFile();
     if (fileUrl) URL.revokeObjectURL(fileUrl);
     fileUrl = "";
     customAudioReady = false;
+    refs.audioPlayer.pause();
     refs.audioPlayer.removeAttribute("src");
     setSettings(
       {
@@ -118,12 +144,24 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       },
       { quiet: true }
     );
-    refs.audioStatus.textContent = "指定音声を削除しました。";
+    refs.audioStatus.textContent = "指定音声を端末から削除しました。";
   }
 
   async function restore() {
+    const storedFile = await loadAudioFile();
+    if (storedFile instanceof Blob) {
+      useAudioBlob(storedFile);
+      const storedName = storedFile.name || getSettings().fileName;
+      if (storedName && storedName !== getSettings().fileName) {
+        setSettings({ fileName: storedName }, { quiet: true });
+      }
+    }
     showStatus();
   }
+
+  window.addEventListener("pagehide", () => {
+    if (fileUrl) URL.revokeObjectURL(fileUrl);
+  });
 
   return {
     restore,
