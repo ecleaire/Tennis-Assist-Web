@@ -1,19 +1,26 @@
 import { renderLabels } from "./display-render.js";
-import { fitDisplay } from "./display-fit.js?v=20260814i";
+import { fitDisplay } from "./display-fit.js?v=20260814j";
 import { createAutoWro } from "./display-auto.js";
 import { createTimerTarget } from "./display-target.js";
 import { applyDisplayTheme } from "./display-theme.js";
+import { applyPositioning } from "./display-position.js?v=20260814j";
 import { updateDisplay } from "./display-tick.js";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
   let automatic;
 
+  function position() {
+    applyPositioning(refs, getSettings(), automatic?.active() || false);
+  }
+
   function fit() {
+    position();
     fitDisplay(refs, getSettings());
   }
 
   function tick() {
+    position();
     updateDisplay(refs, getSettings(), timer, automatic, fit);
   }
 
@@ -28,6 +35,8 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
 
   function applyVisual() {
     applyDisplayTheme(refs, getSettings(), labels, fit);
+    position();
+    fit();
   }
 
   window.addEventListener("resize", fit, { passive: true });

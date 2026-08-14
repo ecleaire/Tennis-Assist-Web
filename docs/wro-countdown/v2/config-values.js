@@ -16,6 +16,18 @@ export const PATTERNS = [
   "scanline"
 ];
 
+export const POSITION_VALUES = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "middle-left",
+  "center",
+  "middle-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right"
+];
+
 export const BUILT_INS = [
   "bell",
   "chime",
@@ -44,6 +56,18 @@ export const DEFAULTS = {
   targetSize: 32,
   subSize: 23,
   timerTextSize: 26,
+
+  // PC / landscape placement defaults.
+  clockPosition: "bottom-right",
+  clockOffsetX: 0,
+  clockOffsetY: 0,
+  timerPosition: "top-right",
+  timerOffsetX: 0,
+  timerOffsetY: 0,
+  wroPosition: "top-left",
+  wroOffsetX: 0,
+  wroOffsetY: 0,
+
   noiseStrength: 88,
   noisePattern: "random",
   noiseIntervalMin: 3,

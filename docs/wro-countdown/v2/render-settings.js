@@ -1,5 +1,11 @@
 import { renderLeadChips } from "./lead-chips.js";
 
+function checkPosition(choices, value) {
+  choices.forEach(input => {
+    input.checked = input.value === value;
+  });
+}
+
 export function renderSettings(controls, settings, setSettings, audio) {
   const timerMode = settings.mode === "timer";
 
@@ -38,6 +44,16 @@ export function renderSettings(controls, settings, setSettings, audio) {
     range.value = value;
     number.value = value;
   });
+
+  checkPosition(controls.clockPositionChoices, settings.clockPosition);
+  checkPosition(controls.timerPositionChoices, settings.timerPosition);
+  checkPosition(controls.wroPositionChoices, settings.wroPosition);
+  controls.clockOffsetX.value = settings.clockOffsetX;
+  controls.clockOffsetY.value = settings.clockOffsetY;
+  controls.timerOffsetX.value = settings.timerOffsetX;
+  controls.timerOffsetY.value = settings.timerOffsetY;
+  controls.wroOffsetX.value = settings.wroOffsetX;
+  controls.wroOffsetY.value = settings.wroOffsetY;
 
   controls.noiseRange.value = settings.noiseStrength;
   controls.noiseStrength.value = settings.noiseStrength;

@@ -1,0 +1,277 @@
+/* PC / landscape placement controls. Portrait phones keep the normal flow. */
+.positionEditors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.positionEditor {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.positionEditorHead b {
+  display: block;
+  font-size: 14px;
+}
+
+.positionEditorHead small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.positionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.positionChoice {
+  position: relative;
+  min-width: 0;
+}
+
+.positionChoice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.positionChoice span {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--soft);
+  text-align: center;
+  cursor: pointer;
+  transition: transform .12s, border-color .12s, background .12s;
+}
+
+.positionChoice b {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.positionChoice small {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.positionChoice input:checked + span {
+  border-color: var(--accent);
+  color: var(--accentText);
+  background: var(--accent);
+}
+
+.positionChoice input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.positionChoice span:active {
+  transform: scale(.95);
+}
+
+.offsetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.positionSection > .help:last-child {
+  margin-top: 13px;
+}
+
+@media (max-width: 430px) {
+  .positionEditors,
+  .offsetGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .positionEditor {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 800px), (orientation: landscape) {
+  .shell {
+    --layout-left: max(24px, calc(env(safe-area-inset-left) + 20px));
+    --layout-right: max(24px, calc(env(safe-area-inset-right) + 20px));
+    --layout-top: max(78px, calc(env(safe-area-inset-top) + 64px));
+    --layout-bottom: max(82px, calc(env(safe-area-inset-bottom) + 66px));
+
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    min-height: 100svh;
+    padding: 0;
+  }
+
+  .top {
+    position: static;
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .topActions {
+    position: absolute;
+    z-index: 60;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(18px, env(safe-area-inset-right));
+  }
+
+  .currentBlock,
+  .display {
+    --anchor-x: 0%;
+    --anchor-y: 0%;
+    --position-offset-x: 0px;
+    --position-offset-y: 0px;
+
+    position: absolute;
+    z-index: 5;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: max-content;
+    max-width: calc(100% - 48px);
+    margin: 0;
+    transform:
+      translate(var(--anchor-x), var(--anchor-y))
+      translate(var(--position-offset-x), var(--position-offset-y));
+  }
+
+  .currentBlock {
+    min-width: 0;
+  }
+
+  .display {
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .foot {
+    position: absolute;
+    z-index: 30;
+    right: var(--layout-right);
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: var(--layout-left);
+  }
+
+  .currentBlock[data-position="top-left"],
+  .display[data-position="top-left"] {
+    top: var(--layout-top);
+    left: var(--layout-left);
+  }
+
+  .currentBlock[data-position="top-center"],
+  .display[data-position="top-center"] {
+    top: var(--layout-top);
+    left: 50%;
+    --anchor-x: -50%;
+  }
+
+  .currentBlock[data-position="top-right"],
+  .display[data-position="top-right"] {
+    top: var(--layout-top);
+    right: var(--layout-right);
+  }
+
+  .currentBlock[data-position="middle-left"],
+  .display[data-position="middle-left"] {
+    top: 50%;
+    left: var(--layout-left);
+    --anchor-y: -50%;
+  }
+
+  .currentBlock[data-position="center"],
+  .display[data-position="center"] {
+    top: 50%;
+    left: 50%;
+    --anchor-x: -50%;
+    --anchor-y: -50%;
+  }
+
+  .currentBlock[data-position="middle-right"],
+  .display[data-position="middle-right"] {
+    top: 50%;
+    right: var(--layout-right);
+    --anchor-y: -50%;
+  }
+
+  .currentBlock[data-position="bottom-left"],
+  .display[data-position="bottom-left"] {
+    bottom: var(--layout-bottom);
+    left: var(--layout-left);
+  }
+
+  .currentBlock[data-position="bottom-center"],
+  .display[data-position="bottom-center"] {
+    bottom: var(--layout-bottom);
+    left: 50%;
+    --anchor-x: -50%;
+  }
+
+  .currentBlock[data-position="bottom-right"],
+  .display[data-position="bottom-right"] {
+    right: var(--layout-right);
+    bottom: var(--layout-bottom);
+  }
+
+  .currentBlock[data-position$="-left"],
+  .display[data-position$="-left"] {
+    text-align: left;
+  }
+
+  .display[data-position$="-left"] {
+    align-items: flex-start;
+  }
+
+  .currentBlock[data-position$="-center"],
+  .currentBlock[data-position="center"],
+  .display[data-position$="-center"],
+  .display[data-position="center"] {
+    text-align: center;
+  }
+
+  .display[data-position$="-center"],
+  .display[data-position="center"] {
+    align-items: center;
+  }
+
+  .currentBlock[data-position$="-right"],
+  .display[data-position$="-right"] {
+    text-align: right;
+  }
+
+  .display[data-position$="-right"] {
+    align-items: flex-end;
+  }
+
+  .display[data-position$="-right"] .mainValue {
+    margin-right: -.1em;
+    margin-left: 0;
+  }
+
+  .display[data-position$="-center"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}
