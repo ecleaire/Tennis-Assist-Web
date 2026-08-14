@@ -1,0 +1,379 @@
+/*
+ * Fluid PC layout profiles.
+ *
+ * These rules keep the nine-position layout but scale its safe area and
+ * vertical limits for projectors, compact laptops, Full HD displays,
+ * ultrawide monitors, and high-resolution screens.
+ */
+
+@media (orientation: landscape) and (min-width: 1000px) {
+  .shell {
+    --layout-left: max(clamp(24px, 2.2vw, 84px), calc(env(safe-area-inset-left) + 18px));
+    --layout-right: max(clamp(24px, 2.2vw, 84px), calc(env(safe-area-inset-right) + 18px));
+    --layout-top: max(clamp(62px, 8.2vh, 132px), calc(env(safe-area-inset-top) + 54px));
+    --layout-bottom: max(clamp(58px, 8.5vh, 136px), calc(env(safe-area-inset-bottom) + 52px));
+  }
+
+  .topActions {
+    top: max(clamp(12px, 1.8vh, 28px), env(safe-area-inset-top));
+    right: max(clamp(16px, 1.6vw, 34px), env(safe-area-inset-right));
+  }
+
+  .currentBlock {
+    max-width: min(44vw, 760px);
+  }
+
+  .display {
+    max-width: min(92vw, 2200px);
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: min(78vw, 1780px);
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 16vh, 36vw);
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 34vh, 68vw);
+  }
+
+  .display[data-position^="middle-"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    font-size: min(var(--timerFit), 44vh, 72vw);
+  }
+
+  .display .target {
+    font-size: min(var(--targetFit), 8vh, 10vw);
+  }
+
+  .display .timerText {
+    font-size: min(var(--timerTextFit), 6.5vh, 8vw);
+  }
+
+  .display .sub {
+    font-size: min(var(--subFit), 6vh, 7vw);
+  }
+
+  .display .mainValue {
+    max-width: 100%;
+    margin-top: clamp(12px, 2.4vh, 32px);
+    padding: .04em .18em .09em .05em;
+  }
+
+  .display .sub {
+    margin-top: clamp(9px, 1.8vh, 22px);
+  }
+
+  .foot {
+    gap: clamp(12px, 2vw, 38px);
+    font-size: clamp(9px, .65vw, 13px);
+    line-height: 1.35;
+  }
+
+  .foot span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .foot span:last-child {
+    max-width: 62%;
+  }
+
+  .currentBlock,
+  .display {
+    --safe-correction-x: 0px;
+    --safe-correction-y: 0px;
+    transform:
+      translate(var(--anchor-x), var(--anchor-y))
+      translate(var(--position-offset-x), var(--position-offset-y))
+      translate(var(--safe-correction-x), var(--safe-correction-y));
+  }
+}
+
+/* Compact PC / 4:3 projector / short browser window. */
+@media (orientation: landscape) and (min-width: 1000px) and ((max-width: 1199px) or (max-height: 699px)) {
+  .shell {
+    --layout-left: max(20px, calc(env(safe-area-inset-left) + 16px));
+    --layout-right: max(20px, calc(env(safe-area-inset-right) + 16px));
+    --layout-top: max(52px, calc(env(safe-area-inset-top) + 46px));
+    --layout-bottom: max(50px, calc(env(safe-area-inset-bottom) + 44px));
+  }
+
+  .currentBlock {
+    max-width: 48vw;
+  }
+
+  .display {
+    max-width: 92vw;
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: 72vw;
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 12vh, 38vw);
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 24vh, 66vw);
+  }
+
+  .display[data-position^="middle-"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    font-size: min(var(--timerFit), 31vh, 72vw);
+  }
+
+  .display .target {
+    font-size: min(var(--targetFit), 5.8vh, 8vw);
+  }
+
+  .display .timerText {
+    font-size: min(var(--timerTextFit), 4.8vh, 6.5vw);
+  }
+
+  .display .sub {
+    font-size: min(var(--subFit), 4.5vh, 6vw);
+  }
+
+  .display .mainValue {
+    margin-top: clamp(8px, 1.8vh, 17px);
+  }
+
+  .display .sub {
+    margin-top: clamp(7px, 1.3vh, 12px);
+  }
+
+  .topActions .badge {
+    min-height: 31px;
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+
+  .topActions .gear {
+    width: 39px;
+    height: 39px;
+  }
+
+  .foot {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    font-size: 9px;
+  }
+}
+
+/* Common notebook sizes: 1280x720, 1366x768, 1440x900, 1536x864. */
+@media (orientation: landscape) and (min-width: 1200px) and (max-width: 1599px) and (min-height: 700px) {
+  .currentBlock {
+    max-width: min(41vw, 560px);
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: min(76vw, 1080px);
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 14vh, 34vw);
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 29vh, 68vw);
+  }
+
+  .display[data-position^="middle-"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    font-size: min(var(--timerFit), 38vh, 72vw);
+  }
+}
+
+/* 1600x900 through Full HD / WUXGA. */
+@media (orientation: landscape) and (min-width: 1600px) and (max-width: 2199px) {
+  .currentBlock {
+    max-width: min(37vw, 690px);
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: min(80vw, 1560px);
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 15vh, 31vw);
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 34vh, 66vw);
+  }
+
+  .display[data-position^="middle-"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    font-size: min(var(--timerFit), 43vh, 72vw);
+  }
+}
+
+/* QHD, 4K, large projectors and wall displays. */
+@media (orientation: landscape) and (min-width: 2200px) {
+  .shell {
+    --layout-left: max(clamp(48px, 2.8vw, 128px), calc(env(safe-area-inset-left) + 24px));
+    --layout-right: max(clamp(48px, 2.8vw, 128px), calc(env(safe-area-inset-right) + 24px));
+    --layout-top: max(clamp(92px, 8.8vh, 170px), calc(env(safe-area-inset-top) + 68px));
+    --layout-bottom: max(clamp(86px, 9vh, 176px), calc(env(safe-area-inset-bottom) + 64px));
+  }
+
+  .currentBlock {
+    max-width: min(34vw, 960px);
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: min(82vw, 2320px);
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 17vh, 28vw);
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 38vh, 64vw);
+  }
+
+  .display[data-position^="middle-"] .mainValue,
+  .display[data-position="center"] .mainValue {
+    font-size: min(var(--timerFit), 48vh, 70vw);
+  }
+}
+
+/* 4:3 and 5:4 monitors/projectors need a narrower side-position budget. */
+@media (orientation: landscape) and (min-width: 1000px) and (max-aspect-ratio: 3/2) {
+  .currentBlock {
+    max-width: 46vw;
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: 70vw;
+  }
+
+  .display[data-position^="top-"] .mainValue,
+  .display[data-position^="bottom-"] .mainValue {
+    font-size: min(var(--timerFit), 29vh, 62vw);
+  }
+}
+
+/* Ultrawide monitors: size follows height, while margins grow with width. */
+@media (orientation: landscape) and (min-width: 1600px) and (min-aspect-ratio: 21/9) {
+  .shell {
+    --layout-left: max(clamp(42px, 3.2vw, 150px), calc(env(safe-area-inset-left) + 24px));
+    --layout-right: max(clamp(42px, 3.2vw, 150px), calc(env(safe-area-inset-right) + 24px));
+  }
+
+  .display[data-position$="-left"],
+  .display[data-position$="-right"] {
+    max-width: 70vw;
+  }
+
+  .currentBlock {
+    max-width: 30vw;
+  }
+}
+
+/* Narrow or portrait desktop windows use a stacked layout instead of absolute placement. */
+@media (min-width: 800px) and (orientation: portrait),
+       (min-width: 800px) and (max-width: 999px) and (min-height: 621px) {
+  .shell {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(100%, 1120px);
+    max-width: 100%;
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: auto;
+    padding:
+      max(22px, env(safe-area-inset-top))
+      max(24px, calc(env(safe-area-inset-right) + 18px))
+      max(22px, env(safe-area-inset-bottom))
+      max(24px, calc(env(safe-area-inset-left) + 18px));
+  }
+
+  .top {
+    position: static;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topActions {
+    position: static;
+    flex: 0 0 auto;
+  }
+
+  .currentBlock,
+  .display {
+    position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+    transform: none;
+  }
+
+  .currentBlock {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .display {
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(28px, 6vh, 72px) 0;
+    text-align: center;
+  }
+
+  .currentBlock .clock {
+    font-size: min(var(--clockFit), 13vw, 11vh);
+  }
+
+  .display .mainValue {
+    margin: clamp(18px, 3vh, 34px) 0 0;
+    font-size: min(var(--timerFit), 22vw, 23vh);
+  }
+
+  .display .target {
+    font-size: min(var(--targetFit), 6vw, 5vh);
+  }
+
+  .display .timerText {
+    font-size: min(var(--timerTextFit), 5vw, 4.5vh);
+  }
+
+  .display .sub {
+    font-size: min(var(--subFit), 4.5vw, 4vh);
+  }
+
+  .foot {
+    position: static;
+    display: flex;
+    right: auto;
+    bottom: auto;
+    left: auto;
+  }
+}
