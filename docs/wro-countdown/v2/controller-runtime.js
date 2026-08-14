@@ -1,5 +1,5 @@
 import { renderLabels } from "./display-render.js";
-import { fitDisplay } from "./display-fit.js";
+import { fitDisplay } from "./display-fit.js?v=20260814i";
 import { createAutoWro } from "./display-auto.js";
 import { createTimerTarget } from "./display-target.js";
 import { applyDisplayTheme } from "./display-theme.js";
