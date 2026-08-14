@@ -50,7 +50,7 @@ function responsiveSizes(refs, settings) {
       180
     ),
     timer: limit(
-      (248 + widthProgress * 42) * heightScale * settings.timerSize / BASE.timer,
+      (252 + widthProgress * 38) * heightScale * settings.timerSize / BASE.timer,
       36,
       260
     ),
@@ -72,35 +72,34 @@ function responsiveSizes(refs, settings) {
   };
 }
 
+function layoutWidth(element) {
+  // offsetWidth deliberately excludes the animated ::before/::after noise bands.
+  // scrollWidth included those pseudo-elements on some mobile browsers and made
+  // the countdown shrink much more than necessary.
+  return Math.max(1, element.offsetWidth);
+}
+
 export function fitDisplay(refs, settings) {
   function fitSingleLine(element, variable, preferred, available, minimum) {
-    const safeWidth = Math.max(minimum * 2, available - 4);
+    const safeWidth = Math.max(minimum * 2, available - 2);
     refs.app.style.setProperty(variable, `${preferred}px`);
     void element.offsetWidth;
 
-    let width = Math.max(
-      1,
-      element.scrollWidth,
-      element.getBoundingClientRect().width
-    );
+    let width = layoutWidth(element);
     if (width <= safeWidth) return;
 
     let fitted = Math.max(
       minimum,
-      preferred * safeWidth / width * 0.985
+      preferred * safeWidth / width * 0.995
     );
     refs.app.style.setProperty(variable, `${fitted}px`);
     void element.offsetWidth;
 
-    width = Math.max(
-      1,
-      element.scrollWidth,
-      element.getBoundingClientRect().width
-    );
+    width = layoutWidth(element);
     if (width > safeWidth && fitted > minimum) {
       fitted = Math.max(
         minimum,
-        fitted * safeWidth / width * 0.985
+        fitted * safeWidth / width * 0.995
       );
       refs.app.style.setProperty(variable, `${fitted}px`);
     }
