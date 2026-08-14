@@ -1,22 +1,39 @@
-import { playTemplate } from "./sounds.js";
+import { playTemplate } from "./sounds.js?v=20260814o";
 import {
   saveAudioFile,
   loadAudioFile,
   deleteAudioFile
 } from "./audio-storage.js?v=20260814k";
 
+const VOLUME_BOOST = 10;
+
 export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let context = null;
   let ready = false;
   let fileUrl = "";
   let customAudioReady = false;
+  let customSource = null;
+  let customGain = null;
+  let customLimiter = null;
   let lastMessage = "";
+
+  function boostedLevel(volume = getSettings().volume) {
+    return Math.max(0, Number(volume) / 100 * VOLUME_BOOST);
+  }
+
+  function configureLimiter(limiter) {
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.12;
+  }
 
   function useAudioBlob(blob) {
     if (fileUrl) URL.revokeObjectURL(fileUrl);
     fileUrl = URL.createObjectURL(blob);
     refs.audioPlayer.src = fileUrl;
-    refs.audioPlayer.volume = getSettings().volume / 100;
+    refs.audioPlayer.volume = 1;
     customAudioReady = true;
   }
 
@@ -32,6 +49,34 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
     return ready;
   }
 
+  async function ensureCustomAudioGraph() {
+    await unlock();
+
+    if (!customSource) {
+      customSource = context.createMediaElementSource(refs.audioPlayer);
+      customGain = context.createGain();
+      customLimiter = context.createDynamicsCompressor();
+      configureLimiter(customLimiter);
+      customSource
+        .connect(customGain)
+        .connect(customLimiter)
+        .connect(context.destination);
+    }
+
+    refs.audioPlayer.volume = 1;
+    setVolume();
+  }
+
+  function setVolume(volume = getSettings().volume) {
+    if (customGain && context) {
+      customGain.gain.setTargetAtTime(
+        boostedLevel(volume),
+        context.currentTime,
+        0.01
+      );
+    }
+  }
+
   async function play() {
     const settings = getSettings();
 
@@ -39,9 +84,10 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       if (!customAudioReady || !refs.audioPlayer.src) {
         throw new Error("指定した音声ファイルがありません。");
       }
+      await ensureCustomAudioGraph();
       refs.audioPlayer.pause();
       refs.audioPlayer.currentTime = 0;
-      refs.audioPlayer.volume = settings.volume / 100;
+      setVolume(settings.volume);
       await refs.audioPlayer.play();
       ready = true;
       showStatus();
@@ -88,7 +134,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       refs.soundBadge.className = "badge ready";
       refs.audioStatus.textContent = lastMessage
         ? `${lastMessage} — 音声は有効です。`
-        : "音声は有効です。ブラウザを閉じずに表示してください。";
+        : "音声は10倍ブーストで有効です。ブラウザを閉じずに表示してください。";
     } else {
       refs.soundBadge.textContent = customAudioReady
         ? "AUDIO SAVED"
@@ -165,6 +211,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
     play,
     alarm,
     status: showStatus,
+    setVolume,
     selectFile,
     remove
   };
