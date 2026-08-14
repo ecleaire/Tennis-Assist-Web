@@ -1,3 +1,5 @@
+import { SIZE_LIMITS } from "./size-limits.js?v=20260814m";
+
 const BASE = {
   clock: 64,
   timer: 116,
@@ -57,28 +59,28 @@ function responsiveSizes(refs, settings) {
   return {
     clock: limit(
       (80 + widthProgress * 48) * heightScale * settings.clockSize / BASE.clock,
-      20,
-      180
+      SIZE_LIMITS.clockSize.minimum,
+      SIZE_LIMITS.clockSize.maximum
     ),
     timer: limit(
       (252 + widthProgress * 38) * heightScale * settings.timerSize / BASE.timer,
-      36,
-      260
+      SIZE_LIMITS.timerSize.minimum,
+      SIZE_LIMITS.timerSize.maximum
     ),
     target: limit(
       (36 + widthProgress * 20) * heightScale * settings.targetSize / BASE.target,
-      12,
-      100
+      SIZE_LIMITS.targetSize.minimum,
+      SIZE_LIMITS.targetSize.maximum
     ),
     sub: limit(
       (24 + widthProgress * 14) * heightScale * settings.subSize / BASE.sub,
-      12,
-      80
+      SIZE_LIMITS.subSize.minimum,
+      SIZE_LIMITS.subSize.maximum
     ),
     timerText: limit(
       (27 + widthProgress * 17) * heightScale * settings.timerTextSize / BASE.timerText,
-      12,
-      100
+      SIZE_LIMITS.timerTextSize.minimum,
+      SIZE_LIMITS.timerTextSize.maximum
     )
   };
 }
@@ -134,7 +136,7 @@ export function fitDisplay(refs, settings) {
     "--clockFit",
     sizes.clock,
     Math.max(120, clockAvailable),
-    20
+    SIZE_LIMITS.clockSize.minimum
   );
   fitSingleLine(
     refs.mainValue,
