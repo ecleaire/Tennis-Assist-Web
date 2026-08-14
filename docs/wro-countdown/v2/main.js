@@ -9,7 +9,7 @@ import { controls as makeControls } from "./controls.js";
 import { renderSettings } from "./render-settings.js";
 import { createNoise } from "./noise.js";
 import { createAudio } from "./audio.js";
-import { createDisplay } from "./display.js";
+import { createDisplay } from "./display.js?v=20260814i";
 import { bindEvents } from "./events.js";
 
 buildSettings();
