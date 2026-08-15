@@ -1,7 +1,8 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260814r";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
 
 const BASE = {
   clock: 64,
+  date: 16,
   timer: 116,
   target: 32,
   sub: 23,
@@ -59,6 +60,7 @@ function responsiveSizes(refs, settings) {
   if (!settings.autoSize) {
     return {
       clock: settings.clockSize,
+      date: settings.dateSize,
       timer: settings.timerSize,
       target: settings.targetSize,
       sub: settings.subSize,
@@ -83,6 +85,11 @@ function responsiveSizes(refs, settings) {
         112 * referenceScale * settings.clockSize / BASE.clock,
         SIZE_LIMITS.clockSize.minimum,
         SIZE_LIMITS.clockSize.maximum
+      ),
+      date: limit(
+        26 * referenceScale * settings.dateSize / BASE.date,
+        SIZE_LIMITS.dateSize.minimum,
+        SIZE_LIMITS.dateSize.maximum
       ),
       timer: limit(
         300 * referenceScale * settings.timerSize / BASE.timer,
@@ -129,6 +136,11 @@ function responsiveSizes(refs, settings) {
       (80 + widthProgress * 48) * heightScale * settings.clockSize / BASE.clock,
       SIZE_LIMITS.clockSize.minimum,
       SIZE_LIMITS.clockSize.maximum
+    ),
+    date: limit(
+      (16 + widthProgress * 10) * heightScale * settings.dateSize / BASE.date,
+      SIZE_LIMITS.dateSize.minimum,
+      SIZE_LIMITS.dateSize.maximum
     ),
     timer: limit(
       (252 + widthProgress * 38) * heightScale * settings.timerSize / BASE.timer,
@@ -297,6 +309,7 @@ function applyDisplayVariables(refs, sizes) {
   refs.app.style.setProperty("--wroSuffixFit", `${sizes.wroSuffix}px`);
   refs.app.style.setProperty("--timerFit", `${sizes.timer}px`);
   refs.app.style.setProperty("--clockFit", `${sizes.clock}px`);
+  refs.app.style.setProperty("--dateFit", `${sizes.date}px`);
 }
 
 function fitBlockHeight(refs, sizes, budget) {
@@ -379,12 +392,20 @@ export function fitDisplay(refs, settings) {
   applyDisplayVariables(refs, sizes);
 
   if (settings.showCurrentTime) {
+    const budget = horizontalBudget("clock", refs, viewport);
     sizes.clock = fitSingleLine(
       refs.clock,
       "--clockFit",
       sizes.clock,
-      horizontalBudget("clock", refs, viewport),
+      budget,
       SIZE_LIMITS.clockSize.minimum
+    );
+    sizes.date = fitSingleLine(
+      refs.date,
+      "--dateFit",
+      sizes.date,
+      budget,
+      SIZE_LIMITS.dateSize.minimum
     );
   }
 

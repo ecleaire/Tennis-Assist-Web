@@ -50,6 +50,14 @@ export function installExtraSettings() {
   }
 
   const sizeControls = document.querySelector(".sizeControls");
+  const clockSizeControl = $("clockSize")?.closest(".sizeControl");
+  if (clockSizeControl && !$("dateSize")) {
+    clockSizeControl.insertAdjacentHTML(
+      "afterend",
+      sizeControl("現在時刻下の日付（px）", "dateSize", 10, 48)
+    );
+  }
+
   if (sizeControls) {
     sizeControls.insertAdjacentHTML(
       "beforeend",
@@ -80,6 +88,8 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     showCurrentTime: $("showCurrentTime"),
     currentTimeLabelField: $("currentTimeLabelField"),
     currentTimeLabelInput: $("currentTimeLabelInput"),
+    dateSizeRange: $("dateSizeRange"),
+    dateSize: $("dateSize"),
     wroDateSuffixInput: $("wroDateSuffixInput"),
     wroTitleSizeRange: $("wroTitleSizeRange"),
     wroTitleSize: $("wroTitleSize"),
@@ -117,6 +127,12 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
   };
 
   bindSizePair(
+    controls.dateSizeRange,
+    controls.dateSize,
+    "dateSize",
+    setSettings
+  );
+  bindSizePair(
     controls.wroTitleSizeRange,
     controls.wroTitleSize,
     "wroTitleSize",
@@ -140,6 +156,8 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     if (document.activeElement !== controls.currentTimeLabelInput) {
       controls.currentTimeLabelInput.value = settings.currentTimeLabel;
     }
+    controls.dateSizeRange.value = settings.dateSize;
+    controls.dateSize.value = settings.dateSize;
     if (document.activeElement !== controls.wroDateSuffixInput) {
       controls.wroDateSuffixInput.value = settings.wroDateSuffix;
     }

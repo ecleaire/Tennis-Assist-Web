@@ -1,0 +1,23 @@
+/* Configurable date text under the current-time clock. */
+.app {
+  --date: 16px;
+  --dateFit: var(--date);
+}
+
+.date {
+  font-size: var(--dateFit);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .date {
+    font-size: min(var(--dateFit), 4.8vw);
+  }
+}
+
+@media (orientation: landscape) and (max-width: 999px) {
+  .currentBlock .date {
+    font-size: min(var(--dateFit), 2.5vw, 4.5vh);
+  }
+}
