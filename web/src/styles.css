@@ -7450,6 +7450,13 @@ html.shukugawa-general body.operation-timer-active #timer-five {
   display: block !important;
 }
 
+/* Shukugawa general only: expose the same random timer controls available
+   on the standalone timer while the match-operation timer is active. */
+html.shukugawa-general body.operation-timer-active #timer-reset,
+html.shukugawa-general body.operation-timer-active #timer-step {
+  display: block !important;
+}
+
 body.operation-timer-active .timer-shell {
   gap: clamp(10px, 1.8vh, 18px);
 }
