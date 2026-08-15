@@ -3,8 +3,9 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260815f";
+} from "./config.js?v=20260815h";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
+import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import { controls as makeControls } from "./controls.js?v=20260814m";
 import { renderSettings } from "./render-settings.js?v=20260814m";
 import { applySizeLimits } from "./size-limits.js?v=20260815f";
@@ -13,11 +14,12 @@ import {
   createExtraSettingsController
 } from "./extra-settings.js?v=20260815f";
 import { createNoise } from "./noise.js?v=20260814m";
-import { createAudio } from "./audio.js?v=20260815g";
+import { createAudio } from "./audio.js?v=20260815h";
 import { createDisplay } from "./display.js?v=20260815f";
 import { bindEvents } from "./events.js?v=20260814o";
 
 buildSettings();
+installSoundOptions();
 installExtraSettings();
 applySizeLimits();
 
