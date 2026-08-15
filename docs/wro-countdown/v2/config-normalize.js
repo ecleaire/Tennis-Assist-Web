@@ -3,8 +3,8 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260815a";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260814r";
+} from "./config-values.js?v=20260815f";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
@@ -73,6 +73,11 @@ export function normalize(raw = {}) {
       value.clockSize,
       SIZE_LIMITS.clockSize.minimum,
       SIZE_LIMITS.clockSize.maximum
+    ),
+    dateSize: clamp(
+      value.dateSize,
+      SIZE_LIMITS.dateSize.minimum,
+      SIZE_LIMITS.dateSize.maximum
     ),
     timerSize: clamp(
       value.timerSize,

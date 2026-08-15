@@ -1,8 +1,8 @@
 import { renderLabels } from "./display-render.js?v=20260815d";
-import { fitDisplay } from "./display-fit.js?v=20260815c";
+import { fitDisplay } from "./display-fit.js?v=20260815f";
 import { createAutoWro } from "./display-auto.js?v=20260814m";
 import { createTimerTarget } from "./display-target.js?v=20260814m";
-import { applyDisplayTheme } from "./display-theme.js?v=20260814r";
+import { applyDisplayTheme } from "./display-theme.js?v=20260815f";
 import {
   applyPositioning,
   constrainPositioning

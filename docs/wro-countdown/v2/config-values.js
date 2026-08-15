@@ -62,6 +62,7 @@ export const DEFAULTS = {
   theme: "dark",
   autoSize: true,
   clockSize: 64,
+  dateSize: 16,
   timerSize: 116,
   targetSize: 32,
   subSize: 23,
