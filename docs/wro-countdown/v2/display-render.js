@@ -1,4 +1,10 @@
-import { duration, pad, WRO_DATE } from "./config.js?v=20260814r";
+import {
+  calendarDaysUntilJst,
+  duration,
+  pad,
+  WRO_DATE,
+  WRO_TARGET
+} from "./config.js?v=20260815d";
 
 let currentSettings = null;
 
@@ -84,7 +90,7 @@ export function renderTimer(refs, remaining, suppliedSettings) {
     : `あと ${values.value.hours}時間 ${pad(values.value.minutes)}分`;
 }
 
-export function renderWro(refs, remaining) {
+export function renderWro(refs, remaining, nowDate = new Date()) {
   refs.timerText.hidden = true;
   refs.timerText.textContent = "";
   refs.subValue.hidden = false;
@@ -96,9 +102,13 @@ export function renderWro(refs, remaining) {
   }
 
   const value = duration(remaining);
-  refs.mainValue.textContent = `${value.days} DAYS`;
+  const calendarDays = calendarDaysUntilJst(WRO_TARGET, nowDate);
+  const dayLabel = calendarDays === 1 ? "DAY" : "DAYS";
+  const totalHours = value.days * 24 + value.hours;
+
+  refs.mainValue.textContent = `${calendarDays} ${dayLabel}`;
   refs.subValue.textContent =
-    `${pad(value.hours)}:${pad(value.minutes)}:${pad(value.seconds)}`;
+    `開始まで ${pad(totalHours)}:${pad(value.minutes)}:${pad(value.seconds)}`;
 }
 
 export function renderLabels(refs, settings, temporaryWro) {

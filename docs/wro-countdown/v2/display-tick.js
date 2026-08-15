@@ -1,10 +1,10 @@
-import { WRO_TARGET } from "./config.js?v=20260814r";
+import { WRO_TARGET } from "./config.js?v=20260815d";
 import {
   renderCurrentTime,
   renderTimer,
   renderWro,
   renderLabels
-} from "./display-render.js?v=20260814r";
+} from "./display-render.js?v=20260815d";
 import { renderStatus } from "./display-status.js?v=20260814r";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
@@ -19,7 +19,7 @@ export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
 
   renderLabels(refs, settings, automatic.active());
   if (settings.mode === "wro" || automatic.active()) {
-    renderWro(refs, WRO_TARGET - now);
+    renderWro(refs, WRO_TARGET - now, date);
   } else {
     renderTimer(refs, remaining, settings);
   }

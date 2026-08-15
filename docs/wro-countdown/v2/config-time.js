@@ -18,6 +18,24 @@ export function jstParts(date = new Date()) {
   return result;
 }
 
+function jstDateStamp(date) {
+  const parts = jstParts(date);
+  return Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day)
+  );
+}
+
+export function calendarDaysUntilJst(targetMilliseconds, date = new Date()) {
+  const targetDay = jstDateStamp(new Date(targetMilliseconds));
+  const currentDay = jstDateStamp(date);
+  return Math.max(
+    0,
+    Math.round((targetDay - currentDay) / 86400000)
+  );
+}
+
 export const jstStamp = (year, month, day, hour, minute) =>
   Date.UTC(year, month - 1, day, hour - 9, minute);
 
