@@ -42,7 +42,8 @@ async function loadPublicRules() { renderRules(fallbackRules, "公式ルール�
 function rowValue(row, name) { return row[session.columns.indexOf(name)] ?? ""; }
 function normalizedPassword(value) { return text(value).toLowerCase().replace(/\s+/g, ""); }
 function dateValue(value) { const parsed = new Date(text(value).replace(" ", "T")); return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime(); }
-function periodSince() { const value = $("period").value; if (value === "all") return 0; return Date.now() - (value === "week" ? 7 : 31) * 86400000; }
+function dateBounds() { const value = $("period").value; let from = value === "all" ? 0 : Date.now() - (value === "today" ? 1 : value === "week" ? 7 : 31) * 86400000; let to = Number.POSITIVE_INFINITY; if ($("date-from").value) from = Math.max(from, new Date(`${$("date-from").value}T00:00:00`).getTime()); if ($("date-to").value) to = new Date(`${$("date-to").value}T23:59:59.999`).getTime(); return { from, to }; }
+function isUnsent(row) { const status = rowValue(row, "送信状態") || rowValue(row, "sendStatus"); return status === "pending" || status === "failed" || rowValue(row, "未送信") === "TRUE"; }
 async function loadHistory() {
   const params = new URLSearchParams({ action: "history", api_key: session.apiKey, spreadsheet_id: session.account.sheet, sheet: "対戦履歴archive" });
   const response = await fetch(`${session.account.url}?${params}`);
@@ -53,28 +54,33 @@ async function loadHistory() {
   render();
 }
 function render() {
-  const since = periodSince();
-  const filtered = rows.filter((row) => dateValue(rowValue(row, "日時")) >= since);
+  const bounds = dateBounds();
+  const filtered = rows.filter((row) => { const stamp = dateValue(rowValue(row, "日時")); return stamp >= bounds.from && stamp <= bounds.to; });
   const series = filtered.filter((row) => rowValue(row, "記録種別") === "試合結果");
   const matches = filtered.filter((row) => rowValue(row, "記録種別") === "マッチ");
   const teams = [...new Set(filtered.flatMap((row) => [rowValue(row, "チームA"), rowValue(row, "チームB")]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
   $("stat-series").textContent = series.length; $("stat-matches").textContent = matches.length; $("stat-teams").textContent = teams.length;
   $("stat-latest").textContent = filtered.length ? text(filtered.map((row) => rowValue(row, "日時")).sort().at(-1)).slice(0, 10) : "--";
   const selected = $("team-filter").value;
-  if ($("team-filter").options.length !== teams.length + 1) { $("team-filter").innerHTML = `<option value="">すべて</option>${teams.map((team) => `<option>${escapeHtml(team)}</option>`).join("")}`; $("team-filter").value = selected; }
-  renderStats(matches, teams, since); renderHistory(filtered.filter((row) => !selected || rowValue(row, "チームA") === selected || rowValue(row, "チームB") === selected));
+  const statsTeam = $("stats-team").value;
+  const optionsMarkup = `<option value="">すべてのチーム</option>${teams.map((team) => `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`).join("")}`;
+  if ($("team-filter").dataset.options !== teams.join("\u0000")) { $("team-filter").innerHTML = optionsMarkup; $("team-filter").value = selected; $("team-filter").dataset.options = teams.join("\u0000"); }
+  if ($("stats-team").dataset.options !== teams.join("\u0000")) { $("stats-team").innerHTML = `<option value="">チームを選択</option>${teams.map((team) => `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`).join("")}`; $("stats-team").value = statsTeam; $("stats-team").dataset.options = teams.join("\u0000"); }
+  renderStats(matches, statsTeam ? [statsTeam] : teams); renderHistory(filtered);
 }
-function renderStats(matches, teams, since) {
+function renderStats(matches, teams) {
   const body = $("team-stats");
   body.innerHTML = teams.map((team) => { const related = matches.filter((row) => rowValue(row, "チームA") === team || rowValue(row, "チームB") === team); const wins = related.filter((row) => rowValue(row, "マッチ勝者") === team || rowValue(row, "総合勝者") === team).length; const draws = related.filter((row) => rowValue(row, "マッチ勝者") === "引き分け").length; const purple = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA紫")) : number(rowValue(row, "チームB紫"))), 0); const violations = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA違反数")) : number(rowValue(row, "チームB違反数"))), 0); const losses = Math.max(0, related.length - wins - draws); const rate = related.length ? `${(wins / related.length * 100).toFixed(1)}%` : "0.0%"; return `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}</td><td>${draws}</td><td>${losses}</td><td>${rate}</td><td>${purple}</td><td>${violations}</td></tr>`; }).join("") || `<tr><td colspan="8" class="muted">該当する履歴がありません。</td></tr>`;
 }
 function renderHistory(filtered) {
-  const list = $("history-list"); const latest = [...filtered].sort((a, b) => dateValue(rowValue(b, "日時")) - dateValue(rowValue(a, "日時"))).slice(0, 100);
-  $("history-status").textContent = `${filtered.length}件中、最新${latest.length}件を表示`;
+  const team = $("team-filter").value; const result = $("result-filter").value; const kind = $("kind-filter").value; const reason = $("reason-filter").value;
+  const visible = filtered.filter((row) => { if (team && rowValue(row, "チームA") !== team && rowValue(row, "チームB") !== team) return false; const recordKind = rowValue(row, "記録種別"); if (kind === "match" && recordKind !== "マッチ") return false; if (kind === "series" && recordKind !== "試合結果") return false; if (kind === "unsent" && !isUnsent(row)) return false; if (reason !== "all" && rowValue(row, "未送信理由") !== reason) return false; if (result !== "all") { const winner = recordKind === "試合結果" ? rowValue(row, "総合勝者") : rowValue(row, "マッチ勝者"); if (result === "draw" && winner !== "引き分け") return false; if (team && result === "win" && winner !== team) return false; if (team && result === "loss" && (winner === team || winner === "引き分け")) return false; } return true; });
+  const ordered = [...visible].sort((a, b) => dateValue(rowValue(b, "日時")) - dateValue(rowValue(a, "日時"))); if ($("sort-filter").value === "old") ordered.reverse(); const latest = ordered.slice(0, 100); const list = $("history-list");
+  $("history-status").textContent = `保存済み ${rows.length}件 / 確認用 0件 / 表示 ${visible.length}件`;
   list.innerHTML = latest.map((row) => { const a = rowValue(row, "チームA"); const b = rowValue(row, "チームB"); const winner = rowValue(row, "記録種別") === "試合結果" ? rowValue(row, "総合勝者") : rowValue(row, "マッチ勝者"); return `<article class="history-card"><h3>${escapeHtml(a)} <span class="muted">vs</span> ${escapeHtml(b)}</h3><p>${escapeHtml(rowValue(row, "日時"))} / ${escapeHtml(rowValue(row, "コート"))} / ${escapeHtml(rowValue(row, "種別"))} / 第${escapeHtml(rowValue(row, "マッチ番号") || "-")}マッチ</p><p class="winner">勝者: ${escapeHtml(winner || "未確定")}　得点 ${escapeHtml(rowValue(row, "チームA得点"))} - ${escapeHtml(rowValue(row, "チームB得点"))}　紫 ${escapeHtml(rowValue(row, "チームA紫"))} - ${escapeHtml(rowValue(row, "チームB紫"))}</p></article>`; }).join("") || `<p class="muted">履歴がありません。</p>`;
 }
 async function login(event) { event.preventDefault(); const password = normalizedPassword($("password").value); const account = managedAccounts[password]; if (!account) { $("login-status").textContent = "管理者パスワードを確認してください。"; return; } let apiKey = text($("api-key").value); if (!apiKey) { try { const saved = JSON.parse(localStorage.getItem("tennis-assist-admin-v1") || "{}"); apiKey = text(saved.apiKey); } catch { apiKey = ""; } } if (!apiKey) apiKey = password === "shukugawa" ? "GAS" : password; if ($("remember-login").checked) localStorage.setItem(loginStorageKey, JSON.stringify({ remember: true, password, apiKey })); else localStorage.removeItem(loginStorageKey); session = { account, apiKey, columns: [] }; $("login-status").textContent = "履歴を読み込んでいます..."; try { await loadHistory(); $("account-label").textContent = account.label; $("account-label").classList.remove("hidden"); $("logout").classList.remove("hidden"); $("login-status").textContent = ""; showPublicPane("login-panel"); } catch (error) { session = null; $("login-status").textContent = `${error.message}。APIキーを入力して再試行してください。`; } }
 function logout() { session = null; rows = []; $("account-label").classList.add("hidden"); $("logout").classList.add("hidden"); showPublicPane("login-panel"); }
-$("login-form").addEventListener("submit", login); $("logout").addEventListener("click", logout); $("refresh").addEventListener("click", async () => { try { $("history-status").textContent = "再読み込み中..."; await loadHistory(); } catch (error) { $("history-status").textContent = error.message; } }); $("period").addEventListener("change", render); $("team-filter").addEventListener("change", render);
+$("login-form").addEventListener("submit", login); $("logout").addEventListener("click", logout); $("refresh").addEventListener("click", async () => { try { $("history-status").textContent = "再読み込み中..."; await loadHistory(); } catch (error) { $("history-status").textContent = error.message; } }); ["period", "date-from", "date-to", "stats-team", "team-filter", "result-filter", "kind-filter", "reason-filter", "sort-filter"].forEach((id) => $(id).addEventListener("change", render));
 $("public-login-tab").addEventListener("click", () => showPublicPane("login-panel")); $("public-links-tab").addEventListener("click", () => showPublicPane("public-links")); $("public-rules-tab").addEventListener("click", () => showPublicPane("public-rules")); renderPublicLinks(); loadPublicRules();
 try { const savedLogin = JSON.parse(localStorage.getItem(loginStorageKey) || "null"); if (savedLogin && savedLogin.remember === true) { $("password").value = text(savedLogin.password); $("api-key").value = text(savedLogin.apiKey); $("remember-login").checked = true; } } catch { localStorage.removeItem(loginStorageKey); }
