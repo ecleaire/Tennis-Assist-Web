@@ -191,6 +191,16 @@ try {
             if (await nav.getAttribute("aria-disabled") === "true") failures.push(`${label}: general mode disabled by default: ${screen}`);
           }
 
+          await page.locator("#development-nav").evaluate((button) => button.click());
+          if (!(await page.locator("#screen-development").evaluate((screen) => screen.classList.contains("active")))) {
+            failures.push(`${label}: general admin login did not open`);
+          }
+          if (!(await page.locator("#admin-gate").isVisible())) failures.push(`${label}: general admin login gate is hidden`);
+          await page.locator("#admin-password").fill("judge");
+          await page.locator("#admin-unlock").click();
+          if (!(await page.locator("#admin-settings").isVisible())) failures.push(`${label}: general admin account login failed`);
+          await page.locator('#navigation [data-screen="dashboard"]').evaluate((button) => button.click());
+
           await openMode(page, "dashboard");
           await page.locator("#dashboard-timer-fullscreen").click();
           await page.waitForFunction(() => document.body.classList.contains("compact"));

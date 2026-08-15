@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#091329" />
+    <title>RoboSports Assist | 対戦履歴・統計</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ROBOSPORTS ASSIST / ADMIN VIEWER</p>
+          <h1>対戦履歴・統計</h1>
+        </div>
+        <div class="top-actions">
+          <span id="account-label" class="account-label hidden"></span>
+          <button id="logout" class="button ghost hidden" type="button">ログアウト</button>
+        </div>
+      </header>
+
+      <section id="login-panel" class="panel login-panel">
+        <p class="eyebrow">SECURE READ-ONLY VIEW</p>
+        <h2>管理アカウントでログイン</h2>
+        <p class="muted">このページでは、対戦履歴と統計だけを確認できます。試合の編集・送信・設定変更はできません。</p>
+        <form id="login-form" class="login-form">
+          <label>管理者パスワード<input id="password" type="password" autocomplete="current-password" required /></label>
+          <label>APIキー <span class="optional">（メインアプリで保存済みなら空欄可）</span><input id="api-key" type="password" autocomplete="off" /></label>
+          <button class="button primary" type="submit">ログインして履歴を読み込む</button>
+        </form>
+        <p id="login-status" class="status" role="status"></p>
+      </section>
+
+      <section id="viewer" class="hidden">
+        <div class="toolbar panel toolbar-panel">
+          <div>
+            <strong id="source-label">データソース</strong>
+            <p id="loaded-at" class="muted compact"></p>
+          </div>
+          <button id="refresh" class="button" type="button">再読み込み</button>
+        </div>
+
+        <section class="stats-grid" aria-label="大会統計">
+          <article class="stat-card"><span>試合結果</span><strong id="stat-series">--</strong></article>
+          <article class="stat-card"><span>マッチ</span><strong id="stat-matches">--</strong></article>
+          <article class="stat-card"><span>チーム数</span><strong id="stat-teams">--</strong></article>
+          <article class="stat-card"><span>最終更新</span><strong id="stat-latest">--</strong></article>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">TEAM STATISTICS</p><h2>チーム別統計</h2></div><label class="period-field">期間<select id="period"><option value="all">全期間</option><option value="month">直近31日</option><option value="week">直近7日</option></select></label></div>
+          <div class="table-wrap"><table><thead><tr><th>チーム</th><th>マッチ</th><th>勝</th><th>分</th><th>敗</th><th>勝率</th><th>紫</th><th>違反</th></tr></thead><tbody id="team-stats"></tbody></table></div>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">MATCH HISTORY</p><h2>対戦履歴</h2></div><label class="period-field">チーム<select id="team-filter"><option value="">すべて</option></select></label></div>
+          <p id="history-status" class="muted compact"></p>
+          <div id="history-list" class="history-list"></div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

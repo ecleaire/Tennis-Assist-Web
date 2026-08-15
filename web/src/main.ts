@@ -4594,7 +4594,7 @@ class AdminController {
     el<HTMLInputElement>("operation-match-label-size").addEventListener("input", () => this.updateOperationMatchLabelSizeOutput());
     el<HTMLInputElement>("operation-match-label-size").addEventListener("change", () => this.save());
     (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).forEach((screen) => {
-      el<HTMLInputElement>(`venue-screen-${screen}`).addEventListener("change", () => this.save());
+      document.getElementById(`venue-screen-${screen}`)?.addEventListener("change", () => this.save());
     });
     this.populate();
   }
@@ -4702,9 +4702,10 @@ class AdminController {
     el<HTMLInputElement>("operation-match-label-enabled").checked = settings.showOperationMatchLabel;
     el<HTMLInputElement>("operation-match-label-size").value = String(settings.operationMatchLabelSize);
     (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).forEach((screen) => {
-      el<HTMLInputElement>(`venue-screen-${screen}`).checked = settings.venueScreenVisibility[screen];
+      const input = document.getElementById(`venue-screen-${screen}`);
+      if (input instanceof HTMLInputElement) input.checked = settings.venueScreenVisibility[screen];
     });
-    el("venue-screen-setting").classList.toggle("hidden", AdminController.variant().id !== "venue");
+    document.getElementById("venue-screen-setting")?.classList.toggle("hidden", AdminController.variant().id !== "venue");
     this.updateOperationMatchLabelSizeOutput();
     this.connectionVerified = this.storedConnectionValid(settings);
     this.populateTimerSetting(this.effectiveTimerSetting());
@@ -4871,6 +4872,7 @@ class AdminController {
   }
 
   private save(): void {
+    const previousSettings = AdminController.settings();
     const settings: AdminSettings = {
       gasUrl: el<HTMLInputElement>("gas-url").value.trim(),
       apiKey: el<HTMLInputElement>("gas-key").value,
@@ -4886,12 +4888,13 @@ class AdminController {
       showOperationMatchLabel: el<HTMLInputElement>("operation-match-label-enabled").checked,
       operationMatchLabelSize: normalizeOperationMatchLabelSize(el<HTMLInputElement>("operation-match-label-size").value),
       venueScreenVisibility: (Object.keys(defaultVenueScreenVisibility) as ConfigurableVenueScreen[]).reduce((visibility, screen) => {
-        visibility[screen] = el<HTMLInputElement>(`venue-screen-${screen}`).checked;
+        const input = document.getElementById(`venue-screen-${screen}`);
+        visibility[screen] = input instanceof HTMLInputElement ? input.checked : previousSettings.venueScreenVisibility[screen];
         return visibility;
       }, { ...defaultVenueScreenVisibility }),
-      gasConnectedAt: AdminController.settings().gasConnectedAt,
-      gasConnectedUrl: AdminController.settings().gasConnectedUrl,
-      dayCheckAt: AdminController.settings().dayCheckAt,
+      gasConnectedAt: previousSettings.gasConnectedAt,
+      gasConnectedUrl: previousSettings.gasConnectedUrl,
+      dayCheckAt: previousSettings.dayCheckAt,
     };
     localStorage.setItem(AdminController.storageKey, JSON.stringify(settings));
     this.persistPortableState?.();
