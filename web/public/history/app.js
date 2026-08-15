@@ -70,7 +70,22 @@ function render() {
 }
 function renderStats(matches, teams) {
   const body = $("team-stats");
-  body.innerHTML = teams.map((team) => { const related = matches.filter((row) => rowValue(row, "チームA") === team || rowValue(row, "チームB") === team); const wins = related.filter((row) => rowValue(row, "マッチ勝者") === team || rowValue(row, "総合勝者") === team).length; const draws = related.filter((row) => rowValue(row, "マッチ勝者") === "引き分け").length; const purple = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA紫")) : number(rowValue(row, "チームB紫"))), 0); const violations = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA違反数")) : number(rowValue(row, "チームB違反数"))), 0); const losses = Math.max(0, related.length - wins - draws); const rate = related.length ? `${(wins / related.length * 100).toFixed(1)}%` : "0.0%"; return `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}</td><td>${draws}</td><td>${losses}</td><td>${rate}</td><td>${purple}</td><td>${violations}</td></tr>`; }).join("") || `<tr><td colspan="8" class="muted">該当する履歴がありません。</td></tr>`;
+  const metrics = $("selected-team-stats");
+  const rows = teams.map((team) => {
+    const related = matches.filter((row) => rowValue(row, "チームA") === team || rowValue(row, "チームB") === team);
+    const wins = related.filter((row) => rowValue(row, "マッチ勝者") === team || rowValue(row, "総合勝者") === team).length;
+    const draws = related.filter((row) => rowValue(row, "マッチ勝者") === "引き分け" || rowValue(row, "総合勝者") === "引き分け").length;
+    const losses = Math.max(0, related.length - wins - draws);
+    const purple = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA紫")) : number(rowValue(row, "チームB紫"))), 0);
+    const totalPurple = related.reduce((sum, row) => sum + number(rowValue(row, "チームA紫")) + number(rowValue(row, "チームB紫")), 0);
+    const purpleRate = totalPurple ? `${(purple / totalPurple * 100).toFixed(1)}%` : "0.0%";
+    const violations = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA違反数")) : number(rowValue(row, "チームB違反数"))), 0);
+    const rate = related.length ? `${(wins / related.length * 100).toFixed(1)}%` : "0.0%";
+    return { team, related, wins, draws, losses, purpleRate, violations, rate };
+  });
+  const selected = $("stats-team").value ? rows[0] : null;
+  metrics.innerHTML = selected ? [["マッチ数", selected.related.length], ["勝敗", `${selected.wins}勝 ${selected.losses}敗 ${selected.draws}分`], ["勝率", selected.rate], ["紫取得率", selected.purpleRate], ["違反数", selected.violations]].map(([label, value]) => `<article class="stat-card"><span>${label}</span><strong>${value}</strong></article>`).join("") : "";
+  body.innerHTML = rows.map(({ team, related, wins, draws, losses, purpleRate, violations, rate }) => `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}勝 ${losses}敗 ${draws}分</td><td>${rate}</td><td>${purpleRate}</td><td>${violations}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">該当する履歴がありません。</td></tr>`;
 }
 function renderHistory(filtered) {
   const team = $("team-filter").value; const result = $("result-filter").value; const kind = $("kind-filter").value; const reason = $("reason-filter").value;
