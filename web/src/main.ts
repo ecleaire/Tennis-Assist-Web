@@ -151,7 +151,7 @@ type TimerSettingLoadResult = {
   message: string;
 };
 
-type AdminMode = "standard" | "hyogo" | "nara" | "mie" | "rsam";
+type AdminMode = "standard" | "hyogo" | "nara" | "mie" | "rsam" | "shukugawa";
 type ConfigurableVenueScreen = "timer" | "referee" | "balls" | "rules" | "links";
 type VenueScreenVisibility = Record<ConfigurableVenueScreen, boolean>;
 type AppVariant = "venue" | "general";
@@ -4677,6 +4677,7 @@ class AdminController {
     if (normalizedPassword === "nara") return "nara";
     if (normalizedPassword === "mie" || normalizedPassword === "mie_judge") return "mie";
     if (normalizedPassword === "rsam" || normalizedPassword === "gas" || normalizedPassword === "wrorsam") return "rsam";
+    if (normalizedPassword === "shukugawa") return "shukugawa";
     return "standard";
   }
 
@@ -4785,7 +4786,7 @@ class AdminController {
   private openAdminSettingsForKey(normalizedPassword: string, persistSession: boolean): void {
     this.mode = AdminController.modeForPassword(normalizedPassword);
     if (persistSession) this.persistAdminSession(normalizedPassword);
-    const shouldAutoConnect = this.mode === "hyogo";
+    const shouldAutoConnect = this.mode === "hyogo" || this.mode === "shukugawa";
     el("admin-login-context").textContent = shouldAutoConnect
       ? `${this.adminContextLabel(normalizedPassword)}でログイン中。GAS接続と設定読込を自動実行しています。`
       : `${this.adminContextLabel(normalizedPassword)}でログイン中。APIキーを入力し、「接続・設定読込」を押してください。`;
@@ -4847,7 +4848,7 @@ class AdminController {
   }
 
   private prepareHyogoAutoConnection(normalizedPassword: string): boolean {
-    if (this.mode !== "hyogo") return false;
+    if (this.mode !== "hyogo" && this.mode !== "shukugawa") return false;
     const gasUrl = el<HTMLInputElement>("gas-url").value.trim();
     el<HTMLInputElement>("gas-key").value = "GAS";
     el<HTMLInputElement>("gas-enabled").checked = true;
