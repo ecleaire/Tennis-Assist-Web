@@ -121,17 +121,35 @@ function overlapArea(first, second) {
   return width * height;
 }
 
-function clampDelta(rect, x, y, bounds) {
+function positionColumn(position = "center") {
+  if (position.endsWith("-left")) return "left";
+  if (position.endsWith("-right")) return "right";
+  return "center";
+}
+
+function positionRow(position = "center") {
+  if (position.startsWith("top-")) return "top";
+  if (position.startsWith("bottom-")) return "bottom";
+  return "middle";
+}
+
+function clampDelta(rect, x, y, bounds, position = "center") {
   let nextX = x;
   let nextY = y;
   let moved = translated(rect, nextX, nextY);
   const safeWidth = Math.max(1, bounds.right - bounds.left);
   const safeHeight = Math.max(1, bounds.bottom - bounds.top);
+  const column = positionColumn(position);
+  const row = positionRow(position);
 
   if (moved.width <= safeWidth) {
     if (moved.left < bounds.left) nextX += bounds.left - moved.left;
     moved = translated(rect, nextX, nextY);
     if (moved.right > bounds.right) nextX -= moved.right - bounds.right;
+  } else if (column === "left") {
+    nextX += bounds.left - moved.left;
+  } else if (column === "right") {
+    nextX += bounds.right - moved.right;
   } else {
     nextX += bounds.left + (safeWidth - moved.width) / 2 - moved.left;
   }
@@ -141,6 +159,10 @@ function clampDelta(rect, x, y, bounds) {
     if (moved.top < bounds.top) nextY += bounds.top - moved.top;
     moved = translated(rect, nextX, nextY);
     if (moved.bottom > bounds.bottom) nextY -= moved.bottom - bounds.bottom;
+  } else if (row === "top") {
+    nextY += bounds.top - moved.top;
+  } else if (row === "bottom") {
+    nextY += bounds.bottom - moved.bottom;
   } else {
     nextY += bounds.top + (safeHeight - moved.height) / 2 - moved.top;
   }
@@ -169,7 +191,13 @@ function constrainElement(element, bounds) {
   applyCorrection(element, 0, 0);
   void element.offsetWidth;
   const rect = visualRect(element);
-  const correction = clampDelta(rect, 0, 0, bounds);
+  const correction = clampDelta(
+    rect,
+    0,
+    0,
+    bounds,
+    element.dataset.position
+  );
   applyCorrection(element, correction.x, correction.y);
   void element.offsetWidth;
   return visualRect(element);
@@ -188,93 +216,58 @@ function obstacleRect(element) {
   };
 }
 
-function positionColumn(position = "center") {
-  if (position.endsWith("-left")) return "left";
-  if (position.endsWith("-right")) return "right";
-  return "center";
+function sameAnchor(refs) {
+  return Boolean(
+    refs.currentBlock.dataset.position &&
+    refs.currentBlock.dataset.position === refs.display.dataset.position
+  );
 }
 
-function positionRow(position = "center") {
-  if (position.startsWith("top-")) return "top";
-  if (position.startsWith("bottom-")) return "bottom";
-  return "middle";
-}
-
-function uniqueNumbers(values) {
-  const rounded = values.map(value => Math.round(value * 100) / 100);
-  return [...new Set(rounded)];
-}
-
-function displayObstacles(refs) {
-  return [
-    visualRect(refs.currentBlock),
-    obstacleRect(refs.gear.parentElement),
-    obstacleRect(refs.foot)
-  ].filter(Boolean);
-}
-
-function overlapWithObstacles(rect, obstacles, gap = COLLISION_GAP) {
+function overlapWithObstacles(rect, obstacles, gap = 0) {
   return obstacles.reduce(
-    (total, obstacle) => total + overlapArea(rect, expanded(obstacle, gap)),
+    (total, obstacle) => total + overlapArea(
+      rect,
+      gap ? expanded(obstacle, gap) : obstacle
+    ),
     0
   );
 }
 
-function anchorPenalty(position, x, y) {
-  const row = positionRow(position);
-  const column = positionColumn(position);
-  let penalty = Math.abs(y) + Math.abs(x) * 24;
+function stackDisplayAtSharedAnchor(refs, bounds) {
+  if (!sameAnchor(refs)) return true;
 
-  // A top/bottom selection should stay in the selected row. Moving down from
-  // the top or up from the bottom is allowed so two items in the same anchor
-  // can stack without changing the selected corner.
-  if (row === "top" && y < 0) penalty += Math.abs(y) * 80;
-  if (row === "bottom" && y > 0) penalty += Math.abs(y) * 80;
-
-  // Keep the selected left/right edge whenever possible. Horizontal movement
-  // is a last resort; vertical stacking is strongly preferred.
-  if (column === "left" && x < 0) penalty += Math.abs(x) * 80;
-  if (column === "right" && x > 0) penalty += Math.abs(x) * 80;
-
-  return penalty;
-}
-
-function resolveDisplayCollision(refs, bounds) {
+  const current = visualRect(refs.currentBlock);
   const display = visualRect(refs.display);
-  if (!display) return true;
-
-  const obstacles = displayObstacles(refs);
-  if (!overlapWithObstacles(display, obstacles)) return true;
+  if (!current || !display) return true;
 
   const base = currentCorrection(refs.display);
-  const vertical = [0];
-  const horizontal = [0];
+  const position = refs.display.dataset.position;
+  const row = positionRow(position);
+  const actions = obstacleRect(refs.gear.parentElement);
+  const footer = obstacleRect(refs.foot);
+  const obstacles = [current, actions, footer].filter(Boolean);
 
-  for (const obstacle of obstacles) {
-    vertical.push(
-      obstacle.top - COLLISION_GAP - display.bottom,
-      obstacle.bottom + COLLISION_GAP - display.top
-    );
-    horizontal.push(
-      obstacle.left - COLLISION_GAP - display.right,
-      obstacle.right + COLLISION_GAP - display.left
-    );
-  }
+  const below = current.bottom + COLLISION_GAP - display.top;
+  const above = current.top - COLLISION_GAP - display.bottom;
+  const rawCandidates = row === "top"
+    ? [below]
+    : row === "bottom"
+      ? [above]
+      : [below, above];
 
-  const candidates = [];
-  for (const rawY of uniqueNumbers(vertical)) {
-    for (const rawX of uniqueNumbers(horizontal)) {
-      const delta = clampDelta(display, rawX, rawY, bounds);
-      const moved = translated(display, delta.x, delta.y);
-      const overlap = overlapWithObstacles(moved, obstacles);
-      const score = overlap * 1_000_000 +
-        anchorPenalty(refs.display.dataset.position, delta.x, delta.y);
-      candidates.push({ ...delta, overlap, score });
+  let best = null;
+  for (const rawY of rawCandidates) {
+    const delta = clampDelta(display, 0, rawY, bounds, position);
+    const moved = translated(display, delta.x, delta.y);
+    const overlap = overlapWithObstacles(moved, obstacles, 8);
+    const distance = Math.abs(delta.y) + Math.abs(delta.x) * 100;
+    const score = overlap * 1_000_000 + distance;
+    if (!best || score < best.score) {
+      best = { ...delta, overlap, score };
     }
   }
 
-  candidates.sort((first, second) => first.score - second.score);
-  const best = candidates[0] || { x: 0, y: 0, overlap: Infinity };
+  if (!best) return false;
   applyCorrection(refs.display, base.x + best.x, base.y + best.y);
   void refs.display.offsetWidth;
   return best.overlap === 0;
@@ -324,16 +317,16 @@ function collisionState(refs) {
       current && display && overlapArea(current, expanded(display, 8)) > 0
     ),
     currentActions: Boolean(
-      current && actions && overlapArea(current, expanded(actions, 6)) > 0
+      current && actions && overlapArea(current, actions) > 0
     ),
     displayActions: Boolean(
-      display && actions && overlapArea(display, expanded(actions, 6)) > 0
+      display && actions && overlapArea(display, actions) > 0
     ),
     currentFooter: Boolean(
-      current && footer && overlapArea(current, expanded(footer, 6)) > 0
+      current && footer && overlapArea(current, footer) > 0
     ),
     displayFooter: Boolean(
-      display && footer && overlapArea(display, expanded(footer, 6)) > 0
+      display && footer && overlapArea(display, footer) > 0
     )
   };
 
@@ -377,6 +370,7 @@ export function constrainPositioning(refs) {
     }
     refs.app.dataset.layoutCollision = "none";
     refs.app.dataset.clockAnchorPreserved = "true";
+    refs.app.dataset.displayAnchorPreserved = "true";
     return;
   }
 
@@ -386,14 +380,14 @@ export function constrainPositioning(refs) {
   let displayScale = 1;
   let resolved = false;
 
-  // The current-time position is authoritative. It is only clamped back into
-  // the safe viewport; collision handling moves or shrinks the countdown
-  // block instead of relocating the current-time block to another anchor.
-  for (let pass = 0; pass < 12; pass += 1) {
+  // Both selected anchors are authoritative. A shared anchor is resolved by
+  // vertical stacking on the same left/center/right edge; different anchors
+  // stay fixed and are made safe by fitting the content instead of moving it.
+  for (let pass = 0; pass < 14; pass += 1) {
     applySafetyScale(refs, bases, clockScale, displayScale);
     constrainElement(refs.currentBlock, bounds);
     constrainElement(refs.display, bounds);
-    resolveDisplayCollision(refs, bounds);
+    stackDisplayAtSharedAnchor(refs, bounds);
 
     const state = collisionState(refs);
     if (!state.any) {
@@ -401,22 +395,29 @@ export function constrainPositioning(refs) {
       break;
     }
 
-    const currentOnly =
-      (state.currentActions || state.currentFooter) &&
-      !state.currentDisplay &&
-      !state.displayActions &&
-      !state.displayFooter;
-
-    if (currentOnly) {
-      clockScale *= 0.84;
-    } else if (pass < 8) {
-      displayScale *= 0.84;
-    } else {
-      displayScale *= 0.9;
-      clockScale *= 0.92;
+    let changed = false;
+    if (state.currentActions || state.currentFooter) {
+      clockScale *= 0.82;
+      changed = true;
     }
+    if (
+      state.currentDisplay ||
+      state.displayActions ||
+      state.displayFooter
+    ) {
+      displayScale *= 0.82;
+      changed = true;
+    }
+
+    if (state.currentDisplay && pass >= 10) {
+      clockScale *= 0.94;
+      changed = true;
+    }
+
+    if (!changed) break;
   }
 
   refs.app.dataset.layoutCollision = resolved ? "resolved" : "unresolved";
   refs.app.dataset.clockAnchorPreserved = "true";
+  refs.app.dataset.displayAnchorPreserved = "true";
 }
