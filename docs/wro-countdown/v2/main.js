@@ -13,7 +13,7 @@ import {
   createExtraSettingsController
 } from "./extra-settings.js?v=20260815f";
 import { createNoise } from "./noise.js?v=20260814m";
-import { createAudio } from "./audio.js?v=20260814r";
+import { createAudio } from "./audio.js?v=20260815g";
 import { createDisplay } from "./display.js?v=20260815f";
 import { bindEvents } from "./events.js?v=20260814o";
 
