@@ -12,6 +12,15 @@ const homeUnsentAlertDelayMs = 20000;
 const gasReadTimeoutMs = 20000;
 const gasWriteTimeoutMs = 35000;
 const holdConfirmDurationMs = 1000;
+const shukugawaAgreementHoldDurationMs = 500;
+
+function agreementHoldDurationMs(): number {
+  return document.documentElement.classList.contains("shukugawa-general") ? shukugawaAgreementHoldDurationMs : holdConfirmDurationMs;
+}
+
+function agreementHoldLabel(): string {
+  return document.documentElement.classList.contains("shukugawa-general") ? "0.5秒長押しで結果に同意" : "1秒長押しで結果に同意";
+}
 type SyncSummary = { pending: number; failed: number; unsent: number; configured: boolean; gasText: string; reason: string; oldestUnsentAt: number };
 
 interface MatchRecord {
@@ -3063,7 +3072,7 @@ class RecordsController {
     this.agreementPending = side;
     const team = side === "a" ? this.series.teamA : this.series.teamB;
     el("agreement-confirm-team").textContent = `${team} 代表が確認しています。各マッチの得点・違反数・勝者をもう一度確認してください。`;
-    el<HTMLButtonElement>("agreement-accept").textContent = "1秒長押しで結果に同意";
+    el<HTMLButtonElement>("agreement-accept").textContent = agreementHoldLabel();
     el("agreement-confirm").classList.remove("hidden");
   }
 
@@ -3075,7 +3084,7 @@ class RecordsController {
       this.agreementHoldTimer = 0;
       button.classList.remove("is-holding");
       this.acceptAgreement();
-    }, holdConfirmDurationMs);
+    }, agreementHoldDurationMs());
   }
 
   private cancelAgreementHold(): void {
@@ -3085,7 +3094,7 @@ class RecordsController {
     }
     const button = el<HTMLButtonElement>("agreement-accept");
     button.classList.remove("is-holding");
-    if (this.agreementPending) button.textContent = "1秒長押しで結果に同意";
+    if (this.agreementPending) button.textContent = agreementHoldLabel();
   }
 
   private acceptAgreement(): void {
@@ -7365,8 +7374,18 @@ class Application {
     this.timer.setTokyoClockModeAvailable(this.variant.allowTokyoClock);
     this.balls.setHyogoMode(this.hyogo);
     this.applyVenueScreenVisibility(settings.venueScreenVisibility);
+    this.applyShukugawaGeneralUi();
     this.updateTitle();
     this.updateHomeSyncAlert();
+  }
+
+  private applyShukugawaGeneralUi(): void {
+    const active = this.variant.id === "general" && this.activeAdminKey === "shukugawa";
+    document.documentElement.classList.toggle("shukugawa-general", active);
+    const agreementButton = document.getElementById("agreement-accept");
+    if (agreementButton instanceof HTMLButtonElement && !agreementButton.classList.contains("is-holding")) agreementButton.textContent = agreementHoldLabel();
+    const agreementGuide = document.querySelector(".agreement-hold-guide");
+    if (agreementGuide instanceof HTMLElement) agreementGuide.textContent = active ? "同意する場合は、下のボタンを0.5秒間長押ししてください。" : "同意する場合は、下のボタンを1秒間長押ししてください。";
   }
 
   private applyTimerSetting(setting: ExternalTimerSetting | null): void {
@@ -7393,6 +7412,7 @@ class Application {
     document.documentElement.classList.remove("venue-admin-accent");
     document.documentElement.classList.remove("venue-light-accent");
     document.documentElement.classList.remove("rsam-admin-mode");
+    document.documentElement.classList.remove("shukugawa-general");
     this.updateTitle();
     el("development-nav").classList.remove("hidden");
     el("admin-exit").classList.add("hidden");

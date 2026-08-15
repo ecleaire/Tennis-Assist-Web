@@ -7445,6 +7445,11 @@ body.operation-timer-active .sub-slot {
   display: none !important;
 }
 
+html.shukugawa-general body.operation-timer-active #timer-ten,
+html.shukugawa-general body.operation-timer-active #timer-five {
+  display: block !important;
+}
+
 body.operation-timer-active .timer-shell {
   gap: clamp(10px, 1.8vh, 18px);
 }
