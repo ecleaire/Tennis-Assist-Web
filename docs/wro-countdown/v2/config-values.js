@@ -1,3 +1,5 @@
+import { BUILT_IN_SOUND_KEYS } from "./sound-catalog.js?v=20260815h";
+
 // Fixed event data and user-setting defaults.
 export const SETTINGS_KEY = "wro-countdown-settings-v4";
 export const OLD_SETTINGS_KEY = "wro-countdown-settings-v3";
@@ -28,19 +30,7 @@ export const POSITION_VALUES = [
   "bottom-right"
 ];
 
-export const BUILT_INS = [
-  "bell",
-  "chime",
-  "digital",
-  "alarm",
-  "doubleBell",
-  "school",
-  "softPing",
-  "siren",
-  "pulse",
-  "robot"
-];
-
+export const BUILT_INS = [...BUILT_IN_SOUND_KEYS];
 export const SOUND_TYPES = [...BUILT_INS, "custom"];
 
 export const DEFAULTS = {

@@ -7,6 +7,7 @@ on:
       - "scripts/wro-countdown-layout-check.mjs"
       - "scripts/wro-countdown-date-check.mjs"
       - "scripts/wro-countdown-anchor-check.mjs"
+      - "scripts/wro-countdown-sound-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - "scripts/wro-countdown-layout-check.mjs"
       - "scripts/wro-countdown-date-check.mjs"
       - "scripts/wro-countdown-anchor-check.mjs"
+      - "scripts/wro-countdown-sound-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -36,6 +38,9 @@ jobs:
           for file in docs/wro-countdown/v2/*.js scripts/wro-countdown-*.mjs; do
             node --check "$file"
           done
+
+      - name: Validate timer sound catalog
+        run: node scripts/wro-countdown-sound-check.mjs
 
       - name: Install Chromium layout-test runtime
         run: |

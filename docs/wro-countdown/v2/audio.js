@@ -1,4 +1,4 @@
-import { playTemplate } from "./sounds.js?v=20260815g";
+import { playTemplate } from "./sounds.js?v=20260815h";
 import {
   saveAudioFile,
   loadAudioFile,
@@ -134,7 +134,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       refs.soundBadge.className = "badge ready";
       refs.audioStatus.textContent = lastMessage
         ? `${lastMessage} — 音声は有効です。`
-        : "元の通知音を40倍ブーストで有効化しています。";
+        : "内蔵20種類の通知音を40倍ブーストで有効化しています。";
     } else {
       refs.soundBadge.textContent = customAudioReady
         ? "AUDIO SAVED"

@@ -1,4 +1,4 @@
-import { SOUND_PATTERNS } from "./sound-data.js?v=20260814r";
+import { SOUND_PATTERNS } from "./sound-data.js?v=20260815h";
 
 const VOLUME_BOOST = 40;
 
