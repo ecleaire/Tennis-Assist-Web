@@ -4257,18 +4257,6 @@ class ContentController {
         </div>
       </article>
     `;
-    const dayChecklist = `
-      <article class="link-section day-checklist-section">
-        <h3>大会前チェックリスト</h3>
-        <ul class="day-checklist">
-          <li>強制更新を実行し、アプリバージョンを確認</li>
-          <li>管理画面で「接続・設定読込」を実行</li>
-          <li>チーム数、使用コート、試合種別、タイマー設定を確認</li>
-          <li>音声確認と10秒同期確認を実行</li>
-          <li>対戦履歴と統計で未送信0件を確認</li>
-        </ul>
-      </article>
-    `;
     const credits = `
       <article class="link-section credit-section">
         <h3>ライセンス / クレジット</h3>
@@ -4298,7 +4286,7 @@ class ContentController {
         </div>
       </article>
     `;
-    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${dayChecklist}${credits}`;
+    el("links-list").innerHTML = `${sections.map((section) => `<article class="link-section"><h3>${section.title}</h3><div class="link-grid">${section.links.map(([label, url]) => `<a class="button" target="_blank" rel="noopener" href="${url}">${label}</a>`).join("")}</div></article>`).join("")}${publicUrls}${credits}`;
   }
 
   private setRuleMenu(open: boolean): void {

@@ -19,8 +19,13 @@
           <button id="logout" class="button ghost hidden" type="button">ログアウト</button>
         </div>
       </header>
+      <nav class="public-nav" aria-label="公開メニュー">
+        <button id="public-login-tab" class="active" type="button">管理ログイン</button>
+        <button id="public-links-tab" type="button">リンク</button>
+        <button id="public-rules-tab" type="button">ルール</button>
+      </nav>
 
-      <section id="login-panel" class="panel login-panel">
+      <section id="login-panel" class="panel login-panel public-pane">
         <p class="eyebrow">SECURE READ-ONLY VIEW</p>
         <h2>管理アカウントでログイン</h2>
         <p class="muted">このページでは、対戦履歴と統計だけを確認できます。試合の編集・送信・設定変更はできません。</p>
@@ -30,6 +35,19 @@
           <button class="button primary" type="submit">ログインして履歴を読み込む</button>
         </form>
         <p id="login-status" class="status" role="status"></p>
+      </section>
+
+      <section id="public-links" class="panel section-card public-pane hidden">
+        <p class="eyebrow">PUBLIC LINKS</p>
+        <h2>関連リンク</h2>
+        <div id="public-links-list" class="public-links-list"></div>
+      </section>
+
+      <section id="public-rules" class="panel section-card public-pane hidden">
+        <p class="eyebrow">RULES QUICK REFERENCE</p>
+        <h2>ルール確認</h2>
+        <p id="rules-source" class="muted compact"></p>
+        <div id="rules-list" class="rules-list"></div>
       </section>
 
       <section id="viewer" class="hidden">
@@ -60,6 +78,6 @@
         </section>
       </section>
     </main>
-    <script type="module" src="./app.js"></script>
+    <script src="./app.js" defer></script>
   </body>
 </html>

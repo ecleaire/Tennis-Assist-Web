@@ -13,10 +13,31 @@ const managedAccounts = {
 };
 let session = null;
 let rows = [];
+const publicLinks = [
+  ["WRO Japan", "https://www.wroj.org/action/2026", "WRO Japan 公式サイト"],
+  ["WRO 国際", "https://wro-association.org/", "WRO International"],
+  ["Japan決勝大会ルールPDF", "https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing", "公式ルール原文"],
+  ["公式Q&A", "https://wro-association.org/competition/questions-answers/", "ルール質問と回答"],
+  ["WRO兵庫", "https://wro-hyogo.jp/", "公認予選会"],
+  ["WRO三重", "https://miraido.net/", "公認予選会"],
+  ["WRO奈良", "https://sites.google.com/view/wro-nara/ホーム?authuser=0", "公認予選会"],
+  ["GitHubリポジトリ", "https://github.com/ecleaire/Tennis-Assist-Web", "アプリのソースコード"],
+];
+const fallbackRules = [
+  { title: "1. 基本情報", summary: "WRO RoboSports Double Tennisは、2台の自律ロボットが協調して対戦する競技です。", points: ["ロボットは自律動作が前提です。", "正式な判定や細部は公式ルールPDFと当日の審判判断を確認してください。"] },
+  { title: "5. ゲーム概要とフィールド", summary: "オレンジ球を相手陣へ押し出し、紫球は自陣に残す競技です。", points: ["自陣に残ったオレンジ球は+1、紫球は-2として計算します。", "1ゲームは同じ相手との3試合で構成されます。"] },
+  { title: "6. 試合運用と重要ルール", summary: "開始手順、ボール配置、違反条件を定めています。", points: ["開始後10秒たっても両ロボットが動かなければ9:-4で敗北です。", "試合中に外部から視覚・音声などの入力を与えることは禁止です。", "審判がSTOPを宣言した時点で試合終了です。"] },
+  { title: "7. 得点と順位決定", summary: "試合は自陣スコアの大小、ゲームは3試合の勝ち数で決まります。", points: ["自陣スコアが低いチームが試合の勝者です。", "順位同点時は違反数、次にボールスコアが参照されます。"] },
+  { title: "8. ロボット素材と制約", summary: "安全性と公平性のため、サイズ・重量・電気仕様などに上限があります。", points: ["各ロボットの寸法は200×200×200mm以下、重量は1.2kg以下です。", "危険な素材や機構、禁止されたモーターの使用は禁止です。"] },
+];
 const $ = (id) => document.getElementById(id);
 const text = (value) => String(value ?? "").trim();
 const number = (value) => Number(text(value).replace(/[^\d.-]/g, "")) || 0;
 const escapeHtml = (value) => text(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+function showPublicPane(name) { document.querySelectorAll(".public-pane").forEach((pane) => pane.classList.toggle("hidden", pane.id !== name)); document.querySelectorAll(".public-nav button").forEach((button) => button.classList.toggle("active", button.id === `public-${name.replace("public-", "")}-tab`)); }
+function renderPublicLinks() { $("public-links-list").innerHTML = publicLinks.map(([label, url, description]) => `<a class="public-link-card" href="${url}" target="_blank" rel="noopener"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(description)}</span><span>${escapeHtml(url)}</span></a>`).join(""); }
+function renderRules(sections, source) { $("rules-source").textContent = source; $("rules-list").innerHTML = sections.map((section) => `<article class="rule-card"><h3>${escapeHtml(section.title)}</h3><p>${escapeHtml(section.summary || "")}</p><ul>${(section.points || []).map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul></article>`).join(""); }
+async function loadPublicRules() { renderRules(fallbackRules, "公式ルールの簡易確認用要約（ローカル閲覧用フォールバック）"); try { const response = await fetch("../data/rules_sections.json"); const data = await response.json(); if (Array.isArray(data.sections)) renderRules(data.sections, `${data.version_label || ""} / 詳細要約`); } catch { /* file:/// ではfetchが使えないため、上のフォールバックを表示 */ } }
 function rowValue(row, name) { return row[session.columns.indexOf(name)] ?? ""; }
 function normalizedPassword(value) { return text(value).toLowerCase().replace(/\s+/g, ""); }
 function dateValue(value) { const parsed = new Date(text(value).replace(" ", "T")); return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime(); }
@@ -54,3 +75,4 @@ function renderHistory(filtered) {
 async function login(event) { event.preventDefault(); const password = normalizedPassword($("password").value); const account = managedAccounts[password]; if (!account) { $("login-status").textContent = "管理者パスワードを確認してください。"; return; } let apiKey = text($("api-key").value); if (!apiKey) { try { const saved = JSON.parse(localStorage.getItem("tennis-assist-admin-v1") || "{}"); apiKey = text(saved.apiKey); } catch { apiKey = ""; } } if (!apiKey) apiKey = password === "shukugawa" ? "GAS" : password; session = { account, apiKey, columns: [] }; $("login-status").textContent = "履歴を読み込んでいます..."; try { await loadHistory(); $("login-panel").classList.add("hidden"); $("viewer").classList.remove("hidden"); $("account-label").textContent = account.label; $("account-label").classList.remove("hidden"); $("logout").classList.remove("hidden"); $("login-status").textContent = ""; } catch (error) { session = null; $("login-status").textContent = `${error.message}。APIキーを入力して再試行してください。`; } }
 function logout() { session = null; rows = []; $("viewer").classList.add("hidden"); $("login-panel").classList.remove("hidden"); $("account-label").classList.add("hidden"); $("logout").classList.add("hidden"); $("password").value = ""; }
 $("login-form").addEventListener("submit", login); $("logout").addEventListener("click", logout); $("refresh").addEventListener("click", async () => { try { $("history-status").textContent = "再読み込み中..."; await loadHistory(); } catch (error) { $("history-status").textContent = error.message; } }); $("period").addEventListener("change", render); $("team-filter").addEventListener("change", render);
+$("public-login-tab").addEventListener("click", () => showPublicPane("login-panel")); $("public-links-tab").addEventListener("click", () => showPublicPane("public-links")); $("public-rules-tab").addEventListener("click", () => showPublicPane("public-rules")); renderPublicLinks(); loadPublicRules();
