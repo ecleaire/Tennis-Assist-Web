@@ -1,6 +1,6 @@
 import { SOUND_PATTERNS } from "./sound-data.js?v=20260814r";
 
-const VOLUME_BOOST = 20;
+const VOLUME_BOOST = 40;
 
 function createLimiter(context) {
   const limiter = context.createDynamicsCompressor();
