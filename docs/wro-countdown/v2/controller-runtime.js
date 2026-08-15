@@ -1,4 +1,4 @@
-import { renderLabels } from "./display-render.js?v=20260814r";
+import { renderLabels } from "./display-render.js?v=20260815d";
 import { fitDisplay } from "./display-fit.js?v=20260815c";
 import { createAutoWro } from "./display-auto.js?v=20260814m";
 import { createTimerTarget } from "./display-target.js?v=20260814m";
@@ -7,7 +7,7 @@ import {
   applyPositioning,
   constrainPositioning
 } from "./display-position.js?v=20260815c";
-import { updateDisplay } from "./display-tick.js?v=20260814r";
+import { updateDisplay } from "./display-tick.js?v=20260815d";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
