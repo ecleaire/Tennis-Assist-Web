@@ -153,6 +153,13 @@ function applyCorrection(element, x, y) {
   element.style.setProperty("--safe-correction-y", `${Math.round(y)}px`);
 }
 
+function currentCorrection(element) {
+  return {
+    x: inlinePixels(element, "--safe-correction-x"),
+    y: inlinePixels(element, "--safe-correction-y")
+  };
+}
+
 function constrainElement(element, bounds) {
   if (!visible(element)) {
     applyCorrection(element, 0, 0);
@@ -181,50 +188,95 @@ function obstacleRect(element) {
   };
 }
 
-function placeCurrentNearDisplay(refs, bounds) {
-  const current = visualRect(refs.currentBlock);
+function positionColumn(position = "center") {
+  if (position.endsWith("-left")) return "left";
+  if (position.endsWith("-right")) return "right";
+  return "center";
+}
+
+function positionRow(position = "center") {
+  if (position.startsWith("top-")) return "top";
+  if (position.startsWith("bottom-")) return "bottom";
+  return "middle";
+}
+
+function uniqueNumbers(values) {
+  const rounded = values.map(value => Math.round(value * 100) / 100);
+  return [...new Set(rounded)];
+}
+
+function displayObstacles(refs) {
+  return [
+    visualRect(refs.currentBlock),
+    obstacleRect(refs.gear.parentElement),
+    obstacleRect(refs.foot)
+  ].filter(Boolean);
+}
+
+function overlapWithObstacles(rect, obstacles, gap = COLLISION_GAP) {
+  return obstacles.reduce(
+    (total, obstacle) => total + overlapArea(rect, expanded(obstacle, gap)),
+    0
+  );
+}
+
+function anchorPenalty(position, x, y) {
+  const row = positionRow(position);
+  const column = positionColumn(position);
+  let penalty = Math.abs(y) + Math.abs(x) * 24;
+
+  // A top/bottom selection should stay in the selected row. Moving down from
+  // the top or up from the bottom is allowed so two items in the same anchor
+  // can stack without changing the selected corner.
+  if (row === "top" && y < 0) penalty += Math.abs(y) * 80;
+  if (row === "bottom" && y > 0) penalty += Math.abs(y) * 80;
+
+  // Keep the selected left/right edge whenever possible. Horizontal movement
+  // is a last resort; vertical stacking is strongly preferred.
+  if (column === "left" && x < 0) penalty += Math.abs(x) * 80;
+  if (column === "right" && x > 0) penalty += Math.abs(x) * 80;
+
+  return penalty;
+}
+
+function resolveDisplayCollision(refs, bounds) {
   const display = visualRect(refs.display);
-  if (!current || !display) return true;
+  if (!display) return true;
 
-  const baseX = inlinePixels(refs.currentBlock, "--safe-correction-x");
-  const baseY = inlinePixels(refs.currentBlock, "--safe-correction-y");
-  const actions = obstacleRect(refs.gear.parentElement);
-  const footer = obstacleRect(refs.foot);
-  const obstacles = [display, actions, footer].filter(Boolean);
+  const obstacles = displayObstacles(refs);
+  if (!overlapWithObstacles(display, obstacles)) return true;
 
-  const left = display.left - COLLISION_GAP - current.right;
-  const right = display.right + COLLISION_GAP - current.left;
-  const above = display.top - COLLISION_GAP - current.bottom;
-  const below = display.bottom + COLLISION_GAP - current.top;
-  const rawCandidates = [
-    [0, 0],
-    [left, 0],
-    [right, 0],
-    [0, above],
-    [0, below],
-    [left, above],
-    [left, below],
-    [right, above],
-    [right, below]
-  ];
+  const base = currentCorrection(refs.display);
+  const vertical = [0];
+  const horizontal = [0];
 
-  let best = null;
-  for (const [rawX, rawY] of rawCandidates) {
-    const delta = clampDelta(current, rawX, rawY, bounds);
-    const moved = translated(current, delta.x, delta.y);
-    const overlap = obstacles.reduce(
-      (total, obstacle) => total + overlapArea(moved, expanded(obstacle, COLLISION_GAP)),
-      0
+  for (const obstacle of obstacles) {
+    vertical.push(
+      obstacle.top - COLLISION_GAP - display.bottom,
+      obstacle.bottom + COLLISION_GAP - display.top
     );
-    const distance = Math.hypot(delta.x, delta.y);
-    const score = overlap * 100000 + distance;
-    if (!best || score < best.score) {
-      best = { ...delta, score, overlap };
+    horizontal.push(
+      obstacle.left - COLLISION_GAP - display.right,
+      obstacle.right + COLLISION_GAP - display.left
+    );
+  }
+
+  const candidates = [];
+  for (const rawY of uniqueNumbers(vertical)) {
+    for (const rawX of uniqueNumbers(horizontal)) {
+      const delta = clampDelta(display, rawX, rawY, bounds);
+      const moved = translated(display, delta.x, delta.y);
+      const overlap = overlapWithObstacles(moved, obstacles);
+      const score = overlap * 1_000_000 +
+        anchorPenalty(refs.display.dataset.position, delta.x, delta.y);
+      candidates.push({ ...delta, overlap, score });
     }
   }
 
-  applyCorrection(refs.currentBlock, baseX + best.x, baseY + best.y);
-  void refs.currentBlock.offsetWidth;
+  candidates.sort((first, second) => first.score - second.score);
+  const best = candidates[0] || { x: 0, y: 0, overlap: Infinity };
+  applyCorrection(refs.display, base.x + best.x, base.y + best.y);
+  void refs.display.offsetWidth;
   return best.overlap === 0;
 }
 
@@ -261,27 +313,32 @@ function applySafetyScale(refs, bases, clockScale, displayScale) {
   }
 }
 
-function collisionRemains(refs) {
+function collisionState(refs) {
   const current = visualRect(refs.currentBlock);
   const display = visualRect(refs.display);
   const actions = obstacleRect(refs.gear.parentElement);
   const footer = obstacleRect(refs.foot);
-  if (current && display && overlapArea(current, expanded(display, 8)) > 0) {
-    return true;
-  }
-  if (current && actions && overlapArea(current, expanded(actions, 6)) > 0) {
-    return true;
-  }
-  if (display && actions && overlapArea(display, expanded(actions, 6)) > 0) {
-    return true;
-  }
-  if (current && footer && overlapArea(current, expanded(footer, 6)) > 0) {
-    return true;
-  }
-  if (display && footer && overlapArea(display, expanded(footer, 6)) > 0) {
-    return true;
-  }
-  return false;
+
+  const state = {
+    currentDisplay: Boolean(
+      current && display && overlapArea(current, expanded(display, 8)) > 0
+    ),
+    currentActions: Boolean(
+      current && actions && overlapArea(current, expanded(actions, 6)) > 0
+    ),
+    displayActions: Boolean(
+      display && actions && overlapArea(display, expanded(actions, 6)) > 0
+    ),
+    currentFooter: Boolean(
+      current && footer && overlapArea(current, expanded(footer, 6)) > 0
+    ),
+    displayFooter: Boolean(
+      display && footer && overlapArea(display, expanded(footer, 6)) > 0
+    )
+  };
+
+  state.any = Object.values(state).some(Boolean);
+  return state;
 }
 
 export function applyPositioning(refs, settings, temporaryWro = false) {
@@ -319,6 +376,7 @@ export function constrainPositioning(refs) {
       applyCorrection(element, 0, 0);
     }
     refs.app.dataset.layoutCollision = "none";
+    refs.app.dataset.clockAnchorPreserved = "true";
     return;
   }
 
@@ -328,24 +386,37 @@ export function constrainPositioning(refs) {
   let displayScale = 1;
   let resolved = false;
 
-  for (let pass = 0; pass < 10; pass += 1) {
+  // The current-time position is authoritative. It is only clamped back into
+  // the safe viewport; collision handling moves or shrinks the countdown
+  // block instead of relocating the current-time block to another anchor.
+  for (let pass = 0; pass < 12; pass += 1) {
     applySafetyScale(refs, bases, clockScale, displayScale);
-    constrainElement(refs.display, bounds);
     constrainElement(refs.currentBlock, bounds);
-    placeCurrentNearDisplay(refs, bounds);
+    constrainElement(refs.display, bounds);
+    resolveDisplayCollision(refs, bounds);
 
-    if (!collisionRemains(refs)) {
+    const state = collisionState(refs);
+    if (!state.any) {
       resolved = true;
       break;
     }
 
-    if (pass < 4) {
-      clockScale *= 0.82;
+    const currentOnly =
+      (state.currentActions || state.currentFooter) &&
+      !state.currentDisplay &&
+      !state.displayActions &&
+      !state.displayFooter;
+
+    if (currentOnly) {
+      clockScale *= 0.84;
+    } else if (pass < 8) {
+      displayScale *= 0.84;
     } else {
+      displayScale *= 0.9;
       clockScale *= 0.92;
-      displayScale *= 0.86;
     }
   }
 
   refs.app.dataset.layoutCollision = resolved ? "resolved" : "unresolved";
+  refs.app.dataset.clockAnchorPreserved = "true";
 }
