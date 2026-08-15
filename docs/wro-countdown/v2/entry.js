@@ -29,4 +29,4 @@ document.body.innerHTML = `
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 </div>`;
 
-import("./entry-settings.js?v=20260815d");
+import("./entry-settings.js?v=20260815e");
