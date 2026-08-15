@@ -5583,6 +5583,7 @@ class Application {
         }
         if (screen === "links") this.visitSecretScreen("links");
         else if (screen === "rules") this.visitSecretScreen("rules");
+        else if (screen === this.operationScreen() && this.operationActive && document.documentElement.classList.contains("shukugawa-general")) this.showOperationResume();
         else this.show(screen);
         this.closeMobileMenu();
       });
@@ -6916,6 +6917,24 @@ class Application {
 
   private setOperationTimerReturnable(active: boolean): void {
     document.body.classList.toggle("operation-timer-returnable", active);
+  }
+
+  private showOperationResume(): void {
+    if (!this.operationActive) {
+      this.show(this.operationScreen());
+      return;
+    }
+    if (document.body.classList.contains("operation-record-focus") || document.body.classList.contains("operation-final-review") || document.body.classList.contains("operation-intermediate-review")) {
+      this.show("records");
+      return;
+    }
+    if (document.body.classList.contains("operation-timer-active") || el("screen-timer").classList.contains("active")) {
+      this.show("timer");
+      this.setOperationTimerActive(true);
+      return;
+    }
+    this.show(this.operationScreen());
+    this.showOperationStep(this.operationStep, { preserveDraw: this.operationStep === "draw" });
   }
 
   private startOperationTimer(): void {

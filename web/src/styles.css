@@ -7457,6 +7457,23 @@ html.shukugawa-general body.operation-timer-active #timer-step {
   display: block !important;
 }
 
+/* Shukugawa general operation timer: keep six actions legible on iPad and
+   place the two match controls in a predictable final row. */
+html.shukugawa-general body.operation-timer-active .controls {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html.shukugawa-general body.operation-timer-active #timer-step {
+  min-height: clamp(64px, 8vh, 82px);
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  html.shukugawa-general body.operation-timer-active .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 body.operation-timer-active .timer-shell {
   gap: clamp(10px, 1.8vh, 18px);
 }
