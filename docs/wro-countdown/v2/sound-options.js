@@ -31,4 +31,11 @@ export function installSoundOptions() {
   fragment.append(custom);
 
   select.replaceChildren(fragment);
+
+  const soundSection = select.closest(".section");
+  const help = soundSection?.querySelector(":scope > .help");
+  if (help) {
+    help.textContent =
+      "指定時刻と事前通知で鳴らします。内蔵20種類または端末内の音声ファイルを選べます。";
+  }
 }
