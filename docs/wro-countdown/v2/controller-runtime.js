@@ -6,7 +6,7 @@ import { applyDisplayTheme } from "./display-theme.js?v=20260814r";
 import {
   applyPositioning,
   constrainPositioning
-} from "./display-position.js?v=20260815c";
+} from "./display-position.js?v=20260815e";
 import { updateDisplay } from "./display-tick.js?v=20260815d";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
