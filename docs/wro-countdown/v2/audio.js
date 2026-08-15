@@ -1,11 +1,11 @@
-import { playTemplate } from "./sounds.js?v=20260814r";
+import { playTemplate } from "./sounds.js?v=20260815g";
 import {
   saveAudioFile,
   loadAudioFile,
   deleteAudioFile
 } from "./audio-storage.js?v=20260814k";
 
-const VOLUME_BOOST = 20;
+const VOLUME_BOOST = 40;
 
 export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let context = null;
@@ -134,7 +134,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       refs.soundBadge.className = "badge ready";
       refs.audioStatus.textContent = lastMessage
         ? `${lastMessage} — 音声は有効です。`
-        : "元の通知音を20倍ブーストで有効化しています。";
+        : "元の通知音を40倍ブーストで有効化しています。";
     } else {
       refs.soundBadge.textContent = customAudioReady
         ? "AUDIO SAVED"
