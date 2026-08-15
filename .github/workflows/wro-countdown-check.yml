@@ -6,12 +6,14 @@ on:
       - "docs/wro-countdown/**"
       - "scripts/wro-countdown-layout-check.mjs"
       - "scripts/wro-countdown-date-check.mjs"
+      - "scripts/wro-countdown-anchor-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
       - "docs/wro-countdown/**"
       - "scripts/wro-countdown-layout-check.mjs"
       - "scripts/wro-countdown-date-check.mjs"
+      - "scripts/wro-countdown-anchor-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -41,7 +43,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Run responsive and date audits
+      - name: Run responsive, anchor, and date audits
         run: |
           python3 -m http.server 4173 --directory . >/tmp/wro-countdown-server.log 2>&1 &
           SERVER_PID=$!
@@ -53,6 +55,7 @@ jobs:
             sleep 1
           done
           node scripts/wro-countdown-layout-check.mjs
+          node scripts/wro-countdown-anchor-check.mjs
           node scripts/wro-countdown-date-check.mjs
 
       - name: Upload layout audit artifacts
