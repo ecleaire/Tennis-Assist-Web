@@ -15,11 +15,11 @@ let session = null;
 let rows = [];
 const loginStorageKey = "tennis-assist-history-login-v1";
 const publicLinkGroups = [
-  { title: "公開URL QRコード", qr: true, links: [["generalを開く", "https://ecleaire.github.io/Tennis-Assist-Web/general/", "選手・練習用 general"]] },
   { title: "WROホームページ", links: [["WRO Japan", "https://www.wroj.org/action/2026", "WRO Japan 公式サイト"], ["WRO 国際", "https://wro-association.org/", "WRO International"]] },
-  { title: "ルール関連", links: [["Japan決勝大会ルールPDF", "https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing", "公式ルール原文"], ["世界大会公式ルール", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf", "WRO International"], ["Google翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view", "翻訳版"], ["DeepL翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view", "翻訳版"], ["公式Q&A", "https://wro-association.org/competition/questions-answers/", "ルール質問と回答"]] },
   { title: "WRO公認予選会", links: [["WRO兵庫", "https://wro-hyogo.jp/", "公認予選会"]] },
+  { title: "ルール関連", links: [["Japan決勝大会ルールPDF", "https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing", "公式ルール原文"], ["世界大会公式ルール", "https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf", "WRO International"], ["Google翻訳ルール", "https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view", "翻訳版"], ["DeepL翻訳ルール", "https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view", "翻訳版"], ["公式Q&A", "https://wro-association.org/competition/questions-answers/", "ルール質問と回答"]] },
   { title: "その他", links: [["GitHubリポジトリ", "https://github.com/ecleaire/Tennis-Assist-Web", "アプリのソースコード"]] },
+  { title: "公開URL QRコード", qr: true, links: [["generalを開く", "https://ecleaire.github.io/Tennis-Assist-Web/general/", "選手・練習用 general"]] },
 ];
 const fallbackRules = [
   { title: "1. 基本情報", summary: "WRO RoboSports Double Tennisは、2台の自律ロボットが協調して対戦する競技です。", points: ["ロボットは自律動作が前提です。", "正式な判定や細部は公式ルールPDFと当日の審判判断を確認してください。"] },
@@ -68,7 +68,7 @@ function render() {
 function renderStats(matches, teams) {
   const body = $("team-stats");
   const metrics = $("selected-team-stats");
-  const rows = teams.map((team) => {
+  const rows = $("stats-team").value ? teams.map((team) => {
     const related = matches.filter((row) => rowValue(row, "チームA") === team || rowValue(row, "チームB") === team);
     const wins = related.filter((row) => rowValue(row, "マッチ勝者") === team || rowValue(row, "総合勝者") === team).length;
     const draws = related.filter((row) => rowValue(row, "マッチ勝者") === "引き分け" || rowValue(row, "総合勝者") === "引き分け").length;
@@ -79,10 +79,10 @@ function renderStats(matches, teams) {
     const violations = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA違反数")) : number(rowValue(row, "チームB違反数"))), 0);
     const rate = related.length ? `${(wins / related.length * 100).toFixed(1)}%` : "0.0%";
     return { team, related, wins, draws, losses, purpleRate, violations, rate };
-  });
+  }) : [];
   const selected = $("stats-team").value ? rows[0] : null;
   metrics.innerHTML = selected ? [["マッチ数", selected.related.length], ["勝敗", `${selected.wins}勝 ${selected.losses}敗 ${selected.draws}分`], ["勝率", selected.rate], ["紫取得率", selected.purpleRate], ["違反数", selected.violations]].map(([label, value]) => `<article class="stat-card"><span>${label}</span><strong>${value}</strong></article>`).join("") : "";
-  body.innerHTML = rows.map(({ team, related, wins, draws, losses, purpleRate, violations, rate }) => `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}勝 ${losses}敗 ${draws}分</td><td>${rate}</td><td>${purpleRate}</td><td>${violations}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">該当する履歴がありません。</td></tr>`;
+  body.innerHTML = rows.map(({ team, related, wins, draws, losses, purpleRate, violations, rate }) => `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}勝 ${losses}敗 ${draws}分</td><td>${rate}</td><td>${purpleRate}</td><td>${violations}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">チームを選択すると統計を表示します。</td></tr>`;
 }
 function renderHistory(filtered) {
   const team = $("team-filter").value; const result = $("result-filter").value; const kind = $("kind-filter").value; const reason = $("reason-filter").value;
