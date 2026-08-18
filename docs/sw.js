@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-assist-web-481d35323e16";
+const CACHE_NAME = "tennis-assist-web-3a829a6819fa";
 const CORE = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const CORE = [
 const OPTIONAL = [
   "./assets/jsQR-DDgRDtAc.js",
   "./assets/qr-general.png",
+  "./assets/qr-history.png",
   "./assets/qr-judge.png",
   "./assist_icon_512.png",
   "./data/news.json",
