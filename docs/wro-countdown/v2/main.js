@@ -3,11 +3,14 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260815h";
+} from "./config.js?v=20260815i";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
+import {
+  installDefaultSettingsUi
+} from "./default-settings-ui.js?v=20260815i";
 import { controls as makeControls } from "./controls.js?v=20260814m";
-import { renderSettings } from "./render-settings.js?v=20260814m";
+import { renderSettings } from "./render-settings.js?v=20260815i";
 import { applySizeLimits } from "./size-limits.js?v=20260815f";
 import {
   installExtraSettings,
@@ -21,6 +24,7 @@ import { bindEvents } from "./events.js?v=20260814o";
 buildSettings();
 installSoundOptions();
 installExtraSettings();
+installDefaultSettingsUi();
 applySizeLimits();
 
 const refs = makeRefs();

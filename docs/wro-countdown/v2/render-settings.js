@@ -1,4 +1,4 @@
-import { renderLeadChips } from "./lead-chips.js";
+import { renderLeadChips } from "./lead-chips.js?v=20260815i";
 
 function checkPosition(choices, value) {
   choices.forEach(input => {
