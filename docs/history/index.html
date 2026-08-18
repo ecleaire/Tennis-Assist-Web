@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#091329" />
     <title>RoboSports Assist | 対戦履歴・統計</title>
+    <link rel="preconnect" href="https://drive.google.com" crossorigin />
+    <link rel="dns-prefetch" href="https://drive.google.com" />
+    <link rel="dns-prefetch" href="https://wro-association.org" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -55,9 +58,9 @@
           <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view" data-rule-pdf-src="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/preview">DeepL翻訳ルール</a>
           <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>
         </div>
-        <div class="rule-pdf-toolbar"><button id="rule-pdf-fullscreen" class="button primary" type="button">PDFを全画面表示</button></div>
-        <div id="rule-pdf-viewer" class="rule-pdf-viewer"><iframe id="rule-pdf-frame" title="WRO 2026 Japan 決勝大会 ROBO SPORTS 競技ルール" src="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/preview" loading="lazy" allowfullscreen></iframe></div>
-        <p id="rule-pdf-note" class="rule-note">PDFが表示されない場合は、ルールボタンを別タブで開いてください。</p>
+        <div class="rule-pdf-toolbar"><button id="rule-pdf-reload" class="button" type="button">再読み込み</button><button id="rule-pdf-open" class="button" type="button">別タブで開く</button><button id="rule-pdf-fullscreen" class="button primary" type="button">全画面表示</button></div>
+        <div id="rule-pdf-viewer" class="rule-pdf-viewer is-idle"><div class="rule-pdf-loading" aria-hidden="true"><span class="rule-pdf-spinner"></span><strong>PDFを読み込んでいます</strong></div><iframe id="rule-pdf-frame" title="WRO 2026 Japan 決勝大会 ROBO SPORTS 競技ルール" src="about:blank" data-src="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/preview" loading="eager" allowfullscreen></iframe></div>
+        <p id="rule-pdf-note" class="rule-note" role="status">ルール画面を開いた時にPDFを読み込みます。</p>
       </section>
 
       <section id="viewer" class="hidden">
