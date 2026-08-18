@@ -1,0 +1,236 @@
+/* Final visual polish layer. Keeps the monochrome glitch identity while
+   improving hierarchy, spacing, and readability on every screen size. */
+.app {
+  --polish-surface: rgba(9, 15, 18, .72);
+  --polish-surface-strong: rgba(8, 13, 16, .9);
+  --polish-line: rgba(225, 249, 255, .18);
+  --polish-line-strong: rgba(225, 249, 255, .34);
+  --polish-glow: rgba(125, 228, 245, .22);
+  --polish-shadow: rgba(0, 0, 0, .42);
+  background:
+    radial-gradient(55% 48% at 50% 45%, rgba(86, 209, 231, .12), transparent 72%),
+    radial-gradient(42% 36% at 8% 8%, rgba(86, 209, 231, .07), transparent 72%),
+    radial-gradient(38% 32% at 94% 92%, rgba(153, 239, 255, .055), transparent 74%),
+    linear-gradient(180deg, #020405 0%, #071013 52%, #020405 100%);
+}
+
+.app[data-theme="light"] {
+  --polish-surface: rgba(255, 255, 255, .78);
+  --polish-surface-strong: rgba(255, 255, 255, .94);
+  --polish-line: rgba(7, 24, 29, .15);
+  --polish-line-strong: rgba(7, 24, 29, .3);
+  --polish-glow: rgba(0, 111, 132, .12);
+  --polish-shadow: rgba(13, 39, 46, .15);
+  background:
+    radial-gradient(55% 48% at 50% 45%, rgba(0, 137, 160, .08), transparent 72%),
+    radial-gradient(42% 36% at 8% 8%, rgba(0, 137, 160, .055), transparent 72%),
+    linear-gradient(180deg, #fff 0%, #f3f8f9 52%, #fff 100%);
+}
+
+.app::before {
+  opacity: .045;
+}
+
+.app::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 49.92%, var(--polish-line) 50%, transparent 50.08%),
+    linear-gradient(0deg, transparent 0 49.92%, var(--polish-line) 50%, transparent 50.08%),
+    radial-gradient(circle at 50% 50%, transparent 38%, rgba(0, 0, 0, .28) 100%);
+  opacity: .2;
+}
+
+.currentBlock {
+  padding: clamp(11px, 1.25vw, 17px) clamp(13px, 1.55vw, 21px);
+  border: 1px solid var(--polish-line);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, var(--polish-surface-strong), var(--polish-surface));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .055),
+    0 14px 44px var(--polish-shadow),
+    0 0 32px rgba(111, 222, 240, .035);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+
+.currentTimeLabel {
+  color: var(--text);
+  opacity: .82;
+  text-shadow: 0 0 16px var(--polish-glow);
+}
+
+.clock {
+  text-shadow:
+    0 0 .22em var(--polish-glow),
+    0 .045em 0 rgba(255, 255, 255, .035);
+}
+
+.date {
+  opacity: .9;
+  letter-spacing: .045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  border: 1px solid var(--polish-line);
+  border-radius: clamp(20px, 2vw, 30px);
+  background:
+    linear-gradient(145deg, var(--polish-surface-strong), var(--polish-surface));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    0 22px 70px var(--polish-shadow),
+    0 0 54px rgba(111, 222, 240, .045);
+  backdrop-filter: blur(16px) saturate(1.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+}
+
+.mode:not(.wroTitle) {
+  padding: .46em .76em;
+  border: 1px solid var(--polish-line);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045);
+}
+
+.mode.wroTitle {
+  text-shadow: 0 0 .5em var(--polish-glow);
+}
+
+.target {
+  color: var(--text);
+  opacity: .92;
+  text-shadow: 0 0 .38em rgba(125, 228, 245, .1);
+}
+
+.mainValue {
+  text-shadow:
+    0 0 .16em var(--polish-glow),
+    0 .045em 0 rgba(255, 255, 255, .04),
+    0 .12em .28em rgba(0, 0, 0, .32);
+}
+
+.sub {
+  padding: .43em .78em;
+  border: 1px solid var(--polish-line);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.timerText,
+.wroSuffix {
+  padding: .52em .72em;
+  border-left: 3px solid var(--polish-line-strong);
+  border-radius: 0 12px 12px 0;
+  background: linear-gradient(90deg, rgba(125, 228, 245, .075), transparent 88%);
+}
+
+.badge {
+  border-color: var(--polish-line);
+  background: var(--polish-surface-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gear {
+  border-color: var(--polish-line-strong);
+  background: var(--polish-surface-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 12px 34px var(--polish-shadow);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.gear:hover {
+  border-color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 14px 38px var(--polish-shadow),
+    0 0 22px var(--polish-glow);
+}
+
+.foot {
+  color: color-mix(in srgb, var(--text) 66%, transparent);
+}
+
+@media (min-width: 1000px) and (orientation: landscape) {
+  .display {
+    padding: clamp(18px, 1.8vw, 30px) clamp(22px, 2.35vw, 40px);
+  }
+
+  .foot {
+    padding: 11px 14px;
+    border: 1px solid var(--polish-line);
+    border-radius: 14px;
+    background: var(--polish-surface);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+@media (orientation: portrait) {
+  .display {
+    padding-right: clamp(12px, 3vw, 22px);
+    padding-left: clamp(12px, 3vw, 22px);
+  }
+}
+
+@media (orientation: landscape) and (max-width: 999px) {
+  .currentBlock {
+    padding: 8px 10px;
+    border-radius: 13px;
+  }
+
+  .display {
+    padding: 6px 10px;
+    border-radius: 16px;
+  }
+
+  .mode:not(.wroTitle),
+  .sub {
+    padding: .3em .56em;
+  }
+
+  .timerText,
+  .wroSuffix {
+    padding: .32em .5em;
+    border-left-width: 2px;
+    border-radius: 0 8px 8px 0;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .currentBlock {
+    padding: 10px 12px;
+    border-radius: 15px;
+  }
+
+  .display {
+    border-radius: 20px;
+  }
+
+  .foot {
+    opacity: .82;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .currentBlock,
+  .display,
+  .badge,
+  .gear,
+  .foot {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--polish-surface-strong);
+  }
+}
