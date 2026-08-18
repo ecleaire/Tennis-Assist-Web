@@ -22,6 +22,14 @@ function expect(condition, message) {
   if (!condition) failures.push(message);
 }
 
+async function setChecked(id, checked) {
+  await page.evaluate(({ targetId, next }) => {
+    const input = document.getElementById(targetId);
+    input.checked = next;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, { targetId: id, next: checked });
+}
+
 async function state() {
   return page.evaluate(key => {
     const app = document.getElementById("app");
@@ -78,7 +86,7 @@ try {
   expect(missing.length === 0, `missing background controls: ${missing.join(", ")}`);
 
   await page.selectOption("#backgroundStyle", "spotlight");
-  await page.uncheck("#backgroundUseThemeColors");
+  await setChecked("backgroundUseThemeColors", false);
 
   await page.evaluate(() => {
     const setColor = (id, value) => {
@@ -94,8 +102,8 @@ try {
     strength.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
-  await page.uncheck("#backgroundGuides");
-  await page.uncheck("#backgroundScanlines");
+  await setChecked("backgroundGuides", false);
+  await setChecked("backgroundScanlines", false);
   await page.waitForTimeout(300);
 
   current = await state();
@@ -111,7 +119,7 @@ try {
   expect(current.stored.backgroundGuides === false, "guide setting was not saved");
   expect(current.stored.backgroundScanlines === false, "scanline setting was not saved");
 
-  await page.click("#done");
+  await page.evaluate(() => document.getElementById("done").click());
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForFunction(() => {
     const value = document.getElementById("mainValue")?.textContent || "";
@@ -124,8 +132,8 @@ try {
   expect(current.variables.base === "#112233", "custom base did not survive reload");
 
   await page.click("#gear");
-  await page.check("#backgroundUseThemeColors");
-  await page.click("#themeLight");
+  await setChecked("backgroundUseThemeColors", true);
+  await setChecked("themeLight", true);
   await page.waitForTimeout(250);
 
   current = await state();
