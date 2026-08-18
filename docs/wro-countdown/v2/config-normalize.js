@@ -3,7 +3,7 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260815h";
+} from "./config-values.js?v=20260815i";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
 
 export const clamp = (value, minimum, maximum) =>
