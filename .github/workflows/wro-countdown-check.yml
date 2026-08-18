@@ -9,6 +9,7 @@ on:
       - "scripts/wro-countdown-anchor-check.mjs"
       - "scripts/wro-countdown-sound-check.mjs"
       - "scripts/wro-countdown-defaults-check.mjs"
+      - "scripts/wro-countdown-typography-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - "scripts/wro-countdown-anchor-check.mjs"
       - "scripts/wro-countdown-sound-check.mjs"
       - "scripts/wro-countdown-defaults-check.mjs"
+      - "scripts/wro-countdown-typography-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -50,7 +52,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
 
-      - name: Run responsive, defaults, anchor, and date audits
+      - name: Run responsive, typography, defaults, anchor, and date audits
         run: |
           python3 -m http.server 4173 --directory . >/tmp/wro-countdown-server.log 2>&1 &
           SERVER_PID=$!
@@ -62,6 +64,7 @@ jobs:
             sleep 1
           done
           node scripts/wro-countdown-layout-check.mjs
+          node scripts/wro-countdown-typography-check.mjs
           node scripts/wro-countdown-defaults-check.mjs
           node scripts/wro-countdown-anchor-check.mjs
           node scripts/wro-countdown-date-check.mjs
