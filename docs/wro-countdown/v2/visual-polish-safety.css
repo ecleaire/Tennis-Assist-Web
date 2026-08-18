@@ -1,0 +1,35 @@
+/* Keep decorative panel spacing outside the measured desktop layout box so
+   current-time and countdown anchor collision checks remain exact. */
+.foot {
+  color: var(--muted);
+}
+
+@supports (color: color-mix(in srgb, white 50%, transparent)) {
+  .foot {
+    color: color-mix(in srgb, var(--text) 66%, transparent);
+  }
+}
+
+@media (min-width: 1000px) and (orientation: landscape) {
+  .currentBlock {
+    padding: 0;
+    border: 1px solid var(--polish-line);
+    background: var(--polish-surface-strong);
+    box-shadow:
+      0 0 0 7px var(--polish-surface),
+      0 0 0 8px var(--polish-line),
+      0 18px 48px var(--polish-shadow),
+      0 0 34px rgba(111, 222, 240, .04);
+  }
+
+  .display {
+    padding: 0;
+    border: 1px solid var(--polish-line);
+    background: var(--polish-surface-strong);
+    box-shadow:
+      0 0 0 7px var(--polish-surface),
+      0 0 0 8px var(--polish-line),
+      0 24px 72px var(--polish-shadow),
+      0 0 54px rgba(111, 222, 240, .05);
+  }
+}
