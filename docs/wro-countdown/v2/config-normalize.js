@@ -1,9 +1,10 @@
 import {
+  BACKGROUND_STYLES,
   DEFAULTS,
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260815i";
+} from "./config-values.js?v=20260815l";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
 
 export const clamp = (value, minimum, maximum) =>
@@ -24,6 +25,11 @@ const offset = (value, fallback = 0) => {
 const text = (value, fallback, maximum) =>
   typeof value === "string"
     ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, maximum)
+    : fallback;
+
+const color = (value, fallback) =>
+  typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
+    ? value.toLowerCase()
     : fallback;
 
 export function normalize(raw = {}) {
@@ -66,6 +72,32 @@ export function normalize(raw = {}) {
     ),
 
     theme: value.theme === "light" ? "light" : "dark",
+    backgroundStyle: BACKGROUND_STYLES.includes(value.backgroundStyle)
+      ? value.backgroundStyle
+      : DEFAULTS.backgroundStyle,
+    backgroundUseThemeColors: raw.backgroundUseThemeColors === undefined
+      ? DEFAULTS.backgroundUseThemeColors
+      : Boolean(raw.backgroundUseThemeColors),
+    backgroundBaseColor: color(
+      value.backgroundBaseColor,
+      DEFAULTS.backgroundBaseColor
+    ),
+    backgroundAccentColor: color(
+      value.backgroundAccentColor,
+      DEFAULTS.backgroundAccentColor
+    ),
+    backgroundStrength: clamp(
+      value.backgroundStrength,
+      0,
+      100
+    ),
+    backgroundGuides: raw.backgroundGuides === undefined
+      ? DEFAULTS.backgroundGuides
+      : Boolean(raw.backgroundGuides),
+    backgroundScanlines: raw.backgroundScanlines === undefined
+      ? DEFAULTS.backgroundScanlines
+      : Boolean(raw.backgroundScanlines),
+
     autoSize: raw.autoSize === undefined
       ? DEFAULTS.autoSize
       : Boolean(raw.autoSize),
