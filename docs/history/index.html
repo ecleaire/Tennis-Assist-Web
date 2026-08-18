@@ -7,6 +7,7 @@
     <title>RoboSports Assist | 対戦履歴・統計</title>
     <link rel="preconnect" href="https://drive.google.com" crossorigin />
     <link rel="dns-prefetch" href="https://drive.google.com" />
+    <link rel="dns-prefetch" href="https://docs.google.com" />
     <link rel="dns-prefetch" href="https://wro-association.org" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -53,13 +54,13 @@
         <div class="section-heading"><h2>公式ルール</h2><div class="rule-search-control"><input id="rule-search" type="search" placeholder="PDF内を検索" autocomplete="off" /><button id="rule-search-button" class="button" type="button">検索</button></div></div>
         <div class="rule-links" aria-label="外部ルール資料">
           <a class="button primary" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/view?usp=sharing" data-rule-pdf-src="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/preview">Japan 決勝大会 公式ルール</a>
-          <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf" data-rule-pdf-src="https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf">世界大会公式ルール</a>
+          <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/wp-content/uploads/WRO-2026-RoboSports-Double-Tennis-General-Rules.pdf" data-rule-pdf-src="https://docs.google.com/gview?embedded=1&amp;url=https%3A%2F%2Fwro-association.org%2Fwp-content%2Fuploads%2FWRO-2026-RoboSports-Double-Tennis-General-Rules.pdf">世界大会公式ルール</a>
           <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/view" data-rule-pdf-src="https://drive.google.com/file/d/16zFJ_bD8sfLZZF6QkRCWQ6azN_Dj3eUG/preview">Google翻訳ルール</a>
           <a class="button" target="_blank" rel="noopener" href="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/view" data-rule-pdf-src="https://drive.google.com/file/d/1z_Q7M7lP2Q55Zo3qZgzH-bN_QqhCx-wJ/preview">DeepL翻訳ルール</a>
           <a class="button" target="_blank" rel="noopener" href="https://wro-association.org/competition/questions-answers/#:~:text=Q%26A%20yet.-,RoboSports,-Are%20there%20limitations">Q&amp;Aを開く</a>
         </div>
         <div class="rule-pdf-toolbar"><button id="rule-pdf-reload" class="button" type="button">再読み込み</button><button id="rule-pdf-open" class="button" type="button">別タブで開く</button><button id="rule-pdf-fullscreen" class="button primary" type="button">全画面表示</button></div>
-        <div id="rule-pdf-viewer" class="rule-pdf-viewer is-idle"><div class="rule-pdf-loading" aria-hidden="true"><span class="rule-pdf-spinner"></span><strong>PDFを読み込んでいます</strong></div><iframe id="rule-pdf-frame" title="WRO 2026 Japan 決勝大会 ROBO SPORTS 競技ルール" src="about:blank" data-src="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/preview" loading="eager" allowfullscreen></iframe></div>
+        <div id="rule-pdf-viewer" class="rule-pdf-viewer is-idle"><div class="rule-pdf-loading" aria-hidden="true"><span class="rule-pdf-spinner"></span><strong id="rule-pdf-loading-text">PDFを読み込んでいます</strong></div><iframe id="rule-pdf-frame" title="WRO 2026 Japan 決勝大会 ROBO SPORTS 競技ルール" src="about:blank" data-src="https://drive.google.com/file/d/1JMmggxMfSWABUcA5sbM9U3qffb-ZMb2U/preview" loading="eager" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
         <p id="rule-pdf-note" class="rule-note" role="status">ルール画面を開いた時にPDFを読み込みます。</p>
       </section>
 
