@@ -1,0 +1,197 @@
+/* Clean, platform-native typography without external font downloads. */
+:root {
+  --font-ui:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic UI",
+    "Yu Gothic",
+    Meiryo,
+    "Noto Sans JP",
+    sans-serif;
+  --font-numeric:
+    Arial,
+    "Noto Sans",
+    "Noto Sans JP",
+    sans-serif;
+}
+
+html,
+body,
+.app,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  font-kerning: normal;
+  font-optical-sizing: auto;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Keep large numerals normal-width, crisp, and stable on Mac/Windows. */
+.clock,
+.mainValue {
+  font-family: var(--font-numeric) !important;
+  font-weight: 700 !important;
+  font-stretch: 100% !important;
+  font-synthesis: none !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variation-settings: "wdth" 100;
+  text-rendering: geometricPrecision;
+}
+
+.clock {
+  line-height: .92;
+  letter-spacing: -.012em !important;
+  text-shadow: 0 0 .12em rgba(125, 228, 245, .16);
+}
+
+.mainValue {
+  line-height: .88;
+  letter-spacing: -.008em !important;
+  text-shadow:
+    0 0 .1em rgba(125, 228, 245, .18),
+    0 .08em .2em rgba(0, 0, 0, .24);
+}
+
+/* Reduce artificial spacing and use real, commonly available font weights. */
+.currentTimeLabel,
+.eyebrow,
+.mode,
+.badge {
+  font-weight: 700;
+  letter-spacing: .075em;
+}
+
+.currentTimeLabel {
+  line-height: 1.35;
+  letter-spacing: .055em;
+  text-shadow: none;
+}
+
+.date {
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: .025em;
+}
+
+.mode:not(.wroTitle) {
+  line-height: 1.25;
+  letter-spacing: .09em;
+}
+
+.mode.wroTitle {
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: .04em;
+  text-wrap: balance;
+  text-shadow: 0 0 .24em rgba(125, 228, 245, .16);
+}
+
+.target {
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.018em;
+  text-wrap: balance;
+  text-shadow: none;
+}
+
+.timerText,
+.wroSuffix,
+.sub {
+  font-weight: 600;
+  line-height: 1.48;
+  letter-spacing: 0;
+  line-break: strict;
+  text-wrap: pretty;
+}
+
+.sub {
+  font-variant-numeric: tabular-nums;
+}
+
+.foot,
+.help,
+.switchCopy small,
+.positionEditorHead small,
+.audioStatus {
+  line-height: 1.6;
+  letter-spacing: .01em;
+}
+
+.panel h1,
+.section h2,
+.positionEditorHead b,
+.switchCopy b,
+.label {
+  font-weight: 700;
+  letter-spacing: .015em;
+}
+
+button,
+.btn,
+.primary,
+.segmented span,
+.seg span,
+.check span,
+.positionChoice span {
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  letter-spacing: .01em;
+}
+
+@supports (word-break: auto-phrase) {
+  .currentTimeLabel,
+  .target,
+  .timerText,
+  .wroSuffix,
+  .sub {
+    word-break: auto-phrase;
+  }
+}
+
+.app[data-theme="light"] .clock,
+.app[data-theme="light"] .mainValue,
+.app[data-theme="light"] .mode.wroTitle {
+  text-shadow: 0 .04em .14em rgba(0, 58, 69, .12);
+}
+
+@media (orientation: landscape) and (max-width: 999px) {
+  .currentTimeLabel,
+  .mode:not(.wroTitle) {
+    letter-spacing: .055em;
+  }
+
+  .timerText,
+  .wroSuffix,
+  .sub {
+    line-height: 1.35;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .clock,
+  .mainValue {
+    letter-spacing: -.004em !important;
+  }
+
+  .currentTimeLabel,
+  .mode:not(.wroTitle) {
+    letter-spacing: .05em;
+  }
+}
