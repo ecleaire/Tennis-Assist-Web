@@ -69,9 +69,9 @@
         </div>
 
         <section class="stats-grid" aria-label="大会統計">
-          <article class="stat-card"><span>試合結果</span><strong id="stat-series">--</strong></article>
-          <article class="stat-card"><span>マッチ</span><strong id="stat-matches">--</strong></article>
-          <article class="stat-card"><span>チーム数</span><strong id="stat-teams">--</strong></article>
+          <article class="stat-card"><span>試合結果（全期間）</span><strong id="stat-series">--</strong></article>
+          <article class="stat-card"><span>マッチ（全期間）</span><strong id="stat-matches">--</strong></article>
+          <article class="stat-card"><span>チーム数（全期間）</span><strong id="stat-teams">--</strong></article>
           <article class="stat-card"><span>最終更新</span><strong id="stat-latest">--</strong></article>
         </section>
 
@@ -79,7 +79,6 @@
           <div class="section-heading"><div><p class="eyebrow">TEAM STATISTICS</p><h2>チーム別統計</h2></div></div>
           <div class="filter-row"><label>チーム<select id="stats-team"><option value="">チームを選択</option></select></label><label>集計期間<select id="period"><option value="all">すべて</option><option value="today">今日</option><option value="yesterday">昨日</option><option value="day-before-yesterday">一昨日</option><option value="week">1週間</option><option value="month">1か月</option></select></label><label>開始日<input id="date-from" type="date" /></label><label>終了日<input id="date-to" type="date" /></label></div>
           <div id="selected-team-stats" class="stats-grid team-metrics" aria-live="polite"></div>
-          <div class="table-wrap"><table><thead><tr><th>チーム</th><th>マッチ数</th><th>勝敗</th><th>勝率</th><th>紫取得率</th><th>違反数</th></tr></thead><tbody id="team-stats"></tbody></table></div>
         </section>
 
         <section class="panel section-card">

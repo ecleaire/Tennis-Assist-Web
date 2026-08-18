@@ -48,10 +48,11 @@ function render() {
   const filtered = rows.filter((row) => { const stamp = dateValue(rowValue(row, "日時")); return stamp >= bounds.from && stamp <= bounds.to; });
   const series = filtered.filter((row) => rowValue(row, "記録種別") === "試合結果");
   const matches = filtered.filter((row) => rowValue(row, "記録種別") === "マッチ");
-  const filteredTeams = [...new Set(filtered.flatMap((row) => [rowValue(row, "チームA"), rowValue(row, "チームB")]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
+  const allSeries = rows.filter((row) => rowValue(row, "記録種別") === "試合結果");
+  const allMatches = rows.filter((row) => rowValue(row, "記録種別") === "マッチ");
   const allTeams = [...new Set(rows.flatMap((row) => [rowValue(row, "チームA"), rowValue(row, "チームB")]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
-  $("stat-series").textContent = series.length; $("stat-matches").textContent = matches.length; $("stat-teams").textContent = filteredTeams.length;
-  $("stat-latest").textContent = filtered.length ? text(filtered.map((row) => rowValue(row, "日時")).sort().at(-1)).slice(0, 10) : "--";
+  $("stat-series").textContent = allSeries.length; $("stat-matches").textContent = allMatches.length; $("stat-teams").textContent = allTeams.length;
+  $("stat-latest").textContent = rows.length ? text(rows.map((row) => rowValue(row, "日時")).sort().at(-1)).slice(0, 10) : "--";
   const selected = $("team-filter").value;
   const statsTeam = $("stats-team").value;
   const optionsKey = allTeams.join("\u0000");
@@ -61,7 +62,6 @@ function render() {
   renderStats(matches, statsTeam ? [statsTeam] : []); renderHistory(filtered);
 }
 function renderStats(matches, teams) {
-  const body = $("team-stats");
   const metrics = $("selected-team-stats");
   const rows = $("stats-team").value ? teams.map((team) => {
     const related = matches.filter((row) => rowValue(row, "チームA") === team || rowValue(row, "チームB") === team);
@@ -77,7 +77,6 @@ function renderStats(matches, teams) {
   }) : [];
   const selected = $("stats-team").value ? rows[0] : null;
   metrics.innerHTML = selected ? [["マッチ数", selected.related.length], ["勝敗", `${selected.wins}勝 ${selected.losses}敗 ${selected.draws}分`], ["勝率", selected.rate], ["紫取得率", selected.purpleRate], ["違反数", selected.violations]].map(([label, value]) => `<article class="stat-card"><span>${label}</span><strong>${value}</strong></article>`).join("") : "";
-  body.innerHTML = rows.map(({ team, related, wins, draws, losses, purpleRate, violations, rate }) => `<tr><td><strong>${escapeHtml(team)}</strong></td><td>${related.length}</td><td>${wins}勝 ${losses}敗 ${draws}分</td><td>${rate}</td><td>${purpleRate}</td><td>${violations}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">チームを選択すると統計を表示します。</td></tr>`;
 }
 function renderHistory(filtered) {
   const team = $("team-filter").value; const result = $("result-filter").value; const kind = $("kind-filter").value;
