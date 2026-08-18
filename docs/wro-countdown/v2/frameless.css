@@ -1,0 +1,65 @@
+/* Frameless presentation: keep the polished type and background, but let the
+   time and countdown float cleanly without card, pill, or footer outlines. */
+.currentBlock,
+.display {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.currentBlock {
+  padding: 0 !important;
+}
+
+.display {
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+.mode:not(.wroTitle),
+.sub,
+.timerText,
+.wroSuffix {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.badge {
+  min-height: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.foot {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Keep the settings gear visibly interactive; all non-interactive display
+   frames are removed. */
+.gear {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+}
+
+@media (orientation: landscape) and (max-width: 999px) {
+  .currentBlock,
+  .display {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+}
