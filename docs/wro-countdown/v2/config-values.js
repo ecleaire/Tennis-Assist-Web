@@ -8,7 +8,7 @@ export const OLD_SETTINGS_KEY = "wro-countdown-settings-v3";
 export const WRO_TARGET = Date.UTC(2026, 7, 22, 5);
 export const WRO_DATE = "8月22日（土）";
 
-export const PRESET_LEADS = [5, 10, 30];
+export const PRESET_LEADS = [5, 10, 30, 60];
 export const PATTERNS = [
   "horizontal",
   "diagonal",
@@ -59,13 +59,13 @@ export const DEFAULTS = {
   timerTextSize: 26,
 
   // PC / landscape placement defaults.
-  clockPosition: "bottom-right",
+  clockPosition: "top-right",
   clockOffsetX: 0,
   clockOffsetY: 0,
-  timerPosition: "top-right",
+  timerPosition: "center",
   timerOffsetX: 0,
   timerOffsetY: 0,
-  wroPosition: "top-left",
+  wroPosition: "center",
   wroOffsetX: 0,
   wroOffsetY: 0,
 
@@ -78,7 +78,7 @@ export const DEFAULTS = {
   autoWroDurationMin: 1,
   alarmEnabled: true,
   atTarget: true,
-  leadTimes: [5, 10, 30],
+  leadTimes: [5, 10, 30, 60],
   volume: 70,
   soundType: "bell",
   fileName: ""
