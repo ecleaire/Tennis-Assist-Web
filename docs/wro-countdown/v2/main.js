@@ -3,12 +3,16 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260815i";
+} from "./config.js?v=20260815l";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
   installDefaultSettingsUi
 } from "./default-settings-ui.js?v=20260815i";
+import {
+  installBackgroundSettings,
+  createBackgroundSettingsController
+} from "./background-settings.js?v=20260815l";
 import { controls as makeControls } from "./controls.js?v=20260814m";
 import { renderSettings } from "./render-settings.js?v=20260815i";
 import { applySizeLimits } from "./size-limits.js?v=20260815f";
@@ -18,13 +22,14 @@ import {
 } from "./extra-settings.js?v=20260815f";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260815f";
+import { createDisplay } from "./display.js?v=20260815l";
 import { bindEvents } from "./events.js?v=20260814o";
 
 buildSettings();
 installSoundOptions();
 installExtraSettings();
 installDefaultSettingsUi();
+installBackgroundSettings();
 applySizeLimits();
 
 const refs = makeRefs();
@@ -39,6 +44,10 @@ let display;
 const getSettings = () => settings;
 const noise = createNoise(refs, getSettings);
 const extraSettings = createExtraSettingsController({
+  getSettings,
+  setSettings
+});
+const backgroundSettings = createBackgroundSettingsController({
   getSettings,
   setSettings
 });
@@ -68,6 +77,7 @@ audio = createAudio(
 function render() {
   renderSettings(controls, settings, setSettings, audio);
   extraSettings.render();
+  backgroundSettings.render();
 }
 
 function setSettings(patch, options = {}) {
