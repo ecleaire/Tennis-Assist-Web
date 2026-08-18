@@ -10,7 +10,7 @@ import {
   installDefaultSettingsUi
 } from "./default-settings-ui.js?v=20260815i";
 import { controls as makeControls } from "./controls.js?v=20260814m";
-import { renderSettings } from "./render-settings.js?v=20260814m";
+import { renderSettings } from "./render-settings.js?v=20260815i";
 import { applySizeLimits } from "./size-limits.js?v=20260815f";
 import {
   installExtraSettings,
