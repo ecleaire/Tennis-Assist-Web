@@ -1,4 +1,4 @@
-import { PRESET_LEADS } from "./config.js";
+import { PRESET_LEADS } from "./config.js?v=20260815i";
 
 export function renderLeadChips(container, settings, setSettings) {
   container.replaceChildren();
