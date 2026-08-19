@@ -21,39 +21,59 @@ export function createTimerTarget(getSettings, onAlarm) {
     );
   }
 
-  function resolveCycle(now) {
-    const settings = getSettings();
-    const completedTarget = targetForToday(now);
-    const completionEnd =
-      completedTarget + settings.completionDurationMin * 60000;
+  function completionCycle(completedTarget, nextTarget, completionEnd) {
+    return {
+      phase: "completion",
+      target: nextTarget,
+      completedTarget,
+      nextTarget,
+      completionEnd
+    };
+  }
 
-    if (now < completedTarget) {
-      return {
-        phase: "countdown",
-        target: completedTarget,
-        completedTarget: 0,
-        nextTarget: completedTarget,
-        completionEnd: 0
-      };
-    }
-
-    if (now < completionEnd) {
-      return {
-        phase: "completion",
-        target: completedTarget + DAY_MS,
-        completedTarget,
-        nextTarget: completedTarget + DAY_MS,
-        completionEnd
-      };
-    }
-
+  function countdownCycle(target) {
     return {
       phase: "countdown",
-      target: completedTarget + DAY_MS,
+      target,
       completedTarget: 0,
-      nextTarget: completedTarget + DAY_MS,
+      nextTarget: target,
       completionEnd: 0
     };
+  }
+
+  function resolveCycle(now) {
+    const settings = getSettings();
+    const todayTarget = targetForToday(now);
+    const completionDuration = settings.completionDurationMin * 60000;
+
+    if (now < todayTarget) {
+      const previousTarget = todayTarget - DAY_MS;
+      const previousCompletionEnd = previousTarget + completionDuration;
+
+      // A late target time or a long completion duration may carry the
+      // previous day's message past midnight. Preserve that message until its
+      // configured end instead of starting today's countdown too early.
+      if (now < previousCompletionEnd) {
+        return completionCycle(
+          previousTarget,
+          todayTarget,
+          previousCompletionEnd
+        );
+      }
+
+      return countdownCycle(todayTarget);
+    }
+
+    const completionEnd = todayTarget + completionDuration;
+    if (now < completionEnd) {
+      return completionCycle(
+        todayTarget,
+        todayTarget + DAY_MS,
+        completionEnd
+      );
+    }
+
+    return countdownCycle(todayTarget + DAY_MS);
   }
 
   function reset(now = Date.now()) {
