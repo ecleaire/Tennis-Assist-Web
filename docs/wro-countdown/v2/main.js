@@ -13,6 +13,7 @@ import {
   installBackgroundSettings,
   createBackgroundSettingsController
 } from "./background-settings.js?v=20260815l";
+import { installSettingsLayout } from "./settings-layout.js?v=20260815m";
 import { controls as makeControls } from "./controls.js?v=20260814m";
 import { renderSettings } from "./render-settings.js?v=20260815i";
 import { applySizeLimits } from "./size-limits.js?v=20260815f";
@@ -30,6 +31,7 @@ installSoundOptions();
 installExtraSettings();
 installDefaultSettingsUi();
 installBackgroundSettings();
+installSettingsLayout();
 applySizeLimits();
 
 const refs = makeRefs();
