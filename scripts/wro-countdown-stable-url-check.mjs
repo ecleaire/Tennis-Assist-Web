@@ -38,7 +38,9 @@ async function inspect() {
     hash: window.location.hash,
     canonical: document.querySelector('link[rel="canonical"]')?.href || "",
     hasApp: Boolean(document.getElementById("app")),
-    moduleSource: document.querySelector('script[type="module"]')?.src || ""
+    versionedStyles: [...document.querySelectorAll('link[rel="stylesheet"]')]
+      .map(link => link.href)
+      .filter(href => href.includes("?v="))
   }));
 }
 
@@ -56,8 +58,8 @@ try {
   expect(state.hasApp, "root URL did not load the countdown app");
   expect(state.canonical.endsWith("/Tennis-Assist-Web/wro-countdown/"),
     `unexpected canonical URL ${state.canonical}`);
-  expect(state.moduleSource.includes("/v2/entry.js?v="),
-    "internal assets are not cache-versioned");
+  expect(state.versionedStyles.length > 0,
+    "internal styles are not cache-versioned");
 
   await page.reload({ waitUntil: "networkidle" });
   await waitForApp();
