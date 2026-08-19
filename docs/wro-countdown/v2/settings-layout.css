@@ -1,0 +1,381 @@
+/* Reorganized settings: quick setup first, detailed categories below. */
+.settings {
+  gap: 16px;
+}
+
+.basicSettingsPanel {
+  padding: clamp(16px, 2.5vw, 22px);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--panel) 88%, transparent), var(--soft));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .045),
+    0 16px 42px rgba(0, 0, 0, .14);
+}
+
+.basicSettingsHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.basicSettingsKicker,
+.advancedSettingsKicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.basicSettingsHead h2 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 25px);
+  line-height: 1.15;
+}
+
+.basicSettingsHead p {
+  max-width: 520px;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settingsAutoSave {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--bg);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.basicSettingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.basicSettingsCard {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--bg);
+}
+
+.basicSettingsCardWide {
+  grid-column: 1 / -1;
+}
+
+.basicSettingsCardHead {
+  margin-bottom: 13px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.basicSettingsCardTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.basicSettingsCardDescription {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.basicSettingsCardBody {
+  display: grid;
+  gap: 12px;
+}
+
+#basicDisplayCard .basicSettingsCardBody {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+#basicDisplayCard .seg,
+#basicDisplayCard #showCurrentTimeRow,
+#basicDisplayCard .switch:first-of-type {
+  grid-column: 1 / -1;
+}
+
+#basicDisplayCard #targetTimeField {
+  align-self: stretch;
+}
+
+#basicAlarmCard .checks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quickAudioActions {
+  display: grid;
+  gap: 8px;
+}
+
+.quickAudioActions #testSound {
+  width: 100%;
+}
+
+.quickAudioActions .audioStatus {
+  min-height: 0;
+  padding: 10px 11px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.advancedSettingsAccordion {
+  overflow: clip;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--soft);
+}
+
+.advancedSettingsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 82px;
+  padding: 16px 18px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background .16s ease;
+}
+
+.advancedSettingsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.advancedSettingsSummary:hover {
+  background: color-mix(in srgb, var(--panel) 48%, transparent);
+}
+
+.advancedSettingsSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.advancedSettingsSummaryText {
+  display: grid;
+  min-width: 0;
+}
+
+.advancedSettingsSummaryText strong {
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.advancedSettingsSummaryText small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.advancedSettingsSummaryAction {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.advancedSettingsChevron {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--bg);
+  font-size: 18px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform .18s ease;
+}
+
+.advancedSettingsAccordion[open] .advancedSettingsChevron {
+  transform: rotate(180deg);
+}
+
+.advancedSettingsAccordion[open] .advancedSettingsSummary {
+  border-bottom: 1px solid var(--border);
+}
+
+.advancedSettingsBody {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.detailSettingsCategory.section {
+  padding: 15px;
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.detailSettingsCategory > h2 {
+  font-size: 15px;
+}
+
+.detailSettingsCategory > .help {
+  margin-bottom: 13px;
+}
+
+.detailSettingsCategory > .fields,
+.detailSettingsCategory .fields {
+  display: grid;
+  gap: 11px;
+}
+
+.detailSettingsGroup {
+  display: grid;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--soft);
+}
+
+.detailSettingsGroupHead {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detailSettingsGroupTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.detailSettingsGroupDescription {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.detailSettingsGroupBody {
+  display: grid;
+  gap: 11px;
+}
+
+.detailSettingsGroupBody > .extraSettingsGroup,
+.detailSettingsGroupBody > .backgroundSettings {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.detailSettingsGroupBody .sizeControls {
+  margin: 0;
+}
+
+.detailSettingsCategory[data-settings-category="placement"] .positionEditors {
+  margin-top: 0;
+}
+
+.detailSettingsCategory[data-settings-category="audio"] .audioActions {
+  grid-template-columns: 1fr;
+}
+
+.detailSettingsCategory[data-settings-category="audio"] #removeAudio {
+  width: 100%;
+}
+
+.settingsFooterActions {
+  z-index: 4;
+  margin-top: 0;
+  padding: 13px 0 0;
+  border-top: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, transparent, var(--bg) 18%);
+}
+
+.settingsFooterActions .settingsResetButton {
+  color: var(--muted);
+}
+
+@media (max-width: 680px) {
+  .basicSettingsHead {
+    display: grid;
+  }
+
+  .settingsAutoSave {
+    justify-self: start;
+  }
+
+  .basicSettingsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .basicSettingsCardWide {
+    grid-column: auto;
+  }
+
+  #basicDisplayCard .basicSettingsCardBody {
+    grid-template-columns: 1fr;
+  }
+
+  #basicDisplayCard .seg,
+  #basicDisplayCard #showCurrentTimeRow,
+  #basicDisplayCard .switch:first-of-type {
+    grid-column: auto;
+  }
+
+  .advancedSettingsSummaryAction .advancedSettingsState {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .basicSettingsPanel {
+    padding: 14px;
+    border-radius: 17px;
+  }
+
+  .basicSettingsCard {
+    padding: 13px;
+  }
+
+  .advancedSettingsSummary {
+    min-height: 76px;
+    padding: 14px;
+  }
+
+  .advancedSettingsBody {
+    padding: 10px;
+  }
+
+  .detailSettingsCategory.section {
+    padding: 13px;
+  }
+
+  .detailSettingsGroup {
+    padding: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .advancedSettingsSummary,
+  .advancedSettingsChevron {
+    transition: none;
+  }
+}
