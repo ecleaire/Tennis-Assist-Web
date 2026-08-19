@@ -139,6 +139,15 @@ const cases = [
     },
     mutate: async page => {
       await page.click("#gear");
+
+      const advanced = page.locator("#advancedSettingsAccordion");
+      if (await advanced.count()) {
+        const open = await advanced.evaluate(element => element.open);
+        if (!open) await page.click("#advancedSettingsAccordion > summary");
+        await page.waitForFunction(() =>
+          document.getElementById("advancedSettingsAccordion")?.open);
+      }
+
       await page.fill(
         "#timerTextInput",
         "競技終了予定の20:30まで残り {残り時間}\n追加したラベルでも右上を維持"
@@ -147,7 +156,7 @@ const cases = [
       await page.fill("#currentTimeLabelInput", "ただいまの会場現在時刻");
       await page.dispatchEvent("#currentTimeLabelInput", "input");
       await page.waitForTimeout(300);
-      await page.click("#done");
+      await page.evaluate(() => document.getElementById("done").click());
       await page.waitForTimeout(300);
     },
     expected: {
