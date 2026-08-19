@@ -1,30 +1,73 @@
-import { jstParts, jstStamp } from "./config.js";
+import { jstParts, jstStamp } from "./config.js?v=20260820a";
+
+const DAY_MS = 86400000;
 
 export function createTimerTarget(getSettings, onAlarm) {
-  let target = 0;
+  let alertTarget = 0;
   let previous = null;
   let fired = new Set();
 
-  function reset(now = Date.now()) {
+  function targetForToday(now) {
     const settings = getSettings();
     const [hour, minute] = settings.targetTime.split(":").map(Number);
     const parts = jstParts(new Date(now));
 
-    let next = jstStamp(
+    return jstStamp(
       Number(parts.year),
       Number(parts.month),
       Number(parts.day),
       hour,
       minute
     );
-    if (next <= now) next += 86400000;
+  }
 
-    target = next;
-    previous = next - now;
+  function resolveCycle(now) {
+    const settings = getSettings();
+    const completedTarget = targetForToday(now);
+    const completionEnd =
+      completedTarget + settings.completionDurationMin * 60000;
+
+    if (now < completedTarget) {
+      return {
+        phase: "countdown",
+        target: completedTarget,
+        completedTarget: 0,
+        nextTarget: completedTarget,
+        completionEnd: 0
+      };
+    }
+
+    if (now < completionEnd) {
+      return {
+        phase: "completion",
+        target: completedTarget + DAY_MS,
+        completedTarget,
+        nextTarget: completedTarget + DAY_MS,
+        completionEnd
+      };
+    }
+
+    return {
+      phase: "countdown",
+      target: completedTarget + DAY_MS,
+      completedTarget: 0,
+      nextTarget: completedTarget + DAY_MS,
+      completionEnd: 0
+    };
+  }
+
+  function reset(now = Date.now()) {
+    const cycle = resolveCycle(now);
+    const target = cycle.phase === "completion"
+      ? cycle.completedTarget
+      : cycle.target;
+
+    alertTarget = target;
+    previous = target - now;
     fired = new Set();
   }
 
-  function checkAlerts(remaining) {
+  function checkAlerts(remaining, target) {
     const settings = getSettings();
     if (!settings.alarmEnabled || previous === null) return;
 
@@ -50,22 +93,52 @@ export function createTimerTarget(getSettings, onAlarm) {
     }
   }
 
-  function remaining(now = Date.now()) {
-    if (!target) reset(now);
-    let value = target - now;
-    checkAlerts(value);
+  function state(now = Date.now()) {
+    const cycle = resolveCycle(now);
+    const targetForAlerts = cycle.phase === "completion"
+      ? cycle.completedTarget
+      : cycle.target;
+    const alertRemaining = targetForAlerts - now;
 
-    if (value < -8000) {
-      reset(now);
-      value = target - now;
+    if (!alertTarget) {
+      alertTarget = targetForAlerts;
+      previous = alertRemaining;
+    } else if (targetForAlerts !== alertTarget) {
+      alertTarget = targetForAlerts;
+      previous = alertRemaining;
+      fired = new Set();
+    } else {
+      checkAlerts(alertRemaining, targetForAlerts);
     }
 
-    previous = value;
-    return value;
+    previous = alertRemaining;
+
+    if (cycle.phase === "completion") {
+      return {
+        phase: "completion",
+        remaining: 0,
+        target: cycle.nextTarget,
+        completedTarget: cycle.completedTarget,
+        nextTarget: cycle.nextTarget,
+        completionEnd: cycle.completionEnd,
+        completionRemaining: Math.max(0, cycle.completionEnd - now)
+      };
+    }
+
+    return {
+      phase: "countdown",
+      remaining: Math.max(0, cycle.target - now),
+      target: cycle.target,
+      completedTarget: 0,
+      nextTarget: cycle.target,
+      completionEnd: 0,
+      completionRemaining: 0
+    };
   }
 
   return {
     reset,
-    remaining
+    state,
+    remaining: now => state(now).remaining
   };
 }
