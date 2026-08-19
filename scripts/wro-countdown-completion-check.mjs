@@ -102,7 +102,9 @@ async function displayState() {
 
 try {
   await page.addInitScript(({ settingsKey, nowKey, storedSettings, initialNow }) => {
-    localStorage.setItem(settingsKey, JSON.stringify(storedSettings));
+    if (!localStorage.getItem(settingsKey)) {
+      localStorage.setItem(settingsKey, JSON.stringify(storedSettings));
+    }
     if (!localStorage.getItem(nowKey)) {
       localStorage.setItem(nowKey, String(Date.parse(initialNow)));
     }
@@ -244,6 +246,39 @@ try {
     `custom 5-minute transition phase is ${state.phase}`);
   expect(state.mainValue === "23:55:00",
     `custom 5-minute next countdown is ${state.mainValue}`);
+
+  // A target near midnight must retain its completion message after the JST
+  // date changes, then begin the same day's next-target countdown.
+  await page.evaluate(({ settingsKey, nowKey }) => {
+    const stored = JSON.parse(localStorage.getItem(settingsKey) || "{}");
+    localStorage.setItem(settingsKey, JSON.stringify({
+      ...stored,
+      targetTime: "23:50",
+      completionText: "夜間作業お疲れ様でした",
+      completionDurationMin: 30
+    }));
+    localStorage.setItem(
+      nowKey,
+      String(Date.parse("2026-08-20T15:05:00.000Z"))
+    );
+  }, { settingsKey: SETTINGS_KEY, nowKey: NOW_KEY });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() =>
+    document.getElementById("app")?.dataset.timerPhase === "completion",
+    { timeout: 15_000 }
+  );
+  state = await displayState();
+  expect(state.mainValue === "夜間作業お疲れ様でした",
+    `cross-midnight completion text is ${state.mainValue}`);
+  expect(state.subValue.includes("00:15:00"),
+    `cross-midnight completion remaining is ${state.subValue}`);
+
+  await setNow("2026-08-20T15:20:00.000Z");
+  state = await displayState();
+  expect(state.phase === "countdown",
+    `cross-midnight transition phase is ${state.phase}`);
+  expect(state.mainValue === "23:30:00",
+    `cross-midnight next countdown is ${state.mainValue}`);
 } catch (error) {
   failures.push(error.stack || error.message);
 }
