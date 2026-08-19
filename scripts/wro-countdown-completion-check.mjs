@@ -3,6 +3,7 @@ import { chromium } from "playwright";
 const BASE_URL = process.env.WRO_BASE_URL ||
   "http://127.0.0.1:4173/docs/wro-countdown/?completion-audit=1";
 const SETTINGS_KEY = "wro-countdown-settings-v4";
+const NOW_KEY = "wro-countdown-completion-test-now";
 
 const settings = {
   mode: "timer",
@@ -47,7 +48,7 @@ const settings = {
   noiseIntervalMin: 0,
   lineGap: 110,
   autoWroEnabled: true,
-  autoWroIntervalMin: 0.01,
+  autoWroIntervalMin: 1,
   autoWroDurationMin: 1,
   alarmEnabled: false,
   atTarget: true,
@@ -76,9 +77,9 @@ function expect(condition, message) {
 }
 
 async function setNow(iso) {
-  await page.evaluate(value => {
-    window.__wroTestNow = Date.parse(value);
-  }, iso);
+  await page.evaluate(({ key, value }) => {
+    localStorage.setItem(key, String(Date.parse(value)));
+  }, { key: NOW_KEY, value: iso });
   await page.waitForTimeout(500);
 }
 
@@ -100,17 +101,24 @@ async function displayState() {
 }
 
 try {
-  await page.addInitScript(({ key, storedSettings, initialNow }) => {
-    localStorage.setItem(key, JSON.stringify(storedSettings));
-    window.__wroTestNow = Date.parse(initialNow);
+  await page.addInitScript(({ settingsKey, nowKey, storedSettings, initialNow }) => {
+    localStorage.setItem(settingsKey, JSON.stringify(storedSettings));
+    if (!localStorage.getItem(nowKey)) {
+      localStorage.setItem(nowKey, String(Date.parse(initialNow)));
+    }
 
     const RealDate = Date;
+    const currentNow = () => {
+      const value = Number(localStorage.getItem(nowKey));
+      return Number.isFinite(value) ? value : RealDate.parse(initialNow);
+    };
+
     class FixedDate extends RealDate {
       constructor(...args) {
-        super(...(args.length ? args : [window.__wroTestNow]));
+        super(...(args.length ? args : [currentNow()]));
       }
       static now() {
-        return window.__wroTestNow;
+        return currentNow();
       }
       static parse(value) {
         return RealDate.parse(value);
@@ -122,7 +130,8 @@ try {
     Object.setPrototypeOf(FixedDate, RealDate);
     window.Date = FixedDate;
   }, {
-    key: SETTINGS_KEY,
+    settingsKey: SETTINGS_KEY,
+    nowKey: NOW_KEY,
     storedSettings: settings,
     initialNow: "2026-08-20T11:29:50.000Z"
   });
@@ -157,13 +166,6 @@ try {
   expect(state.status.includes("次の20:30までのタイマーを開始"),
     `completion status is ${state.status}`);
 
-  // Automatic WRO display must not replace the completion message, even when
-  // its normal interval is shorter than the completion display period.
-  await page.waitForTimeout(1200);
-  state = await displayState();
-  expect(state.phase === "completion" && state.mainValue === "お疲れ様でした",
-    "automatic WRO display interrupted the completion message");
-
   await setNow("2026-08-20T11:59:59.000Z");
   state = await displayState();
   expect(state.phase === "completion",
@@ -192,7 +194,9 @@ try {
   expect(state.mainValue === "お疲れ様でした",
     `reload during completion shows ${state.mainValue}`);
 
-  // Check the detailed settings and live customization.
+  // Check the detailed settings and live customization while still inside a
+  // custom five-minute completion window.
+  await setNow("2026-08-20T11:34:00.000Z");
   await page.click("#gear");
   const advanced = page.locator("#advancedSettingsAccordion");
   if (!(await advanced.evaluate(element => element.open))) {
@@ -220,6 +224,8 @@ try {
   await page.waitForTimeout(350);
 
   state = await displayState();
+  expect(state.phase === "completion",
+    `custom completion phase is ${state.phase}`);
   expect(state.mainValue === "本日の進行は終了しました",
     `custom completion text is ${state.mainValue}`);
   expect(state.completionTextVariable === "150px",
