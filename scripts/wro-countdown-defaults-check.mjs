@@ -38,6 +38,11 @@ try {
       timerPosition: document.querySelector("#display")?.dataset.position,
       activeDisplay: document.querySelector("#app")?.dataset.activeDisplay,
       targetTime: document.querySelector("#targetTime")?.value,
+      completionText: document.querySelector("#completionTextInput")?.value,
+      completionDurationMin:
+        Number(document.querySelector("#completionDurationMin")?.value),
+      completionTextSize:
+        Number(document.querySelector("#completionTextSize")?.value),
       checkedLeads,
       hasOneHourPreset: Boolean(
         document.querySelector('.leadPreset[value="60"]')
@@ -57,6 +62,19 @@ try {
   }
   if (initial.targetTime !== "20:30") {
     failures.push(`default target time is ${initial.targetTime}`);
+  }
+  if (initial.completionText !== "お疲れ様でした") {
+    failures.push(`default completion text is ${initial.completionText}`);
+  }
+  if (initial.completionDurationMin !== 30) {
+    failures.push(
+      `default completion duration is ${initial.completionDurationMin}`
+    );
+  }
+  if (initial.completionTextSize !== 96) {
+    failures.push(
+      `default completion text size is ${initial.completionTextSize}`
+    );
   }
   if (!initial.hasOneHourPreset) {
     failures.push("1-hour lead-time checkbox is missing");
@@ -103,4 +121,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("WRO countdown default layout and 1-hour alert check passed.");
+console.log(
+  "WRO countdown defaults, completion message, layout, and 1-hour alert check passed."
+);
