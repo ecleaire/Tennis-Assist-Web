@@ -1,5 +1,6 @@
 export function createAutoWro(getSettings, callbacks) {
   let showingWro = false;
+  let paused = false;
   let startTimer = 0;
   let endTimer = 0;
   let endAt = 0;
@@ -17,7 +18,11 @@ export function createAutoWro(getSettings, callbacks) {
     clearTimeout(startTimer);
     startTimer = 0;
 
-    if (settings.mode !== "timer" || !settings.autoWroEnabled) return;
+    if (
+      paused ||
+      settings.mode !== "timer" ||
+      !settings.autoWroEnabled
+    ) return;
 
     startTimer = setTimeout(
       begin,
@@ -27,7 +32,11 @@ export function createAutoWro(getSettings, callbacks) {
 
   function begin() {
     const settings = getSettings();
-    if (settings.mode !== "timer" || !settings.autoWroEnabled) return;
+    if (
+      paused ||
+      settings.mode !== "timer" ||
+      !settings.autoWroEnabled
+    ) return;
 
     showingWro = true;
     endAt = Date.now() + settings.autoWroDurationMin * 60000;
@@ -56,8 +65,19 @@ export function createAutoWro(getSettings, callbacks) {
     if (animate) callbacks.animate();
   }
 
+  function setPaused(value) {
+    const next = Boolean(value);
+    if (paused === next) return;
+
+    paused = next;
+    clear();
+    showingWro = false;
+    if (!paused) schedule();
+  }
+
   return {
     restart,
+    setPaused,
     active: () => showingWro,
     endAt: () => endAt
   };
