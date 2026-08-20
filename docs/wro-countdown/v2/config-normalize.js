@@ -4,7 +4,10 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260820b";
+} from "./config-values.js?v=20260821b";
+import {
+  normalizeCompletionMessages
+} from "./completion-messages.js?v=20260821b";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
 export const clamp = (value, minimum, maximum) => {
@@ -82,6 +85,15 @@ const sizeSetting = (key, value) => numberSetting(
 
 export function normalize(raw = {}) {
   const value = { ...DEFAULTS, ...raw };
+  const completionMessages = normalizeCompletionMessages(
+    Array.isArray(raw.completionMessages)
+      ? raw.completionMessages
+      : null,
+    typeof raw.completionText === "string"
+      ? raw.completionText
+      : DEFAULTS.completionText,
+    DEFAULTS.completionMessages
+  );
 
   return {
     mode: value.mode === "wro" ? "wro" : "timer",
@@ -92,10 +104,14 @@ export function normalize(raw = {}) {
       DEFAULTS.showHourMinute
     ),
     timerText: text(value.timerText, DEFAULTS.timerText, 160),
-    completionText: text(
-      value.completionText,
-      DEFAULTS.completionText,
-      120
+    completionText: completionMessages[0],
+    completionMessages,
+    completionMessageIntervalSec: numberSetting(
+      raw.completionMessageIntervalSec,
+      DEFAULTS.completionMessageIntervalSec,
+      1,
+      3600,
+      1
     ),
     completionDurationMin: numberSetting(
       raw.completionDurationMin,
