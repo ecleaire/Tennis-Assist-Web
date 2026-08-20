@@ -28,6 +28,8 @@ export function renderSettings(controls, settings, setSettings, audio) {
   controls.autoWroEnabled.checked = settings.autoWroEnabled;
   controls.autoWroDuringCompletion.checked =
     settings.autoWroDuringCompletion;
+  controls.autoWroDuringCompletion.disabled =
+    !settings.autoWroEnabled;
   controls.autoWroInterval.value = settings.autoWroIntervalMin;
   controls.autoWroDuration.value = settings.autoWroDurationMin;
 
