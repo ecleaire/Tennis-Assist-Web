@@ -164,7 +164,7 @@ export function createCompletionMessagesController({
   function normalizedDraft() {
     return normalizeCompletionMessages(
       draftMessages,
-      getSettings().completionText,
+      "",
       [DEFAULT_MESSAGE]
     );
   }
@@ -243,7 +243,7 @@ export function createCompletionMessagesController({
 
     const messages = normalizeCompletionMessages(
       draftMessages,
-      getSettings().completionText,
+      "",
       [DEFAULT_MESSAGE]
     );
     draftMessages = [...messages];
