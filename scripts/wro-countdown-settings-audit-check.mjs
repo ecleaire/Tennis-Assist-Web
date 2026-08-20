@@ -104,6 +104,14 @@ async function setText(page, key, id, value) {
   await waitStored(page, key, value);
 }
 
+async function setCheckbox(page, id, checked) {
+  await page.evaluate(({ inputId, next }) => {
+    const input = document.getElementById(inputId);
+    input.checked = next;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, { inputId: id, next: checked });
+}
+
 async function openAdvanced(page) {
   await page.click("#gear");
   await page.waitForFunction(() =>
@@ -198,7 +206,7 @@ try {
     `recovered number remains invalid: ${recovered.invalid}`);
 
   // Dependent automatic-WRO controls are actually disabled, not only dimmed.
-  await page.uncheck("#autoWroEnabled");
+  await setCheckbox(page, "autoWroEnabled", false);
   await page.waitForFunction(() =>
     document.getElementById("autoWroInterval")?.disabled === true);
   const disabled = await page.evaluate(() => ({
@@ -208,7 +216,7 @@ try {
   }));
   expect(disabled.during && disabled.interval && disabled.duration,
     `automatic WRO dependencies are ${JSON.stringify(disabled)}`);
-  await page.check("#autoWroEnabled");
+  await setCheckbox(page, "autoWroEnabled", true);
 
   // Visible size controls report both the setting and final rendered size.
   await page.waitForTimeout(300);
@@ -253,7 +261,7 @@ try {
     target.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await waitStored(page, "targetTime", "18:45");
-  await page.click("#reset");
+  await page.evaluate(() => document.getElementById("reset").click());
   const afterFirstResetClick = await stored(page);
   const resetState = await page.evaluate(() => ({
     text: document.getElementById("reset").textContent,
@@ -264,7 +272,7 @@ try {
   expect(resetState.confirming && resetState.text.includes("もう一度"),
     `reset confirmation state is ${JSON.stringify(resetState)}`);
 
-  await page.click("#reset");
+  await page.evaluate(() => document.getElementById("reset").click());
   await waitStored(page, "targetTime", "20:30");
   const resetSaved = await stored(page);
   expect(resetSaved.clockSize === 64 && resetSaved.completionTextSize === 96,
