@@ -26,8 +26,10 @@
 .toggle span::after { content: ""; position: absolute; top: 4px; left: 4px; width: 19px; height: 19px; border-radius: 50%; background: var(--muted); transition: left .15s; }
 .toggle input:checked + span { border-color: var(--accent); background: var(--accent); }
 .toggle input:checked + span::after { left: 25px; background: var(--accentText); }
+.toggle input:disabled + span { cursor: not-allowed; }
 .autoWro { display: grid; gap: 12px; padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
-.autoWro.disabled .two { opacity: .42; pointer-events: none; }
+.autoWro.disabled .two,
+.autoWro.disabled .completionAutoWroSwitch { opacity: .42; pointer-events: none; }
 .range { display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: center; gap: 10px; }
 .range input[type="range"] { width: 100%; accent-color: var(--accent); }
 .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
