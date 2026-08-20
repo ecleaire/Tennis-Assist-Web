@@ -4,6 +4,7 @@ import { chromium } from "playwright";
 const BASE_URL = process.env.WRO_BASE_URL ||
   "http://127.0.0.1:4173/docs/wro-countdown/?completion-messages-audit=1";
 const SETTINGS_KEY = "wro-countdown-settings-v4";
+const INIT_MARKER = "wro-completion-messages-test-initialized";
 const COMPLETION_NOW = new Date("2026-08-20T11:30:02.000Z");
 const failures = [];
 
@@ -118,10 +119,14 @@ page.on("console", message => {
 });
 
 await page.clock.install({ time: COMPLETION_NOW });
-await page.addInitScript(({ key, value }) => {
-  localStorage.setItem(key, JSON.stringify(value));
+await page.addInitScript(({ key, marker, value }) => {
+  if (sessionStorage.getItem(marker) !== "1") {
+    localStorage.setItem(key, JSON.stringify(value));
+    sessionStorage.setItem(marker, "1");
+  }
 }, {
   key: SETTINGS_KEY,
+  marker: INIT_MARKER,
   value: {
     mode: "timer",
     targetTime: "20:30",
