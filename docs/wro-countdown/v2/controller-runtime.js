@@ -18,11 +18,16 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     applyPositioning(refs, getSettings(), automatic?.active() || false);
   }
 
+  function notifyLayoutUpdated() {
+    refs.app.dispatchEvent(new CustomEvent("wro:layout-updated"));
+  }
+
   function fit() {
     position();
     fitDisplay(refs, getSettings());
     fitCompletionMessage(refs, getSettings());
     constrainPositioning(refs);
+    notifyLayoutUpdated();
   }
 
   function tick() {
