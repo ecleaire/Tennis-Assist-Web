@@ -2,7 +2,7 @@ import {
   MAX_COMPLETION_MESSAGES,
   MAX_COMPLETION_MESSAGE_LENGTH,
   normalizeCompletionMessages
-} from "./completion-messages.js?v=20260821b";
+} from "./completion-messages.js?v=20260821c";
 
 const DEFAULT_MESSAGE = "お疲れ様でした";
 const COMMIT_DELAY = 140;
@@ -96,15 +96,6 @@ function card(message, index, count) {
   return article;
 }
 
-function numericValue(input, fallback) {
-  const value = Number(input.value);
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(
-    Number(input.max || 600),
-    Math.max(Number(input.min || 1), Math.round(value))
-  );
-}
-
 export function createCompletionMessagesController({
   getSettings,
   setSettings
@@ -167,18 +158,12 @@ export function createCompletionMessagesController({
       input?.setSelectionRange(input.value.length, input.value.length);
     }
 
-    // Replacing a focused textarea can dispatch change/focusout after the DOM
-    // mutation has begun. Keep the suppression flag through the current task
-    // so those stale events cannot save a partial list.
     queueMicrotask(() => {
       if (version === rebuildVersion) rebuilding = false;
     });
   }
 
   function normalizedDraft() {
-    // The rendered editor is authoritative while it exists. This prevents a
-    // delayed blur/change callback with a stale one-item draft from replacing
-    // a visible multi-message list after reorder or delete actions.
     const visibleMessages = valuesFromDom();
     if (visibleMessages.length) draftMessages = visibleMessages;
 
@@ -195,9 +180,6 @@ export function createCompletionMessagesController({
     commitTimer = 0;
     const messages = normalizedDraft();
 
-    // setSettings renders the whole settings panel synchronously. Record the
-    // incoming signature first so that render() does not replace this list in
-    // the middle of a blur/change/click sequence.
     lastRenderedSignature = JSON.stringify(messages);
     setSettings(
       {
@@ -244,9 +226,6 @@ export function createCompletionMessagesController({
     }, 0);
   });
 
-  // Keep the textarea focused until the delegated click handler has captured
-  // its current value. Otherwise the textarea change event can synchronously
-  // rebuild the list and remove the button before its click event arrives.
   list.addEventListener("pointerdown", event => {
     if (event.target.closest("[data-action]")) event.preventDefault();
   });
@@ -306,38 +285,6 @@ export function createCompletionMessagesController({
     draftMessages.push("");
     renderList({ focusIndex: draftMessages.length - 1 });
   };
-
-  interval.oninput = () => {
-    if (interval.value === "") {
-      interval.setAttribute("aria-invalid", "true");
-      return;
-    }
-    const value = Number(interval.value);
-    const valid = Number.isFinite(value) && value >= 1 && value <= 600;
-    interval.setAttribute("aria-invalid", valid ? "false" : "true");
-    if (!valid) return;
-    setSettings(
-      { completionMessageIntervalSec: Math.round(value) },
-      { quiet: true }
-    );
-  };
-
-  interval.onchange = () => {
-    const value = numericValue(
-      interval,
-      getSettings().completionMessageIntervalSec || 10
-    );
-    interval.value = String(value);
-    interval.setAttribute("aria-invalid", "false");
-    setSettings(
-      { completionMessageIntervalSec: value },
-      { quiet: true }
-    );
-  };
-
-  interval.addEventListener("wheel", event => {
-    if (document.activeElement === interval) event.preventDefault();
-  }, { passive: false });
 
   function render() {
     const settings = getSettings();
