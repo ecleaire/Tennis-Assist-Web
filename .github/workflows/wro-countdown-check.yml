@@ -17,6 +17,7 @@ on:
       - "scripts/wro-countdown-settings-recovery-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
+      - "scripts/wro-countdown-completion-messages-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - "scripts/wro-countdown-completion-fit-check.mjs"
       - "scripts/wro-countdown-completion-size-control-check.mjs"
@@ -37,6 +38,7 @@ on:
       - "scripts/wro-countdown-settings-recovery-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
+      - "scripts/wro-countdown-completion-messages-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - "scripts/wro-countdown-completion-fit-check.mjs"
       - "scripts/wro-countdown-completion-size-control-check.mjs"
@@ -49,7 +51,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -87,6 +89,7 @@ jobs:
           node scripts/wro-countdown-settings-audit-check.mjs
           node scripts/wro-countdown-settings-recovery-check.mjs
           node scripts/wro-countdown-completion-check.mjs
+          node scripts/wro-countdown-completion-messages-check.mjs
           node scripts/wro-countdown-completion-auto-wro-check.mjs
           node scripts/wro-countdown-completion-fit-check.mjs
           node scripts/wro-countdown-completion-size-control-check.mjs
