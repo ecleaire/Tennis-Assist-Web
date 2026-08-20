@@ -1,6 +1,6 @@
 import { renderLabels } from "./display-render.js?v=20260820a";
 import { fitDisplay } from "./display-fit.js?v=20260820a";
-import { fitCompletionMessage } from "./completion-fit.js?v=20260820e";
+import { fitCompletionMessage } from "./completion-fit.js?v=20260820f";
 import { createAutoWro } from "./display-auto.js?v=20260820a";
 import { createTimerTarget } from "./display-target.js?v=20260820a";
 import { applyDisplayTheme } from "./display-theme.js?v=20260820a";
