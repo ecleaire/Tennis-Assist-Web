@@ -1,0 +1,110 @@
+/* Final settings quality layer: validation, save state and live size feedback. */
+.settingsAutoSave {
+  min-width: 118px;
+  text-align: center;
+  transition:
+    border-color .16s ease,
+    color .16s ease,
+    background .16s ease;
+}
+
+.settingsAutoSave[data-state="saving"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+
+.settingsAutoSave[data-state="saved"] {
+  color: var(--muted);
+}
+
+.settingsAutoSave[data-state="warning"] {
+  border-color: #d58b25;
+  color: #f0ad4e;
+  background: color-mix(in srgb, #d58b25 9%, var(--bg));
+}
+
+.settingsAutoSave[data-state="error"] {
+  border-color: #d85b62;
+  color: #e2787e;
+  background: color-mix(in srgb, #d85b62 10%, var(--bg));
+}
+
+/* Native scrollIntoView and keyboard focus should never place a control under
+   the sticky settings header or footer actions. */
+.settings :is(input, select, textarea, button, summary) {
+  scroll-margin-top: 96px;
+  scroll-margin-bottom: 112px;
+}
+
+.advancedSettingsBody {
+  padding-bottom: 24px;
+}
+
+.settings .field.settingsInvalid input,
+.settings .sizeControl.settingsInvalid input {
+  border-color: #d85b62 !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #d85b62 18%, transparent);
+}
+
+.settingsInputError {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  color: #e2787e;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.settingSizeMetric {
+  display: block;
+  min-height: 1.45em;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.sizeControl:focus-within .settingSizeMetric {
+  color: var(--text);
+}
+
+.settings input[type="number"][aria-invalid="true"] {
+  color: #e2787e;
+}
+
+.settingsResetButton.confirming {
+  border-color: #d58b25 !important;
+  color: #f0ad4e !important;
+  background: color-mix(in srgb, #d58b25 10%, var(--bg)) !important;
+}
+
+.autoWro.disabled .completionAutoWroSwitch,
+.autoWro.disabled .two {
+  opacity: .42;
+}
+
+.settings input:disabled,
+.settings select:disabled,
+.settings textarea:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .settingsAutoSave {
+    min-width: 0;
+  }
+
+  .settingSizeMetric {
+    font-size: 9.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settingsAutoSave {
+    transition: none;
+  }
+}

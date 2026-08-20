@@ -13,6 +13,8 @@ on:
       - "scripts/wro-countdown-frameless-check.mjs"
       - "scripts/wro-countdown-background-check.mjs"
       - "scripts/wro-countdown-settings-layout-check.mjs"
+      - "scripts/wro-countdown-settings-audit-check.mjs"
+      - "scripts/wro-countdown-settings-recovery-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
@@ -31,6 +33,8 @@ on:
       - "scripts/wro-countdown-frameless-check.mjs"
       - "scripts/wro-countdown-background-check.mjs"
       - "scripts/wro-countdown-settings-layout-check.mjs"
+      - "scripts/wro-countdown-settings-audit-check.mjs"
+      - "scripts/wro-countdown-settings-recovery-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
@@ -45,7 +49,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +72,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
 
-      - name: Run stable URL, completion, responsive, settings, background, frameless, typography, defaults, anchor, and date audits
+      - name: Run stable URL, settings, recovery, completion, responsive, background, typography, defaults, anchor, and date audits
         run: |
           python3 -m http.server 4173 --directory . >/tmp/wro-countdown-server.log 2>&1 &
           SERVER_PID=$!
@@ -80,6 +84,8 @@ jobs:
             sleep 1
           done
           node scripts/wro-countdown-stable-url-check.mjs
+          node scripts/wro-countdown-settings-audit-check.mjs
+          node scripts/wro-countdown-settings-recovery-check.mjs
           node scripts/wro-countdown-completion-check.mjs
           node scripts/wro-countdown-completion-auto-wro-check.mjs
           node scripts/wro-countdown-completion-fit-check.mjs

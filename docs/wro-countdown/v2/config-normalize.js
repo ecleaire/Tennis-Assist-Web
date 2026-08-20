@@ -7,24 +7,59 @@ import {
 } from "./config-values.js?v=20260820b";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
-export const clamp = (value, minimum, maximum) =>
-  Math.min(maximum, Math.max(minimum, Number(value)));
+export const clamp = (value, minimum, maximum) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return minimum;
+  return Math.min(maximum, Math.max(minimum, numeric));
+};
 
 export const pad = value => String(value).padStart(2, "0");
+
+function decimalPlaces(value) {
+  const text = String(value);
+  return text.includes(".") ? text.split(".")[1].length : 0;
+}
+
+const numberSetting = (
+  value,
+  fallback,
+  minimum,
+  maximum,
+  step = 0
+) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+
+  const bounded = clamp(numeric, minimum, maximum);
+  if (!(step > 0)) return bounded;
+
+  const stepped = minimum + Math.round((bounded - minimum) / step) * step;
+  const precision = Math.max(
+    decimalPlaces(step),
+    decimalPlaces(minimum),
+    decimalPlaces(maximum)
+  );
+  return Number(clamp(stepped, minimum, maximum).toFixed(precision));
+};
+
+const booleanSetting = (value, fallback) =>
+  typeof value === "boolean" ? value : fallback;
 
 const position = (value, fallback) =>
   POSITION_VALUES.includes(value) ? value : fallback;
 
-const offset = (value, fallback = 0) => {
-  const number = Number(value);
-  return Number.isFinite(number)
-    ? clamp(number, -1000, 1000)
-    : fallback;
-};
+const offset = (value, fallback = 0) =>
+  numberSetting(value, fallback, -1000, 1000, 1);
 
 const text = (value, fallback, maximum) =>
   typeof value === "string"
-    ? value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, maximum)
+    ? value
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+        .slice(0, maximum)
     : fallback;
 
 const color = (value, fallback) =>
@@ -32,62 +67,73 @@ const color = (value, fallback) =>
     ? value.toLowerCase()
     : fallback;
 
+const targetTime = value =>
+  typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
+    ? value
+    : DEFAULTS.targetTime;
+
+const sizeSetting = (key, value) => numberSetting(
+  value,
+  DEFAULTS[key],
+  SIZE_LIMITS[key].minimum,
+  SIZE_LIMITS[key].maximum,
+  1
+);
+
 export function normalize(raw = {}) {
   const value = { ...DEFAULTS, ...raw };
 
   return {
     mode: value.mode === "wro" ? "wro" : "timer",
-    targetTime: /^\d{2}:\d{2}$/.test(value.targetTime)
-      ? value.targetTime
-      : DEFAULTS.targetTime,
-    showTarget: Boolean(value.showTarget),
-    showHourMinute: raw.showHourMinute === undefined
-      ? DEFAULTS.showHourMinute
-      : Boolean(raw.showHourMinute),
+    targetTime: targetTime(value.targetTime),
+    showTarget: booleanSetting(raw.showTarget, DEFAULTS.showTarget),
+    showHourMinute: booleanSetting(
+      raw.showHourMinute,
+      DEFAULTS.showHourMinute
+    ),
     timerText: text(value.timerText, DEFAULTS.timerText, 160),
     completionText: text(
       value.completionText,
       DEFAULTS.completionText,
       120
     ),
-    completionDurationMin: clamp(
-      raw.completionDurationMin ?? DEFAULTS.completionDurationMin,
+    completionDurationMin: numberSetting(
+      raw.completionDurationMin,
+      DEFAULTS.completionDurationMin,
       1,
-      1440
+      1440,
+      1
     ),
 
-    showCurrentTime: raw.showCurrentTime === undefined
-      ? DEFAULTS.showCurrentTime
-      : Boolean(raw.showCurrentTime),
+    showCurrentTime: booleanSetting(
+      raw.showCurrentTime,
+      DEFAULTS.showCurrentTime
+    ),
     currentTimeLabel: text(
       value.currentTimeLabel,
       DEFAULTS.currentTimeLabel,
       40
     ),
 
-    wroTitleSize: clamp(
-      value.wroTitleSize,
-      SIZE_LIMITS.wroTitleSize.minimum,
-      SIZE_LIMITS.wroTitleSize.maximum
-    ),
+    wroTitleSize: sizeSetting("wroTitleSize", value.wroTitleSize),
     wroDateSuffix: text(
       value.wroDateSuffix,
       DEFAULTS.wroDateSuffix,
       120
     ),
-    wroDateSuffixSize: clamp(
-      value.wroDateSuffixSize,
-      SIZE_LIMITS.wroDateSuffixSize.minimum,
-      SIZE_LIMITS.wroDateSuffixSize.maximum
+    wroDateSuffixSize: sizeSetting(
+      "wroDateSuffixSize",
+      value.wroDateSuffixSize
     ),
 
     theme: value.theme === "light" ? "light" : "dark",
     backgroundStyle: BACKGROUND_STYLES.includes(value.backgroundStyle)
       ? value.backgroundStyle
       : DEFAULTS.backgroundStyle,
-    backgroundUseThemeColors: raw.backgroundUseThemeColors === undefined
-      ? DEFAULTS.backgroundUseThemeColors
-      : Boolean(raw.backgroundUseThemeColors),
+    backgroundUseThemeColors: booleanSetting(
+      raw.backgroundUseThemeColors,
+      DEFAULTS.backgroundUseThemeColors
+    ),
     backgroundBaseColor: color(
       value.backgroundBaseColor,
       DEFAULTS.backgroundBaseColor
@@ -96,112 +142,116 @@ export function normalize(raw = {}) {
       value.backgroundAccentColor,
       DEFAULTS.backgroundAccentColor
     ),
-    backgroundStrength: clamp(
+    backgroundStrength: numberSetting(
       value.backgroundStrength,
+      DEFAULTS.backgroundStrength,
       0,
-      100
+      100,
+      1
     ),
-    backgroundGuides: raw.backgroundGuides === undefined
-      ? DEFAULTS.backgroundGuides
-      : Boolean(raw.backgroundGuides),
-    backgroundScanlines: raw.backgroundScanlines === undefined
-      ? DEFAULTS.backgroundScanlines
-      : Boolean(raw.backgroundScanlines),
-
-    autoSize: raw.autoSize === undefined
-      ? DEFAULTS.autoSize
-      : Boolean(raw.autoSize),
-    clockSize: clamp(
-      value.clockSize,
-      SIZE_LIMITS.clockSize.minimum,
-      SIZE_LIMITS.clockSize.maximum
+    backgroundGuides: booleanSetting(
+      raw.backgroundGuides,
+      DEFAULTS.backgroundGuides
     ),
-    dateSize: clamp(
-      value.dateSize,
-      SIZE_LIMITS.dateSize.minimum,
-      SIZE_LIMITS.dateSize.maximum
-    ),
-    timerSize: clamp(
-      value.timerSize,
-      SIZE_LIMITS.timerSize.minimum,
-      SIZE_LIMITS.timerSize.maximum
-    ),
-    completionTextSize: clamp(
-      value.completionTextSize,
-      SIZE_LIMITS.completionTextSize.minimum,
-      SIZE_LIMITS.completionTextSize.maximum
-    ),
-    targetSize: clamp(
-      value.targetSize,
-      SIZE_LIMITS.targetSize.minimum,
-      SIZE_LIMITS.targetSize.maximum
-    ),
-    subSize: clamp(
-      value.subSize,
-      SIZE_LIMITS.subSize.minimum,
-      SIZE_LIMITS.subSize.maximum
-    ),
-    timerTextSize: clamp(
-      value.timerTextSize,
-      SIZE_LIMITS.timerTextSize.minimum,
-      SIZE_LIMITS.timerTextSize.maximum
+    backgroundScanlines: booleanSetting(
+      raw.backgroundScanlines,
+      DEFAULTS.backgroundScanlines
     ),
 
-    clockPosition: position(
-      value.clockPosition,
-      DEFAULTS.clockPosition
+    autoSize: booleanSetting(raw.autoSize, DEFAULTS.autoSize),
+    clockSize: sizeSetting("clockSize", value.clockSize),
+    dateSize: sizeSetting("dateSize", value.dateSize),
+    timerSize: sizeSetting("timerSize", value.timerSize),
+    completionTextSize: sizeSetting(
+      "completionTextSize",
+      value.completionTextSize
     ),
+    targetSize: sizeSetting("targetSize", value.targetSize),
+    subSize: sizeSetting("subSize", value.subSize),
+    timerTextSize: sizeSetting("timerTextSize", value.timerTextSize),
+
+    clockPosition: position(value.clockPosition, DEFAULTS.clockPosition),
     clockOffsetX: offset(value.clockOffsetX, DEFAULTS.clockOffsetX),
     clockOffsetY: offset(value.clockOffsetY, DEFAULTS.clockOffsetY),
-    timerPosition: position(
-      value.timerPosition,
-      DEFAULTS.timerPosition
-    ),
+    timerPosition: position(value.timerPosition, DEFAULTS.timerPosition),
     timerOffsetX: offset(value.timerOffsetX, DEFAULTS.timerOffsetX),
     timerOffsetY: offset(value.timerOffsetY, DEFAULTS.timerOffsetY),
     wroPosition: position(value.wroPosition, DEFAULTS.wroPosition),
     wroOffsetX: offset(value.wroOffsetX, DEFAULTS.wroOffsetX),
     wroOffsetY: offset(value.wroOffsetY, DEFAULTS.wroOffsetY),
 
-    noiseStrength: clamp(value.noiseStrength, 0, 100),
+    noiseStrength: numberSetting(
+      value.noiseStrength,
+      DEFAULTS.noiseStrength,
+      0,
+      100,
+      1
+    ),
     noisePattern: ["random", ...PATTERNS].includes(value.noisePattern)
       ? value.noisePattern
-      : "random",
-    noiseIntervalMin: clamp(
-      raw.noiseIntervalMin ?? DEFAULTS.noiseIntervalMin,
+      : DEFAULTS.noisePattern,
+    noiseIntervalMin: numberSetting(
+      raw.noiseIntervalMin,
+      DEFAULTS.noiseIntervalMin,
       0,
-      180
+      180,
+      0.5
     ),
-    lineGap: clamp(value.lineGap, 0, 1000),
-    autoWroEnabled: raw.autoWroEnabled === undefined
-      ? DEFAULTS.autoWroEnabled
-      : Boolean(raw.autoWroEnabled),
-    autoWroDuringCompletion: raw.autoWroDuringCompletion === undefined
-      ? DEFAULTS.autoWroDuringCompletion
-      : Boolean(raw.autoWroDuringCompletion),
-    autoWroIntervalMin: clamp(
-      raw.autoWroIntervalMin ?? DEFAULTS.autoWroIntervalMin,
+    lineGap: numberSetting(
+      value.lineGap,
+      DEFAULTS.lineGap,
+      0,
+      1000,
+      1
+    ),
+    autoWroEnabled: booleanSetting(
+      raw.autoWroEnabled,
+      DEFAULTS.autoWroEnabled
+    ),
+    autoWroDuringCompletion: booleanSetting(
+      raw.autoWroDuringCompletion,
+      DEFAULTS.autoWroDuringCompletion
+    ),
+    autoWroIntervalMin: numberSetting(
+      raw.autoWroIntervalMin,
+      DEFAULTS.autoWroIntervalMin,
       1,
-      1440
+      1440,
+      1
     ),
-    autoWroDurationMin: clamp(
-      raw.autoWroDurationMin ?? DEFAULTS.autoWroDurationMin,
+    autoWroDurationMin: numberSetting(
+      raw.autoWroDurationMin,
+      DEFAULTS.autoWroDurationMin,
       0.1,
-      60
+      60,
+      0.1
     ),
-    alarmEnabled: Boolean(value.alarmEnabled),
-    atTarget: Boolean(value.atTarget),
+    alarmEnabled: booleanSetting(
+      raw.alarmEnabled,
+      DEFAULTS.alarmEnabled
+    ),
+    atTarget: booleanSetting(raw.atTarget, DEFAULTS.atTarget),
     leadTimes: Array.isArray(value.leadTimes)
       ? [...new Set(
           value.leadTimes
-            .map(Number)
-            .filter(minutes => minutes > 0 && minutes <= 1440)
+            .map(minutes => Math.round(Number(minutes)))
+            .filter(minutes =>
+              Number.isFinite(minutes) &&
+              minutes > 0 &&
+              minutes <= 1440
+            )
         )].sort((a, b) => a - b)
       : [...DEFAULTS.leadTimes],
-    volume: clamp(value.volume, 0, 100),
+    volume: numberSetting(
+      value.volume,
+      DEFAULTS.volume,
+      0,
+      100,
+      1
+    ),
     soundType: SOUND_TYPES.includes(value.soundType)
       ? value.soundType
-      : "bell",
-    fileName: typeof value.fileName === "string" ? value.fileName : ""
+      : DEFAULTS.soundType,
+    fileName: text(value.fileName, DEFAULTS.fileName, 255)
   };
 }
