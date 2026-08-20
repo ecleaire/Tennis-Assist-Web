@@ -17,6 +17,7 @@ on:
       - "scripts/wro-countdown-completion-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - "scripts/wro-countdown-completion-fit-check.mjs"
+      - "scripts/wro-countdown-completion-size-control-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
@@ -34,6 +35,7 @@ on:
       - "scripts/wro-countdown-completion-check.mjs"
       - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - "scripts/wro-countdown-completion-fit-check.mjs"
+      - "scripts/wro-countdown-completion-size-control-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -81,6 +83,7 @@ jobs:
           node scripts/wro-countdown-completion-check.mjs
           node scripts/wro-countdown-completion-auto-wro-check.mjs
           node scripts/wro-countdown-completion-fit-check.mjs
+          node scripts/wro-countdown-completion-size-control-check.mjs
           node scripts/wro-countdown-layout-check.mjs
           node scripts/wro-countdown-settings-layout-check.mjs
           node scripts/wro-countdown-background-check.mjs
