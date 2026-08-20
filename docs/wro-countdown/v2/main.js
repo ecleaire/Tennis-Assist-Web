@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821b";
+} from "./config.js?v=20260821c";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -23,10 +23,10 @@ import { applySizeLimits } from "./size-limits.js?v=20260820a";
 import {
   installExtraSettings,
   createExtraSettingsController
-} from "./extra-settings.js?v=20260821b";
+} from "./extra-settings.js?v=20260821c";
 import {
   createSettingsControlAudit
-} from "./settings-control-audit.js?v=20260821a";
+} from "./settings-control-audit.js?v=20260821c";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
 import { createDisplay } from "./display.js?v=20260821b";
@@ -110,6 +110,12 @@ function visibleCompletionMessages() {
     .filter(Boolean);
 }
 
+function firstNonEmptyMessage(messages) {
+  return messages
+    .map(message => String(message ?? "").trim())
+    .find(Boolean) || "";
+}
+
 function protectCompletionSequence(patch) {
   const next = { ...patch };
   const trustedAction = next.__completionSequenceAction || "";
@@ -124,24 +130,33 @@ function protectCompletionSequence(patch) {
     ? settings.completionMessages
     : [];
 
-  // A delayed handler from the former single-text control may still submit
-  // only completionText while a sequence editor is active. The sequence
-  // editor always submits both fields, so ignore alias-only updates once more
-  // than one message exists instead of collapsing the list to one message.
-  if (hasLegacyText && !hasSequence && currentSequence.length > 1) {
-    delete next.completionText;
+  // completionText is only a compatibility alias. For a single-message
+  // configuration, convert an alias-only update into the canonical array. For
+  // a multi-message configuration, ignore alias-only updates so an old or
+  // delayed handler cannot collapse the sequence.
+  if (hasLegacyText && !hasSequence) {
+    if (currentSequence.length <= 1) {
+      const text = String(next.completionText ?? "").trim();
+      next.completionMessages = text ? [text] : currentSequence;
+    } else {
+      delete next.completionText;
+    }
   }
 
   // Blur/change events can arrive after a reorder has rebuilt the editor. If
   // such a delayed save contains fewer messages than the currently visible
   // non-empty cards, preserve the complete visible list. Explicit remove
-  // actions carry a trusted marker and are allowed to reduce the count.
-  if (hasSequence && trustedAction !== "remove") {
-    const visibleMessages = visibleCompletionMessages();
-    if (visibleMessages.length > next.completionMessages.length) {
-      next.completionMessages = visibleMessages;
-      next.completionText = visibleMessages[0];
+  // actions are allowed to reduce the count.
+  if (Array.isArray(next.completionMessages)) {
+    if (trustedAction !== "remove") {
+      const visibleMessages = visibleCompletionMessages();
+      if (visibleMessages.length > next.completionMessages.length) {
+        next.completionMessages = visibleMessages;
+      }
     }
+
+    const first = firstNonEmptyMessage(next.completionMessages);
+    if (first) next.completionText = first;
   }
 
   return next;
@@ -212,8 +227,6 @@ bindEvents({
   selectedLeads
 });
 
-// Install this after the legacy handlers so every numeric, text and paired
-// range/number setting uses one consistent validation and live-save path.
 settingsAudit = createSettingsControlAudit({
   refs,
   getSettings,
