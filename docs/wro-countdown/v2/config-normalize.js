@@ -4,10 +4,10 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260821b";
+} from "./config-values.js?v=20260821c";
 import {
   normalizeCompletionMessages
-} from "./completion-messages.js?v=20260821b";
+} from "./completion-messages.js?v=20260821c";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
 export const clamp = (value, minimum, maximum) => {
@@ -110,7 +110,7 @@ export function normalize(raw = {}) {
       raw.completionMessageIntervalSec,
       DEFAULTS.completionMessageIntervalSec,
       1,
-      3600,
+      600,
       1
     ),
     completionDurationMin: numberSetting(
