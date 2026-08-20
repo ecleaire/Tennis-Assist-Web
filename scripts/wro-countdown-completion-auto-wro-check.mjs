@@ -4,6 +4,7 @@ import { chromium } from "playwright";
 const BASE_URL = process.env.WRO_BASE_URL ||
   "http://127.0.0.1:4173/docs/wro-countdown/?completion-auto-wro-audit=1";
 const SETTINGS_KEY = "wro-countdown-settings-v4";
+const INIT_MARKER = "wro-completion-auto-wro-test-initialized";
 const failures = [];
 
 function expect(condition, message) {
@@ -23,35 +24,35 @@ const {
   "docs/wro-countdown/v2/completion-auto-wro.js"
 );
 
-const timerSettings = {
+const defaultRule = {
   mode: "timer",
   autoWroDuringCompletion: false
 };
 expect(
-  shouldPauseAutomaticWro(timerSettings, true),
+  shouldPauseAutomaticWro(defaultRule, true),
   "completion should pause automatic WRO by default"
 );
 expect(
-  !shouldDisplayAutomaticWro(timerSettings, true, true),
+  !shouldDisplayAutomaticWro(defaultRule, true, true),
   "automatic WRO should stay hidden during completion by default"
 );
 expect(
   !shouldPauseAutomaticWro(
-    { ...timerSettings, autoWroDuringCompletion: true },
+    { ...defaultRule, autoWroDuringCompletion: true },
     true
   ),
   "enabled completion switching should not pause automatic WRO"
 );
 expect(
   shouldDisplayAutomaticWro(
-    { ...timerSettings, autoWroDuringCompletion: true },
+    { ...defaultRule, autoWroDuringCompletion: true },
     true,
     true
   ),
   "enabled completion switching should show active automatic WRO"
 );
 expect(
-  shouldDisplayAutomaticWro(timerSettings, false, true),
+  shouldDisplayAutomaticWro(defaultRule, false, true),
   "normal countdown automatic WRO behavior changed unexpectedly"
 );
 
@@ -74,9 +75,9 @@ async function inspect(page) {
   return page.evaluate(key => ({
     timerPhase: document.getElementById("app")?.dataset.timerPhase,
     activeDisplay: document.getElementById("app")?.dataset.activeDisplay,
-    modeLabel: document.getElementById("modeLabel")?.textContent,
-    mainValue: document.getElementById("mainValue")?.textContent,
-    status: document.getElementById("status")?.textContent,
+    modeLabel: document.getElementById("modeLabel")?.textContent || "",
+    mainValue: document.getElementById("mainValue")?.textContent || "",
+    status: document.getElementById("status")?.textContent || "",
     stored: JSON.parse(localStorage.getItem(key) || "{}")
   }), SETTINGS_KEY);
 }
@@ -175,7 +176,13 @@ const settingsContext = await browser.newContext({
 const settingsPage = await settingsContext.newPage();
 
 try {
-  await settingsPage.addInitScript(key => localStorage.removeItem(key), SETTINGS_KEY);
+  await settingsPage.addInitScript(({ key, marker }) => {
+    if (sessionStorage.getItem(marker) !== "1") {
+      localStorage.removeItem(key);
+      sessionStorage.setItem(marker, "1");
+    }
+  }, { key: SETTINGS_KEY, marker: INIT_MARKER });
+
   await settingsPage.goto(
     `${BASE_URL}&settings-control=1`,
     { waitUntil: "networkidle", timeout: 45_000 }
