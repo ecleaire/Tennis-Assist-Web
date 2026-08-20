@@ -16,6 +16,10 @@ export const clamp = (value, minimum, maximum) => {
 export const pad = value => String(value).padStart(2, "0");
 
 const numberSetting = (value, fallback, minimum, maximum) => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
   const numeric = Number(value);
   return Number.isFinite(numeric)
     ? clamp(numeric, minimum, maximum)
