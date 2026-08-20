@@ -37,7 +37,9 @@ function baseSettings(overrides = {}) {
 
 async function installSettings(page, settings) {
   await page.addInitScript(({ key, value }) => {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
   }, { key: SETTINGS_KEY, value: settings });
 }
 
