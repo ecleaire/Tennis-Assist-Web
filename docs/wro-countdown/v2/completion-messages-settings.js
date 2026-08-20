@@ -273,7 +273,8 @@ export function createCompletionMessagesController({
     setSettings(
       {
         completionMessages: messages,
-        completionText: messages[0]
+        completionText: messages[0],
+        __completionSequenceAction: action
       },
       { quiet: true }
     );
