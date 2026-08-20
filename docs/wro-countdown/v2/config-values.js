@@ -97,6 +97,7 @@ export const DEFAULTS = {
   noiseIntervalMin: 3,
   lineGap: 110,
   autoWroEnabled: true,
+  autoWroDuringCompletion: false,
   autoWroIntervalMin: 5,
   autoWroDurationMin: 1,
   alarmEnabled: true,
