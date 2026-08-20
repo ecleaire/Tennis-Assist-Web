@@ -4,7 +4,7 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260820a";
+} from "./config-values.js?v=20260820b";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
 export const clamp = (value, minimum, maximum) =>
@@ -176,6 +176,9 @@ export function normalize(raw = {}) {
     autoWroEnabled: raw.autoWroEnabled === undefined
       ? DEFAULTS.autoWroEnabled
       : Boolean(raw.autoWroEnabled),
+    autoWroDuringCompletion: raw.autoWroDuringCompletion === undefined
+      ? DEFAULTS.autoWroDuringCompletion
+      : Boolean(raw.autoWroDuringCompletion),
     autoWroIntervalMin: clamp(
       raw.autoWroIntervalMin ?? DEFAULTS.autoWroIntervalMin,
       1,
