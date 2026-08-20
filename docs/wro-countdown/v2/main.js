@@ -104,8 +104,17 @@ function reportSaveResult(saved) {
   }
 }
 
+function visibleCompletionMessages() {
+  return [...document.querySelectorAll(".completionMessageInput")]
+    .map(input => String(input.value || "").trim())
+    .filter(Boolean);
+}
+
 function protectCompletionSequence(patch) {
   const next = { ...patch };
+  const trustedAction = next.__completionSequenceAction || "";
+  delete next.__completionSequenceAction;
+
   const hasLegacyText = Object.prototype.hasOwnProperty.call(
     next,
     "completionText"
@@ -121,6 +130,18 @@ function protectCompletionSequence(patch) {
   // than one message exists instead of collapsing the list to one message.
   if (hasLegacyText && !hasSequence && currentSequence.length > 1) {
     delete next.completionText;
+  }
+
+  // Blur/change events can arrive after a reorder has rebuilt the editor. If
+  // such a delayed save contains fewer messages than the currently visible
+  // non-empty cards, preserve the complete visible list. Explicit remove
+  // actions carry a trusted marker and are allowed to reduce the count.
+  if (hasSequence && trustedAction !== "remove") {
+    const visibleMessages = visibleCompletionMessages();
+    if (visibleMessages.length > next.completionMessages.length) {
+      next.completionMessages = visibleMessages;
+      next.completionText = visibleMessages[0];
+    }
   }
 
   return next;
