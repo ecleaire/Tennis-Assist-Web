@@ -46,9 +46,11 @@ export const DEFAULTS = {
   showHourMinute: true,
   timerText: "",
 
-  // After the daily target, replace the large timer with this message before
-  // beginning the countdown to the following day's target.
+  // After the daily target, replace the large timer with these messages.
+  // completionText remains as a compatibility alias for the first message.
   completionText: "お疲れ様でした",
+  completionMessages: ["お疲れ様でした"],
+  completionMessageIntervalSec: 10,
   completionDurationMin: 30,
 
   // Current-time display shared by both modes.
