@@ -127,12 +127,16 @@ function verticalBudget(refs, viewport) {
   );
 }
 
-function preferredSize(settings, viewport) {
-  const configured = limit(
+function configuredSize(settings) {
+  return limit(
     Number(settings.completionTextSize) || BASE_COMPLETION_SIZE,
     CONFIGURED_MINIMUM,
     CONFIGURED_MAXIMUM
   );
+}
+
+function preferredSize(settings, viewport) {
+  const configured = configuredSize(settings);
 
   if (!settings.autoSize) return configured;
 
@@ -217,10 +221,18 @@ function actualFontSize(refs) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function exposeSizes(refs, requested, preferred) {
+  refs.app.dataset.completionRequestedSize = requested.toFixed(2);
+  refs.app.dataset.completionPreferredSize = preferred.toFixed(2);
+}
+
 export function fitCompletionMessage(refs, settings) {
   if (refs.app.dataset.timerPhase !== "completion") {
     refs.app.style.removeProperty("--completionTextMaxWidth");
     refs.app.dataset.completionFit = "inactive";
+    delete refs.app.dataset.completionRequestedSize;
+    delete refs.app.dataset.completionPreferredSize;
+    delete refs.app.dataset.completionFitSize;
     cache.delete(refs.app);
     return;
   }
@@ -228,6 +240,10 @@ export function fitCompletionMessage(refs, settings) {
   const viewport = viewportSize(refs);
   const width = horizontalBudget(refs, viewport);
   const height = verticalBudget(refs, viewport);
+  const requested = configuredSize(settings);
+  const preferred = preferredSize(settings, viewport);
+  exposeSizes(refs, requested, preferred);
+
   const key = signature(refs, settings, viewport, width, height);
   const previous = cache.get(refs.app);
 
@@ -239,7 +255,6 @@ export function fitCompletionMessage(refs, settings) {
     return;
   }
 
-  const preferred = preferredSize(settings, viewport);
   let low = SAFETY_MINIMUM;
   let high = preferred;
   let best = SAFETY_MINIMUM;
