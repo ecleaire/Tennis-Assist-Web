@@ -118,6 +118,8 @@ export function createCompletionMessagesController({
   let draftMessages = [];
   let commitTimer = 0;
   let lastRenderedSignature = "";
+  let rebuilding = false;
+  let rebuildVersion = 0;
 
   function settingsMessages() {
     const settings = getSettings();
@@ -144,6 +146,11 @@ export function createCompletionMessagesController({
     const messages = draftMessages.length
       ? draftMessages
       : settingsMessages();
+    const version = ++rebuildVersion;
+
+    window.clearTimeout(commitTimer);
+    commitTimer = 0;
+    rebuilding = true;
     list.replaceChildren(
       ...messages.map((message, index) =>
         card(message, index, messages.length)
@@ -159,6 +166,13 @@ export function createCompletionMessagesController({
       input?.focus();
       input?.setSelectionRange(input.value.length, input.value.length);
     }
+
+    // Replacing a focused textarea can dispatch change/focusout after the DOM
+    // mutation has begun. Keep the suppression flag through the current task
+    // so those stale events cannot save a partial list.
+    queueMicrotask(() => {
+      if (version === rebuildVersion) rebuilding = false;
+    });
   }
 
   function normalizedDraft() {
@@ -176,6 +190,7 @@ export function createCompletionMessagesController({
   }
 
   function saveDraft({ rebuild = false } = {}) {
+    if (rebuilding) return;
     window.clearTimeout(commitTimer);
     commitTimer = 0;
     const messages = normalizedDraft();
@@ -204,6 +219,7 @@ export function createCompletionMessagesController({
   }
 
   list.addEventListener("input", event => {
+    if (rebuilding) return;
     const input = event.target.closest(".completionMessageInput");
     if (!input) return;
     draftMessages = valuesFromDom();
@@ -211,6 +227,7 @@ export function createCompletionMessagesController({
   });
 
   list.addEventListener("change", event => {
+    if (rebuilding) return;
     const input = event.target.closest(".completionMessageInput");
     if (!input) return;
     draftMessages = valuesFromDom();
@@ -218,9 +235,10 @@ export function createCompletionMessagesController({
   });
 
   list.addEventListener("focusout", event => {
+    if (rebuilding) return;
     if (!event.target.closest(".completionMessageInput")) return;
     window.setTimeout(() => {
-      if (list.contains(document.activeElement)) return;
+      if (rebuilding || list.contains(document.activeElement)) return;
       draftMessages = settingsMessages();
       renderList();
     }, 0);
