@@ -1,8 +1,8 @@
 import {
   SETTINGS_KEY,
   OLD_SETTINGS_KEY
-} from "./config-values.js?v=20260821b";
-import { normalize } from "./config-normalize.js?v=20260821b";
+} from "./config-values.js?v=20260821c";
+import { normalize } from "./config-normalize.js?v=20260821c";
 
 function read(key) {
   const source = localStorage.getItem(key);

@@ -12,6 +12,8 @@ const settings = {
   showHourMinute: true,
   timerText: "",
   completionText: "お疲れ様でした",
+  completionMessages: ["お疲れ様でした"],
+  completionMessageIntervalSec: 10,
   completionDurationMin: 30,
   showCurrentTime: true,
   currentTimeLabel: "現在時刻",
@@ -233,7 +235,13 @@ try {
   expect(state.completionTextVariable === "150px",
     `completion text size variable is ${state.completionTextVariable}`);
   expect(state.stored.completionText === "本日の進行は終了しました",
-    "custom completion text was not saved");
+    "custom completion text alias was not saved");
+  expect(
+    JSON.stringify(state.stored.completionMessages) ===
+      JSON.stringify(["本日の進行は終了しました"]),
+    `custom completion message array is ` +
+      `${JSON.stringify(state.stored.completionMessages)}`
+  );
   expect(state.stored.completionDurationMin === 5,
     `completion duration saved as ${state.stored.completionDurationMin}`);
   expect(state.stored.completionTextSize === 150,
@@ -251,10 +259,12 @@ try {
   // date changes, then begin the same day's next-target countdown.
   await page.evaluate(({ settingsKey, nowKey }) => {
     const stored = JSON.parse(localStorage.getItem(settingsKey) || "{}");
+    const message = "夜間作業お疲れ様でした";
     localStorage.setItem(settingsKey, JSON.stringify({
       ...stored,
       targetTime: "23:50",
-      completionText: "夜間作業お疲れ様でした",
+      completionText: message,
+      completionMessages: [message],
       completionDurationMin: 30
     }));
     localStorage.setItem(

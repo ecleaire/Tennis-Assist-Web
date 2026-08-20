@@ -21,6 +21,7 @@ const PAIRS = [
 ];
 
 const NUMBERS = [
+  ["completionMessageIntervalSec", "completionMessageIntervalSec", 13],
   ["completionDurationMin", "completionDurationMin", 42],
   ["autoWroIntervalMin", "autoWroInterval", 7],
   ["autoWroDurationMin", "autoWroDuration", 1.7],
@@ -37,7 +38,6 @@ const NUMBERS = [
 const TEXTS = [
   ["currentTimeLabel", "currentTimeLabelInput", "会場現在時刻"],
   ["timerText", "timerTextInput", "競技終了まで {残り時間}"],
-  ["completionText", "completionTextInput", "本日もお疲れ様でした"],
   ["wroDateSuffix", "wroDateSuffixInput", "開幕まであと少し"]
 ];
 
@@ -153,6 +153,10 @@ try {
     saveStatus: document.getElementById("settingsSaveStatus")?.textContent || "",
     metricCount: document.querySelectorAll("[data-size-metric]").length,
     invalidCount: document.querySelectorAll('[aria-invalid="true"]').length,
+    intervalKey: document.getElementById("completionMessageIntervalSec")
+      ?.dataset.settingKey || "",
+    firstMessageKey: document.getElementById("completionTextInput")
+      ?.dataset.settingKey || "",
     autoSizeDescription: document.getElementById("autoSize")
       ?.closest(".switch")
       ?.querySelector(".switchCopy small")?.textContent || ""
@@ -163,6 +167,10 @@ try {
     `size metric count is ${initialUi.metricCount}`);
   expect(initialUi.invalidCount === 0,
     `initial invalid control count is ${initialUi.invalidCount}`);
+  expect(initialUi.intervalKey === "completionMessageIntervalSec",
+    `completion interval setting key is ${initialUi.intervalKey}`);
+  expect(initialUi.firstMessageKey === "",
+    `sequence textarea has duplicate generic setting handler ${initialUi.firstMessageKey}`);
   expect(initialUi.autoSizeDescription.includes("はみ出す場合だけ"),
     "auto-size behavior is not explained clearly");
 
@@ -176,7 +184,6 @@ try {
     await setText(page, key, id, value);
   }
 
-  // Number inputs clamp on commit and never save NaN or an out-of-range value.
   await setNumber(
     page,
     "completionTextSize",
@@ -184,10 +191,16 @@ try {
     999,
     320
   );
+  await setNumber(
+    page,
+    "completionMessageIntervalSec",
+    "completionMessageIntervalSec",
+    9999,
+    600
+  );
   await setNumber(page, "noiseIntervalMin", "noiseInterval", -5, 0);
   await setNumber(page, "autoWroDurationMin", "autoWroDuration", 99, 60);
 
-  // An empty number recovers to the current saved value on commit.
   const beforeEmpty = (await stored(page)).completionDurationMin;
   await page.evaluate(() => {
     const input = document.getElementById("completionDurationMin");
@@ -205,7 +218,6 @@ try {
   expect(recovered.invalid === "false",
     `recovered number remains invalid: ${recovered.invalid}`);
 
-  // Dependent automatic-WRO controls are actually disabled, not only dimmed.
   await setCheckbox(page, "autoWroEnabled", false);
   await page.waitForFunction(() =>
     document.getElementById("autoWroInterval")?.disabled === true);
@@ -218,7 +230,6 @@ try {
     `automatic WRO dependencies are ${JSON.stringify(disabled)}`);
   await setCheckbox(page, "autoWroEnabled", true);
 
-  // Visible size controls report both the setting and final rendered size.
   await page.waitForTimeout(300);
   const metrics = await page.evaluate(() => ({
     clock: document.querySelector('[data-size-metric="clockSize"]')?.textContent || "",
@@ -231,7 +242,6 @@ try {
   expect(metrics.timer.includes("現在は非表示"),
     `hidden timer metric is ${metrics.timer}`);
 
-  // Live completion-size changes work while the settings panel remains open.
   await setRange(
     page,
     "completionTextSize",
@@ -254,7 +264,6 @@ try {
   expect(largeFont > smallFont + 8,
     `completion text did not grow: ${smallFont} -> ${largeFont}`);
 
-  // Reset requires two clicks so one accidental tap cannot erase all settings.
   await page.evaluate(() => {
     const target = document.getElementById("targetTime");
     target.value = "18:45";
@@ -275,8 +284,14 @@ try {
   await page.evaluate(() => document.getElementById("reset").click());
   await waitStored(page, "targetTime", "20:30");
   const resetSaved = await stored(page);
-  expect(resetSaved.clockSize === 64 && resetSaved.completionTextSize === 96,
-    `reset did not restore defaults: ${resetSaved.clockSize}/${resetSaved.completionTextSize}`);
+  expect(
+    resetSaved.clockSize === 64 &&
+    resetSaved.completionTextSize === 96 &&
+    resetSaved.completionMessageIntervalSec === 10,
+    `reset did not restore defaults: ` +
+    `${resetSaved.clockSize}/${resetSaved.completionTextSize}/` +
+    `${resetSaved.completionMessageIntervalSec}`
+  );
 
   const finalStatus = await page.evaluate(() =>
     document.getElementById("settingsSaveStatus")?.textContent || "");
@@ -288,7 +303,6 @@ try {
 
 await context.close();
 
-// The reorganized settings panel must remain usable on the narrowest phone.
 const phoneContext = await browser.newContext({
   viewport: { width: 320, height: 568 },
   colorScheme: "dark",
