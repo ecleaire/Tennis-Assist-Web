@@ -32,6 +32,7 @@ try {
       .sort((a, b) => a - b);
     const descriptions = [...document.querySelectorAll(".positionEditorHead small")]
       .map(element => element.textContent.trim());
+    const completionWro = document.querySelector("#autoWroDuringCompletion");
 
     return {
       clockPosition: document.querySelector("#currentBlock")?.dataset.position,
@@ -43,6 +44,8 @@ try {
         Number(document.querySelector("#completionDurationMin")?.value),
       completionTextSize:
         Number(document.querySelector("#completionTextSize")?.value),
+      completionWroSettingExists: Boolean(completionWro),
+      autoWroDuringCompletion: Boolean(completionWro?.checked),
       checkedLeads,
       hasOneHourPreset: Boolean(
         document.querySelector('.leadPreset[value="60"]')
@@ -75,6 +78,12 @@ try {
     failures.push(
       `default completion text size is ${initial.completionTextSize}`
     );
+  }
+  if (!initial.completionWroSettingExists) {
+    failures.push("completion-time WRO switching control is missing");
+  }
+  if (initial.autoWroDuringCompletion) {
+    failures.push("completion-time WRO switching is on by default");
   }
   if (!initial.hasOneHourPreset) {
     failures.push("1-hour lead-time checkbox is missing");
@@ -122,5 +131,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO countdown defaults, completion message, layout, and 1-hour alert check passed."
+  "WRO countdown defaults, completion message, completion-time WRO opt-in, layout, and 1-hour alert check passed."
 );
