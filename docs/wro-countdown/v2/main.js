@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260820a";
+} from "./config.js?v=20260820b";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -13,9 +13,12 @@ import {
   installBackgroundSettings,
   createBackgroundSettingsController
 } from "./background-settings.js?v=20260815l";
+import {
+  installCompletionAutoWroSetting
+} from "./completion-auto-wro-setting.js?v=20260820b";
 import { installSettingsLayout } from "./settings-layout.js?v=20260820a";
-import { controls as makeControls } from "./controls.js?v=20260814m";
-import { renderSettings } from "./render-settings.js?v=20260815i";
+import { controls as makeControls } from "./controls.js?v=20260820b";
+import { renderSettings } from "./render-settings.js?v=20260820b";
 import { applySizeLimits } from "./size-limits.js?v=20260820a";
 import {
   installExtraSettings,
@@ -23,14 +26,15 @@ import {
 } from "./extra-settings.js?v=20260820a";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260820a";
-import { bindEvents } from "./events.js?v=20260814o";
+import { createDisplay } from "./display.js?v=20260820b";
+import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
 installSoundOptions();
 installExtraSettings();
 installDefaultSettingsUi();
 installBackgroundSettings();
+installCompletionAutoWroSetting();
 installSettingsLayout();
 applySizeLimits();
 
@@ -88,6 +92,7 @@ function setSettings(patch, options = {}) {
   const scheduleChanged = [
     "mode",
     "autoWroEnabled",
+    "autoWroDuringCompletion",
     "autoWroIntervalMin",
     "autoWroDurationMin"
   ].some(key => key in patch);
