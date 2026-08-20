@@ -36,17 +36,7 @@ export function renderStatus(
   timerState = null
 ) {
   if (autoWro.active()) {
-    const seconds = Math.max(
-      0,
-      Math.ceil((autoWro.endAt() - now) / 1000)
-    );
-    const elapsedLabel =
-      `全国大会表示中・${Math.floor(seconds / 60)}:${pad(seconds % 60)}`;
-
-    refs.status.textContent =
-      settings.mode === "timer" && timerState?.phase === "completion"
-        ? elapsedLabel
-        : `${elapsedLabel}後にタイマーへ戻ります`;
+    refs.status.textContent = "";
     return;
   }
 
