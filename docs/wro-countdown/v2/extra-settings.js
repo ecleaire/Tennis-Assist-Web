@@ -1,3 +1,8 @@
+import {
+  completionMessagesMarkup,
+  createCompletionMessagesController
+} from "./completion-messages-settings.js?v=20260821b";
+
 const $ = id => document.getElementById(id);
 
 function sizeControl(label, id, minimum, maximum, wide = false) {
@@ -39,13 +44,9 @@ export function installExtraSettings() {
   completionGroup.id = "completionSettingsGroup";
   completionGroup.className = "extraSettingsGroup";
   completionGroup.innerHTML = `
+${completionMessagesMarkup()}
 <label class="field">
-  <span class="label">タイマー終了後に表示する文字</span>
-  <textarea id="completionTextInput" rows="2" maxlength="120" placeholder="お疲れ様でした"></textarea>
-  <small class="help compact">指定時刻になると、大きなタイマーの代わりに表示します。空欄の場合は「お疲れ様でした」を表示します。</small>
-</label>
-<label class="field">
-  <span class="label">代替テキストを表示する時間（分）</span>
+  <span class="label">終了メッセージを表示する時間（分）</span>
   <input id="completionDurationMin" type="number" min="1" max="1440" step="1">
   <small class="help compact">初期値は30分です。表示時間が終わると、翌日の同じ目標時刻までのタイマーを開始します。</small>
 </label>`;
@@ -119,7 +120,6 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     showCurrentTime: $("showCurrentTime"),
     currentTimeLabelField: $("currentTimeLabelField"),
     currentTimeLabelInput: $("currentTimeLabelInput"),
-    completionTextInput: $("completionTextInput"),
     completionDurationMin: $("completionDurationMin"),
     dateSizeRange: $("dateSizeRange"),
     dateSize: $("dateSize"),
@@ -131,6 +131,11 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     wroDateSuffixSizeRange: $("wroDateSuffixSizeRange"),
     wroDateSuffixSize: $("wroDateSuffixSize")
   };
+
+  const completionMessages = createCompletionMessagesController({
+    getSettings,
+    setSettings
+  });
 
   controls.showCurrentTime.onchange = () => {
     setSettings(
@@ -145,17 +150,6 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     currentLabelTimer = window.setTimeout(() => {
       setSettings(
         { currentTimeLabel: controls.currentTimeLabelInput.value },
-        { quiet: true }
-      );
-    }, 100);
-  };
-
-  let completionTextTimer = 0;
-  controls.completionTextInput.oninput = () => {
-    window.clearTimeout(completionTextTimer);
-    completionTextTimer = window.setTimeout(() => {
-      setSettings(
-        { completionText: controls.completionTextInput.value },
         { quiet: true }
       );
     }, 100);
@@ -216,9 +210,6 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     if (document.activeElement !== controls.currentTimeLabelInput) {
       controls.currentTimeLabelInput.value = settings.currentTimeLabel;
     }
-    if (document.activeElement !== controls.completionTextInput) {
-      controls.completionTextInput.value = settings.completionText;
-    }
     if (document.activeElement !== controls.completionDurationMin) {
       controls.completionDurationMin.value = settings.completionDurationMin;
     }
@@ -233,6 +224,7 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     controls.wroTitleSize.value = settings.wroTitleSize;
     controls.wroDateSuffixSizeRange.value = settings.wroDateSuffixSize;
     controls.wroDateSuffixSize.value = settings.wroDateSuffixSize;
+    completionMessages.render();
   }
 
   return { render };
