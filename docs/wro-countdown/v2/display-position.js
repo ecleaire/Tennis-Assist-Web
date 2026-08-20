@@ -1,10 +1,11 @@
 const DESKTOP_QUERY =
   "(min-width: 1000px) and (orientation: landscape)";
 const COLLISION_GAP = 18;
+const MIN_CLOCK_SIZE = 20;
+const MIN_COMPLETION_SIZE = 8;
 
 const DISPLAY_VARIABLES = [
   ["--timerFit", 30],
-  ["--completionTextFit", 20],
   ["--targetFit", 12],
   ["--subFit", 12],
   ["--timerTextFit", 12],
@@ -285,6 +286,11 @@ function readVariable(app, name, fallback) {
 function baseSizes(refs) {
   return {
     clock: readVariable(refs.app, "--clockFit", 64),
+    completion: readVariable(
+      refs.app,
+      "--completionTextFit",
+      MIN_COMPLETION_SIZE
+    ),
     display: Object.fromEntries(
       DISPLAY_VARIABLES.map(([name, minimum]) => [
         name,
@@ -294,10 +300,23 @@ function baseSizes(refs) {
   };
 }
 
-function applySafetyScale(refs, bases, clockScale, displayScale) {
+function applySafetyScale(
+  refs,
+  bases,
+  clockScale,
+  displayScale,
+  completionScale
+) {
   refs.app.style.setProperty(
     "--clockFit",
-    `${Math.max(20, bases.clock * clockScale)}px`
+    `${Math.max(MIN_CLOCK_SIZE, bases.clock * clockScale)}px`
+  );
+  refs.app.style.setProperty(
+    "--completionTextFit",
+    `${Math.max(
+      MIN_COMPLETION_SIZE,
+      bases.completion * completionScale
+    )}px`
   );
   for (const [name, minimum] of DISPLAY_VARIABLES) {
     refs.app.style.setProperty(
@@ -333,6 +352,19 @@ function collisionState(refs) {
 
   state.any = Object.values(state).some(Boolean);
   return state;
+}
+
+function recordCompletionSize(refs, completionScale) {
+  if (refs.app.dataset.timerPhase !== "completion") {
+    delete refs.app.dataset.completionSafetyScale;
+    return;
+  }
+
+  const size = Number.parseFloat(getComputedStyle(refs.mainValue).fontSize);
+  if (Number.isFinite(size)) {
+    refs.app.dataset.completionFitSize = size.toFixed(2);
+  }
+  refs.app.dataset.completionSafetyScale = completionScale.toFixed(4);
 }
 
 export function applyPositioning(refs, settings, temporaryWro = false) {
@@ -372,20 +404,30 @@ export function constrainPositioning(refs) {
     refs.app.dataset.layoutCollision = "none";
     refs.app.dataset.clockAnchorPreserved = "true";
     refs.app.dataset.displayAnchorPreserved = "true";
+    recordCompletionSize(refs, 1);
     return;
   }
 
   const bounds = safeBounds(refs);
   const bases = baseSizes(refs);
+  const completionActive = refs.app.dataset.timerPhase === "completion";
   let clockScale = 1;
   let displayScale = 1;
+  let completionScale = 1;
   let resolved = false;
 
-  // Both selected anchors are authoritative. A shared anchor is resolved by
-  // vertical stacking on the same left/center/right edge; different anchors
-  // stay fixed and are made safe by fitting the content instead of moving it.
-  for (let pass = 0; pass < 14; pass += 1) {
-    applySafetyScale(refs, bases, clockScale, displayScale);
+  // The completion message is the primary content after the target time. On
+  // PC, protect the user's completion-text size by shrinking the secondary
+  // current-time block first. Only reduce the completion text as a final
+  // safety fallback when another fixed obstacle still overlaps it.
+  for (let pass = 0; pass < 18; pass += 1) {
+    applySafetyScale(
+      refs,
+      bases,
+      clockScale,
+      displayScale,
+      completionScale
+    );
     constrainElement(refs.currentBlock, bounds);
     constrainElement(refs.display, bounds);
     stackDisplayAtSharedAnchor(refs, bounds);
@@ -397,22 +439,46 @@ export function constrainPositioning(refs) {
     }
 
     let changed = false;
-    if (state.currentActions || state.currentFooter) {
-      clockScale *= 0.82;
-      changed = true;
-    }
-    if (
-      state.currentDisplay ||
-      state.displayActions ||
-      state.displayFooter
-    ) {
-      displayScale *= 0.82;
-      changed = true;
-    }
 
-    if (state.currentDisplay && pass >= 10) {
-      clockScale *= 0.94;
-      changed = true;
+    if (completionActive) {
+      if (state.currentActions || state.currentFooter) {
+        clockScale *= 0.82;
+        changed = true;
+      }
+
+      if (state.currentDisplay) {
+        const currentClockSize = bases.clock * clockScale;
+        if (currentClockSize > MIN_CLOCK_SIZE + 0.5) {
+          clockScale *= 0.82;
+        } else {
+          completionScale *= 0.94;
+          displayScale *= 0.94;
+        }
+        changed = true;
+      }
+
+      if (state.displayActions || state.displayFooter) {
+        completionScale *= 0.94;
+        displayScale *= 0.94;
+        changed = true;
+      }
+    } else {
+      if (state.currentActions || state.currentFooter) {
+        clockScale *= 0.82;
+        changed = true;
+      }
+      if (
+        state.currentDisplay ||
+        state.displayActions ||
+        state.displayFooter
+      ) {
+        displayScale *= 0.82;
+        changed = true;
+      }
+      if (state.currentDisplay && pass >= 10) {
+        clockScale *= 0.94;
+        changed = true;
+      }
     }
 
     if (!changed) break;
@@ -421,4 +487,5 @@ export function constrainPositioning(refs) {
   refs.app.dataset.layoutCollision = resolved ? "resolved" : "unresolved";
   refs.app.dataset.clockAnchorPreserved = "true";
   refs.app.dataset.displayAnchorPreserved = "true";
+  recordCompletionSize(refs, completionScale);
 }
