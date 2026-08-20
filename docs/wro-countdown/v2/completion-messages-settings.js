@@ -162,6 +162,12 @@ export function createCompletionMessagesController({
   }
 
   function normalizedDraft() {
+    // The rendered editor is authoritative while it exists. This prevents a
+    // delayed blur/change callback with a stale one-item draft from replacing
+    // a visible multi-message list after reorder or delete actions.
+    const visibleMessages = valuesFromDom();
+    if (visibleMessages.length) draftMessages = visibleMessages;
+
     return normalizeCompletionMessages(
       draftMessages,
       "",
