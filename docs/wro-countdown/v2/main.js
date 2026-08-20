@@ -24,9 +24,12 @@ import {
   installExtraSettings,
   createExtraSettingsController
 } from "./extra-settings.js?v=20260820a";
+import {
+  createSettingsControlAudit
+} from "./settings-control-audit.js?v=20260821a";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260820g";
+import { createDisplay } from "./display.js?v=20260821a";
 import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
@@ -46,6 +49,7 @@ const controls = makeControls();
 let settings = load();
 let audio;
 let display;
+let settingsAudit = null;
 
 const getSettings = () => settings;
 const noise = createNoise(refs, getSettings);
@@ -84,6 +88,7 @@ function render() {
   renderSettings(controls, settings, setSettings, audio);
   extraSettings.render();
   backgroundSettings.render();
+  settingsAudit?.render();
 }
 
 function setSettings(patch, options = {}) {
@@ -111,6 +116,7 @@ function setSettings(patch, options = {}) {
 
   noise.restart();
   display.tick();
+  settingsAudit?.markSaved();
   if (!options.quiet) noise.play();
 }
 
@@ -148,6 +154,17 @@ bindEvents({
   selectedLeads
 });
 
+// Install this after the legacy handlers so every numeric, text and paired
+// range/number setting uses one consistent validation and live-save path.
+settingsAudit = createSettingsControlAudit({
+  refs,
+  getSettings,
+  setSettings,
+  audio,
+  noise,
+  reset
+});
+
 async function start() {
   display.applyVisual();
   render();
@@ -156,6 +173,7 @@ async function start() {
   noise.restart();
   display.restartSchedule(false);
   display.tick();
+  settingsAudit.markSaved();
   window.setInterval(display.tick, 250);
   window.setTimeout(noise.play, 180);
 }
