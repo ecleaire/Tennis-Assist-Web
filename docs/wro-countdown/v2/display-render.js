@@ -1,10 +1,11 @@
 import {
   calendarDaysUntilJst,
+  completionMessageAt,
   duration,
   pad,
   WRO_DATE,
   WRO_TARGET
-} from "./config.js?v=20260820a";
+} from "./config.js?v=20260821b";
 
 let currentSettings = null;
 
@@ -72,6 +73,7 @@ function normalizeTimerState(value) {
     return {
       phase: "countdown",
       remaining: value,
+      completionElapsed: 0,
       completionRemaining: 0
     };
   }
@@ -79,18 +81,42 @@ function normalizeTimerState(value) {
   return value || {
     phase: "countdown",
     remaining: 0,
+    completionElapsed: 0,
     completionRemaining: 0
   };
 }
 
+function animateCompletionMessage(refs, index, count) {
+  const nextIndex = String(index);
+  const changed = refs.app.dataset.completionMessageIndex !== nextIndex;
+
+  refs.app.dataset.completionMessageIndex = nextIndex;
+  refs.app.dataset.completionMessageCount = String(count);
+  if (!changed) return;
+
+  refs.mainValue.classList.remove("completionMessageSwitch");
+  void refs.mainValue.offsetWidth;
+  refs.mainValue.classList.add("completionMessageSwitch");
+}
+
+function clearCompletionMessageState(refs) {
+  delete refs.app.dataset.completionMessageIndex;
+  delete refs.app.dataset.completionMessageCount;
+  refs.mainValue.classList.remove("completionMessageSwitch");
+}
+
 function renderCompletion(refs, state, settings) {
-  const message = String(settings.completionText || "").trim() ||
-    "お疲れ様でした";
+  const selected = completionMessageAt(
+    settings.completionMessages || [settings.completionText],
+    state.completionElapsed,
+    settings.completionMessageIntervalSec
+  );
   const switchValues = timerValues(state.completionRemaining);
 
   refs.timerText.hidden = true;
   refs.timerText.textContent = "";
-  refs.mainValue.textContent = message;
+  refs.mainValue.textContent = selected.text;
+  animateCompletionMessage(refs, selected.index, selected.count);
   refs.subValue.hidden = !settings.showHourMinute;
   refs.subValue.textContent =
     `次の${settings.targetTime}までのタイマーを ` +
@@ -102,7 +128,9 @@ export function renderTimer(refs, suppliedState, suppliedSettings) {
     showHourMinute: true,
     timerText: "",
     targetTime: "",
-    completionText: "お疲れ様でした"
+    completionText: "お疲れ様でした",
+    completionMessages: ["お疲れ様でした"],
+    completionMessageIntervalSec: 10
   };
   const state = normalizeTimerState(suppliedState);
 
@@ -113,6 +141,7 @@ export function renderTimer(refs, suppliedState, suppliedSettings) {
     return;
   }
 
+  clearCompletionMessageState(refs);
   const values = timerValues(state.remaining);
   renderTimerText(refs, settings, values);
 
@@ -125,6 +154,7 @@ export function renderTimer(refs, suppliedState, suppliedSettings) {
 
 export function renderWro(refs, remaining, nowDate = new Date()) {
   refs.app.dataset.timerPhase = "wro";
+  clearCompletionMessageState(refs);
   refs.timerText.hidden = true;
   refs.timerText.textContent = "";
   refs.subValue.hidden = false;
