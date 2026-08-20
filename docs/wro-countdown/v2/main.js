@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821a";
+} from "./config.js?v=20260821b";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -16,20 +16,20 @@ import {
 import {
   installCompletionAutoWroSetting
 } from "./completion-auto-wro-setting.js?v=20260820b";
-import { installSettingsLayout } from "./settings-layout.js?v=20260820a";
+import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
 import { renderSettings } from "./render-settings.js?v=20260820b";
 import { applySizeLimits } from "./size-limits.js?v=20260820a";
 import {
   installExtraSettings,
   createExtraSettingsController
-} from "./extra-settings.js?v=20260820a";
+} from "./extra-settings.js?v=20260821b";
 import {
   createSettingsControlAudit
 } from "./settings-control-audit.js?v=20260821a";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260821a";
+import { createDisplay } from "./display.js?v=20260821b";
 import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
