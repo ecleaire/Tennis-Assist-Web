@@ -80,14 +80,19 @@ async function setRange(page, key, rangeId, numberId, value) {
     `${key}: range/number are ${values.range}/${values.number}, expected ${value}`);
 }
 
-async function setNumber(page, key, id, value) {
+async function setNumber(page, key, id, value, expected = value) {
   await page.evaluate(({ inputId, next }) => {
     const input = document.getElementById(inputId);
     input.value = String(next);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, { inputId: id, next: value });
-  await waitStored(page, key, value);
+  await waitStored(page, key, expected);
+
+  const rendered = await page.evaluate(inputId =>
+    Number(document.getElementById(inputId).value), id);
+  expect(rendered === expected,
+    `${key}: rendered value is ${rendered}, expected ${expected}`);
 }
 
 async function setText(page, key, id, value) {
@@ -140,7 +145,6 @@ try {
     saveStatus: document.getElementById("settingsSaveStatus")?.textContent || "",
     metricCount: document.querySelectorAll("[data-size-metric]").length,
     invalidCount: document.querySelectorAll('[aria-invalid="true"]').length,
-    resetText: document.getElementById("reset")?.textContent || "",
     autoSizeDescription: document.getElementById("autoSize")
       ?.closest(".switch")
       ?.querySelector(".switchCopy small")?.textContent || ""
@@ -157,32 +161,26 @@ try {
   for (const [key, rangeId, numberId, value] of PAIRS) {
     await setRange(page, key, rangeId, numberId, value);
   }
-
   for (const [key, id, value] of NUMBERS) {
     await setNumber(page, key, id, value);
   }
-
   for (const [key, id, value] of TEXTS) {
     await setText(page, key, id, value);
   }
 
-  // Number inputs must clamp safely on commit and must not save NaN.
-  await setNumber(page, "completionTextSize", "completionTextSize", 999);
-  let saved = await stored(page);
-  expect(saved.completionTextSize === 320,
-    `completionTextSize was not clamped: ${saved.completionTextSize}`);
+  // Number inputs clamp on commit and never save NaN or an out-of-range value.
+  await setNumber(
+    page,
+    "completionTextSize",
+    "completionTextSize",
+    999,
+    320
+  );
+  await setNumber(page, "noiseIntervalMin", "noiseInterval", -5, 0);
+  await setNumber(page, "autoWroDurationMin", "autoWroDuration", 99, 60);
 
-  await setNumber(page, "noiseIntervalMin", "noiseInterval", -5);
-  saved = await stored(page);
-  expect(saved.noiseIntervalMin === 0,
-    `noiseIntervalMin was not clamped: ${saved.noiseIntervalMin}`);
-
-  await setNumber(page, "autoWroDurationMin", "autoWroDuration", 99);
-  saved = await stored(page);
-  expect(saved.autoWroDurationMin === 60,
-    `autoWroDurationMin was not clamped: ${saved.autoWroDurationMin}`);
-
-  // Invalid intermediate input should be marked and should recover on blur.
+  // An empty number recovers to the current saved value on commit.
+  const beforeEmpty = (await stored(page)).completionDurationMin;
   await page.evaluate(() => {
     const input = document.getElementById("completionDurationMin");
     input.value = "";
@@ -194,12 +192,12 @@ try {
     invalid: document.getElementById("completionDurationMin")
       .getAttribute("aria-invalid")
   }));
-  expect(Number.isFinite(recovered.value) && recovered.value >= 1,
-    `empty number did not recover: ${recovered.value}`);
+  expect(recovered.value === beforeEmpty,
+    `empty number recovered as ${recovered.value}, expected ${beforeEmpty}`);
   expect(recovered.invalid === "false",
     `recovered number remains invalid: ${recovered.invalid}`);
 
-  // Dependent automatic-WRO controls must be disabled semantically.
+  // Dependent automatic-WRO controls are actually disabled, not only dimmed.
   await page.uncheck("#autoWroEnabled");
   await page.waitForFunction(() =>
     document.getElementById("autoWroInterval")?.disabled === true);
@@ -212,7 +210,7 @@ try {
     `automatic WRO dependencies are ${JSON.stringify(disabled)}`);
   await page.check("#autoWroEnabled");
 
-  // Metrics must report configured and actual sizes for visible elements.
+  // Visible size controls report both the setting and final rendered size.
   await page.waitForTimeout(300);
   const metrics = await page.evaluate(() => ({
     clock: document.querySelector('[data-size-metric="clockSize"]')?.textContent || "",
@@ -225,26 +223,38 @@ try {
   expect(metrics.timer.includes("現在は非表示"),
     `hidden timer metric is ${metrics.timer}`);
 
-  // Live completion-size changes must work while the settings panel is open.
-  await setRange(page, "completionTextSize", "completionTextSizeRange", "completionTextSize", 36);
+  // Live completion-size changes work while the settings panel remains open.
+  await setRange(
+    page,
+    "completionTextSize",
+    "completionTextSizeRange",
+    "completionTextSize",
+    36
+  );
   const smallFont = await page.evaluate(() =>
     Number.parseFloat(getComputedStyle(document.getElementById("mainValue")).fontSize));
-  await setRange(page, "completionTextSize", "completionTextSizeRange", "completionTextSize", 180);
+  await setRange(
+    page,
+    "completionTextSize",
+    "completionTextSizeRange",
+    "completionTextSize",
+    180
+  );
   await page.waitForTimeout(220);
   const largeFont = await page.evaluate(() =>
     Number.parseFloat(getComputedStyle(document.getElementById("mainValue")).fontSize));
   expect(largeFont > smallFont + 8,
     `completion text did not grow: ${smallFont} -> ${largeFont}`);
 
-  // Reset is intentionally a two-step action to avoid accidental data loss.
+  // Reset requires two clicks so one accidental tap cannot erase all settings.
   await page.evaluate(() => {
-    document.getElementById("targetTime").value = "18:45";
-    document.getElementById("targetTime")
-      .dispatchEvent(new Event("change", { bubbles: true }));
+    const target = document.getElementById("targetTime");
+    target.value = "18:45";
+    target.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await waitStored(page, "targetTime", "18:45");
   await page.click("#reset");
-  let afterFirstResetClick = await stored(page);
+  const afterFirstResetClick = await stored(page);
   const resetState = await page.evaluate(() => ({
     text: document.getElementById("reset").textContent,
     confirming: document.getElementById("reset").classList.contains("confirming")
@@ -256,9 +266,9 @@ try {
 
   await page.click("#reset");
   await waitStored(page, "targetTime", "20:30");
-  saved = await stored(page);
-  expect(saved.clockSize === 64 && saved.completionTextSize === 96,
-    `reset did not restore size defaults: ${saved.clockSize}/${saved.completionTextSize}`);
+  const resetSaved = await stored(page);
+  expect(resetSaved.clockSize === 64 && resetSaved.completionTextSize === 96,
+    `reset did not restore defaults: ${resetSaved.clockSize}/${resetSaved.completionTextSize}`);
 
   const finalStatus = await page.evaluate(() =>
     document.getElementById("settingsSaveStatus")?.textContent || "");
@@ -270,7 +280,7 @@ try {
 
 await context.close();
 
-// Confirm that the reorganized settings remain usable on a narrow phone.
+// The reorganized settings panel must remain usable on the narrowest phone.
 const phoneContext = await browser.newContext({
   viewport: { width: 320, height: 568 },
   colorScheme: "dark",
@@ -288,13 +298,13 @@ try {
   }, { timeout: 15_000 });
   await phonePage.click("#gear");
   const panel = await phonePage.evaluate(() => {
-    const rect = document.querySelector(".panel").getBoundingClientRect();
+    const element = document.querySelector(".panel");
+    const rect = element.getBoundingClientRect();
     return {
       left: rect.left,
       right: rect.right,
       width: rect.width,
-      scrollable: document.querySelector(".panel").scrollHeight >
-        document.querySelector(".panel").clientHeight
+      scrollable: element.scrollHeight > element.clientHeight
     };
   });
   expect(panel.left >= -2 && panel.right <= 322,
