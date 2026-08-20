@@ -139,19 +139,19 @@
 
 @keyframes completion-message-switch {
   0% {
-    opacity: .08;
-    transform: translate3d(0, .16em, 0) scale(.985);
+    opacity: .06;
     filter: blur(2px);
+    clip-path: inset(46% 0 46% 0);
   }
-  46% {
-    opacity: .78;
-    transform: translate3d(.012em, 0, 0) scale(1.005);
-    filter: blur(.4px);
+  48% {
+    opacity: .82;
+    filter: blur(.35px);
+    clip-path: inset(0 0 0 0);
   }
   100% {
     opacity: 1;
-    transform: none;
     filter: none;
+    clip-path: inset(0 0 0 0);
   }
 }
 
