@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260820b";
+} from "./config.js?v=20260821a";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -91,6 +91,19 @@ function render() {
   settingsAudit?.render();
 }
 
+function reportSaveResult(saved) {
+  if (saved) {
+    settingsAudit?.markSaved();
+    return;
+  }
+
+  const status = document.getElementById("settingsSaveStatus");
+  if (status) {
+    status.dataset.state = "error";
+    status.textContent = "この端末へ保存できません";
+  }
+}
+
 function setSettings(patch, options = {}) {
   const oldMode = settings.mode;
   const oldTime = settings.targetTime;
@@ -103,7 +116,7 @@ function setSettings(patch, options = {}) {
   ].some(key => key in patch);
 
   settings = normalize({ ...settings, ...patch });
-  save(settings);
+  const saved = save(settings);
   display.applyVisual();
   render();
 
@@ -116,7 +129,7 @@ function setSettings(patch, options = {}) {
 
   noise.restart();
   display.tick();
-  settingsAudit?.markSaved();
+  reportSaveResult(saved);
   if (!options.quiet) noise.play();
 }
 
@@ -131,13 +144,14 @@ function selectedLeads() {
 
 function reset() {
   settings = normalize();
-  save(settings);
+  const saved = save(settings);
   display.setTarget();
   display.applyVisual();
   render();
   noise.restart();
   display.restartSchedule(false);
   display.tick();
+  reportSaveResult(saved);
   noise.play();
 }
 
