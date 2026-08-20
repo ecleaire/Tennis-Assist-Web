@@ -135,11 +135,31 @@ function configuredSize(settings) {
   );
 }
 
-function preferredSize(settings, viewport) {
+// Long messages used to reach their maximum safe size at the default slider
+// value, so increasing the value on PC appeared to do nothing. Give longer
+// text a lower automatic starting scale while preserving the full slider
+// range for later enlargement.
+function contentScale(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map(line => Array.from(line.replace(/\s+/g, "")).length)
+    .filter(Boolean);
+
+  if (!lines.length) return 1;
+
+  const longest = Math.max(...lines);
+  const total = lines.reduce((sum, length) => sum + length, 0);
+  const longestScale = Math.sqrt(8 / Math.max(8, longest));
+  const totalScale = Math.pow(16 / Math.max(16, total), 0.15);
+  return limit(longestScale * totalScale, 0.42, 1);
+}
+
+function preferredSize(settings, viewport, text) {
   const configured = configuredSize(settings);
 
   if (!settings.autoSize) return configured;
 
+  const messageScale = contentScale(text);
   const portrait = viewport.height >= viewport.width;
   if (desktopLayout()) {
     const referenceScale = limit(
@@ -148,7 +168,8 @@ function preferredSize(settings, viewport) {
       2
     );
     return limit(
-      180 * referenceScale * configured / BASE_COMPLETION_SIZE,
+      180 * referenceScale * configured /
+        BASE_COMPLETION_SIZE * messageScale,
       CONFIGURED_MINIMUM,
       CONFIGURED_MAXIMUM
     );
@@ -163,7 +184,7 @@ function preferredSize(settings, viewport) {
 
   return limit(
     (66 + widthProgress * 62) * heightScale *
-      configured / BASE_COMPLETION_SIZE,
+      configured / BASE_COMPLETION_SIZE * messageScale,
     CONFIGURED_MINIMUM,
     CONFIGURED_MAXIMUM
   );
@@ -221,9 +242,10 @@ function actualFontSize(refs) {
   return Number.isFinite(value) ? value : 0;
 }
 
-function exposeSizes(refs, requested, preferred) {
+function exposeSizes(refs, requested, preferred, scale) {
   refs.app.dataset.completionRequestedSize = requested.toFixed(2);
   refs.app.dataset.completionPreferredSize = preferred.toFixed(2);
+  refs.app.dataset.completionContentScale = scale.toFixed(4);
 }
 
 export function fitCompletionMessage(refs, settings) {
@@ -232,6 +254,7 @@ export function fitCompletionMessage(refs, settings) {
     refs.app.dataset.completionFit = "inactive";
     delete refs.app.dataset.completionRequestedSize;
     delete refs.app.dataset.completionPreferredSize;
+    delete refs.app.dataset.completionContentScale;
     delete refs.app.dataset.completionFitSize;
     cache.delete(refs.app);
     return;
@@ -241,8 +264,15 @@ export function fitCompletionMessage(refs, settings) {
   const width = horizontalBudget(refs, viewport);
   const height = verticalBudget(refs, viewport);
   const requested = configuredSize(settings);
-  const preferred = preferredSize(settings, viewport);
-  exposeSizes(refs, requested, preferred);
+  const scale = settings.autoSize
+    ? contentScale(refs.mainValue.textContent)
+    : 1;
+  const preferred = preferredSize(
+    settings,
+    viewport,
+    refs.mainValue.textContent
+  );
+  exposeSizes(refs, requested, preferred, scale);
 
   const key = signature(refs, settings, viewport, width, height);
   const previous = cache.get(refs.app);
