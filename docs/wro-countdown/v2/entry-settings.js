@@ -16,4 +16,4 @@ player.id = "audioPlayer";
 player.preload = "auto";
 document.getElementById("app").append(player);
 
-import("./main.js?v=20260820c");
+import("./main.js?v=20260820d");
