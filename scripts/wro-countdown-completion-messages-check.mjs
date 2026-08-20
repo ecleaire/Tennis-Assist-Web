@@ -83,16 +83,25 @@ async function inspect(page) {
 }
 
 async function waitStored(page, expectedMessages, expectedInterval) {
-  await page.waitForFunction(({ key, messages, interval }) => {
-    const stored = JSON.parse(localStorage.getItem(key) || "{}");
-    return JSON.stringify(stored.completionMessages) === JSON.stringify(messages) &&
-      stored.completionMessageIntervalSec === interval &&
-      stored.completionText === messages[0];
-  }, {
-    key: SETTINGS_KEY,
-    messages: expectedMessages,
-    interval: expectedInterval
-  }, { timeout: 15_000 });
+  try {
+    await page.waitForFunction(({ key, messages, interval }) => {
+      const stored = JSON.parse(localStorage.getItem(key) || "{}");
+      return JSON.stringify(stored.completionMessages) === JSON.stringify(messages) &&
+        stored.completionMessageIntervalSec === interval &&
+        stored.completionText === messages[0];
+    }, {
+      key: SETTINGS_KEY,
+      messages: expectedMessages,
+      interval: expectedInterval
+    }, { timeout: 15_000 });
+  } catch (error) {
+    const actual = await inspect(page);
+    throw new Error(
+      `Timed out waiting for ${JSON.stringify(expectedMessages)} / ` +
+      `${expectedInterval}. Actual state: ${JSON.stringify(actual)}`,
+      { cause: error }
+    );
+  }
 }
 
 const context = await browser.newContext({
