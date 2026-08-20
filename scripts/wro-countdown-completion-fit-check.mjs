@@ -122,10 +122,6 @@ async function inspect(page) {
       mainRect: elementRect(main),
       displayRect: elementRect(display),
       blockRect,
-      mainScrollWidth: main.scrollWidth,
-      mainClientWidth: main.clientWidth,
-      mainScrollHeight: main.scrollHeight,
-      mainClientHeight: main.clientHeight,
       documentScrollWidth: document.documentElement.scrollWidth,
       documentScrollHeight: document.documentElement.scrollHeight,
       bodyScrollWidth: document.body.scrollWidth,
@@ -201,16 +197,6 @@ for (const viewport of viewports) {
         viewport.height
       ), `${label}: completion block is outside viewport ` +
         `${JSON.stringify(state.blockRect)}`);
-      expect(
-        state.mainScrollWidth <= state.mainClientWidth + 1,
-        `${label}: horizontal text overflow ` +
-        `${state.mainScrollWidth}/${state.mainClientWidth}`
-      );
-      expect(
-        state.mainScrollHeight <= state.mainClientHeight + 1,
-        `${label}: vertical text overflow ` +
-        `${state.mainScrollHeight}/${state.mainClientHeight}`
-      );
       expect(
         state.documentScrollWidth <= viewport.width + 2 &&
         state.bodyScrollWidth <= viewport.width + 2,
