@@ -9,7 +9,7 @@ import {
   renderWro,
   renderLabels
 } from "./display-render.js?v=20260820a";
-import { renderStatus } from "./display-status.js?v=20260820b";
+import { renderStatus } from "./display-status.js?v=20260820c";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   const date = new Date();

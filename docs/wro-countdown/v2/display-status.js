@@ -40,13 +40,13 @@ export function renderStatus(
       0,
       Math.ceil((autoWro.endAt() - now) / 1000)
     );
-    const returnLabel =
-      settings.mode === "timer" && timerState?.phase === "completion"
-        ? "終了メッセージ"
-        : "タイマー";
+    const elapsedLabel =
+      `全国大会表示中・${Math.floor(seconds / 60)}:${pad(seconds % 60)}`;
+
     refs.status.textContent =
-      `全国大会表示中・${Math.floor(seconds / 60)}:${pad(seconds % 60)}` +
-      `後に${returnLabel}へ戻ります`;
+      settings.mode === "timer" && timerState?.phase === "completion"
+        ? elapsedLabel
+        : `${elapsedLabel}後にタイマーへ戻ります`;
     return;
   }
 
