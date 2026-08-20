@@ -40,10 +40,10 @@ expect(
 expect(
   JSON.stringify(normalizeCompletionMessages(
     ["以前の1", "以前の2"],
-    "新しい先頭",
+    "古い別名",
     ["お疲れ様でした"]
-  )) === JSON.stringify(["新しい先頭", "以前の2"]),
-  "explicit legacy first-message edit was not preserved"
+  )) === JSON.stringify(["以前の1", "以前の2"]),
+  "legacy alias overwrote the canonical message array"
 );
 expect(
   normalizeCompletionMessages(
@@ -331,5 +331,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO completion message sequence, looping, editor, order, interval, persistence, and legacy migration check passed."
+  "WRO completion message sequence, looping, editor, order, interval, persistence, canonical arrays, and legacy migration check passed."
 );
