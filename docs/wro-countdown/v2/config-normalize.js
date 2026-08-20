@@ -15,15 +15,35 @@ export const clamp = (value, minimum, maximum) => {
 
 export const pad = value => String(value).padStart(2, "0");
 
-const numberSetting = (value, fallback, minimum, maximum) => {
+function decimalPlaces(value) {
+  const text = String(value);
+  return text.includes(".") ? text.split(".")[1].length : 0;
+}
+
+const numberSetting = (
+  value,
+  fallback,
+  minimum,
+  maximum,
+  step = 0
+) => {
   if (value === null || value === undefined || value === "") {
     return fallback;
   }
 
   const numeric = Number(value);
-  return Number.isFinite(numeric)
-    ? clamp(numeric, minimum, maximum)
-    : fallback;
+  if (!Number.isFinite(numeric)) return fallback;
+
+  const bounded = clamp(numeric, minimum, maximum);
+  if (!(step > 0)) return bounded;
+
+  const stepped = minimum + Math.round((bounded - minimum) / step) * step;
+  const precision = Math.max(
+    decimalPlaces(step),
+    decimalPlaces(minimum),
+    decimalPlaces(maximum)
+  );
+  return Number(clamp(stepped, minimum, maximum).toFixed(precision));
 };
 
 const booleanSetting = (value, fallback) =>
@@ -33,7 +53,7 @@ const position = (value, fallback) =>
   POSITION_VALUES.includes(value) ? value : fallback;
 
 const offset = (value, fallback = 0) =>
-  numberSetting(value, fallback, -1000, 1000);
+  numberSetting(value, fallback, -1000, 1000, 1);
 
 const text = (value, fallback, maximum) =>
   typeof value === "string"
@@ -56,7 +76,8 @@ const sizeSetting = (key, value) => numberSetting(
   value,
   DEFAULTS[key],
   SIZE_LIMITS[key].minimum,
-  SIZE_LIMITS[key].maximum
+  SIZE_LIMITS[key].maximum,
+  1
 );
 
 export function normalize(raw = {}) {
@@ -80,7 +101,8 @@ export function normalize(raw = {}) {
       raw.completionDurationMin,
       DEFAULTS.completionDurationMin,
       1,
-      1440
+      1440,
+      1
     ),
 
     showCurrentTime: booleanSetting(
@@ -124,7 +146,8 @@ export function normalize(raw = {}) {
       value.backgroundStrength,
       DEFAULTS.backgroundStrength,
       0,
-      100
+      100,
+      1
     ),
     backgroundGuides: booleanSetting(
       raw.backgroundGuides,
@@ -161,7 +184,8 @@ export function normalize(raw = {}) {
       value.noiseStrength,
       DEFAULTS.noiseStrength,
       0,
-      100
+      100,
+      1
     ),
     noisePattern: ["random", ...PATTERNS].includes(value.noisePattern)
       ? value.noisePattern
@@ -170,13 +194,15 @@ export function normalize(raw = {}) {
       raw.noiseIntervalMin,
       DEFAULTS.noiseIntervalMin,
       0,
-      180
+      180,
+      0.5
     ),
     lineGap: numberSetting(
       value.lineGap,
       DEFAULTS.lineGap,
       0,
-      1000
+      1000,
+      1
     ),
     autoWroEnabled: booleanSetting(
       raw.autoWroEnabled,
@@ -190,13 +216,15 @@ export function normalize(raw = {}) {
       raw.autoWroIntervalMin,
       DEFAULTS.autoWroIntervalMin,
       1,
-      1440
+      1440,
+      1
     ),
     autoWroDurationMin: numberSetting(
       raw.autoWroDurationMin,
       DEFAULTS.autoWroDurationMin,
       0.1,
-      60
+      60,
+      0.1
     ),
     alarmEnabled: booleanSetting(
       raw.alarmEnabled,
@@ -206,7 +234,7 @@ export function normalize(raw = {}) {
     leadTimes: Array.isArray(value.leadTimes)
       ? [...new Set(
           value.leadTimes
-            .map(Number)
+            .map(minutes => Math.round(Number(minutes)))
             .filter(minutes =>
               Number.isFinite(minutes) &&
               minutes > 0 &&
@@ -214,7 +242,13 @@ export function normalize(raw = {}) {
             )
         )].sort((a, b) => a - b)
       : [...DEFAULTS.leadTimes],
-    volume: numberSetting(value.volume, DEFAULTS.volume, 0, 100),
+    volume: numberSetting(
+      value.volume,
+      DEFAULTS.volume,
+      0,
+      100,
+      1
+    ),
     soundType: SOUND_TYPES.includes(value.soundType)
       ? value.soundType
       : DEFAULTS.soundType,
