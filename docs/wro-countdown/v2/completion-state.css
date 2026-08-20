@@ -1,5 +1,9 @@
 /* Timer-complete state: replace the large numeric value with a readable
-   configurable message while keeping the existing frameless presentation. */
+   configurable message while keeping the existing frameless presentation.
+
+   The JavaScript fitter owns the final font size. Do not add vw/vh caps here:
+   those caps made larger user-selected values appear to have no effect on
+   phones even when more room was available. */
 .app {
   --completionText: 96px;
   --completionTextFit: var(--completionText);
@@ -21,7 +25,7 @@
   line-break: strict;
   hyphens: auto;
   font-family: var(--font-ui), system-ui, sans-serif !important;
-  font-size: var(--completionTextFit);
+  font-size: var(--completionTextFit) !important;
   font-weight: 700 !important;
   font-stretch: 100% !important;
   font-variant-numeric: normal;
@@ -53,7 +57,6 @@
 @media (orientation: landscape) and (max-width: 999px) {
   .app[data-timer-phase="completion"] .display .mainValue {
     max-width: min(100%, var(--completionTextMaxWidth));
-    font-size: min(var(--completionTextFit), 8.5vw, 15vh);
     line-height: 1.12;
   }
 }
@@ -61,7 +64,6 @@
 @media (orientation: portrait) and (max-width: 640px) {
   .app[data-timer-phase="completion"] .mainValue {
     max-width: min(100%, var(--completionTextMaxWidth));
-    font-size: min(var(--completionTextFit), 17vw);
     line-height: 1.16;
   }
 
