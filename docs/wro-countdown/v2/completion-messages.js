@@ -14,32 +14,19 @@ export function normalizeCompletionMessages(
   legacyMessage,
   fallbackMessages = ["お疲れ様でした"]
 ) {
-  const legacy = sanitizeMessage(legacyMessage);
   const fallbackSource = Array.isArray(fallbackMessages)
     ? fallbackMessages
     : [fallbackMessages];
-  const fallbackFirst = sanitizeMessage(fallbackSource[0]);
-  let source;
+  const legacy = sanitizeMessage(legacyMessage);
 
-  if (Array.isArray(messages)) {
-    source = [...messages];
-    const currentFirst = sanitizeMessage(source[0]);
-    // completionText is retained as a compatibility alias. If older code
-    // explicitly changed it, treat that value as an edit to the first item.
-    // A missing alias is normalized to the default, so do not let that default
-    // overwrite an already saved custom sequence.
-    if (
-      legacy &&
-      currentFirst !== legacy &&
-      (!currentFirst || legacy !== fallbackFirst)
-    ) {
-      source[0] = legacy;
-    }
-  } else if (legacy) {
-    source = [legacy];
-  } else {
-    source = fallbackSource;
-  }
+  // The array is the canonical source once it exists. completionText is kept
+  // only to migrate data saved by the former single-message implementation.
+  // This avoids an old or delayed alias value overwriting a valid sequence.
+  const source = Array.isArray(messages)
+    ? messages
+    : legacy
+      ? [legacy]
+      : fallbackSource;
 
   const normalized = source
     .slice(0, MAX_COMPLETION_MESSAGES)
