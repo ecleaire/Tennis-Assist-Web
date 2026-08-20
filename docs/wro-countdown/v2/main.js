@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821a";
+} from "./config.js?v=20260821b";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -16,20 +16,20 @@ import {
 import {
   installCompletionAutoWroSetting
 } from "./completion-auto-wro-setting.js?v=20260820b";
-import { installSettingsLayout } from "./settings-layout.js?v=20260820a";
+import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
 import { renderSettings } from "./render-settings.js?v=20260820b";
 import { applySizeLimits } from "./size-limits.js?v=20260820a";
 import {
   installExtraSettings,
   createExtraSettingsController
-} from "./extra-settings.js?v=20260820a";
+} from "./extra-settings.js?v=20260821b";
 import {
   createSettingsControlAudit
 } from "./settings-control-audit.js?v=20260821a";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260821a";
+import { createDisplay } from "./display.js?v=20260821b";
 import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
@@ -104,6 +104,49 @@ function reportSaveResult(saved) {
   }
 }
 
+function visibleCompletionMessages() {
+  return [...document.querySelectorAll(".completionMessageInput")]
+    .map(input => String(input.value || "").trim())
+    .filter(Boolean);
+}
+
+function protectCompletionSequence(patch) {
+  const next = { ...patch };
+  const trustedAction = next.__completionSequenceAction || "";
+  delete next.__completionSequenceAction;
+
+  const hasLegacyText = Object.prototype.hasOwnProperty.call(
+    next,
+    "completionText"
+  );
+  const hasSequence = Array.isArray(next.completionMessages);
+  const currentSequence = Array.isArray(settings.completionMessages)
+    ? settings.completionMessages
+    : [];
+
+  // A delayed handler from the former single-text control may still submit
+  // only completionText while a sequence editor is active. The sequence
+  // editor always submits both fields, so ignore alias-only updates once more
+  // than one message exists instead of collapsing the list to one message.
+  if (hasLegacyText && !hasSequence && currentSequence.length > 1) {
+    delete next.completionText;
+  }
+
+  // Blur/change events can arrive after a reorder has rebuilt the editor. If
+  // such a delayed save contains fewer messages than the currently visible
+  // non-empty cards, preserve the complete visible list. Explicit remove
+  // actions carry a trusted marker and are allowed to reduce the count.
+  if (hasSequence && trustedAction !== "remove") {
+    const visibleMessages = visibleCompletionMessages();
+    if (visibleMessages.length > next.completionMessages.length) {
+      next.completionMessages = visibleMessages;
+      next.completionText = visibleMessages[0];
+    }
+  }
+
+  return next;
+}
+
 function setSettings(patch, options = {}) {
   const oldMode = settings.mode;
   const oldTime = settings.targetTime;
@@ -114,8 +157,9 @@ function setSettings(patch, options = {}) {
     "autoWroIntervalMin",
     "autoWroDurationMin"
   ].some(key => key in patch);
+  const protectedPatch = protectCompletionSequence(patch);
 
-  settings = normalize({ ...settings, ...patch });
+  settings = normalize({ ...settings, ...protectedPatch });
   const saved = save(settings);
   display.applyVisual();
   render();

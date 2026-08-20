@@ -1,4 +1,4 @@
-import { jstParts, jstStamp } from "./config.js?v=20260820a";
+import { jstParts, jstStamp } from "./config.js?v=20260821b";
 
 const DAY_MS = 86400000;
 
@@ -141,6 +141,7 @@ export function createTimerTarget(getSettings, onAlarm) {
         completedTarget: cycle.completedTarget,
         nextTarget: cycle.nextTarget,
         completionEnd: cycle.completionEnd,
+        completionElapsed: Math.max(0, now - cycle.completedTarget),
         completionRemaining: Math.max(0, cycle.completionEnd - now)
       };
     }
@@ -152,6 +153,7 @@ export function createTimerTarget(getSettings, onAlarm) {
       completedTarget: 0,
       nextTarget: cycle.target,
       completionEnd: 0,
+      completionElapsed: 0,
       completionRemaining: 0
     };
   }

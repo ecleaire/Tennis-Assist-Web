@@ -1,0 +1,180 @@
+/* Sequential timer-completion messages and their settings editor. */
+.completionMessagesEditor {
+  display: grid;
+  gap: 11px;
+}
+
+.completionMessagesHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.completionMessagesHead .label,
+.completionMessagesHead small {
+  display: block;
+}
+
+.completionMessagesHead small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.completionMessagesHeadActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.completionMessageCount {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.completionMessageAdd {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.completionMessageList {
+  display: grid;
+  gap: 9px;
+}
+
+.completionMessageCard {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.completionMessageCard:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.completionMessageCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.completionMessageCardTitle {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.completionMessageCardActions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.completionMessageAction {
+  min-width: 32px;
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 7px;
+  color: var(--muted);
+  background: var(--soft);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.completionMessageAction:hover:not(:disabled) {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.completionMessageAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.completionMessageAction:disabled {
+  opacity: .32;
+  cursor: not-allowed;
+}
+
+.completionMessageInput {
+  width: 100%;
+  min-width: 0;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: var(--panel);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  outline: none;
+}
+
+.completionMessageInput:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  outline-offset: 1px;
+}
+
+.app[data-timer-phase="completion"] .mainValue.completionMessageSwitch {
+  animation: completion-message-switch .34s cubic-bezier(.2, .7, .25, 1);
+}
+
+@keyframes completion-message-switch {
+  0% {
+    opacity: .06;
+    filter: blur(2px);
+    clip-path: inset(46% 0 46% 0);
+  }
+  48% {
+    opacity: .82;
+    filter: blur(.35px);
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (max-width: 600px) {
+  .completionMessagesHead {
+    display: grid;
+  }
+
+  .completionMessagesHeadActions {
+    justify-content: space-between;
+  }
+
+  .completionMessageAdd {
+    flex: 1;
+  }
+
+  .completionMessageCardHead {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app[data-timer-phase="completion"] .mainValue.completionMessageSwitch {
+    animation: none;
+  }
+}
