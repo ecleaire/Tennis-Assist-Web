@@ -14,11 +14,21 @@ export function normalizeCompletionMessages(
   legacyMessage,
   fallbackMessages = ["お疲れ様でした"]
 ) {
-  const source = Array.isArray(messages)
-    ? messages
-    : typeof legacyMessage === "string"
-      ? [legacyMessage]
-      : fallbackMessages;
+  const legacy = sanitizeMessage(legacyMessage);
+  let source;
+
+  if (Array.isArray(messages)) {
+    source = [...messages];
+    // completionText is retained as a compatibility alias. If older code
+    // explicitly changed it, treat that value as an edit to the first item.
+    if (legacy && sanitizeMessage(source[0]) !== legacy) {
+      source[0] = legacy;
+    }
+  } else if (legacy) {
+    source = [legacy];
+  } else {
+    source = fallbackMessages;
+  }
 
   const normalized = source
     .slice(0, MAX_COMPLETION_MESSAGES)
