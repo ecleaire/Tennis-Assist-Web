@@ -80,7 +80,8 @@ function prepareDisplayDetails(displaySection) {
 
   const currentTimeGroup = $("currentTimeLabelInput")?.closest(".extraSettingsGroup");
   const timerTextField = $("timerTextField");
-  const completionGroup = $("completionTextInput")?.closest(".extraSettingsGroup");
+  const completionGroup = $("completionSettingsGroup") ||
+    $("completionTextInput")?.closest(".extraSettingsGroup");
   const wroTextGroup = $("wroDateSuffixInput")?.closest(".extraSettingsGroup");
   const autoWro = $("autoWroSettings");
 
@@ -92,7 +93,7 @@ function prepareDisplayDetails(displaySection) {
     ),
     createSubgroup(
       "タイマー終了後の表示",
-      "指定時刻後に表示するメッセージと、翌日のタイマーへ切り替えるまでの時間を設定します。",
+      "複数の終了メッセージを並べ、切り替え間隔と翌日のタイマーへ移るまでの時間を設定します。",
       [completionGroup]
     ),
     createSubgroup(
@@ -105,7 +106,7 @@ function prepareDisplayDetails(displaySection) {
   return retitleSection(
     displaySection,
     "文字・表示内容",
-    "画面へ追加する文言、タイマー終了後の表示、全国大会表示への自動切り替えを調整します。",
+    "画面へ追加する文言、タイマー終了後の連続メッセージ、全国大会表示への自動切り替えを調整します。",
     "content"
   );
 }
