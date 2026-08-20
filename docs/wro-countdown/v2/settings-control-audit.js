@@ -1,4 +1,4 @@
-import { DEFAULTS } from "./config.js?v=20260821a";
+import { DEFAULTS } from "./config.js?v=20260821c";
 
 const $ = id => document.getElementById(id);
 
@@ -52,6 +52,10 @@ const PAIRS = [
 ];
 
 const NUMBERS = [
+  {
+    key: "completionMessageIntervalSec",
+    id: "completionMessageIntervalSec"
+  },
   { key: "completionDurationMin", id: "completionDurationMin" },
   { key: "autoWroIntervalMin", id: "autoWroInterval" },
   { key: "autoWroDurationMin", id: "autoWroDuration" },
@@ -68,7 +72,6 @@ const NUMBERS = [
 const TEXTS = [
   { key: "timerText", id: "timerTextInput", delay: 140 },
   { key: "currentTimeLabel", id: "currentTimeLabelInput", delay: 140 },
-  { key: "completionText", id: "completionTextInput", delay: 140 },
   { key: "wroDateSuffix", id: "wroDateSuffixInput", delay: 140 }
 ];
 
