@@ -173,6 +173,11 @@ export function createCompletionMessagesController({
     window.clearTimeout(commitTimer);
     commitTimer = 0;
     const messages = normalizedDraft();
+
+    // setSettings renders the whole settings panel synchronously. Record the
+    // incoming signature first so that render() does not replace this list in
+    // the middle of a blur/change/click sequence.
+    lastRenderedSignature = JSON.stringify(messages);
     setSettings(
       {
         completionMessages: messages,
@@ -215,13 +220,24 @@ export function createCompletionMessagesController({
     }, 0);
   });
 
+  // Keep the textarea focused until the delegated click handler has captured
+  // its current value. Otherwise the textarea change event can synchronously
+  // rebuild the list and remove the button before its click event arrives.
+  list.addEventListener("pointerdown", event => {
+    if (event.target.closest("[data-action]")) event.preventDefault();
+  });
+
   list.addEventListener("click", event => {
     const actionButton = event.target.closest("[data-action]");
     if (!actionButton) return;
+    event.preventDefault();
+
     const cardElement = actionButton.closest(".completionMessageCard");
     const index = Number(cardElement?.dataset.messageIndex);
     if (!Number.isInteger(index)) return;
 
+    window.clearTimeout(commitTimer);
+    commitTimer = 0;
     draftMessages = valuesFromDom();
     const action = actionButton.dataset.action;
     let nextIndex = index;
@@ -247,6 +263,7 @@ export function createCompletionMessagesController({
       [DEFAULT_MESSAGE]
     );
     draftMessages = [...messages];
+    lastRenderedSignature = JSON.stringify(messages);
     setSettings(
       {
         completionMessages: messages,
