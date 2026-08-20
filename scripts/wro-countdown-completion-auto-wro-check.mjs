@@ -145,12 +145,8 @@ async function checkTimedFlow(enabled) {
         `enabled: automatic WRO did not appear (${JSON.stringify(state)})`
       );
       expect(
-        state.status.includes("全国大会表示中"),
-        `enabled: WRO status is ${state.status}`
-      );
-      expect(
-        !state.status.includes("終了メッセージへ戻ります"),
-        `enabled: unnecessary return text is ${state.status}`
+        state.status === "",
+        `enabled: automatic WRO footer status is ${state.status}`
       );
 
       await page.clock.runFor(6_100);
@@ -169,8 +165,75 @@ async function checkTimedFlow(enabled) {
   await context.close();
 }
 
+async function checkNormalTimerAutoWroFooter() {
+  const context = await browser.newContext({
+    viewport: { width: 1366, height: 768 },
+    colorScheme: "dark",
+    reducedMotion: "reduce"
+  });
+  const page = await context.newPage();
+  const label = "normal-timer";
+
+  page.on("pageerror", error =>
+    failures.push(`${label} pageerror: ${error.message}`));
+  page.on("console", message => {
+    if (message.type() === "error") {
+      failures.push(`${label} console: ${message.text()}`);
+    }
+  });
+
+  await page.clock.install({
+    time: new Date("2026-08-20T10:00:00.000Z")
+  });
+  await page.addInitScript(({ key, value }) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }, {
+    key: SETTINGS_KEY,
+    value: {
+      ...baseSettings,
+      autoWroDuringCompletion: false
+    }
+  });
+
+  try {
+    await page.goto(
+      `${BASE_URL}&normal-timer-flow=1`,
+      { waitUntil: "networkidle", timeout: 45_000 }
+    );
+    await page.waitForFunction(() =>
+      document.getElementById("app")?.dataset.timerPhase === "countdown",
+      { timeout: 15_000 }
+    );
+
+    await page.clock.runFor(60_100);
+    let state = await inspect(page);
+    expect(
+      state.activeDisplay === "wro" &&
+      state.modeLabel.includes("WRO JAPAN FINAL"),
+      `normal-timer: automatic WRO did not appear (${JSON.stringify(state)})`
+    );
+    expect(
+      state.status === "",
+      `normal-timer: automatic WRO footer status is ${state.status}`
+    );
+
+    await page.clock.runFor(6_100);
+    state = await inspect(page);
+    expect(
+      state.timerPhase === "countdown" &&
+      state.activeDisplay === "timer",
+      `normal-timer: timer did not return (${JSON.stringify(state)})`
+    );
+  } catch (error) {
+    failures.push(`${label}: ${error.stack || error.message}`);
+  }
+
+  await context.close();
+}
+
 await checkTimedFlow(false);
 await checkTimedFlow(true);
+await checkNormalTimerAutoWroFooter();
 
 const settingsContext = await browser.newContext({
   viewport: { width: 390, height: 844 },
@@ -257,5 +320,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO completion-time automatic display default, opt-in flow, return flow, persistence, and simplified footer status check passed."
+  "WRO completion-time automatic display, normal timer return, persistence, and footer-free automatic WRO check passed."
 );
