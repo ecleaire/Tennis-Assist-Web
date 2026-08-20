@@ -97,12 +97,14 @@ function renderStats(matches, teams) {
     const purple = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA紫")) : number(rowValue(row, "チームB紫"))), 0);
     const totalPurple = related.reduce((sum, row) => sum + number(rowValue(row, "チームA紫")) + number(rowValue(row, "チームB紫")), 0);
     const purpleRate = totalPurple ? `${(purple / totalPurple * 100).toFixed(1)}%` : "0.0%";
+    const purpleFreeMatches = related.filter((row) => number(rowValue(row, rowValue(row, "チームA") === team ? "チームA紫" : "チームB紫")) === 0).length;
+    const purpleFreeRate = related.length ? `${(purpleFreeMatches / related.length * 100).toFixed(1)}%` : "0.0%";
     const violations = related.reduce((sum, row) => sum + (rowValue(row, "チームA") === team ? number(rowValue(row, "チームA違反数")) : number(rowValue(row, "チームB違反数"))), 0);
     const rate = related.length ? `${(wins / related.length * 100).toFixed(1)}%` : "0.0%";
-    return { team, related, wins, draws, losses, purpleRate, violations, rate };
+    return { team, related, wins, draws, losses, purpleRate, purpleFreeMatches, purpleFreeRate, violations, rate };
   }) : [];
   const selected = $("stats-team").value ? rows[0] : null;
-  metrics.innerHTML = selected ? [["マッチ数", selected.related.length], ["勝敗", `${selected.wins}勝 ${selected.losses}敗 ${selected.draws}分`], ["勝率", selected.rate], ["紫取得率", selected.purpleRate], ["違反数", selected.violations]].map(([label, value]) => `<article class="stat-card"><span>${label}</span><strong>${value}</strong></article>`).join("") : "";
+  metrics.innerHTML = selected ? [["マッチ数", selected.related.length], ["勝敗", `${selected.wins}勝 ${selected.losses}敗 ${selected.draws}分`], ["勝率", selected.rate], ["紫取得率", selected.purpleRate], ["紫が自陣にない試合数", selected.purpleFreeMatches], ["紫が自陣にない確率", selected.purpleFreeRate], ["違反数", selected.violations]].map(([label, value]) => `<article class="stat-card"><span>${label}</span><strong>${value}</strong></article>`).join("") : "";
 }
 function renderHistory(filtered) {
   const team = $("team-filter").value; const result = $("result-filter").value; const kind = $("kind-filter").value;

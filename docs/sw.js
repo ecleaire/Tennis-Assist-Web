@@ -1,4 +1,4 @@
-const CACHE_NAME = "tennis-assist-web-b9ec28a3985d";
+const CACHE_NAME = "tennis-assist-web-e90ac606f2bd";
 const CORE = [
   "./",
   "./index.html",
