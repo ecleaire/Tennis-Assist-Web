@@ -24,6 +24,12 @@
   background: color-mix(in srgb, #d58b25 9%, var(--bg));
 }
 
+.settingsAutoSave[data-state="error"] {
+  border-color: #d85b62;
+  color: #e2787e;
+  background: color-mix(in srgb, #d85b62 10%, var(--bg));
+}
+
 /* Native scrollIntoView and keyboard focus should never place a control under
    the sticky settings header or footer actions. */
 .settings :is(input, select, textarea, button, summary) {
