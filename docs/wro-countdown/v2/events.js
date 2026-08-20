@@ -1,5 +1,5 @@
 import { bindDialog } from "./events-dialog.js";
-import { bindModeSettings } from "./events-mode.js?v=20260814j";
+import { bindModeSettings } from "./events-mode.js?v=20260820b";
 import { bindNoiseSettings } from "./events-noise.js";
 import { bindAlertTimes } from "./events-alert-time.js";
 import { bindSoundSettings } from "./events-sound.js?v=20260814o";
