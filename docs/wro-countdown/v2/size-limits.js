@@ -2,6 +2,7 @@ export const SIZE_LIMITS = {
   clockSize: { minimum: 20, maximum: 280 },
   dateSize: { minimum: 10, maximum: 48 },
   timerSize: { minimum: 36, maximum: 520 },
+  completionTextSize: { minimum: 20, maximum: 320 },
   targetSize: { minimum: 12, maximum: 180 },
   subSize: { minimum: 12, maximum: 140 },
   timerTextSize: { minimum: 12, maximum: 180 },

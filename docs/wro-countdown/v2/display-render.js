@@ -4,7 +4,7 @@ import {
   pad,
   WRO_DATE,
   WRO_TARGET
-} from "./config.js?v=20260815d";
+} from "./config.js?v=20260820a";
 
 let currentSettings = null;
 
@@ -67,21 +67,54 @@ function renderTimerText(refs, settings, values) {
   refs.timerText.hidden = false;
 }
 
-export function renderTimer(refs, remaining, suppliedSettings) {
+function normalizeTimerState(value) {
+  if (typeof value === "number") {
+    return {
+      phase: "countdown",
+      remaining: value,
+      completionRemaining: 0
+    };
+  }
+
+  return value || {
+    phase: "countdown",
+    remaining: 0,
+    completionRemaining: 0
+  };
+}
+
+function renderCompletion(refs, state, settings) {
+  const message = String(settings.completionText || "").trim() ||
+    "お疲れ様でした";
+  const switchValues = timerValues(state.completionRemaining);
+
+  refs.timerText.hidden = true;
+  refs.timerText.textContent = "";
+  refs.mainValue.textContent = message;
+  refs.subValue.hidden = !settings.showHourMinute;
+  refs.subValue.textContent =
+    `次の${settings.targetTime}までのタイマーを ` +
+    `${switchValues.full} 後に開始します`;
+}
+
+export function renderTimer(refs, suppliedState, suppliedSettings) {
   const settings = suppliedSettings || currentSettings || {
     showHourMinute: true,
     timerText: "",
-    targetTime: ""
+    targetTime: "",
+    completionText: "お疲れ様でした"
   };
-  const values = timerValues(remaining);
-  renderTimerText(refs, settings, values);
+  const state = normalizeTimerState(suppliedState);
 
-  if (remaining <= 0) {
-    refs.mainValue.textContent = "00:00:00";
-    refs.subValue.hidden = false;
-    refs.subValue.textContent = "指定時刻です";
+  refs.app.dataset.timerPhase = state.phase;
+
+  if (state.phase === "completion") {
+    renderCompletion(refs, state, settings);
     return;
   }
+
+  const values = timerValues(state.remaining);
+  renderTimerText(refs, settings, values);
 
   refs.mainValue.textContent = values.full;
   refs.subValue.hidden = !settings.showHourMinute;
@@ -91,6 +124,7 @@ export function renderTimer(refs, remaining, suppliedSettings) {
 }
 
 export function renderWro(refs, remaining, nowDate = new Date()) {
+  refs.app.dataset.timerPhase = "wro";
   refs.timerText.hidden = true;
   refs.timerText.textContent = "";
   refs.subValue.hidden = false;
@@ -111,15 +145,21 @@ export function renderWro(refs, remaining, nowDate = new Date()) {
     `開始まで ${pad(totalHours)}:${pad(value.minutes)}:${pad(value.seconds)}`;
 }
 
-export function renderLabels(refs, settings, temporaryWro) {
+export function renderLabels(refs, settings, temporaryWro, timerState = null) {
   currentSettings = settings;
   const wroMode = settings.mode === "wro" || temporaryWro;
+  const completionMode =
+    !wroMode && timerState?.phase === "completion";
 
   refs.modeLabel.classList.toggle("wroTitle", wroMode);
 
   if (!wroMode) {
-    refs.modeLabel.textContent = "COUNTDOWN TIMER";
-    refs.targetLabel.textContent = `${settings.targetTime} まで`;
+    refs.modeLabel.textContent = completionMode
+      ? "TIMER COMPLETE"
+      : "COUNTDOWN TIMER";
+    refs.targetLabel.textContent = completionMode
+      ? `${settings.targetTime} 終了`
+      : `${settings.targetTime} まで`;
     refs.targetLabel.hidden = !settings.showTarget;
     refs.wroSuffix.hidden = true;
     refs.wroSuffix.textContent = "";

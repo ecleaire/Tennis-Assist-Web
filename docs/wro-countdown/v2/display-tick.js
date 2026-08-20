@@ -1,29 +1,45 @@
-import { WRO_TARGET } from "./config.js?v=20260815d";
+import { WRO_TARGET } from "./config.js?v=20260820a";
 import {
   renderCurrentTime,
   renderTimer,
   renderWro,
   renderLabels
-} from "./display-render.js?v=20260815d";
-import { renderStatus } from "./display-status.js?v=20260814r";
+} from "./display-render.js?v=20260820a";
+import { renderStatus } from "./display-status.js?v=20260820a";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   const date = new Date();
   const now = date.getTime();
   renderCurrentTime(refs, date, settings);
 
-  let remaining = null;
-  if (settings.mode === "timer") {
-    remaining = timer.remaining(now);
-  }
+  const timerState = settings.mode === "timer"
+    ? timer.state(now)
+    : null;
+  const completionActive = timerState?.phase === "completion";
 
-  renderLabels(refs, settings, automatic.active());
-  if (settings.mode === "wro" || automatic.active()) {
+  automatic.setPaused(completionActive);
+  const automaticWroActive =
+    !completionActive && automatic.active();
+
+  renderLabels(
+    refs,
+    settings,
+    automaticWroActive,
+    timerState
+  );
+
+  if (settings.mode === "wro" || automaticWroActive) {
     renderWro(refs, WRO_TARGET - now, date);
   } else {
-    renderTimer(refs, remaining, settings);
+    renderTimer(refs, timerState, settings);
   }
 
-  renderStatus(refs, settings, automatic, now);
+  renderStatus(
+    refs,
+    settings,
+    automatic,
+    now,
+    timerState
+  );
   scheduleFit();
 }

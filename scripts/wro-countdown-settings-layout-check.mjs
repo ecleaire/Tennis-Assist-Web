@@ -31,6 +31,8 @@ const basicControlIds = [
 const advancedControlIds = [
   "currentTimeLabelInput",
   "timerTextInput",
+  "completionTextInput",
+  "completionDurationMin",
   "wroDateSuffixInput",
   "autoWroEnabled",
   "autoWroInterval",
@@ -38,6 +40,7 @@ const advancedControlIds = [
   "clockSize",
   "dateSize",
   "timerSize",
+  "completionTextSize",
   "targetSize",
   "subSize",
   "timerTextSize",

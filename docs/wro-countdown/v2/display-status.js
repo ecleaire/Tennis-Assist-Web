@@ -1,4 +1,4 @@
-import { pad } from "./config.js";
+import { pad } from "./config.js?v=20260820a";
 
 function timerStatus(settings) {
   if (!settings.alarmEnabled) return "アラームはオフです";
@@ -11,7 +11,38 @@ function timerStatus(settings) {
   return `アラーム: ${labels.length ? labels.join("・") : "通知時刻なし"}`;
 }
 
-export function renderStatus(refs, settings, autoWro, now) {
+function completionStatus(settings, timerState) {
+  const seconds = Math.max(
+    0,
+    Math.ceil(timerState.completionRemaining / 1000)
+  );
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const secondsPart = seconds % 60;
+  const remaining = hours
+    ? `${hours}:${pad(minutes)}:${pad(secondsPart)}`
+    : `${minutes}:${pad(secondsPart)}`;
+
+  return `終了メッセージ表示中・${remaining}後に` +
+    `次の${settings.targetTime}までのタイマーを開始します`;
+}
+
+export function renderStatus(
+  refs,
+  settings,
+  autoWro,
+  now,
+  timerState = null
+) {
+  if (
+    settings.mode === "timer" &&
+    timerState?.phase === "completion"
+  ) {
+    refs.status.textContent = completionStatus(settings, timerState);
+    return;
+  }
+
   if (autoWro.active()) {
     const seconds = Math.max(
       0,

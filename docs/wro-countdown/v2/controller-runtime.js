@@ -1,13 +1,13 @@
-import { renderLabels } from "./display-render.js?v=20260815d";
-import { fitDisplay } from "./display-fit.js?v=20260815f";
-import { createAutoWro } from "./display-auto.js?v=20260814m";
-import { createTimerTarget } from "./display-target.js?v=20260814m";
-import { applyDisplayTheme } from "./display-theme.js?v=20260815l";
+import { renderLabels } from "./display-render.js?v=20260820a";
+import { fitDisplay } from "./display-fit.js?v=20260820a";
+import { createAutoWro } from "./display-auto.js?v=20260820a";
+import { createTimerTarget } from "./display-target.js?v=20260820a";
+import { applyDisplayTheme } from "./display-theme.js?v=20260820a";
 import {
   applyPositioning,
   constrainPositioning
-} from "./display-position.js?v=20260815e";
-import { updateDisplay } from "./display-tick.js?v=20260815d";
+} from "./display-position.js?v=20260820a";
+import { updateDisplay } from "./display-tick.js?v=20260820a";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);

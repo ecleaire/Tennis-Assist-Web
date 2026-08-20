@@ -1,9 +1,10 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
 const BASE = {
   clock: 64,
   date: 16,
   timer: 116,
+  completionText: 96,
   target: 32,
   sub: 23,
   timerText: 26,
@@ -62,6 +63,7 @@ function responsiveSizes(refs, settings) {
       clock: settings.clockSize,
       date: settings.dateSize,
       timer: settings.timerSize,
+      completionText: settings.completionTextSize,
       target: settings.targetSize,
       sub: settings.subSize,
       timerText: settings.timerTextSize,
@@ -95,6 +97,12 @@ function responsiveSizes(refs, settings) {
         300 * referenceScale * settings.timerSize / BASE.timer,
         SIZE_LIMITS.timerSize.minimum,
         SIZE_LIMITS.timerSize.maximum
+      ),
+      completionText: limit(
+        180 * referenceScale * settings.completionTextSize /
+          BASE.completionText,
+        SIZE_LIMITS.completionTextSize.minimum,
+        SIZE_LIMITS.completionTextSize.maximum
       ),
       target: limit(
         52 * referenceScale * settings.targetSize / BASE.target,
@@ -146,6 +154,12 @@ function responsiveSizes(refs, settings) {
       (252 + widthProgress * 38) * heightScale * settings.timerSize / BASE.timer,
       SIZE_LIMITS.timerSize.minimum,
       SIZE_LIMITS.timerSize.maximum
+    ),
+    completionText: limit(
+      (66 + widthProgress * 62) * heightScale *
+        settings.completionTextSize / BASE.completionText,
+      SIZE_LIMITS.completionTextSize.minimum,
+      SIZE_LIMITS.completionTextSize.maximum
     ),
     target: limit(
       (36 + widthProgress * 20) * heightScale * settings.targetSize / BASE.target,
@@ -308,6 +322,10 @@ function applyDisplayVariables(refs, sizes) {
   refs.app.style.setProperty("--wroTitleFit", `${sizes.wroTitle}px`);
   refs.app.style.setProperty("--wroSuffixFit", `${sizes.wroSuffix}px`);
   refs.app.style.setProperty("--timerFit", `${sizes.timer}px`);
+  refs.app.style.setProperty(
+    "--completionTextFit",
+    `${sizes.completionText}px`
+  );
   refs.app.style.setProperty("--clockFit", `${sizes.clock}px`);
   refs.app.style.setProperty("--dateFit", `${sizes.date}px`);
 }
@@ -330,6 +348,10 @@ function fitBlockHeight(refs, sizes, budget) {
     next = {
       ...next,
       timer: Math.max(30, next.timer * ratio),
+      completionText: Math.max(
+        SIZE_LIMITS.completionTextSize.minimum,
+        next.completionText * ratio
+      ),
       target: Math.max(SIZE_LIMITS.targetSize.minimum, next.target * ratio),
       sub: Math.max(SIZE_LIMITS.subSize.minimum, next.sub * ratio),
       timerText: Math.max(
@@ -409,13 +431,24 @@ export function fitDisplay(refs, settings) {
     );
   }
 
-  sizes.timer = fitSingleLine(
-    refs.mainValue,
-    "--timerFit",
-    sizes.timer,
-    horizontalBudget("timer", refs, viewport),
-    30
-  );
+  const completionActive = refs.app.dataset.timerPhase === "completion";
+  if (completionActive) {
+    sizes.completionText = fitSingleLine(
+      refs.mainValue,
+      "--completionTextFit",
+      sizes.completionText,
+      horizontalBudget("timer", refs, viewport),
+      SIZE_LIMITS.completionTextSize.minimum
+    );
+  } else {
+    sizes.timer = fitSingleLine(
+      refs.mainValue,
+      "--timerFit",
+      sizes.timer,
+      horizontalBudget("timer", refs, viewport),
+      30
+    );
+  }
 
   if (refs.modeLabel.classList.contains("wroTitle")) {
     sizes.wroTitle = fitSingleLine(

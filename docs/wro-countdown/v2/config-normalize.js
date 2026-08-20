@@ -4,8 +4,8 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260815l";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260815f";
+} from "./config-values.js?v=20260820a";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
 
 export const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
@@ -45,6 +45,16 @@ export function normalize(raw = {}) {
       ? DEFAULTS.showHourMinute
       : Boolean(raw.showHourMinute),
     timerText: text(value.timerText, DEFAULTS.timerText, 160),
+    completionText: text(
+      value.completionText,
+      DEFAULTS.completionText,
+      120
+    ),
+    completionDurationMin: clamp(
+      raw.completionDurationMin ?? DEFAULTS.completionDurationMin,
+      1,
+      1440
+    ),
 
     showCurrentTime: raw.showCurrentTime === undefined
       ? DEFAULTS.showCurrentTime
@@ -115,6 +125,11 @@ export function normalize(raw = {}) {
       value.timerSize,
       SIZE_LIMITS.timerSize.minimum,
       SIZE_LIMITS.timerSize.maximum
+    ),
+    completionTextSize: clamp(
+      value.completionTextSize,
+      SIZE_LIMITS.completionTextSize.minimum,
+      SIZE_LIMITS.completionTextSize.maximum
     ),
     targetSize: clamp(
       value.targetSize,

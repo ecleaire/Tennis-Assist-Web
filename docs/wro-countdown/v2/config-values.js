@@ -46,6 +46,11 @@ export const DEFAULTS = {
   showHourMinute: true,
   timerText: "",
 
+  // After the daily target, replace the large timer with this message before
+  // beginning the countdown to the following day's target.
+  completionText: "お疲れ様でした",
+  completionDurationMin: 30,
+
   // Current-time display shared by both modes.
   showCurrentTime: true,
   currentTimeLabel: "現在時刻",
@@ -71,6 +76,7 @@ export const DEFAULTS = {
   clockSize: 64,
   dateSize: 16,
   timerSize: 116,
+  completionTextSize: 96,
   targetSize: 32,
   subSize: 23,
   timerTextSize: 26,

@@ -1,0 +1,57 @@
+/* Timer-complete state: replace the large numeric value with a readable
+   configurable message while keeping the existing frameless presentation. */
+.app {
+  --completionText: 96px;
+  --completionTextFit: var(--completionText);
+}
+
+.app[data-timer-phase="completion"] .mainValue {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: 0;
+  padding-right: .04em;
+  padding-left: .04em;
+  overflow-wrap: anywhere;
+  font-family: var(--font-ui), system-ui, sans-serif !important;
+  font-size: var(--completionTextFit);
+  font-weight: 700 !important;
+  font-stretch: 100% !important;
+  font-variant-numeric: normal;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+  line-height: 1.14;
+  letter-spacing: .015em !important;
+  white-space: pre-wrap;
+  text-wrap: balance;
+}
+
+.app[data-timer-phase="completion"] .sub {
+  max-width: min(100%, 760px);
+  font-variant-numeric: tabular-nums;
+}
+
+@supports (word-break: auto-phrase) {
+  .app[data-timer-phase="completion"] .mainValue {
+    word-break: auto-phrase;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 999px) {
+  .app[data-timer-phase="completion"] .display .mainValue {
+    max-width: 100%;
+    font-size: min(var(--completionTextFit), 8.5vw, 15vh);
+    line-height: 1.12;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  .app[data-timer-phase="completion"] .mainValue {
+    max-width: 100%;
+    font-size: min(var(--completionTextFit), 17vw);
+    line-height: 1.16;
+  }
+
+  .app[data-timer-phase="completion"] .sub {
+    max-width: 92vw;
+  }
+}

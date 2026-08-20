@@ -35,6 +35,26 @@ export function installExtraSettings() {
     showHourMinuteRow.after(currentTimeGroup);
   }
 
+  const completionGroup = document.createElement("div");
+  completionGroup.id = "completionSettingsGroup";
+  completionGroup.className = "extraSettingsGroup";
+  completionGroup.innerHTML = `
+<label class="field">
+  <span class="label">タイマー終了後に表示する文字</span>
+  <textarea id="completionTextInput" rows="2" maxlength="120" placeholder="お疲れ様でした"></textarea>
+  <small class="help compact">指定時刻になると、大きなタイマーの代わりに表示します。空欄の場合は「お疲れ様でした」を表示します。</small>
+</label>
+<label class="field">
+  <span class="label">代替テキストを表示する時間（分）</span>
+  <input id="completionDurationMin" type="number" min="1" max="1440" step="1">
+  <small class="help compact">初期値は30分です。表示時間が終わると、翌日の同じ目標時刻までのタイマーを開始します。</small>
+</label>`;
+
+  const timerTextField = $("timerTextField");
+  if (timerTextField) {
+    timerTextField.after(completionGroup);
+  }
+
   const wroGroup = document.createElement("div");
   wroGroup.className = "extraSettingsGroup";
   wroGroup.innerHTML = `
@@ -61,6 +81,7 @@ export function installExtraSettings() {
   if (sizeControls) {
     sizeControls.insertAdjacentHTML(
       "beforeend",
+      sizeControl("終了後テキスト（px）", "completionTextSize", 20, 320) +
       sizeControl("全国大会タイトル（px）", "wroTitleSize", 12, 180) +
       sizeControl("8月22日後の追加文字（px）", "wroDateSuffixSize", 12, 140, true)
     );
@@ -83,13 +104,27 @@ function bindSizePair(range, number, key, setSettings) {
   number.onchange = () => update(number.value);
 }
 
+function bindNumber(input, key, minimum, maximum, setSettings) {
+  input.onchange = () => {
+    const value = Number(input.value);
+    if (!Number.isFinite(value)) return;
+    const next = Math.min(maximum, Math.max(minimum, value));
+    input.value = String(next);
+    setSettings({ [key]: next }, { quiet: true });
+  };
+}
+
 export function createExtraSettingsController({ getSettings, setSettings }) {
   const controls = {
     showCurrentTime: $("showCurrentTime"),
     currentTimeLabelField: $("currentTimeLabelField"),
     currentTimeLabelInput: $("currentTimeLabelInput"),
+    completionTextInput: $("completionTextInput"),
+    completionDurationMin: $("completionDurationMin"),
     dateSizeRange: $("dateSizeRange"),
     dateSize: $("dateSize"),
+    completionTextSizeRange: $("completionTextSizeRange"),
+    completionTextSize: $("completionTextSize"),
     wroDateSuffixInput: $("wroDateSuffixInput"),
     wroTitleSizeRange: $("wroTitleSizeRange"),
     wroTitleSize: $("wroTitleSize"),
@@ -115,6 +150,25 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     }, 100);
   };
 
+  let completionTextTimer = 0;
+  controls.completionTextInput.oninput = () => {
+    window.clearTimeout(completionTextTimer);
+    completionTextTimer = window.setTimeout(() => {
+      setSettings(
+        { completionText: controls.completionTextInput.value },
+        { quiet: true }
+      );
+    }, 100);
+  };
+
+  bindNumber(
+    controls.completionDurationMin,
+    "completionDurationMin",
+    1,
+    1440,
+    setSettings
+  );
+
   let suffixTimer = 0;
   controls.wroDateSuffixInput.oninput = () => {
     window.clearTimeout(suffixTimer);
@@ -130,6 +184,12 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     controls.dateSizeRange,
     controls.dateSize,
     "dateSize",
+    setSettings
+  );
+  bindSizePair(
+    controls.completionTextSizeRange,
+    controls.completionTextSize,
+    "completionTextSize",
     setSettings
   );
   bindSizePair(
@@ -156,8 +216,16 @@ export function createExtraSettingsController({ getSettings, setSettings }) {
     if (document.activeElement !== controls.currentTimeLabelInput) {
       controls.currentTimeLabelInput.value = settings.currentTimeLabel;
     }
+    if (document.activeElement !== controls.completionTextInput) {
+      controls.completionTextInput.value = settings.completionText;
+    }
+    if (document.activeElement !== controls.completionDurationMin) {
+      controls.completionDurationMin.value = settings.completionDurationMin;
+    }
     controls.dateSizeRange.value = settings.dateSize;
     controls.dateSize.value = settings.dateSize;
+    controls.completionTextSizeRange.value = settings.completionTextSize;
+    controls.completionTextSize.value = settings.completionTextSize;
     if (document.activeElement !== controls.wroDateSuffixInput) {
       controls.wroDateSuffixInput.value = settings.wroDateSuffix;
     }

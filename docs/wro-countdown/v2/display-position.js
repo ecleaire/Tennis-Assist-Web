@@ -4,6 +4,7 @@ const COLLISION_GAP = 18;
 
 const DISPLAY_VARIABLES = [
   ["--timerFit", 30],
+  ["--completionTextFit", 20],
   ["--targetFit", 12],
   ["--subFit", 12],
   ["--timerTextFit", 12],
