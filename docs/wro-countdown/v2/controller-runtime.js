@@ -7,7 +7,7 @@ import {
   applyPositioning,
   constrainPositioning
 } from "./display-position.js?v=20260820a";
-import { updateDisplay } from "./display-tick.js?v=20260820a";
+import { updateDisplay } from "./display-tick.js?v=20260820b";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);

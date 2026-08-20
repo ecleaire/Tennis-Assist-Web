@@ -1,4 +1,4 @@
-import { DEFAULTS } from "./config.js?v=20260814j";
+import { DEFAULTS } from "./config.js?v=20260820b";
 
 function bindPositionChoices(choices, key, setSettings) {
   choices.forEach(input => {
@@ -54,6 +54,16 @@ export function bindModeSettings(controls, setSettings) {
   controls.autoWroEnabled.onchange = () => {
     setSettings(
       { autoWroEnabled: controls.autoWroEnabled.checked },
+      { quiet: true }
+    );
+  };
+
+  controls.autoWroDuringCompletion.onchange = () => {
+    setSettings(
+      {
+        autoWroDuringCompletion:
+          controls.autoWroDuringCompletion.checked
+      },
       { quiet: true }
     );
   };

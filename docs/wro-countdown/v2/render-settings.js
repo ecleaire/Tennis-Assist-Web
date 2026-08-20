@@ -26,6 +26,10 @@ export function renderSettings(controls, settings, setSettings, audio) {
   controls.showHourMinute.checked = settings.showHourMinute;
   controls.timerTextInput.value = settings.timerText;
   controls.autoWroEnabled.checked = settings.autoWroEnabled;
+  controls.autoWroDuringCompletion.checked =
+    settings.autoWroDuringCompletion;
+  controls.autoWroDuringCompletion.disabled =
+    !settings.autoWroEnabled;
   controls.autoWroInterval.value = settings.autoWroIntervalMin;
   controls.autoWroDuration.value = settings.autoWroDurationMin;
 

@@ -1,11 +1,15 @@
-import { WRO_TARGET } from "./config.js?v=20260820a";
+import { WRO_TARGET } from "./config.js?v=20260820b";
+import {
+  shouldDisplayAutomaticWro,
+  shouldPauseAutomaticWro
+} from "./completion-auto-wro.js?v=20260820b";
 import {
   renderCurrentTime,
   renderTimer,
   renderWro,
   renderLabels
 } from "./display-render.js?v=20260820a";
-import { renderStatus } from "./display-status.js?v=20260820a";
+import { renderStatus } from "./display-status.js?v=20260820b";
 
 export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
   const date = new Date();
@@ -17,9 +21,14 @@ export function updateDisplay(refs, settings, timer, automatic, scheduleFit) {
     : null;
   const completionActive = timerState?.phase === "completion";
 
-  automatic.setPaused(completionActive);
-  const automaticWroActive =
-    !completionActive && automatic.active();
+  automatic.setPaused(
+    shouldPauseAutomaticWro(settings, completionActive)
+  );
+  const automaticWroActive = shouldDisplayAutomaticWro(
+    settings,
+    completionActive,
+    automatic.active()
+  );
 
   renderLabels(
     refs,

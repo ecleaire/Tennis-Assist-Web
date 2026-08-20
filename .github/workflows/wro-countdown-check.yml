@@ -15,6 +15,7 @@ on:
       - "scripts/wro-countdown-settings-layout-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
+      - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
@@ -30,6 +31,7 @@ on:
       - "scripts/wro-countdown-settings-layout-check.mjs"
       - "scripts/wro-countdown-stable-url-check.mjs"
       - "scripts/wro-countdown-completion-check.mjs"
+      - "scripts/wro-countdown-completion-auto-wro-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -75,6 +77,7 @@ jobs:
           done
           node scripts/wro-countdown-stable-url-check.mjs
           node scripts/wro-countdown-completion-check.mjs
+          node scripts/wro-countdown-completion-auto-wro-check.mjs
           node scripts/wro-countdown-layout-check.mjs
           node scripts/wro-countdown-settings-layout-check.mjs
           node scripts/wro-countdown-background-check.mjs

@@ -1,4 +1,4 @@
-import { pad } from "./config.js?v=20260820a";
+import { pad } from "./config.js?v=20260820b";
 
 function timerStatus(settings) {
   if (!settings.alarmEnabled) return "アラームはオフです";
@@ -35,22 +35,26 @@ export function renderStatus(
   now,
   timerState = null
 ) {
-  if (
-    settings.mode === "timer" &&
-    timerState?.phase === "completion"
-  ) {
-    refs.status.textContent = completionStatus(settings, timerState);
-    return;
-  }
-
   if (autoWro.active()) {
     const seconds = Math.max(
       0,
       Math.ceil((autoWro.endAt() - now) / 1000)
     );
+    const returnLabel =
+      settings.mode === "timer" && timerState?.phase === "completion"
+        ? "終了メッセージ"
+        : "タイマー";
     refs.status.textContent =
       `全国大会表示中・${Math.floor(seconds / 60)}:${pad(seconds % 60)}` +
-      "後にタイマーへ戻ります";
+      `後に${returnLabel}へ戻ります`;
+    return;
+  }
+
+  if (
+    settings.mode === "timer" &&
+    timerState?.phase === "completion"
+  ) {
+    refs.status.textContent = completionStatus(settings, timerState);
     return;
   }
 
