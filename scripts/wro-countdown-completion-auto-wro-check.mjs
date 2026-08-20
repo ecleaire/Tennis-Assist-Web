@@ -145,8 +145,12 @@ async function checkTimedFlow(enabled) {
         `enabled: automatic WRO did not appear (${JSON.stringify(state)})`
       );
       expect(
-        state.status.includes("終了メッセージへ戻ります"),
-        `enabled: return status is ${state.status}`
+        state.status.includes("全国大会表示中"),
+        `enabled: WRO status is ${state.status}`
+      );
+      expect(
+        !state.status.includes("終了メッセージへ戻ります"),
+        `enabled: unnecessary return text is ${state.status}`
       );
 
       await page.clock.runFor(6_100);
@@ -253,5 +257,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO completion-time automatic display default, opt-in flow, return flow, and persistence check passed."
+  "WRO completion-time automatic display default, opt-in flow, return flow, persistence, and simplified footer status check passed."
 );
