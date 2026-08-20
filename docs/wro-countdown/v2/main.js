@@ -104,6 +104,28 @@ function reportSaveResult(saved) {
   }
 }
 
+function protectCompletionSequence(patch) {
+  const next = { ...patch };
+  const hasLegacyText = Object.prototype.hasOwnProperty.call(
+    next,
+    "completionText"
+  );
+  const hasSequence = Array.isArray(next.completionMessages);
+  const currentSequence = Array.isArray(settings.completionMessages)
+    ? settings.completionMessages
+    : [];
+
+  // A delayed handler from the former single-text control may still submit
+  // only completionText while a sequence editor is active. The sequence
+  // editor always submits both fields, so ignore alias-only updates once more
+  // than one message exists instead of collapsing the list to one message.
+  if (hasLegacyText && !hasSequence && currentSequence.length > 1) {
+    delete next.completionText;
+  }
+
+  return next;
+}
+
 function setSettings(patch, options = {}) {
   const oldMode = settings.mode;
   const oldTime = settings.targetTime;
@@ -114,8 +136,9 @@ function setSettings(patch, options = {}) {
     "autoWroIntervalMin",
     "autoWroDurationMin"
   ].some(key => key in patch);
+  const protectedPatch = protectCompletionSequence(patch);
 
-  settings = normalize({ ...settings, ...patch });
+  settings = normalize({ ...settings, ...protectedPatch });
   const saved = save(settings);
   display.applyVisual();
   render();
