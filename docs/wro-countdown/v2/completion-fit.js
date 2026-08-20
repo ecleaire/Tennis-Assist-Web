@@ -186,14 +186,9 @@ function setFit(refs, size, width) {
 
 function fits(refs, width, height) {
   const rect = refs.mainValue.getBoundingClientRect();
-  const horizontalOverflow =
-    rect.width > width + 1 ||
-    refs.mainValue.scrollWidth > refs.mainValue.clientWidth + 1;
-  const verticalOverflow =
-    contentHeight(refs.display) > height + 1 ||
-    refs.mainValue.scrollHeight > refs.mainValue.clientHeight + 1;
-
-  return !horizontalOverflow && !verticalOverflow;
+  return rect.width <= width + 1 &&
+    rect.height <= height + 1 &&
+    contentHeight(refs.display) <= height + 1;
 }
 
 function signature(refs, settings, viewport, width, height) {
