@@ -1,4 +1,7 @@
 import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import {
+  isTextAutoSizeEnabled
+} from "./text-auto-size-values.js?v=20260821e";
 
 const DESKTOP_QUERY =
   "(min-width: 1000px) and (orientation: landscape)";
@@ -158,7 +161,7 @@ function preferredSize(settings, viewport) {
     limits.maximum
   );
 
-  if (!settings.autoSize) return configured;
+  if (!isTextAutoSizeEnabled(settings, "timer")) return configured;
 
   const portrait = viewport.height >= viewport.width;
   if (desktopLayout()) {
@@ -232,7 +235,7 @@ function signature(refs, settings, viewport, width, height) {
     refs.timerText.hidden ? "" : refs.timerText.textContent?.length || 0,
     refs.subValue.hidden ? "" : refs.subValue.textContent?.length || 0,
     settings.timerSize,
-    settings.autoSize,
+    isTextAutoSizeEnabled(settings, "timer"),
     settings.targetSize,
     settings.timerTextSize,
     settings.subSize,
@@ -259,6 +262,9 @@ export function fitTimerSize(refs, settings) {
   const previous = cache.get(refs.app);
 
   refs.app.dataset.timerPreferredSize = preferred.toFixed(2);
+  refs.app.dataset.timerAutoSize = String(
+    isTextAutoSizeEnabled(settings, "timer")
+  );
 
   if (previous?.key === key) {
     setTimerSize(refs, previous.size);
