@@ -64,7 +64,7 @@ export function installTextAutoSizeSettings() {
     if (description) {
       description.id = "autoSizeMasterDescription";
       description.textContent =
-        "全項目を一括で切り替えます。詳細設定では文字ごとに個別変更できます。";
+        "全項目を一括で切り替えます。オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。";
     }
   }
 }
@@ -111,10 +111,10 @@ export function createTextAutoSizeController({
 
     if (description) {
       description.textContent = state.all
-        ? `全${state.total}項目で自動調整がオンです。文字ごとに個別変更できます。`
+        ? `全${state.total}項目で自動調整がオンです。個別にオフにした項目は、入力したpxを優先し、はみ出す場合だけ安全に縮小します。`
         : state.none
-          ? `全${state.total}項目で自動調整がオフです。入力したpxを優先し、画面外へ出る場合だけ安全に縮小します。`
-          : `${state.enabled}/${state.total}項目で自動調整がオンです。詳細設定から個別に変更できます。`;
+          ? `全${state.total}項目で自動調整がオフです。入力したpxを優先し、はみ出す場合だけ安全に縮小します。`
+          : `${state.enabled}/${state.total}項目で自動調整がオンです。オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。`;
     }
   }
 
