@@ -1,4 +1,8 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import {
+  applyTextAutoSizeData,
+  isTextAutoSizeEnabled
+} from "./text-auto-size-values.js?v=20260821e";
 
 const BASE = {
   clock: 64,
@@ -10,6 +14,18 @@ const BASE = {
   timerText: 26,
   wroTitle: 30,
   wroSuffix: 22
+};
+
+const SIZE_SETTING = {
+  clock: "clockSize",
+  date: "dateSize",
+  timer: "timerSize",
+  completionText: "completionTextSize",
+  target: "targetSize",
+  sub: "subSize",
+  timerText: "timerTextSize",
+  wroTitle: "wroTitleSize",
+  wroSuffix: "wroDateSuffixSize"
 };
 
 const DESKTOP_QUERY =
@@ -57,21 +73,28 @@ function viewportProfile(viewport) {
   return aspect >= 2.3 ? "ultrawide" : "xlarge";
 }
 
-function responsiveSizes(refs, settings) {
-  if (!settings.autoSize) {
-    return {
-      clock: settings.clockSize,
-      date: settings.dateSize,
-      timer: settings.timerSize,
-      completionText: settings.completionTextSize,
-      target: settings.targetSize,
-      sub: settings.subSize,
-      timerText: settings.timerTextSize,
-      wroTitle: settings.wroTitleSize,
-      wroSuffix: settings.wroDateSuffixSize
-    };
-  }
+function configuredSizes(settings) {
+  return Object.fromEntries(
+    Object.entries(SIZE_SETTING).map(([kind, settingKey]) => [
+      kind,
+      Number(settings[settingKey])
+    ])
+  );
+}
 
+function chooseResponsiveSizes(settings, scaled) {
+  const configured = configuredSizes(settings);
+  return Object.fromEntries(
+    Object.keys(SIZE_SETTING).map(kind => [
+      kind,
+      isTextAutoSizeEnabled(settings, kind)
+        ? scaled[kind]
+        : configured[kind]
+    ])
+  );
+}
+
+function responsiveSizes(refs, settings) {
   const viewport = viewportSize(refs);
   const portrait = viewport.height >= viewport.width;
 
@@ -82,7 +105,7 @@ function responsiveSizes(refs, settings) {
       2
     );
 
-    return {
+    return chooseResponsiveSizes(settings, {
       clock: limit(
         112 * referenceScale * settings.clockSize / BASE.clock,
         SIZE_LIMITS.clockSize.minimum,
@@ -129,7 +152,7 @@ function responsiveSizes(refs, settings) {
         SIZE_LIMITS.wroDateSuffixSize.minimum,
         SIZE_LIMITS.wroDateSuffixSize.maximum
       )
-    };
+    });
   }
 
   const widthProgress = limit((viewport.width - 320) / 800, 0, 1);
@@ -139,7 +162,7 @@ function responsiveSizes(refs, settings) {
       ? 0.94
       : 1;
 
-  return {
+  return chooseResponsiveSizes(settings, {
     clock: limit(
       (80 + widthProgress * 48) * heightScale * settings.clockSize / BASE.clock,
       SIZE_LIMITS.clockSize.minimum,
@@ -186,7 +209,7 @@ function responsiveSizes(refs, settings) {
       SIZE_LIMITS.wroDateSuffixSize.minimum,
       SIZE_LIMITS.wroDateSuffixSize.maximum
     )
-  };
+  });
 }
 
 function isVisible(element) {
@@ -401,6 +424,8 @@ export function fitDisplay(refs, settings) {
     }
     return fitted;
   }
+
+  applyTextAutoSizeData(refs.app, settings);
 
   const viewport = viewportSize(refs);
   refs.app.dataset.viewportProfile = viewportProfile(viewport);

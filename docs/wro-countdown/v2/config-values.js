@@ -1,4 +1,7 @@
 import { BUILT_IN_SOUND_KEYS } from "./sound-catalog.js?v=20260815h";
+import {
+  DEFAULT_TEXT_AUTO_SIZE
+} from "./text-auto-size-values.js?v=20260821e";
 
 // Fixed event data and user-setting defaults.
 export const SETTINGS_KEY = "wro-countdown-settings-v4";
@@ -74,7 +77,10 @@ export const DEFAULTS = {
   backgroundGuides: true,
   backgroundScanlines: true,
 
+  // autoSize remains the compatibility/master value. Each text item can now
+  // opt in or out independently.
   autoSize: true,
+  ...DEFAULT_TEXT_AUTO_SIZE,
   clockSize: 64,
   dateSize: 16,
   timerSize: 116,

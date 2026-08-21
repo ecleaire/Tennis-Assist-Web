@@ -1,0 +1,106 @@
+/* Per-text automatic sizing controls and final font-size ownership. */
+.perTextAutoSize {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.perTextAutoSizeCopy {
+  min-width: 0;
+}
+
+.perTextAutoSizeCopy b,
+.perTextAutoSizeCopy small {
+  display: block;
+}
+
+.perTextAutoSizeCopy b {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.perTextAutoSizeCopy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.perTextAutoSizeToggle {
+  transform: scale(.9);
+  transform-origin: right center;
+}
+
+.perTextAutoSizeToggle > input {
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.perTextAutoSizeToggle > input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sizeControl.manualTextSize {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+}
+
+/*
+ * When an item is set to manual, JavaScript has already chosen its configured
+ * size and applied only the final overflow-safety reduction. These rules stop
+ * older viewport-unit caps in responsive stylesheets from shrinking it a
+ * second time and making the size control appear ineffective.
+ */
+.app[data-auto-size-clock="false"] .clock {
+  font-size: var(--clockFit) !important;
+}
+
+.app[data-auto-size-date="false"] .date {
+  font-size: var(--dateFit) !important;
+}
+
+.app[data-auto-size-timer="false"][data-timer-phase="countdown"] .mainValue {
+  font-size: var(--timerFit) !important;
+}
+
+.app[data-auto-size-completion="false"][data-timer-phase="completion"] .mainValue {
+  font-size: var(--completionTextFit) !important;
+}
+
+.app[data-auto-size-target="false"] .target {
+  font-size: var(--targetFit) !important;
+}
+
+.app[data-auto-size-sub="false"] .sub {
+  font-size: var(--subFit) !important;
+}
+
+.app[data-auto-size-timer-text="false"] .timerText {
+  font-size: var(--timerTextFit) !important;
+}
+
+.app[data-auto-size-wro-title="false"] .mode.wroTitle {
+  font-size: var(--wroTitleFit) !important;
+}
+
+.app[data-auto-size-wro-suffix="false"] .wroSuffix {
+  font-size: var(--wroSuffixFit) !important;
+}
+
+@media (max-width: 520px) {
+  .perTextAutoSize {
+    align-items: flex-start;
+  }
+
+  .perTextAutoSizeToggle {
+    margin-top: 1px;
+  }
+}

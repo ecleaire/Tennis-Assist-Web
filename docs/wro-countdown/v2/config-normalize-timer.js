@@ -2,7 +2,7 @@ import {
   clamp,
   normalize as normalizeBase,
   pad
-} from "./config-normalize.js?v=20260821c";
+} from "./config-normalize.js?v=20260821e";
 import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
 
 export { clamp, pad };

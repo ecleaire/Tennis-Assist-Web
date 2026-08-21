@@ -1,3 +1,7 @@
+import {
+  isTextAutoSizeEnabled
+} from "./text-auto-size-values.js?v=20260821e";
+
 const DESKTOP_QUERY =
   "(min-width: 1000px) and (orientation: landscape)";
 const PHONE_LANDSCAPE_QUERY =
@@ -157,7 +161,9 @@ function contentScale(text) {
 function preferredSize(settings, viewport, text) {
   const configured = configuredSize(settings);
 
-  if (!settings.autoSize) return configured;
+  if (!isTextAutoSizeEnabled(settings, "completionText")) {
+    return configured;
+  }
 
   const messageScale = contentScale(text);
   const portrait = viewport.height >= viewport.width;
@@ -224,7 +230,7 @@ function signature(refs, settings, viewport, width, height) {
     refs.subValue.hidden ? "" : refs.subValue.textContent.length,
     refs.display.dataset.position,
     settings.completionTextSize,
-    settings.autoSize,
+    isTextAutoSizeEnabled(settings, "completionText"),
     settings.showTarget,
     settings.showHourMinute,
     settings.targetSize,
@@ -264,7 +270,8 @@ export function fitCompletionMessage(refs, settings) {
   const width = horizontalBudget(refs, viewport);
   const height = verticalBudget(refs, viewport);
   const requested = configuredSize(settings);
-  const scale = settings.autoSize
+  const automatic = isTextAutoSizeEnabled(settings, "completionText");
+  const scale = automatic
     ? contentScale(refs.mainValue.textContent)
     : 1;
   const preferred = preferredSize(
@@ -273,6 +280,7 @@ export function fitCompletionMessage(refs, settings) {
     refs.mainValue.textContent
   );
   exposeSizes(refs, requested, preferred, scale);
+  refs.app.dataset.completionAutoSize = String(automatic);
 
   const key = signature(refs, settings, viewport, width, height);
   const previous = cache.get(refs.app);
