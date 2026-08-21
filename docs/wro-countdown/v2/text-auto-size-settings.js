@@ -13,10 +13,10 @@ function toggleMarkup(item) {
     <b>自動調整</b>
     <small>オン：画面に合わせて拡大・縮小／オフ：入力したpxを優先</small>
   </div>
-  <label class="toggle perTextAutoSizeToggle">
+  <span class="toggle perTextAutoSizeToggle">
     <input id="${item.inputId}" type="checkbox" aria-label="${item.label}の自動サイズ調整">
     <span></span>
-  </label>
+  </span>
 </div>`;
 }
 
