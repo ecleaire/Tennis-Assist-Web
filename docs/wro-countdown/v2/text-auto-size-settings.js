@@ -20,6 +20,32 @@ function toggleMarkup(item) {
 </div>`;
 }
 
+function updateMetric(item, settings, enabled) {
+  const metric = document.querySelector(
+    `[data-size-metric="${item.sizeKey}"]`
+  );
+  if (!metric) return;
+
+  let text = metric.textContent
+    .replace(/^(基準|設定)/, enabled ? "基準" : "設定")
+    .replace(/・画面内に収めるため安全縮小$/, "");
+
+  if (!enabled) {
+    const actualMatch = text.match(/実表示\s*([0-9.]+)px/);
+    const configured = Number(settings[item.sizeKey]);
+    const actual = Number(actualMatch?.[1]);
+    if (
+      Number.isFinite(configured) &&
+      Number.isFinite(actual) &&
+      actual < configured - 0.75
+    ) {
+      text += "・画面内に収めるため安全縮小";
+    }
+  }
+
+  metric.textContent = text;
+}
+
 export function installTextAutoSizeSettings() {
   for (const item of TEXT_AUTO_SIZE_ITEMS) {
     if ($(item.inputId)) continue;
@@ -66,7 +92,11 @@ export function createTextAutoSizeController({
   function render() {
     const settings = getSettings();
     for (const item of inputs) {
-      item.input.checked = Boolean(settings[item.key]);
+      const enabled = Boolean(settings[item.key]);
+      item.input.checked = enabled;
+      item.input.closest(".sizeControl")
+        ?.classList.toggle("manualTextSize", !enabled);
+      updateMetric(item, settings, enabled);
     }
 
     const state = textAutoSizeMasterState(settings);
