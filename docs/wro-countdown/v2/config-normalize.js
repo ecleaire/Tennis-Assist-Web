@@ -4,11 +4,14 @@ import {
   PATTERNS,
   POSITION_VALUES,
   SOUND_TYPES
-} from "./config-values.js?v=20260821c";
+} from "./config-values.js?v=20260821e";
 import {
   normalizeCompletionMessages
 } from "./completion-messages.js?v=20260821c";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260820a";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import {
+  TEXT_AUTO_SIZE_ITEMS
+} from "./text-auto-size-values.js?v=20260821e";
 
 export const clamp = (value, minimum, maximum) => {
   const numeric = Number(value);
@@ -83,6 +86,21 @@ const sizeSetting = (key, value) => numberSetting(
   1
 );
 
+function normalizeTextAutoSize(raw) {
+  const legacyMaster = booleanSetting(raw.autoSize, DEFAULTS.autoSize);
+  const values = Object.fromEntries(
+    TEXT_AUTO_SIZE_ITEMS.map(item => [
+      item.key,
+      booleanSetting(raw[item.key], legacyMaster)
+    ])
+  );
+
+  return {
+    autoSize: Object.values(values).every(Boolean),
+    ...values
+  };
+}
+
 export function normalize(raw = {}) {
   const value = { ...DEFAULTS, ...raw };
   const completionMessages = normalizeCompletionMessages(
@@ -94,6 +112,7 @@ export function normalize(raw = {}) {
       : DEFAULTS.completionText,
     DEFAULTS.completionMessages
   );
+  const textAutoSize = normalizeTextAutoSize(raw);
 
   return {
     mode: value.mode === "wro" ? "wro" : "timer",
@@ -174,7 +193,7 @@ export function normalize(raw = {}) {
       DEFAULTS.backgroundScanlines
     ),
 
-    autoSize: booleanSetting(raw.autoSize, DEFAULTS.autoSize),
+    ...textAutoSize,
     clockSize: sizeSetting("clockSize", value.clockSize),
     dateSize: sizeSetting("dateSize", value.dateSize),
     timerSize: sizeSetting("timerSize", value.timerSize),
