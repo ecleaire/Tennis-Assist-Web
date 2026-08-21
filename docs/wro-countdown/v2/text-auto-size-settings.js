@@ -1,0 +1,90 @@
+import {
+  TEXT_AUTO_SIZE_ITEMS,
+  textAutoSizeMasterPatch,
+  textAutoSizeMasterState
+} from "./text-auto-size-values.js?v=20260821e";
+
+const $ = id => document.getElementById(id);
+
+function toggleMarkup(item) {
+  return `
+<div class="perTextAutoSize" data-auto-size-setting="${item.key}">
+  <div class="perTextAutoSizeCopy">
+    <b>自動調整</b>
+    <small>オン：画面に合わせて拡大・縮小／オフ：入力したpxを優先</small>
+  </div>
+  <label class="toggle perTextAutoSizeToggle">
+    <input id="${item.inputId}" type="checkbox" aria-label="${item.label}の自動サイズ調整">
+    <span></span>
+  </label>
+</div>`;
+}
+
+export function installTextAutoSizeSettings() {
+  for (const item of TEXT_AUTO_SIZE_ITEMS) {
+    if ($(item.inputId)) continue;
+    const sizeInput = $(item.sizeKey);
+    const card = sizeInput?.closest(".sizeControl");
+    if (!card) continue;
+    card.insertAdjacentHTML("beforeend", toggleMarkup(item));
+  }
+
+  const master = $("autoSize");
+  const copy = master?.closest(".switch")?.querySelector(".switchCopy");
+  if (copy) {
+    const title = copy.querySelector("b");
+    const description = copy.querySelector("small");
+    if (title) title.textContent = "文字サイズの自動調整（全項目）";
+    if (description) {
+      description.id = "autoSizeMasterDescription";
+      description.textContent =
+        "全項目を一括で切り替えます。詳細設定では文字ごとに個別変更できます。";
+    }
+  }
+}
+
+export function createTextAutoSizeController({
+  getSettings,
+  setSettings
+}) {
+  const master = $("autoSize");
+  const inputs = TEXT_AUTO_SIZE_ITEMS
+    .map(item => ({ ...item, input: $(item.inputId) }))
+    .filter(item => item.input);
+  const description = $("autoSizeMasterDescription");
+
+  master.onchange = () => {
+    setSettings(textAutoSizeMasterPatch(master.checked), { quiet: true });
+  };
+
+  for (const item of inputs) {
+    item.input.onchange = () => {
+      setSettings({ [item.key]: item.input.checked }, { quiet: true });
+    };
+  }
+
+  function render() {
+    const settings = getSettings();
+    for (const item of inputs) {
+      item.input.checked = Boolean(settings[item.key]);
+    }
+
+    const state = textAutoSizeMasterState(settings);
+    master.checked = state.all;
+    master.indeterminate = state.partial;
+    master.setAttribute(
+      "aria-checked",
+      state.partial ? "mixed" : String(state.all)
+    );
+
+    if (description) {
+      description.textContent = state.all
+        ? `全${state.total}項目で自動調整がオンです。文字ごとに個別変更できます。`
+        : state.none
+          ? `全${state.total}項目で自動調整がオフです。入力したpxを優先し、画面外へ出る場合だけ安全に縮小します。`
+          : `${state.enabled}/${state.total}項目で自動調整がオンです。詳細設定から個別に変更できます。`;
+    }
+  }
+
+  return { render };
+}
