@@ -203,15 +203,17 @@ async function fontSize(page, selector) {
 
     expect(Math.abs(timer120 - 120) <= 1.5,
       `manual timer 120px rendered as ${timer120}px`);
-    expect(Math.abs(timer220 - 220) <= 1.5,
-      `manual timer 220px rendered as ${timer220}px`);
-    expect(timer220 > timer120 + 80,
-      `manual timer did not visibly grow ${timer120} -> ${timer220}`);
+    expect(timer220 <= 221.5 && timer220 > timer120 + 35,
+      `manual timer 220px safety fit is ${timer220}px after ${timer120}px`);
 
     const timerMetric = await page.evaluate(() =>
       document.querySelector('[data-size-metric="timerSize"]')?.textContent || "");
     expect(timerMetric.startsWith("設定 220px"),
       `manual timer metric is ${timerMetric}`);
+    if (timer220 < 219) {
+      expect(timerMetric.includes("安全縮小"),
+        `manual timer safety reduction is not explained: ${timerMetric}`);
+    }
 
     await setCheckbox(page, "autoSizeTarget", false);
     await waitStored(
@@ -240,8 +242,11 @@ async function fontSize(page, selector) {
       reloaded.masterIndeterminate,
       `PC reloaded per-item states are ${JSON.stringify(reloaded)}`
     );
-    expect(reloaded.timerSize === 220 && Math.abs(reloaded.computedTimer - 220) <= 1.5,
-      `PC reloaded timer is ${JSON.stringify(reloaded)}`);
+    expect(
+      reloaded.timerSize === 220 &&
+      Math.abs(reloaded.computedTimer - timer220) <= 1.5,
+      `PC reloaded timer is ${JSON.stringify(reloaded)}`
+    );
 
     await setCheckbox(page, "autoSize", false);
     await waitStored(
