@@ -23,6 +23,7 @@ async function readUi(page) {
     targetTime: document.getElementById("targetTime").value,
     clockSize: Number(document.getElementById("clockSize").value),
     timerSize: Number(document.getElementById("timerSize").value),
+    timerSizeMaximum: Number(document.getElementById("timerSize").max),
     completionDurationMin:
       Number(document.getElementById("completionDurationMin").value),
     showTarget: document.getElementById("showTarget").checked,
@@ -99,8 +100,10 @@ await runCase(
       `invalid-values: target time is ${state.targetTime}`);
     expect(state.clockSize === 64,
       `invalid-values: clock size is ${state.clockSize}`);
-    expect(state.timerSize === 520,
+    expect(state.timerSize === 3000,
       `invalid-values: timer size is ${state.timerSize}`);
+    expect(state.timerSizeMaximum === 3000,
+      `invalid-values: timer max is ${state.timerSizeMaximum}`);
     expect(state.completionDurationMin === 1,
       `invalid-values: completion duration is ${state.completionDurationMin}`);
     expect(state.showTarget === true,
@@ -132,6 +135,8 @@ await runCase(
       `malformed-json: clock size is ${state.clockSize}`);
     expect(state.timerSize === 116,
       `malformed-json: timer size is ${state.timerSize}`);
+    expect(state.timerSizeMaximum === 3000,
+      `malformed-json: timer max is ${state.timerSizeMaximum}`);
     expect(state.completionDurationMin === 30,
       `malformed-json: completion duration is ${state.completionDurationMin}`);
     expect(state.showTarget && state.showCurrentTime && state.autoSize,
