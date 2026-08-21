@@ -78,6 +78,7 @@ export function createTextAutoSizeController({
     .map(item => ({ ...item, input: $(item.inputId) }))
     .filter(item => item.input);
   const description = $("autoSizeMasterDescription");
+  let renderFrame = 0;
 
   master.onchange = () => {
     setSettings(textAutoSizeMasterPatch(master.checked), { quiet: true });
@@ -90,6 +91,7 @@ export function createTextAutoSizeController({
   }
 
   function render() {
+    renderFrame = 0;
     const settings = getSettings();
     for (const item of inputs) {
       const enabled = Boolean(settings[item.key]);
@@ -116,5 +118,16 @@ export function createTextAutoSizeController({
     }
   }
 
-  return { render };
+  function requestRender() {
+    if (renderFrame) return;
+    renderFrame = requestAnimationFrame(render);
+  }
+
+  // The generic settings audit refreshes actual-size metrics after layout
+  // fitting. Queue this controller afterward so each metric keeps the correct
+  // per-item auto/manual label instead of falling back to the old global flag.
+  $("app")?.addEventListener("wro:layout-updated", requestRender);
+  $("overlay")?.addEventListener("transitionend", requestRender);
+
+  return { render, requestRender };
 }
