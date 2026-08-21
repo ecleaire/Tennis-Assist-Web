@@ -1,5 +1,7 @@
 import { renderLabels } from "./display-render.js?v=20260821b";
 import { fitDisplay } from "./display-fit.js?v=20260820a";
+import { fitTimerSize } from "./timer-size-fit.js?v=20260821d";
+import { finalizeTimerSize } from "./timer-size-guard.js?v=20260821d";
 import { fitCompletionMessage } from "./completion-fit.js?v=20260820g";
 import { createAutoWro } from "./display-auto.js?v=20260820a";
 import { createTimerTarget } from "./display-target.js?v=20260821b";
@@ -23,10 +25,13 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   }
 
   function fit() {
+    const settings = getSettings();
     position();
-    fitDisplay(refs, getSettings());
-    fitCompletionMessage(refs, getSettings());
+    fitDisplay(refs, settings);
+    fitTimerSize(refs, settings);
+    fitCompletionMessage(refs, settings);
     constrainPositioning(refs);
+    finalizeTimerSize(refs, settings);
     notifyLayoutUpdated();
   }
 

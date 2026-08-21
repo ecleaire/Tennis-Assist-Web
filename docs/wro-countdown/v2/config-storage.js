@@ -2,7 +2,7 @@ import {
   SETTINGS_KEY,
   OLD_SETTINGS_KEY
 } from "./config-values.js?v=20260821c";
-import { normalize } from "./config-normalize.js?v=20260821c";
+import { normalize } from "./config-normalize-timer.js?v=20260821d";
 
 function read(key) {
   const source = localStorage.getItem(key);

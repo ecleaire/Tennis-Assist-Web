@@ -1,0 +1,10 @@
+/*
+ * The responsive JavaScript fitter is the single source of truth for the
+ * large countdown timer. Older device CSS used min(...vw, ...vh) caps, which
+ * silently stopped the timer-size control from having any visible effect.
+ *
+ * WRO and completion displays retain their own dedicated responsive rules.
+ */
+.app[data-timer-phase="countdown"] .mainValue {
+  font-size: var(--timerFit) !important;
+}

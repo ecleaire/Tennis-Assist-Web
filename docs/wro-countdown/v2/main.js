@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821c";
+} from "./config.js?v=20260821d";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -19,7 +19,7 @@ import {
 import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
 import { renderSettings } from "./render-settings.js?v=20260820b";
-import { applySizeLimits } from "./size-limits.js?v=20260820a";
+import { applySizeLimits } from "./size-limits.js?v=20260821d";
 import {
   installExtraSettings,
   createExtraSettingsController
@@ -29,7 +29,7 @@ import {
 } from "./settings-control-audit.js?v=20260821c";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260821b";
+import { createDisplay } from "./display.js?v=20260821d";
 import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
@@ -130,10 +130,6 @@ function protectCompletionSequence(patch) {
     ? settings.completionMessages
     : [];
 
-  // completionText is only a compatibility alias. For a single-message
-  // configuration, convert an alias-only update into the canonical array. For
-  // a multi-message configuration, ignore alias-only updates so an old or
-  // delayed handler cannot collapse the sequence.
   if (hasLegacyText && !hasSequence) {
     if (currentSequence.length <= 1) {
       const text = String(next.completionText ?? "").trim();
@@ -143,10 +139,6 @@ function protectCompletionSequence(patch) {
     }
   }
 
-  // Blur/change events can arrive after a reorder has rebuilt the editor. If
-  // such a delayed save contains fewer messages than the currently visible
-  // non-empty cards, preserve the complete visible list. Explicit remove
-  // actions are allowed to reduce the count.
   if (Array.isArray(next.completionMessages)) {
     if (trustedAction !== "remove") {
       const visibleMessages = visibleCompletionMessages();
