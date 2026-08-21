@@ -209,6 +209,12 @@ function setTimerSize(refs, size) {
   void refs.mainValue.offsetWidth;
 }
 
+function clearTimerOverride(refs) {
+  refs.mainValue.style.removeProperty("font-size");
+  delete refs.app.dataset.timerPreferredSize;
+  cache.delete(refs.app);
+}
+
 function fits(refs, width, height) {
   const rect = refs.mainValue.getBoundingClientRect();
   return rect.width <= width + 1 &&
@@ -239,7 +245,9 @@ function signature(refs, settings, viewport, width, height) {
 
 export function fitTimerSize(refs, settings) {
   if (refs.app.dataset.timerPhase === "completion") {
-    cache.delete(refs.app);
+    // Remove the previous countdown's inline !important before the dedicated
+    // completion-message fitter measures its own font size.
+    clearTimerOverride(refs);
     return;
   }
 
