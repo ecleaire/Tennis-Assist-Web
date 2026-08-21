@@ -3,7 +3,7 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821d";
+} from "./config.js?v=20260821e";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
@@ -16,6 +16,10 @@ import {
 import {
   installCompletionAutoWroSetting
 } from "./completion-auto-wro-setting.js?v=20260820b";
+import {
+  installTextAutoSizeSettings,
+  createTextAutoSizeController
+} from "./text-auto-size-settings.js?v=20260821e";
 import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
 import { renderSettings } from "./render-settings.js?v=20260820b";
@@ -29,12 +33,13 @@ import {
 } from "./settings-control-audit.js?v=20260821c";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260821d";
+import { createDisplay } from "./display.js?v=20260821e";
 import { bindEvents } from "./events.js?v=20260820b";
 
 buildSettings();
 installSoundOptions();
 installExtraSettings();
+installTextAutoSizeSettings();
 installDefaultSettingsUi();
 installBackgroundSettings();
 installCompletionAutoWroSetting();
@@ -50,6 +55,7 @@ let settings = load();
 let audio;
 let display;
 let settingsAudit = null;
+let textAutoSizeController = null;
 
 const getSettings = () => settings;
 const noise = createNoise(refs, getSettings);
@@ -89,6 +95,7 @@ function render() {
   extraSettings.render();
   backgroundSettings.render();
   settingsAudit?.render();
+  textAutoSizeController?.render();
 }
 
 function reportSaveResult(saved) {
@@ -226,6 +233,13 @@ settingsAudit = createSettingsControlAudit({
   audio,
   noise,
   reset
+});
+
+// This is installed after the legacy event bindings so the master auto-size
+// switch can control all per-text switches without a second handler racing it.
+textAutoSizeController = createTextAutoSizeController({
+  getSettings,
+  setSettings
 });
 
 async function start() {
