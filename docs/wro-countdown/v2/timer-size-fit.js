@@ -244,9 +244,9 @@ function signature(refs, settings, viewport, width, height) {
 }
 
 export function fitTimerSize(refs, settings) {
-  if (refs.app.dataset.timerPhase === "completion") {
-    // Remove the previous countdown's inline !important before the dedicated
-    // completion-message fitter measures its own font size.
+  if (refs.app.dataset.timerPhase !== "countdown") {
+    // WRO and completion states have their own responsive fitters. Remove the
+    // countdown's inline !important before either of those fitters measures.
     clearTimerOverride(refs);
     return;
   }
