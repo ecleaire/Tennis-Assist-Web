@@ -17,14 +17,14 @@ function clearTimerState(refs) {
 }
 
 /**
- * Runs after responsive fitting and collision handling.
+ * Runs after responsive fitting and collision handling for countdown mode.
  *
  * The CSS variable may legitimately be smaller than the configured setting
  * when the screen cannot fit the requested value. What must never happen is a
  * second CSS vw/vh cap making the computed size smaller than --timerFit.
  */
 export function finalizeTimerSize(refs, settings) {
-  if (refs.app.dataset.timerPhase === "completion") {
+  if (refs.app.dataset.timerPhase !== "countdown") {
     clearTimerState(refs);
     return;
   }
