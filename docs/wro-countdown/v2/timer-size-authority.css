@@ -1,10 +1,10 @@
 /*
  * The responsive JavaScript fitter is the single source of truth for the
- * large timer/WRO value. Older device CSS used min(...vw, ...vh) caps, which
+ * large countdown timer. Older device CSS used min(...vw, ...vh) caps, which
  * silently stopped the timer-size control from having any visible effect.
  *
- * Completion messages use their own --completionTextFit rule and are excluded.
+ * WRO and completion displays retain their own dedicated responsive rules.
  */
-.app:not([data-timer-phase="completion"]) .mainValue {
+.app[data-timer-phase="countdown"] .mainValue {
   font-size: var(--timerFit) !important;
 }
