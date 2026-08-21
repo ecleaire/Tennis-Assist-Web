@@ -250,7 +250,9 @@ async function start() {
   noise.restart();
   display.restartSchedule(false);
   display.tick();
-  settingsAudit.markSaved();
+  // Persist the normalized schema once so existing devices immediately gain
+  // all nine per-text switches while retaining their former global behavior.
+  reportSaveResult(save(settings));
   window.setInterval(display.tick, 250);
   window.setTimeout(noise.play, 180);
 }
