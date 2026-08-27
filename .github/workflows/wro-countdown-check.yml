@@ -25,6 +25,7 @@ on:
       - "scripts/wro-countdown-timer-size-control-check.mjs"
       - "scripts/wro-countdown-per-text-auto-size-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
+      - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
   pull_request:
     paths:
@@ -50,6 +51,7 @@ on:
       - "scripts/wro-countdown-timer-size-control-check.mjs"
       - "scripts/wro-countdown-per-text-auto-size-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
+      - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
 
 concurrency:
@@ -59,7 +61,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
 
@@ -82,7 +84,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install chromium
 
-      - name: Run stable URL, full function, real-click sizing, per-text sizing, timer size, settings, completion, responsive, background, typography, defaults, anchor, and date audits
+      - name: Run stable URL, full function, real settings, real-click sizing, per-text sizing, timer size, completion, responsive, background, typography, defaults, anchor, and date audits
         run: |
           python3 -m http.server 4173 --directory . >/tmp/wro-countdown-server.log 2>&1 &
           SERVER_PID=$!
@@ -95,6 +97,7 @@ jobs:
           done
           node scripts/wro-countdown-stable-url-check.mjs
           node scripts/wro-countdown-full-function-check.mjs
+          node scripts/wro-countdown-real-settings-interaction-check.mjs
           node scripts/wro-countdown-clickable-size-controls-check.mjs
           node scripts/wro-countdown-per-text-auto-size-check.mjs
           node scripts/wro-countdown-timer-size-control-check.mjs

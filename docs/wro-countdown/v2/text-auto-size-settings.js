@@ -79,7 +79,7 @@ function updateMetric(item, settings, enabled) {
     }
   }
 
-  metric.textContent = text;
+  if (metric.textContent !== text) metric.textContent = text;
 }
 
 export function installTextAutoSizeSettings() {
@@ -118,6 +118,7 @@ export function createTextAutoSizeController({
     .filter(item => item.input);
   const description = $("autoSizeMasterDescription");
   let renderFrame = 0;
+  let settleFrame = 0;
 
   master.onchange = () => {
     setSettings(textAutoSizeMasterPatch(master.checked), { quiet: true });
@@ -131,6 +132,7 @@ export function createTextAutoSizeController({
 
   function render() {
     renderFrame = 0;
+    settleFrame = 0;
     const settings = getSettings();
     for (const item of inputs) {
       const enabled = Boolean(settings[item.key]);
@@ -158,8 +160,15 @@ export function createTextAutoSizeController({
   }
 
   function requestRender() {
-    if (renderFrame) return;
-    renderFrame = requestAnimationFrame(render);
+    if (renderFrame || settleFrame) return;
+
+    // The generic metric writer can already have a frame queued before the
+    // final layout event. Wait one extra animation frame so this per-item layer
+    // always runs last and cannot lose the manual-mode safety explanation.
+    renderFrame = requestAnimationFrame(() => {
+      renderFrame = 0;
+      settleFrame = requestAnimationFrame(render);
+    });
   }
 
   // The generic settings audit refreshes actual-size metrics after layout
