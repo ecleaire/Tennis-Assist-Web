@@ -19,7 +19,7 @@ import {
 import {
   installTextAutoSizeSettings,
   createTextAutoSizeController
-} from "./text-auto-size-settings.js?v=20260821f";
+} from "./text-auto-size-settings.js?v=20260821g";
 import {
   installSettingsFormIntegrity
 } from "./settings-form-integrity.js?v=20260821g";
@@ -37,7 +37,7 @@ import {
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
 import { createDisplay } from "./display.js?v=20260821e";
-import { bindEvents } from "./events.js?v=20260820b";
+import { bindEvents } from "./events.js?v=20260821g";
 
 buildSettings();
 installSoundOptions();
