@@ -156,7 +156,7 @@ try {
   await page.press("#volume", "Enter");
   await waitSaved(page, "settings.volume === 44", "volume number input");
 
-  await page.click("#backgroundUseThemeColors");
+  await page.click('label.toggle:has(#backgroundUseThemeColors)');
   await waitSaved(
     page,
     "settings.backgroundUseThemeColors === false",
