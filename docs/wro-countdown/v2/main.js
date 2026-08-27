@@ -19,7 +19,7 @@ import {
 import {
   installTextAutoSizeSettings,
   createTextAutoSizeController
-} from "./text-auto-size-settings.js?v=20260821e";
+} from "./text-auto-size-settings.js?v=20260821f";
 import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
 import { renderSettings } from "./render-settings.js?v=20260820b";

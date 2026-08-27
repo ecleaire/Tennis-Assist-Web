@@ -2,7 +2,7 @@ import {
   TEXT_AUTO_SIZE_ITEMS,
   textAutoSizeMasterPatch,
   textAutoSizeMasterState
-} from "./text-auto-size-values.js?v=20260821e";
+} from "./text-auto-size-values.js?v=20260821f";
 
 const $ = id => document.getElementById(id);
 
@@ -13,11 +13,47 @@ function toggleMarkup(item) {
     <b>自動調整</b>
     <small>オン：画面に合わせて拡大・縮小／オフ：入力したpxを優先</small>
   </div>
-  <span class="toggle perTextAutoSizeToggle">
+  <label class="toggle perTextAutoSizeToggle" for="${item.inputId}">
     <input id="${item.inputId}" type="checkbox" aria-label="${item.label}の自動サイズ調整">
     <span></span>
-  </span>
+  </label>
 </div>`;
+}
+
+/**
+ * Older size controls were built as one large <label> containing a range and
+ * number input. Adding a checkbox inside that label created invalid nested
+ * form-label behaviour: a real mouse/touch click could be forwarded twice or
+ * to the wrong input, so the auto-size switch appeared to do nothing even
+ * though programmatic tests passed.
+ *
+ * Convert every size card to a neutral <div> before adding its checkbox. This
+ * keeps the slider, number input and toggle independent and makes pointer,
+ * touch and keyboard operation consistent across browsers.
+ */
+function upgradeSizeControl(card, item) {
+  let upgraded = card;
+
+  if (card.tagName === "LABEL") {
+    upgraded = document.createElement("div");
+    for (const attribute of card.attributes) {
+      upgraded.setAttribute(attribute.name, attribute.value);
+    }
+    while (card.firstChild) upgraded.append(card.firstChild);
+    card.replaceWith(upgraded);
+  }
+
+  upgraded.dataset.sizeSetting = item.sizeKey;
+  const label = upgraded.querySelector(":scope > .label");
+  const labelText = label?.textContent?.trim() || item.label;
+  const range = upgraded.querySelector(
+    `#${CSS.escape(item.sizeKey)}Range`
+  );
+  const number = upgraded.querySelector(`#${CSS.escape(item.sizeKey)}`);
+
+  range?.setAttribute("aria-label", `${labelText}のスライダー`);
+  number?.setAttribute("aria-label", `${labelText}の数値入力`);
+  return upgraded;
 }
 
 function updateMetric(item, settings, enabled) {
@@ -48,11 +84,14 @@ function updateMetric(item, settings, enabled) {
 
 export function installTextAutoSizeSettings() {
   for (const item of TEXT_AUTO_SIZE_ITEMS) {
-    if ($(item.inputId)) continue;
     const sizeInput = $(item.sizeKey);
-    const card = sizeInput?.closest(".sizeControl");
-    if (!card) continue;
-    card.insertAdjacentHTML("beforeend", toggleMarkup(item));
+    const originalCard = sizeInput?.closest(".sizeControl");
+    if (!originalCard) continue;
+
+    const card = upgradeSizeControl(originalCard, item);
+    if (!$(item.inputId)) {
+      card.insertAdjacentHTML("beforeend", toggleMarkup(item));
+    }
   }
 
   const master = $("autoSize");
