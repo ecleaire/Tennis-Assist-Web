@@ -1,4 +1,4 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260926b";
 import {
   isTextAutoSizeEnabled
 } from "./text-auto-size-values.js?v=20260821e";
