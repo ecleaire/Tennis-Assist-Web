@@ -93,9 +93,21 @@ function decimalPlaces(value) {
 }
 
 function inputRules(input) {
-  const minimum = Number(input.min);
-  const maximum = Number(input.max);
-  const step = Number(input.step || 1);
+  // Number("") is 0, so reading a missing max attribute through input.max
+  // accidentally turned an unlimited field into max=0. Check the attributes
+  // themselves before converting them to numbers.
+  const minText = input.getAttribute("min");
+  const maxText = input.getAttribute("max");
+  const stepText = input.getAttribute("step");
+  const minimum = minText === null || minText === ""
+    ? -Infinity
+    : Number(minText);
+  const maximum = maxText === null || maxText === ""
+    ? Infinity
+    : Number(maxText);
+  const step = stepText === null || stepText === ""
+    ? 1
+    : Number(stepText);
   return {
     minimum: Number.isFinite(minimum) ? minimum : -Infinity,
     maximum: Number.isFinite(maximum) ? maximum : Infinity,
