@@ -23,7 +23,8 @@ export function applySizeLimits() {
       if (key === "timerSize" && input.type === "number") {
         input.removeAttribute("max");
       } else {
-        input.max = String(limits.maximum);\n      }
+        input.max = String(limits.maximum);
+      }
       input.step = "1";
     }
   }
