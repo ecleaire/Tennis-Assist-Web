@@ -325,5 +325,8 @@ export function installSettingsLayout() {
     if (reset) reset.classList.add("settingsResetButton");
   }
 
-  root.replaceChildren(basic, advanced, actions);
+  const version = document.createElement("div");
+  version.className = "settingsVersion";
+  version.innerHTML = `<span>WRO Countdown</span><strong>v2026.09.26</strong>`;
+  root.replaceChildren(basic, advanced, actions, version);
 }
