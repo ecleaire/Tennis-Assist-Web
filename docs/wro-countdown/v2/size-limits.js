@@ -20,8 +20,15 @@ export function applySizeLimits() {
     for (const input of [number, range]) {
       if (!input) continue;
       input.min = String(limits.minimum);
-      if (key === "timerSize" && input.type === "number") {
-        input.removeAttribute("max");
+      if (key === "timerSize") {
+        if (input.type === "number") {
+          // Number input: no upper bound.
+          input.removeAttribute("max");
+        } else {
+          // Range input: browsers require a finite max. Expand this range
+          // dynamically when a larger value is entered.
+          input.max = "10000";
+        }
       } else {
         input.max = String(limits.maximum);
       }
