@@ -3,7 +3,7 @@ import {
   normalize as normalizeBase,
   pad
 } from "./config-normalize.js?v=20260821e";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260926a";
 
 export { clamp, pad };
 
@@ -22,7 +22,7 @@ export function normalize(raw = {}) {
   return {
     ...normalized,
     timerSize: Number.isFinite(numeric)
-      ? clamp(Math.round(numeric), limits.minimum, limits.maximum)
+      ? Math.max(limits.minimum, Math.round(numeric))
       : normalized.timerSize
   };
 }
