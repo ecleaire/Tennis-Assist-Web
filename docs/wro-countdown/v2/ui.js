@@ -58,7 +58,7 @@ export function buildSettings() {
 <div class="switch"><div class="switchCopy"><b>画面サイズに合わせて自動調整</b><small>設定値を基準に、スマホでは数字をできるだけ大きく表示します。</small></div><label class="toggle"><input id="autoSize" type="checkbox"><span></span></label></div>
 <div class="sizeControls">
 <label class="field sizeControl"><span class="label">現在時刻（px）</span><div class="range"><input id="clockSizeRange" type="range" min="20" max="180" step="1"><input id="clockSize" type="number" min="20" max="180"></div></label>
-<label class="field sizeControl"><span class="label">タイマー（px）</span><div class="range"><input id="timerSizeRange" type="range" min="36" max="260" step="1"><input id="timerSize" type="number" min="36" max="260"></div></label>
+<label class="field sizeControl"><span class="label">タイマー（px）</span><div class="range"><input id="timerSizeRange" type="range" min="36" max="10000" step="1"><input id="timerSize" type="number" min="36"></div></label>
 <label class="field sizeControl"><span class="label">目標時刻（px）</span><div class="range"><input id="targetSizeRange" type="range" min="12" max="100" step="1"><input id="targetSize" type="number" min="12" max="100"></div></label>
 <label class="field sizeControl"><span class="label">補足表示（px）</span><div class="range"><input id="subSizeRange" type="range" min="12" max="80" step="1"><input id="subSize" type="number" min="12" max="80"></div></label>
 <label class="field sizeControl wide"><span class="label">追加文字（px）</span><div class="range"><input id="timerTextSizeRange" type="range" min="12" max="100" step="1"><input id="timerTextSize" type="number" min="12" max="100"></div></label>
