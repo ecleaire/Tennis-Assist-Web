@@ -8,7 +8,7 @@ import {
 import {
   normalizeCompletionMessages
 } from "./completion-messages.js?v=20260821c";
-import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260926b";
 import {
   TEXT_AUTO_SIZE_ITEMS
 } from "./text-auto-size-values.js?v=20260821e";
