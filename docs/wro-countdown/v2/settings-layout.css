@@ -415,3 +415,6 @@
   bottom: 39px;
   z-index: 5;
 }
+
+.settingsVersion { flex-wrap: wrap; }
+.settingsVersion small { font-size: 10px; color: var(--muted); }
