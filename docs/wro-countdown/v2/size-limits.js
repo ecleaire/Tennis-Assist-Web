@@ -20,7 +20,10 @@ export function applySizeLimits() {
     for (const input of [number, range]) {
       if (!input) continue;
       input.min = String(limits.minimum);
-      if (key === "timerSize" && input.type === "number") {\n        input.removeAttribute("max");\n      } else {\n        input.max = String(limits.maximum);\n      }
+      if (key === "timerSize" && input.type === "number") {
+        input.removeAttribute("max");
+      } else {
+        input.max = String(limits.maximum);\n      }
       input.step = "1";
     }
   }
