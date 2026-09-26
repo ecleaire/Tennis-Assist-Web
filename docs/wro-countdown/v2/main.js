@@ -25,7 +25,7 @@ import {
 } from "./settings-form-integrity.js?v=20260821g";
 import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
 import { controls as makeControls } from "./controls.js?v=20260820b";
-import { renderSettings } from "./render-settings.js?v=20260820b";
+import { renderSettings } from "./render-settings.js?v=20260926g";
 import { applySizeLimits } from "./size-limits.js?v=20260926d";
 import {
   installExtraSettings,

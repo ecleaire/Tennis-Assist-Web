@@ -45,6 +45,11 @@ export function renderSettings(controls, settings, setSettings, audio) {
     [controls.timerTextSizeRange, controls.timerTextSize, settings.timerTextSize]
   ];
   sizes.forEach(([range, number, value]) => {
+    if (number?.id === "timerSize") {
+      number.removeAttribute("max");
+      number.removeAttribute("maxlength");
+      number.setCustomValidity("");
+    }
     range.value = value;
     number.value = value;
   });
