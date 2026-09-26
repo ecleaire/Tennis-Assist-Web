@@ -3,41 +3,42 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260821e";
-import { buildSettings, refs as makeRefs } from "./ui.js?v=20260926e";
-import { installSoundOptions } from "./sound-options.js?v=20260815h";
+} from "./config.js?v=20260926k";
+import { buildSettings, refs as makeRefs } from "./ui.js?v=20260926k";
+import { installSoundOptions } from "./sound-options.js?v=20260926k";
 import {
   installDefaultSettingsUi
-} from "./default-settings-ui.js?v=20260815i";
+} from "./default-settings-ui.js?v=20260926k";
 import {
   installBackgroundSettings,
   createBackgroundSettingsController
-} from "./background-settings.js?v=20260815l";
+} from "./background-settings.js?v=20260926k";
 import {
   installCompletionAutoWroSetting
-} from "./completion-auto-wro-setting.js?v=20260820b";
+} from "./completion-auto-wro-setting.js?v=20260926k";
 import {
   installTextAutoSizeSettings,
   createTextAutoSizeController
-} from "./text-auto-size-settings.js?v=20260821g";
+} from "./text-auto-size-settings.js?v=20260926k";
 import {
   installSettingsFormIntegrity
-} from "./settings-form-integrity.js?v=20260821g";
-import { installSettingsLayout } from "./settings-layout.js?v=20260821b";
-import { controls as makeControls } from "./controls.js?v=20260820b";
-import { renderSettings } from "./render-settings.js?v=20260926g";
-import { applySizeLimits } from "./size-limits.js?v=20260926d";
+} from "./settings-form-integrity.js?v=20260926k";
+import { installSettingsLayout } from "./settings-layout.js?v=20260926k";
+import { controls as makeControls } from "./controls.js?v=20260926k";
+import { renderSettings } from "./render-settings.js?v=20260926k";
+import { applySizeLimits } from "./size-limits.js?v=20260926k";
 import {
   installExtraSettings,
   createExtraSettingsController
-} from "./extra-settings.js?v=20260821c";
+} from "./extra-settings.js?v=20260926k";
 import {
   createSettingsControlAudit
-} from "./settings-control-audit.js?v=20260926h";
-import { createNoise } from "./noise.js?v=20260814m";
-import { createAudio } from "./audio.js?v=20260815h";
-import { createDisplay } from "./display.js?v=20260821e";
-import { bindEvents } from "./events.js?v=20260821g";
+} from "./settings-control-audit.js?v=20260926k";
+import { createNoise } from "./noise.js?v=20260926k";
+import { createAudio } from "./audio.js?v=20260926k";
+import { createDisplay } from "./display.js?v=20260926k";
+import { bindEvents } from "./events.js?v=20260926k";
+import { applyReleaseMeta } from "./release-meta.js?v=20260926k";
 
 buildSettings();
 installSoundOptions();
@@ -48,6 +49,7 @@ installBackgroundSettings();
 installCompletionAutoWroSetting();
 installSettingsFormIntegrity();
 installSettingsLayout();
+applyReleaseMeta();
 applySizeLimits();
 
 const refs = makeRefs();
@@ -100,6 +102,7 @@ function render() {
   backgroundSettings.render();
   settingsAudit?.render();
   textAutoSizeController?.render();
+  applyReleaseMeta();
 }
 
 function reportSaveResult(saved) {
