@@ -255,9 +255,22 @@ export function fitTimerSize(refs, settings) {
   }
 
   const viewport = viewportSize(refs);
+  const autoSize = isTextAutoSizeEnabled(settings, "timer");
+  const preferred = preferredSize(settings, viewport);
+
+  // Manual timer size is intentionally allowed to overflow the viewport.
+  // When per-text auto sizing is off, the configured px value is authoritative.
+  if (!autoSize) {
+    setTimerSize(refs, preferred);
+    refs.app.dataset.timerPreferredSize = preferred.toFixed(2);
+    refs.app.dataset.timerAutoSize = "false";
+    refs.app.dataset.timerSizeApplied = "true";
+    cache.delete(refs.app);
+    return;
+  }
+
   const width = horizontalBudget(refs, viewport);
   const height = verticalBudget(refs, viewport);
-  const preferred = preferredSize(settings, viewport);
   const key = signature(refs, settings, viewport, width, height);
   const previous = cache.get(refs.app);
 
