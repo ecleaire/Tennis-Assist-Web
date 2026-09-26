@@ -396,3 +396,22 @@
   color: var(--text);
   font-weight: 700;
 }
+
+
+/* Keep the version visible while scrolling the settings panel. */
+.settingsVersion {
+  position: sticky;
+  z-index: 6;
+  bottom: 0;
+  margin: 0 -18px -18px;
+  padding: 10px 18px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.settingsFooterActions {
+  bottom: 39px;
+  z-index: 5;
+}
