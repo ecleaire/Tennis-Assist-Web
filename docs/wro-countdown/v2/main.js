@@ -4,7 +4,7 @@ import {
   normalize,
   save
 } from "./config.js?v=20260821e";
-import { buildSettings, refs as makeRefs } from "./ui.js?v=20260814m";
+import { buildSettings, refs as makeRefs } from "./ui.js?v=20260926e";
 import { installSoundOptions } from "./sound-options.js?v=20260815h";
 import {
   installDefaultSettingsUi
