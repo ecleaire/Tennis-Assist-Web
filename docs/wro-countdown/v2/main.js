@@ -33,7 +33,7 @@ import {
 } from "./extra-settings.js?v=20260821c";
 import {
   createSettingsControlAudit
-} from "./settings-control-audit.js?v=20260821c";
+} from "./settings-control-audit.js?v=20260926h";
 import { createNoise } from "./noise.js?v=20260814m";
 import { createAudio } from "./audio.js?v=20260815h";
 import { createDisplay } from "./display.js?v=20260821e";
