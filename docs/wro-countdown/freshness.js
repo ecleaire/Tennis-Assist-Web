@@ -44,13 +44,28 @@ function updateReleaseUi() {
 }
 
 function watchReleaseUi() {
-  updateReleaseUi();
-  const observer = new MutationObserver(updateReleaseUi);
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    characterData: true
+  let settingsObserver = null;
+
+  const attach = () => {
+    const settingsRoot = document.getElementById("settingsRoot");
+    if (!settingsRoot || settingsObserver) return false;
+
+    updateReleaseUi();
+    settingsObserver = new MutationObserver(updateReleaseUi);
+    settingsObserver.observe(settingsRoot, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+    return true;
+  };
+
+  if (attach()) return;
+
+  const bootstrapObserver = new MutationObserver(() => {
+    if (attach()) bootstrapObserver.disconnect();
   });
+  bootstrapObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 async function ensureFreshWorker() {
