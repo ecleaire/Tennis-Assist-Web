@@ -1,7 +1,8 @@
 import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20260927a";
 
 const GAP = 14;
-const DESKTOP_QUERY = "(min-width: 800px) and (orientation: landscape)";
+const ABSOLUTE_QUERY = "(min-width: 800px), (orientation: landscape)";
+const PHONE_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 999px)";
 
 const DISPLAY_KINDS = [
   "timer",
@@ -12,6 +13,11 @@ const DISPLAY_KINDS = [
   "wroTitle",
   "wroSuffix"
 ];
+
+function usesAbsolutePlacement() {
+  if (window.matchMedia(PHONE_LANDSCAPE_QUERY).matches) return false;
+  return window.matchMedia(ABSOLUTE_QUERY).matches;
+}
 
 function visible(element) {
   if (!element || element.hidden) return false;
@@ -153,9 +159,9 @@ export function applyLayoutPolicy(refs, settings) {
   refs.app.dataset.currentBlockAutoLayout = String(currentAuto);
   refs.app.dataset.displayBlockAutoLayout = String(displayAuto);
 
-  // Small-screen flow/grid layouts already keep automatic content separated.
-  // Manual content is deliberately allowed to overflow those cells via CSS.
-  if (!window.matchMedia(DESKTOP_QUERY).matches) {
+  // Flow/grid layouts naturally separate automatic blocks. Manual content may
+  // still overflow and overlap those cells because the final CSS permits it.
+  if (!usesAbsolutePlacement()) {
     refs.app.dataset.layoutCollision = "flow";
     return;
   }
@@ -168,7 +174,7 @@ export function applyLayoutPolicy(refs, settings) {
   }
 
   // If both blocks contain manual text, neither block has priority and overlap
-  // is intentional. Manual content never forces another manual value to shrink.
+  // is intentional. Manual content never forces another manual value to move.
   if (!currentAuto && !displayAuto) {
     refs.app.dataset.layoutCollision = "allowed-manual";
     return;
