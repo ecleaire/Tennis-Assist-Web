@@ -3,6 +3,7 @@ import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20260927a";
 const GAP = 14;
 const ABSOLUTE_QUERY = "(min-width: 800px), (orientation: landscape)";
 const PHONE_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 999px)";
+const MAX_SHRINK_PASSES = 14;
 
 const DISPLAY_KINDS = [
   "timer",
@@ -13,6 +14,18 @@ const DISPLAY_KINDS = [
   "wroTitle",
   "wroSuffix"
 ];
+
+const FIT_VARIABLES = {
+  clock: ["--clockFit", 20],
+  date: ["--dateFit", 10],
+  timer: ["--timerFit", 12],
+  completionText: ["--completionTextFit", 8],
+  target: ["--targetFit", 12],
+  sub: ["--subFit", 12],
+  timerText: ["--timerTextFit", 12],
+  wroTitle: ["--wroTitleFit", 12],
+  wroSuffix: ["--wroSuffixFit", 12]
+};
 
 function usesAbsolutePlacement() {
   if (window.matchMedia(PHONE_LANDSCAPE_QUERY).matches) return false;
@@ -34,11 +47,30 @@ function visualRect(element) {
   const children = [...element.children].filter(visible);
   const rects = (children.length ? children : [element])
     .map(node => node.getBoundingClientRect());
+  const left = Math.min(...rects.map(rect => rect.left));
+  const top = Math.min(...rects.map(rect => rect.top));
+  const right = Math.max(...rects.map(rect => rect.right));
+  const bottom = Math.max(...rects.map(rect => rect.bottom));
   return {
-    left: Math.min(...rects.map(rect => rect.left)),
-    top: Math.min(...rects.map(rect => rect.top)),
-    right: Math.max(...rects.map(rect => rect.right)),
-    bottom: Math.max(...rects.map(rect => rect.bottom))
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top
+  };
+}
+
+function elementRect(element) {
+  if (!visible(element)) return null;
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height
   };
 }
 
@@ -55,7 +87,21 @@ function translateRect(rect, x, y) {
     left: rect.left + x,
     top: rect.top + y,
     right: rect.right + x,
-    bottom: rect.bottom + y
+    bottom: rect.bottom + y,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function readPixels(element, name) {
+  const value = Number.parseFloat(element.style.getPropertyValue(name));
+  return Number.isFinite(value) ? value : 0;
+}
+
+function correction(element) {
+  return {
+    x: readPixels(element, "--collision-x"),
+    y: readPixels(element, "--collision-y")
   };
 }
 
@@ -67,6 +113,12 @@ function resetCorrection(element) {
 function applyCorrection(element, x, y) {
   element.style.setProperty("--collision-x", `${Math.round(x)}px`);
   element.style.setProperty("--collision-y", `${Math.round(y)}px`);
+}
+
+function addCorrection(element, x, y) {
+  const base = correction(element);
+  applyCorrection(element, base.x + x, base.y + y);
+  void element.offsetWidth;
 }
 
 function blockFontPriority(element) {
@@ -88,7 +140,7 @@ function displayKinds(refs) {
   const phase = refs.app.dataset.timerPhase;
   return DISPLAY_KINDS.filter(kind => {
     switch (kind) {
-      case "timer": return phase !== "completion" && visible(refs.mainValue);
+      case "timer": return phase === "countdown" && visible(refs.mainValue);
       case "completionText": return phase === "completion" && visible(refs.mainValue);
       case "target": return visible(refs.targetLabel);
       case "sub": return visible(refs.subValue);
@@ -115,13 +167,47 @@ function viewportBounds() {
     left: left + 8,
     top: top + 8,
     right: left + width - 8,
-    bottom: top + height - 8
+    bottom: top + height - 8,
+    width: Math.max(1, width - 16),
+    height: Math.max(1, height - 16)
   };
 }
 
 function within(rect, bounds) {
   return rect.left >= bounds.left && rect.right <= bounds.right &&
     rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+}
+
+function clampDelta(rect, bounds) {
+  let x = 0;
+  let y = 0;
+
+  if (rect.width <= bounds.width) {
+    if (rect.left < bounds.left) x += bounds.left - rect.left;
+    const moved = translateRect(rect, x, 0);
+    if (moved.right > bounds.right) x -= moved.right - bounds.right;
+  } else {
+    x = bounds.left + (bounds.width - rect.width) / 2 - rect.left;
+  }
+
+  if (rect.height <= bounds.height) {
+    if (rect.top < bounds.top) y += bounds.top - rect.top;
+    const moved = translateRect(rect, 0, y);
+    if (moved.bottom > bounds.bottom) y -= moved.bottom - bounds.bottom;
+  } else {
+    y = bounds.top + (bounds.height - rect.height) / 2 - rect.top;
+  }
+
+  return { x, y };
+}
+
+function constrainAutomatic(element, bounds) {
+  const rect = visualRect(element);
+  if (!rect) return;
+  const delta = clampDelta(rect, bounds);
+  if (Math.abs(delta.x) > 0.25 || Math.abs(delta.y) > 0.25) {
+    addCorrection(element, delta.x, delta.y);
+  }
 }
 
 function movementCandidates(mover, fixed) {
@@ -134,82 +220,218 @@ function movementCandidates(mover, fixed) {
 }
 
 function chooseMovement(mover, fixed, bounds) {
-  const candidates = movementCandidates(mover, fixed)
+  return movementCandidates(mover, fixed)
     .map(candidate => {
-      const rect = translateRect(mover, candidate.x, candidate.y);
+      let rect = translateRect(mover, candidate.x, candidate.y);
+      const clamp = clampDelta(rect, bounds);
+      const x = candidate.x + clamp.x;
+      const y = candidate.y + clamp.y;
+      rect = translateRect(mover, x, y);
       const overlap = overlaps(rect, fixed, GAP);
       const inside = within(rect, bounds);
-      const distance = Math.hypot(candidate.x, candidate.y);
-      return { ...candidate, rect, overlap, inside, distance };
+      const distance = Math.hypot(x, y);
+      return { x, y, rect, overlap, inside, distance };
     })
     .sort((a, b) => {
-      const scoreA = (a.overlap ? 1_000_000 : 0) + (a.inside ? 0 : 100_000) + a.distance;
-      const scoreB = (b.overlap ? 1_000_000 : 0) + (b.inside ? 0 : 100_000) + b.distance;
+      const scoreA = (a.overlap ? 1_000_000 : 0) +
+        (a.inside ? 0 : 100_000) + a.distance;
+      const scoreB = (b.overlap ? 1_000_000 : 0) +
+        (b.inside ? 0 : 100_000) + b.distance;
       return scoreA - scoreB;
-    });
-  return candidates[0] || null;
+    })[0] || null;
+}
+
+function moveAway(element, obstacle, bounds) {
+  const mover = visualRect(element);
+  if (!mover || !obstacle || !overlaps(mover, obstacle, GAP)) return true;
+  const movement = chooseMovement(mover, obstacle, bounds);
+  if (!movement || movement.overlap) return false;
+  addCorrection(element, movement.x, movement.y);
+  return true;
+}
+
+function fixedObstacles(refs) {
+  return [
+    elementRect(refs.gear?.parentElement),
+    elementRect(refs.foot)
+  ].filter(Boolean);
+}
+
+function avoidFixed(element, bounds, obstacles) {
+  for (const obstacle of obstacles) {
+    if (!moveAway(element, obstacle, bounds)) return false;
+    constrainAutomatic(element, bounds);
+  }
+  return true;
+}
+
+function readFit(app, variable, fallback) {
+  const value = Number.parseFloat(
+    app.style.getPropertyValue(variable) ||
+    getComputedStyle(app).getPropertyValue(variable)
+  );
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function shrinkKind(refs, settings, kind, factor = 0.86) {
+  if (!isTextAutoSizeEnabled(settings, kind)) return false;
+  const [variable, minimum] = FIT_VARIABLES[kind];
+  const current = readFit(refs.app, variable, minimum);
+  if (current <= minimum + 0.5) return false;
+  const next = Math.max(minimum, current * factor);
+  refs.app.style.setProperty(variable, `${next}px`);
+  return next < current - 0.25;
+}
+
+function shrinkBlock(refs, settings, element) {
+  let changed = false;
+  if (element === refs.currentBlock) {
+    changed = shrinkKind(refs, settings, "clock") || changed;
+    if (visible(refs.date)) {
+      changed = shrinkKind(refs, settings, "date") || changed;
+    }
+  } else {
+    for (const kind of displayKinds(refs)) {
+      changed = shrinkKind(refs, settings, kind) || changed;
+    }
+  }
+  if (changed) void element.offsetWidth;
+  return changed;
+}
+
+function resetAndPrepareAutomatic(element, isAutomatic, bounds, obstacles) {
+  if (!isAutomatic) return true;
+  constrainAutomatic(element, bounds);
+  return avoidFixed(element, bounds, obstacles);
+}
+
+function choosePriority(refs, currentAuto, displayAuto) {
+  if (currentAuto && displayAuto) {
+    const currentPriority = blockFontPriority(refs.currentBlock);
+    const displayPriority = blockFontPriority(refs.display);
+    const moveCurrent = currentPriority < displayPriority;
+    return {
+      mover: moveCurrent ? refs.currentBlock : refs.display,
+      fixed: moveCurrent ? refs.display : refs.currentBlock,
+      label: moveCurrent ? "display" : "current"
+    };
+  }
+  if (currentAuto) {
+    return {
+      mover: refs.currentBlock,
+      fixed: refs.display,
+      label: "manual-display"
+    };
+  }
+  if (displayAuto) {
+    return {
+      mover: refs.display,
+      fixed: refs.currentBlock,
+      label: "manual-current"
+    };
+  }
+  return null;
+}
+
+function autoCollisionRemaining(refs, currentAuto, displayAuto, obstacles) {
+  const current = visualRect(refs.currentBlock);
+  const display = visualRect(refs.display);
+
+  if ((currentAuto || displayAuto) && overlaps(current, display, GAP)) return true;
+
+  if (currentAuto && current) {
+    if (obstacles.some(obstacle => overlaps(current, obstacle, GAP))) return true;
+  }
+  if (displayAuto && display) {
+    if (obstacles.some(obstacle => overlaps(display, obstacle, GAP))) return true;
+  }
+  return false;
 }
 
 export function applyLayoutPolicy(refs, settings) {
   resetCorrection(refs.currentBlock);
   resetCorrection(refs.display);
+  delete refs.app.dataset.layoutPriority;
 
   const currentAuto = currentIsFullyAutomatic(refs, settings);
   const displayAuto = displayIsFullyAutomatic(refs, settings);
   refs.app.dataset.currentBlockAutoLayout = String(currentAuto);
   refs.app.dataset.displayBlockAutoLayout = String(displayAuto);
 
-  // Flow/grid layouts naturally separate automatic blocks. Manual content may
-  // still overflow and overlap those cells because the final CSS permits it.
+  // Flow/grid layouts naturally separate automatic blocks. Manual text can
+  // overflow those cells by design, without forcing sibling sizes to change.
   if (!usesAbsolutePlacement()) {
     refs.app.dataset.layoutCollision = "flow";
     return;
   }
 
-  const current = visualRect(refs.currentBlock);
-  const display = visualRect(refs.display);
+  const bounds = viewportBounds();
+  const obstacles = fixedObstacles(refs);
+
+  resetAndPrepareAutomatic(refs.currentBlock, currentAuto, bounds, obstacles);
+  resetAndPrepareAutomatic(refs.display, displayAuto, bounds, obstacles);
+
+  let current = visualRect(refs.currentBlock);
+  let display = visualRect(refs.display);
   if (!overlaps(current, display, GAP)) {
-    refs.app.dataset.layoutCollision = "none";
+    const unresolved = autoCollisionRemaining(
+      refs,
+      currentAuto,
+      displayAuto,
+      obstacles
+    );
+    refs.app.dataset.layoutCollision = unresolved ? "unresolved" : "none";
     return;
   }
 
-  // If both blocks contain manual text, neither block has priority and overlap
-  // is intentional. Manual content never forces another manual value to move.
+  // All-manual means no priority, no collision avoidance and no safety shrink.
   if (!currentAuto && !displayAuto) {
     refs.app.dataset.layoutCollision = "allowed-manual";
     return;
   }
 
-  let moverElement;
-  let moverRect;
-  let fixedRect;
+  const priority = choosePriority(refs, currentAuto, displayAuto);
+  refs.app.dataset.layoutPriority = priority?.label || "";
 
-  if (currentAuto && displayAuto) {
-    const currentPriority = blockFontPriority(refs.currentBlock);
-    const displayPriority = blockFontPriority(refs.display);
-    const moveCurrent = currentPriority < displayPriority;
-    moverElement = moveCurrent ? refs.currentBlock : refs.display;
-    moverRect = moveCurrent ? current : display;
-    fixedRect = moveCurrent ? display : current;
-    refs.app.dataset.layoutPriority = moveCurrent ? "display" : "current";
-  } else if (currentAuto) {
-    moverElement = refs.currentBlock;
-    moverRect = current;
-    fixedRect = display;
-    refs.app.dataset.layoutPriority = "manual-display";
-  } else {
-    moverElement = refs.display;
-    moverRect = display;
-    fixedRect = current;
-    refs.app.dataset.layoutPriority = "manual-current";
+  let resolved = false;
+  for (let pass = 0; pass <= MAX_SHRINK_PASSES; pass += 1) {
+    current = visualRect(refs.currentBlock);
+    display = visualRect(refs.display);
+
+    if (!overlaps(current, display, GAP)) {
+      resolved = true;
+      break;
+    }
+
+    const fixedRect = visualRect(priority.fixed);
+    if (moveAway(priority.mover, fixedRect, bounds)) {
+      constrainAutomatic(priority.mover, bounds);
+      avoidFixed(priority.mover, bounds, obstacles);
+      current = visualRect(refs.currentBlock);
+      display = visualRect(refs.display);
+      if (!overlaps(current, display, GAP)) {
+        resolved = true;
+        break;
+      }
+    }
+
+    if (pass === MAX_SHRINK_PASSES ||
+        !shrinkBlock(refs, settings, priority.mover)) {
+      break;
+    }
+
+    // Size changes invalidate earlier translations. Re-anchor automatic blocks
+    // before trying again, while manual blocks remain untouched.
+    resetCorrection(priority.mover);
+    constrainAutomatic(priority.mover, bounds);
+    avoidFixed(priority.mover, bounds, obstacles);
   }
 
-  const movement = chooseMovement(moverRect, fixedRect, viewportBounds());
-  if (!movement || movement.overlap) {
-    refs.app.dataset.layoutCollision = "unresolved";
-    return;
-  }
-
-  applyCorrection(moverElement, movement.x, movement.y);
-  refs.app.dataset.layoutCollision = movement.inside ? "resolved" : "resolved-overflow";
+  const unresolved = !resolved || autoCollisionRemaining(
+    refs,
+    currentAuto,
+    displayAuto,
+    obstacles
+  );
+  refs.app.dataset.layoutCollision = unresolved ? "unresolved" : "resolved";
 }
