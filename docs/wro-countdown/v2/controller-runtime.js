@@ -1,5 +1,6 @@
 import { renderLabels } from "./display-render.js?v=20260927a";
 import { fitDisplay } from "./display-fit.js?v=20260927a";
+import { enforceAutoSizeCeilings } from "./fit-safety.js?v=20260927a";
 import { fitTimerSize } from "./timer-size-fit.js?v=20260927a";
 import { finalizeTimerSize } from "./timer-size-guard.js?v=20260927a";
 import { fitCompletionMessage } from "./completion-fit.js?v=20260927a";
@@ -26,6 +27,7 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     const settings = getSettings();
     position();
     fitDisplay(refs, settings);
+    enforceAutoSizeCeilings(refs, settings);
     fitTimerSize(refs, settings);
     fitCompletionMessage(refs, settings);
     applyLayoutPolicy(refs, settings);
