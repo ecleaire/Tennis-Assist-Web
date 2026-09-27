@@ -1,8 +1,8 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260821d";
+import { SIZE_LIMITS } from "./size-limits.js?v=20260927a";
 import {
   applyTextAutoSizeData,
   isTextAutoSizeEnabled
-} from "./text-auto-size-values.js?v=20260821e";
+} from "./text-auto-size-values.js?v=20260927a";
 
 const BASE = {
   clock: 64,
@@ -16,7 +16,7 @@ const BASE = {
   wroSuffix: 22
 };
 
-const SIZE_SETTING = {
+const SETTING = {
   clock: "clockSize",
   date: "dateSize",
   timer: "timerSize",
@@ -28,20 +28,37 @@ const SIZE_SETTING = {
   wroSuffix: "wroDateSuffixSize"
 };
 
-const DESKTOP_QUERY =
-  "(min-width: 1000px) and (orientation: landscape)";
-const PHONE_LANDSCAPE_QUERY =
-  "(max-width: 999px) and (orientation: landscape)";
+const VARIABLE = {
+  clock: "--clockFit",
+  date: "--dateFit",
+  timer: "--timerFit",
+  completionText: "--completionTextFit",
+  target: "--targetFit",
+  sub: "--subFit",
+  timerText: "--timerTextFit",
+  wroTitle: "--wroTitleFit",
+  wroSuffix: "--wroSuffixFit"
+};
 
-const limit = (value, minimum, maximum) =>
-  Math.min(maximum, Math.max(minimum, value));
+const MINIMUM = {
+  clock: SIZE_LIMITS.clockSize.minimum,
+  date: SIZE_LIMITS.dateSize.minimum,
+  timer: 12,
+  completionText: 8,
+  target: SIZE_LIMITS.targetSize.minimum,
+  sub: SIZE_LIMITS.subSize.minimum,
+  timerText: SIZE_LIMITS.timerTextSize.minimum,
+  wroTitle: SIZE_LIMITS.wroTitleSize.minimum,
+  wroSuffix: SIZE_LIMITS.wroDateSuffixSize.minimum
+};
+
+const DESKTOP_QUERY = "(min-width: 1000px) and (orientation: landscape)";
+
+const clamp = (value, minimum, maximum) =>
+  Math.min(maximum, Math.max(minimum, Number(value)));
 
 function desktopLayout() {
   return window.matchMedia(DESKTOP_QUERY).matches;
-}
-
-function phoneLandscape() {
-  return window.matchMedia(PHONE_LANDSCAPE_QUERY).matches;
 }
 
 function viewportSize(refs) {
@@ -64,160 +81,104 @@ function viewportSize(refs) {
   };
 }
 
-function viewportProfile(viewport) {
-  const aspect = viewport.width / viewport.height;
+function profile(viewport) {
   if (viewport.width < 1200 || viewport.height < 700) return "compact";
   if (viewport.width < 1600 || viewport.height < 900) return "notebook";
   if (viewport.width < 2200 || viewport.height < 1200) return "desktop";
   if (viewport.width < 3200 || viewport.height < 1800) return "large";
-  return aspect >= 2.3 ? "ultrawide" : "xlarge";
+  return "xlarge";
 }
 
-function configuredSizes(settings) {
-  return Object.fromEntries(
-    Object.entries(SIZE_SETTING).map(([kind, settingKey]) => [
-      kind,
-      Number(settings[settingKey])
-    ])
+function configured(settings, kind) {
+  const key = SETTING[kind];
+  const limits = SIZE_LIMITS[key];
+  const numeric = Number(settings[key]);
+  const fallback = BASE[kind];
+  return clamp(
+    Number.isFinite(numeric) ? numeric : fallback,
+    limits?.minimum ?? MINIMUM[kind],
+    limits?.maximum ?? Infinity
   );
 }
 
-function chooseResponsiveSizes(settings, scaled) {
-  const configured = configuredSizes(settings);
-  return Object.fromEntries(
-    Object.keys(SIZE_SETTING).map(kind => [
-      kind,
-      isTextAutoSizeEnabled(settings, kind)
-        ? scaled[kind]
-        : configured[kind]
-    ])
-  );
-}
-
-function responsiveSizes(refs, settings) {
-  const viewport = viewportSize(refs);
+function automaticPreferred(settings, kind, viewport) {
+  const value = configured(settings, kind);
   const portrait = viewport.height >= viewport.width;
 
   if (desktopLayout()) {
-    const referenceScale = limit(
+    const scale = clamp(
       Math.min(viewport.width / 1920, viewport.height / 1080),
       0.52,
-      2
+      4
     );
-
-    return chooseResponsiveSizes(settings, {
-      clock: limit(
-        112 * referenceScale * settings.clockSize / BASE.clock,
-        SIZE_LIMITS.clockSize.minimum,
-        SIZE_LIMITS.clockSize.maximum
-      ),
-      date: limit(
-        26 * referenceScale * settings.dateSize / BASE.date,
-        SIZE_LIMITS.dateSize.minimum,
-        SIZE_LIMITS.dateSize.maximum
-      ),
-      timer: limit(
-        300 * referenceScale * settings.timerSize / BASE.timer,
-        SIZE_LIMITS.timerSize.minimum,
-        SIZE_LIMITS.timerSize.maximum
-      ),
-      completionText: limit(
-        180 * referenceScale * settings.completionTextSize /
-          BASE.completionText,
-        SIZE_LIMITS.completionTextSize.minimum,
-        SIZE_LIMITS.completionTextSize.maximum
-      ),
-      target: limit(
-        52 * referenceScale * settings.targetSize / BASE.target,
-        SIZE_LIMITS.targetSize.minimum,
-        SIZE_LIMITS.targetSize.maximum
-      ),
-      sub: limit(
-        34 * referenceScale * settings.subSize / BASE.sub,
-        SIZE_LIMITS.subSize.minimum,
-        SIZE_LIMITS.subSize.maximum
-      ),
-      timerText: limit(
-        40 * referenceScale * settings.timerTextSize / BASE.timerText,
-        SIZE_LIMITS.timerTextSize.minimum,
-        SIZE_LIMITS.timerTextSize.maximum
-      ),
-      wroTitle: limit(
-        46 * referenceScale * settings.wroTitleSize / BASE.wroTitle,
-        SIZE_LIMITS.wroTitleSize.minimum,
-        SIZE_LIMITS.wroTitleSize.maximum
-      ),
-      wroSuffix: limit(
-        30 * referenceScale * settings.wroDateSuffixSize / BASE.wroSuffix,
-        SIZE_LIMITS.wroDateSuffixSize.minimum,
-        SIZE_LIMITS.wroDateSuffixSize.maximum
-      )
-    });
+    const desktopBase = {
+      clock: 112,
+      date: 26,
+      timer: 300,
+      completionText: 180,
+      target: 52,
+      sub: 34,
+      timerText: 40,
+      wroTitle: 46,
+      wroSuffix: 30
+    }[kind];
+    return Math.max(MINIMUM[kind], desktopBase * scale * value / BASE[kind]);
   }
 
-  const widthProgress = limit((viewport.width - 320) / 800, 0, 1);
+  const progress = clamp((viewport.width - 320) / 800, 0, 1);
   const heightScale = !portrait && viewport.height < 560
     ? 0.78
     : portrait && viewport.height < 620
       ? 0.94
       : 1;
+  const mobileBase = {
+    clock: 80 + progress * 48,
+    date: 16 + progress * 10,
+    timer: 252 + progress * 38,
+    completionText: 66 + progress * 62,
+    target: 36 + progress * 20,
+    sub: 24 + progress * 14,
+    timerText: 27 + progress * 17,
+    wroTitle: 26 + progress * 22,
+    wroSuffix: 19 + progress * 14
+  }[kind];
 
-  return chooseResponsiveSizes(settings, {
-    clock: limit(
-      (80 + widthProgress * 48) * heightScale * settings.clockSize / BASE.clock,
-      SIZE_LIMITS.clockSize.minimum,
-      SIZE_LIMITS.clockSize.maximum
-    ),
-    date: limit(
-      (16 + widthProgress * 10) * heightScale * settings.dateSize / BASE.date,
-      SIZE_LIMITS.dateSize.minimum,
-      SIZE_LIMITS.dateSize.maximum
-    ),
-    timer: limit(
-      (252 + widthProgress * 38) * heightScale * settings.timerSize / BASE.timer,
-      SIZE_LIMITS.timerSize.minimum,
-      SIZE_LIMITS.timerSize.maximum
-    ),
-    completionText: limit(
-      (66 + widthProgress * 62) * heightScale *
-        settings.completionTextSize / BASE.completionText,
-      SIZE_LIMITS.completionTextSize.minimum,
-      SIZE_LIMITS.completionTextSize.maximum
-    ),
-    target: limit(
-      (36 + widthProgress * 20) * heightScale * settings.targetSize / BASE.target,
-      SIZE_LIMITS.targetSize.minimum,
-      SIZE_LIMITS.targetSize.maximum
-    ),
-    sub: limit(
-      (24 + widthProgress * 14) * heightScale * settings.subSize / BASE.sub,
-      SIZE_LIMITS.subSize.minimum,
-      SIZE_LIMITS.subSize.maximum
-    ),
-    timerText: limit(
-      (27 + widthProgress * 17) * heightScale * settings.timerTextSize / BASE.timerText,
-      SIZE_LIMITS.timerTextSize.minimum,
-      SIZE_LIMITS.timerTextSize.maximum
-    ),
-    wroTitle: limit(
-      (26 + widthProgress * 22) * heightScale * settings.wroTitleSize / BASE.wroTitle,
-      SIZE_LIMITS.wroTitleSize.minimum,
-      SIZE_LIMITS.wroTitleSize.maximum
-    ),
-    wroSuffix: limit(
-      (19 + widthProgress * 14) * heightScale * settings.wroDateSuffixSize / BASE.wroSuffix,
-      SIZE_LIMITS.wroDateSuffixSize.minimum,
-      SIZE_LIMITS.wroDateSuffixSize.maximum
-    )
-  });
+  return Math.max(
+    MINIMUM[kind],
+    mobileBase * heightScale * value / BASE[kind]
+  );
 }
 
-function isVisible(element) {
+function preferred(settings, kind, viewport) {
+  return isTextAutoSizeEnabled(settings, kind)
+    ? automaticPreferred(settings, kind, viewport)
+    : configured(settings, kind);
+}
+
+function allSizes(settings, viewport) {
+  return Object.fromEntries(
+    Object.keys(SETTING).map(kind => [kind, preferred(settings, kind, viewport)])
+  );
+}
+
+function applyVariable(refs, kind, value) {
+  refs.app.style.setProperty(VARIABLE[kind], `${Math.max(1, value)}px`);
+}
+
+function applyAll(refs, sizes) {
+  for (const [kind, value] of Object.entries(sizes)) {
+    applyVariable(refs, kind, value);
+  }
+}
+
+function visible(element) {
   if (!element || element.hidden) return false;
   const style = getComputedStyle(element);
   const rect = element.getBoundingClientRect();
-  return style.display !== "none" && style.visibility !== "hidden" &&
-    Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+  return style.display !== "none" &&
+    style.visibility !== "hidden" &&
+    Number(style.opacity || 1) > 0 &&
+    rect.width > 0 && rect.height > 0;
 }
 
 function measureSingleLine(refs, element) {
@@ -250,241 +211,169 @@ function measureSingleLine(refs, element) {
   return width;
 }
 
+function fitSingleLine(refs, settings, kind, element, available, sizes) {
+  if (!visible(element) || !isTextAutoSizeEnabled(settings, kind)) return;
+
+  const minimum = MINIMUM[kind];
+  let current = sizes[kind];
+  const safeWidth = Math.max(minimum * 2, available - 8);
+  applyVariable(refs, kind, current);
+  void element.offsetWidth;
+
+  let width = measureSingleLine(refs, element);
+  if (width <= safeWidth) return;
+
+  current = Math.max(minimum, current * safeWidth / width * 0.99);
+  sizes[kind] = current;
+  applyVariable(refs, kind, current);
+  void element.offsetWidth;
+
+  width = measureSingleLine(refs, element);
+  if (width > safeWidth && current > minimum) {
+    current = Math.max(minimum, current * safeWidth / width * 0.99);
+    sizes[kind] = current;
+    applyVariable(refs, kind, current);
+  }
+}
+
+function displayWidth(refs, viewport) {
+  if (desktopLayout()) return Math.max(240, viewport.width - 48);
+  const rect = refs.display.getBoundingClientRect();
+  return Math.max(120, Math.min(rect.width || viewport.width, viewport.width - 24));
+}
+
 function contentHeight(element) {
-  const children = [...element.children].filter(isVisible);
+  const children = [...element.children].filter(visible);
   if (!children.length) return Math.max(1, element.getBoundingClientRect().height);
   const rects = children.map(child => child.getBoundingClientRect());
   return Math.max(...rects.map(rect => rect.bottom)) -
     Math.min(...rects.map(rect => rect.top));
 }
 
-function positionColumn(position = "center") {
-  if (position.endsWith("-left")) return "left";
-  if (position.endsWith("-right")) return "right";
-  return "center";
+function displayHeightBudget(refs, viewport) {
+  if (desktopLayout()) return Math.max(120, viewport.height - 80);
+
+  const displayRect = refs.display.getBoundingClientRect();
+  const available = displayRect.height || viewport.height;
+  return Math.max(72, Math.min(available, viewport.height - 20));
 }
 
-function positionRow(position = "center") {
-  if (position.startsWith("top-")) return "top";
-  if (position.startsWith("bottom-")) return "bottom";
-  return "middle";
-}
-
-function horizontalBudget(kind, refs, viewport) {
-  if (!desktopLayout()) {
-    if (kind === "clock") {
-      return Math.max(100, refs.currentBlock.clientWidth || refs.top.clientWidth);
-    }
-    return Math.max(120, refs.display.clientWidth);
+function displayEntries(refs) {
+  const completion = refs.app.dataset.timerPhase === "completion";
+  const wro = refs.app.dataset.timerPhase === "wro";
+  const entries = [
+    { kind: "target", element: refs.targetLabel },
+    { kind: "wroSuffix", element: refs.wroSuffix },
+    { kind: "timerText", element: refs.timerText },
+    {
+      kind: completion ? "completionText" : "timer",
+      element: refs.mainValue
+    },
+    { kind: "sub", element: refs.subValue }
+  ];
+  if (wro && refs.modeLabel.classList.contains("wroTitle")) {
+    entries.push({ kind: "wroTitle", element: refs.modeLabel });
   }
-
-  const element = kind === "clock" ? refs.currentBlock : refs.display;
-  const column = positionColumn(element.dataset.position);
-  const side = column !== "center";
-  const width = viewport.width;
-
-  if (kind === "clock") {
-    const fraction = side
-      ? width < 1200 ? 0.48 : width < 1600 ? 0.43 : width < 2200 ? 0.39 : 0.35
-      : 0.88;
-    return Math.max(180, width * fraction);
-  }
-
-  const fraction = side
-    ? width < 1200 ? 0.70 : width < 1600 ? 0.75 : width < 2200 ? 0.79 : 0.82
-    : 0.92;
-  return Math.max(260, width * fraction);
+  return entries.filter(entry => visible(entry.element));
 }
 
-function cssPixels(style, name, fallback = 0) {
-  const value = Number.parseFloat(style.getPropertyValue(name));
-  return Number.isFinite(value) ? value : fallback;
-}
-
-function verticalBudget(refs, viewport) {
-  if (desktopLayout()) {
-    const style = getComputedStyle(refs.shell);
-    const top = cssPixels(style, "--layout-top", 64);
-    const bottom = cssPixels(style, "--layout-bottom", 64);
-    const usable = Math.max(180, viewport.height - top - bottom);
-    return positionRow(refs.display.dataset.position) === "middle"
-      ? usable * 0.92
-      : usable * 0.52;
-  }
-
-  const shellStyle = getComputedStyle(refs.shell);
-  const displayStyle = getComputedStyle(refs.display);
-  const shellPadding = cssPixels(shellStyle, "padding-top") +
-    cssPixels(shellStyle, "padding-bottom");
-  const rowGap = cssPixels(shellStyle, "row-gap");
-  const displayPadding = cssPixels(displayStyle, "padding-top") +
-    cssPixels(displayStyle, "padding-bottom");
-  const footerHeight = isVisible(refs.foot)
-    ? refs.foot.getBoundingClientRect().height
-    : 0;
-  const topHeight = isVisible(refs.top)
-    ? refs.top.getBoundingClientRect().height
-    : 0;
-  const fallback = phoneLandscape()
-    ? viewport.height - shellPadding - footerHeight - rowGap
-    : viewport.height - shellPadding - topHeight - footerHeight - rowGap * 2;
-  const gridArea = refs.display.clientHeight > 0
-    ? refs.display.clientHeight
-    : fallback;
-
-  return Math.max(
-    72,
-    Math.min(gridArea, fallback) - displayPadding - 4
-  );
-}
-
-function applyDisplayVariables(refs, sizes) {
-  refs.app.style.setProperty("--targetFit", `${sizes.target}px`);
-  refs.app.style.setProperty("--subFit", `${sizes.sub}px`);
-  refs.app.style.setProperty("--timerTextFit", `${sizes.timerText}px`);
-  refs.app.style.setProperty("--wroTitleFit", `${sizes.wroTitle}px`);
-  refs.app.style.setProperty("--wroSuffixFit", `${sizes.wroSuffix}px`);
-  refs.app.style.setProperty("--timerFit", `${sizes.timer}px`);
-  refs.app.style.setProperty(
-    "--completionTextFit",
-    `${sizes.completionText}px`
-  );
-  refs.app.style.setProperty("--clockFit", `${sizes.clock}px`);
-  refs.app.style.setProperty("--dateFit", `${sizes.date}px`);
-}
-
-function fitBlockHeight(refs, sizes, budget) {
+function fitDisplayHeight(refs, settings, sizes, budget) {
   refs.app.dataset.tightLayout = "false";
-  applyDisplayVariables(refs, sizes);
+  applyAll(refs, sizes);
   void refs.display.offsetHeight;
 
   let height = contentHeight(refs.display);
-  if (height > budget) {
-    refs.app.dataset.tightLayout = "true";
+  const adjustable = displayEntries(refs)
+    .filter(entry => isTextAutoSizeEnabled(settings, entry.kind))
+    .sort((a, b) => sizes[a.kind] - sizes[b.kind]);
+
+  if (height <= budget || !adjustable.length) {
+    refs.app.dataset.autoLayoutOverflow = String(height > budget);
+    return;
+  }
+
+  refs.app.dataset.tightLayout = "true";
+  void refs.display.offsetHeight;
+  height = contentHeight(refs.display);
+
+  // Smaller automatic text yields first. The largest automatic display is
+  // reduced only after all smaller automatic items have reached their minima.
+  for (const entry of adjustable) {
+    if (height <= budget) break;
+
+    const kind = entry.kind;
+    const original = sizes[kind];
+    const minimum = MINIMUM[kind];
+    if (original <= minimum + 0.1) continue;
+
+    sizes[kind] = minimum;
+    applyVariable(refs, kind, minimum);
+    void refs.display.offsetHeight;
+    const minimumHeight = contentHeight(refs.display);
+
+    if (minimumHeight > budget) {
+      height = minimumHeight;
+      continue;
+    }
+
+    let low = minimum;
+    let high = original;
+    let best = minimum;
+    for (let pass = 0; pass < 14 && high - low > 0.25; pass += 1) {
+      const middle = (low + high) / 2;
+      applyVariable(refs, kind, middle);
+      void refs.display.offsetHeight;
+      const nextHeight = contentHeight(refs.display);
+      if (nextHeight <= budget) {
+        best = middle;
+        low = middle;
+      } else {
+        high = middle;
+      }
+    }
+    sizes[kind] = best;
+    applyVariable(refs, kind, best);
     void refs.display.offsetHeight;
     height = contentHeight(refs.display);
   }
 
-  let next = { ...sizes };
-  for (let pass = 0; pass < 8 && height > budget; pass += 1) {
-    const ratio = limit(budget / height * 0.975, 0.2, 0.96);
-    next = {
-      ...next,
-      timer: Math.max(30, next.timer * ratio),
-      completionText: Math.max(
-        SIZE_LIMITS.completionTextSize.minimum,
-        next.completionText * ratio
-      ),
-      target: Math.max(SIZE_LIMITS.targetSize.minimum, next.target * ratio),
-      sub: Math.max(SIZE_LIMITS.subSize.minimum, next.sub * ratio),
-      timerText: Math.max(
-        SIZE_LIMITS.timerTextSize.minimum,
-        next.timerText * ratio
-      ),
-      wroTitle: Math.max(
-        SIZE_LIMITS.wroTitleSize.minimum,
-        next.wroTitle * ratio
-      ),
-      wroSuffix: Math.max(
-        SIZE_LIMITS.wroDateSuffixSize.minimum,
-        next.wroSuffix * ratio
-      )
-    };
-    applyDisplayVariables(refs, next);
-    void refs.display.offsetHeight;
-    height = contentHeight(refs.display);
-  }
-
-  return next;
+  refs.app.dataset.autoLayoutOverflow = String(height > budget);
 }
 
 export function fitDisplay(refs, settings) {
-  function fitSingleLine(element, variable, preferred, available, minimum) {
-    const safeWidth = Math.max(minimum * 2, available - 8);
-    refs.app.style.setProperty(variable, `${preferred}px`);
-    void element.offsetWidth;
-
-    let width = measureSingleLine(refs, element);
-    if (width <= safeWidth) return preferred;
-
-    let fitted = Math.max(
-      minimum,
-      preferred * safeWidth / width * 0.99
-    );
-    refs.app.style.setProperty(variable, `${fitted}px`);
-    void element.offsetWidth;
-
-    width = measureSingleLine(refs, element);
-    if (width > safeWidth && fitted > minimum) {
-      fitted = Math.max(
-        minimum,
-        fitted * safeWidth / width * 0.99
-      );
-      refs.app.style.setProperty(variable, `${fitted}px`);
-    }
-    return fitted;
-  }
-
   applyTextAutoSizeData(refs.app, settings);
 
   const viewport = viewportSize(refs);
-  refs.app.dataset.viewportProfile = viewportProfile(viewport);
+  refs.app.dataset.viewportProfile = profile(viewport);
   refs.app.dataset.viewportAspect = viewport.width / viewport.height >= 2.3
     ? "ultrawide"
     : viewport.width / viewport.height <= 1.5
       ? "square"
       : "wide";
 
-  let sizes = responsiveSizes(refs, settings);
-  applyDisplayVariables(refs, sizes);
+  const sizes = allSizes(settings, viewport);
+  applyAll(refs, sizes);
 
+  const width = displayWidth(refs, viewport);
   if (settings.showCurrentTime) {
-    const budget = horizontalBudget("clock", refs, viewport);
-    sizes.clock = fitSingleLine(
-      refs.clock,
-      "--clockFit",
-      sizes.clock,
-      budget,
-      SIZE_LIMITS.clockSize.minimum
-    );
-    sizes.date = fitSingleLine(
-      refs.date,
-      "--dateFit",
-      sizes.date,
-      budget,
-      SIZE_LIMITS.dateSize.minimum
-    );
+    fitSingleLine(refs, settings, "clock", refs.clock, viewport.width - 32, sizes);
+    fitSingleLine(refs, settings, "date", refs.date, viewport.width - 32, sizes);
   }
 
-  const completionActive = refs.app.dataset.timerPhase === "completion";
-  if (completionActive) {
-    sizes.completionText = fitSingleLine(
-      refs.mainValue,
-      "--completionTextFit",
-      sizes.completionText,
-      horizontalBudget("timer", refs, viewport),
-      SIZE_LIMITS.completionTextSize.minimum
-    );
-  } else {
-    sizes.timer = fitSingleLine(
-      refs.mainValue,
-      "--timerFit",
-      sizes.timer,
-      horizontalBudget("timer", refs, viewport),
-      30
-    );
-  }
+  const completion = refs.app.dataset.timerPhase === "completion";
+  fitSingleLine(
+    refs,
+    settings,
+    completion ? "completionText" : "timer",
+    refs.mainValue,
+    width,
+    sizes
+  );
 
   if (refs.modeLabel.classList.contains("wroTitle")) {
-    sizes.wroTitle = fitSingleLine(
-      refs.modeLabel,
-      "--wroTitleFit",
-      sizes.wroTitle,
-      horizontalBudget("timer", refs, viewport),
-      SIZE_LIMITS.wroTitleSize.minimum
-    );
+    fitSingleLine(refs, settings, "wroTitle", refs.modeLabel, width, sizes);
   }
 
-  sizes = fitBlockHeight(refs, sizes, verticalBudget(refs, viewport));
-  applyDisplayVariables(refs, sizes);
+  fitDisplayHeight(refs, settings, sizes, displayHeightBudget(refs, viewport));
+  applyAll(refs, sizes);
 }
