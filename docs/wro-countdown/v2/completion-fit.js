@@ -39,5 +39,5 @@ export function fitCompletionMessage(refs, settings) {
   refs.app.dataset.completionPreferredSize = size.toFixed(2);
   refs.app.dataset.completionFitSize = size.toFixed(2);
   refs.app.dataset.completionAutoSize = String(automatic);
-  refs.app.dataset.completionFit = automatic ? "automatic" : "manual-overlap";
+  refs.app.dataset.completionFit = automatic ? "fitted" : "manual-overlap";
 }
