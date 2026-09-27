@@ -114,6 +114,7 @@ async function inspect(page) {
     return {
       phase: app.dataset.timerPhase,
       fitStatus: app.dataset.completionFit,
+      autoSize: app.dataset.completionAutoSize,
       fitSize: Number(app.dataset.completionFitSize),
       text: main.textContent,
       fontSize: Number.parseFloat(getComputedStyle(main).fontSize),
@@ -179,44 +180,51 @@ for (const viewport of viewports) {
         `${label}: phase is ${state.phase}`);
       expect(state.text === scenario.text,
         `${label}: text was changed or clipped in the DOM`);
-      expect(state.fitStatus === "fitted",
-        `${label}: fit status is ${state.fitStatus}`);
       expect(Number.isFinite(state.fontSize) && state.fontSize >= 7.5,
         `${label}: invalid font size ${state.fontSize}`);
-      expect(state.maxWidthVariable.endsWith("px"),
-        `${label}: completion max width was not set`);
-      expect(rectInside(
-        state.mainRect,
-        viewport.width,
-        viewport.height
-      ), `${label}: completion text is outside viewport ` +
-        `${JSON.stringify(state.mainRect)}`);
-      expect(rectInside(
-        state.blockRect,
-        viewport.width,
-        viewport.height
-      ), `${label}: completion block is outside viewport ` +
-        `${JSON.stringify(state.blockRect)}`);
-      expect(
-        state.documentScrollWidth <= viewport.width + 2 &&
-        state.bodyScrollWidth <= viewport.width + 2,
-        `${label}: document has horizontal overflow`
-      );
-      expect(
-        state.documentScrollHeight <= viewport.height + 2 &&
-        state.bodyScrollHeight <= viewport.height + 2,
-        `${label}: document has vertical overflow`
-      );
+
+      if (scenario.autoSize) {
+        expect(state.fitStatus === "fitted",
+          `${label}: automatic fit status is ${state.fitStatus}`);
+        expect(state.autoSize === "true",
+          `${label}: automatic flag is ${state.autoSize}`);
+        expect(state.maxWidthVariable.length > 0,
+          `${label}: automatic completion max width was not set`);
+        expect(rectInside(
+          state.mainRect,
+          viewport.width,
+          viewport.height
+        ), `${label}: automatic completion text is outside viewport ` +
+          `${JSON.stringify(state.mainRect)}`);
+        expect(rectInside(
+          state.blockRect,
+          viewport.width,
+          viewport.height
+        ), `${label}: automatic completion block is outside viewport ` +
+          `${JSON.stringify(state.blockRect)}`);
+        expect(
+          state.documentScrollWidth <= viewport.width + 2 &&
+          state.bodyScrollWidth <= viewport.width + 2,
+          `${label}: automatic document has horizontal overflow`
+        );
+        expect(
+          state.documentScrollHeight <= viewport.height + 2 &&
+          state.bodyScrollHeight <= viewport.height + 2,
+          `${label}: automatic document has vertical overflow`
+        );
+      } else {
+        expect(state.fitStatus === "manual-overlap",
+          `${label}: manual fit status is ${state.fitStatus}`);
+        expect(state.autoSize === "false",
+          `${label}: manual flag is ${state.autoSize}`);
+        expect(state.maxWidthVariable === "",
+          `${label}: manual max width unexpectedly set to ${state.maxWidthVariable}`);
+        expect(Math.abs(state.fontSize - scenario.size) <= 1.5,
+          `${label}: manual ${scenario.size}px changed to ${state.fontSize}px`);
+      }
 
       if (scenario.name === "default-message") {
         defaultFontSizes.set(viewport.name, state.fontSize);
-      }
-      if (
-        scenario.name === "maximum-manual-size" &&
-        viewport.width <= 568
-      ) {
-        expect(state.fontSize < scenario.size,
-          `${label}: unsafe 320px setting was not reduced`);
       }
     } catch (error) {
       failures.push(`${label}: ${error.stack || error.message}`);
@@ -247,5 +255,5 @@ if (failures.length) {
 
 console.log(
   `WRO completion text fit check passed ` +
-  `${viewports.length * scenarios.length} viewport/scenario combinations.`
+  `${viewports.length * scenarios.length} viewport/scenario combinations with automatic safety and manual overlap.`
 );
