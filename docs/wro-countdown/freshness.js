@@ -2,22 +2,55 @@ const RELEASE = "1.1.0";
 const UPDATED_AT = "2026年9月27日";
 const RELOAD_KEY = `wro-countdown-sw-${RELEASE}`;
 
-function updateVisibleVersion() {
-  const root = document.querySelector(".settingsVersion");
-  if (!root) return false;
-  const version = root.querySelector("strong");
-  const date = root.querySelector("small");
-  if (version) version.textContent = `v${RELEASE}`;
-  if (date) date.textContent = `更新日：${UPDATED_AT}`;
-  return true;
+function setText(element, text) {
+  if (element && element.textContent !== text) element.textContent = text;
 }
 
-function watchVersion() {
-  if (updateVisibleVersion()) return;
-  const observer = new MutationObserver(() => {
-    if (updateVisibleVersion()) observer.disconnect();
+function updateReleaseUi() {
+  const root = document.querySelector(".settingsVersion");
+  if (root) {
+    setText(root.querySelector("strong"), `v${RELEASE}`);
+    setText(root.querySelector("small"), `更新日：${UPDATED_AT}`);
+  }
+
+  document.querySelectorAll(".perTextAutoSizeCopy small").forEach(element => {
+    setText(
+      element,
+      "オン：重なりを避けて自動調整／オフ：入力したpxを固定し、重なりを許可"
+    );
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  const master = document.getElementById("autoSizeMasterDescription");
+  if (master) {
+    const next = master.textContent
+      .replace(
+        /入力したpxを優先し、はみ出す場合だけ安全に縮小します。/g,
+        "入力したpxを固定し、他の表示との重なりを許可します。"
+      )
+      .replace(
+        /オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。/g,
+        "オフの項目は入力したpxを固定し、他の表示との重なりを許可します。"
+      );
+    setText(master, next);
+  }
+
+  document.querySelectorAll(".settingSizeMetric").forEach(element => {
+    const next = element.textContent.replace(
+      "・画面内に収めるため安全縮小",
+      "・重なり許可"
+    );
+    setText(element, next);
+  });
+}
+
+function watchReleaseUi() {
+  updateReleaseUi();
+  const observer = new MutationObserver(updateReleaseUi);
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
 }
 
 async function ensureFreshWorker() {
@@ -45,7 +78,7 @@ async function ensureFreshWorker() {
 
 async function start() {
   await ensureFreshWorker();
-  watchVersion();
+  watchReleaseUi();
   await import(`./v2/entry.js?release=${encodeURIComponent(RELEASE)}&t=${Date.now()}`);
 }
 
