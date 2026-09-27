@@ -1,16 +1,14 @@
-import { renderLabels } from "./display-render.js?v=20260821b";
-import { fitDisplay } from "./display-fit.js?v=20260821e";
-import { fitTimerSize } from "./timer-size-fit.js?v=20260821e";
-import { finalizeTimerSize } from "./timer-size-guard.js?v=20260821d";
-import { fitCompletionMessage } from "./completion-fit.js?v=20260821e";
-import { createAutoWro } from "./display-auto.js?v=20260820a";
-import { createTimerTarget } from "./display-target.js?v=20260821b";
-import { applyDisplayTheme } from "./display-theme.js?v=20260820a";
-import {
-  applyPositioning,
-  constrainPositioning
-} from "./display-position.js?v=20260820g";
-import { updateDisplay } from "./display-tick.js?v=20260820d";
+import { renderLabels } from "./display-render.js?v=20260927a";
+import { fitDisplay } from "./display-fit.js?v=20260927a";
+import { fitTimerSize } from "./timer-size-fit.js?v=20260927a";
+import { finalizeTimerSize } from "./timer-size-guard.js?v=20260927a";
+import { fitCompletionMessage } from "./completion-fit.js?v=20260927a";
+import { createAutoWro } from "./display-auto.js?v=20260927a";
+import { createTimerTarget } from "./display-target.js?v=20260927a";
+import { applyDisplayTheme } from "./display-theme.js?v=20260927a";
+import { applyPositioning } from "./display-position.js?v=20260927a";
+import { applyLayoutPolicy } from "./layout-policy.js?v=20260927a";
+import { updateDisplay } from "./display-tick.js?v=20260927a";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
@@ -30,7 +28,7 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     fitDisplay(refs, settings);
     fitTimerSize(refs, settings);
     fitCompletionMessage(refs, settings);
-    constrainPositioning(refs);
+    applyLayoutPolicy(refs, settings);
     finalizeTimerSize(refs, settings);
     notifyLayoutUpdated();
   }
