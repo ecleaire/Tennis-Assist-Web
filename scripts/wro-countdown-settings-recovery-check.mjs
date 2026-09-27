@@ -23,7 +23,8 @@ async function readUi(page) {
     targetTime: document.getElementById("targetTime").value,
     clockSize: Number(document.getElementById("clockSize").value),
     timerSize: Number(document.getElementById("timerSize").value),
-    timerSizeMaximum: Number(document.getElementById("timerSize").max),
+    timerSizeHasMaximum: document.getElementById("timerSize").hasAttribute("max"),
+    timerRangeMaximum: Number(document.getElementById("timerSizeRange").max),
     completionDurationMin:
       Number(document.getElementById("completionDurationMin").value),
     showTarget: document.getElementById("showTarget").checked,
@@ -100,10 +101,12 @@ await runCase(
       `invalid-values: target time is ${state.targetTime}`);
     expect(state.clockSize === 64,
       `invalid-values: clock size is ${state.clockSize}`);
-    expect(state.timerSize === 3000,
+    // Timer size is intentionally unbounded above. A large finite persisted
+    // value is valid and must survive normalization rather than being clipped.
+    expect(state.timerSize === 99999,
       `invalid-values: timer size is ${state.timerSize}`);
-    expect(state.timerSizeMaximum === 3000,
-      `invalid-values: timer max is ${state.timerSizeMaximum}`);
+    expect(!state.timerSizeHasMaximum && state.timerRangeMaximum >= 10000,
+      `invalid-values: timer limits are numberMax=${state.timerSizeHasMaximum}, range=${state.timerRangeMaximum}`);
     expect(state.completionDurationMin === 1,
       `invalid-values: completion duration is ${state.completionDurationMin}`);
     expect(state.showTarget === true,
@@ -135,8 +138,8 @@ await runCase(
       `malformed-json: clock size is ${state.clockSize}`);
     expect(state.timerSize === 116,
       `malformed-json: timer size is ${state.timerSize}`);
-    expect(state.timerSizeMaximum === 3000,
-      `malformed-json: timer max is ${state.timerSizeMaximum}`);
+    expect(!state.timerSizeHasMaximum && state.timerRangeMaximum >= 10000,
+      `malformed-json: timer limits are numberMax=${state.timerSizeHasMaximum}, range=${state.timerRangeMaximum}`);
     expect(state.completionDurationMin === 30,
       `malformed-json: completion duration is ${state.completionDurationMin}`);
     expect(state.showTarget && state.showCurrentTime && state.autoSize,
@@ -152,4 +155,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("WRO settings recovery check passed invalid values and malformed JSON.");
+console.log("WRO settings recovery check passed invalid values, unlimited timer values and malformed JSON.");
