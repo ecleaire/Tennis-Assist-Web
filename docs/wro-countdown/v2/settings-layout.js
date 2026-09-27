@@ -327,6 +327,6 @@ export function installSettingsLayout() {
 
   const version = document.createElement("div");
   version.className = "settingsVersion";
-  version.innerHTML = `<span>WRO Countdown</span><strong>v1.0.2</strong><small>更新日：2026年9月26日</small>`;
+  version.innerHTML = `<span>WRO Countdown</span><strong>v1.1.0</strong><small>更新日：2026年9月27日</small>`;
   root.replaceChildren(basic, advanced, actions, version);
 }
