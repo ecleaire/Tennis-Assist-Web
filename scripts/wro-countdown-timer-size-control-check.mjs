@@ -11,7 +11,7 @@ const CASES = [
     autoSize: false,
     showCurrentTime: false,
     sizes: [36, 60, 3000],
-    strictUntil: 60
+    strictUntil: 3000
   },
   {
     name: "notebook-auto",
@@ -27,7 +27,7 @@ const CASES = [
     autoSize: false,
     showCurrentTime: false,
     sizes: [116, 300, 600, 3000],
-    strictUntil: 600
+    strictUntil: 3000
   }
 ];
 
@@ -92,14 +92,15 @@ async function state(page) {
   return page.evaluate(key => {
     const app = document.getElementById("app");
     const timer = document.getElementById("mainValue");
+    const numberInput = document.getElementById("timerSize");
     const rect = timer.getBoundingClientRect();
     const saved = JSON.parse(localStorage.getItem(key) || "{}");
     return {
       saved: Number(saved.timerSize),
       range: Number(document.getElementById("timerSizeRange")?.value),
-      number: Number(document.getElementById("timerSize")?.value),
+      number: Number(numberInput?.value),
       maxRange: Number(document.getElementById("timerSizeRange")?.max),
-      maxNumber: Number(document.getElementById("timerSize")?.max),
+      numberHasMax: numberInput?.hasAttribute("max") || false,
       requested: Number(app?.dataset.timerRequestedSize),
       variable: Number(app?.dataset.timerFitVariable),
       computed: Number.parseFloat(getComputedStyle(timer).fontSize),
@@ -171,8 +172,8 @@ for (const testCase of CASES) {
         `${label}/${size}: saved ${current.saved}`);
       expect(current.range === size && current.number === size,
         `${label}/${size}: controls ${current.range}/${current.number}`);
-      expect(current.maxRange === 3000 && current.maxNumber === 3000,
-        `${label}/${size}: maximums ${current.maxRange}/${current.maxNumber}`);
+      expect(current.maxRange >= 10000 && !current.numberHasMax,
+        `${label}/${size}: limits ${current.maxRange}/numberMax=${current.numberHasMax}`);
       expect(current.requested === size,
         `${label}/${size}: requested ${current.requested}`);
       expect(current.applied === "true",
@@ -184,8 +185,14 @@ for (const testCase of CASES) {
         `${label}/${size}: priority ${current.priority}`);
       expect(current.collision !== "unresolved",
         `${label}/${size}: unresolved collision`);
-      expect(insideViewport(current),
-        `${label}/${size}: outside viewport ${JSON.stringify(current.rect)}`);
+
+      if (testCase.autoSize) {
+        expect(insideViewport(current),
+          `${label}/${size}: automatic size outside viewport ${JSON.stringify(current.rect)}`);
+      } else {
+        expect(Math.abs(current.computed - size) <= 1.5,
+          `${label}/${size}: manual size changed to ${current.computed}`);
+      }
     }
 
     for (let index = 1; index < results.length; index += 1) {
@@ -210,6 +217,10 @@ for (const testCase of CASES) {
     const reloaded = await state(page);
     expect(reloaded.saved === 3000 && reloaded.requested === 3000,
       `${label}: 3000px did not survive reload`);
+    if (!testCase.autoSize) {
+      expect(Math.abs(reloaded.computed - 3000) <= 1.5,
+        `${label}: reloaded manual 3000px became ${reloaded.computed}px`);
+    }
 
     failures.push(...runtimeErrors.map(error => `${label}: ${error}`));
   } catch (error) {
@@ -228,6 +239,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO timer size control passed 36–3000px persistence, visible growth, " +
-  "CSS authority and viewport safety on phone, notebook and 4K displays."
+  "WRO timer size control passed unlimited manual sizing/overlap, automatic viewport safety, persistence, visible growth and CSS authority on phone, notebook and 4K displays."
 );

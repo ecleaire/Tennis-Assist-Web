@@ -171,7 +171,9 @@ try {
     `completion interval setting key is ${initialUi.intervalKey}`);
   expect(initialUi.firstMessageKey === "",
     `sequence textarea has duplicate generic setting handler ${initialUi.firstMessageKey}`);
-  expect(initialUi.autoSizeDescription.includes("はみ出す場合だけ"),
+  expect(initialUi.autoSizeDescription.includes("重なり") &&
+    initialUi.autoSizeDescription.includes("固定") &&
+    !initialUi.autoSizeDescription.includes("安全に縮小"),
     "auto-size behavior is not explained clearly");
 
   for (const [key, rangeId, numberId, value] of PAIRS) {

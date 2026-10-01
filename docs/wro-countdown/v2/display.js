@@ -1,1 +1,1 @@
-export { createDisplay } from "./display-controller.js?v=20260821e";
+export { createDisplay } from "./display-controller.js?v=20261001a";

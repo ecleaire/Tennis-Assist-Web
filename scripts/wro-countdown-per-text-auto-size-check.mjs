@@ -160,7 +160,7 @@ async function fontSize(page, selector) {
       masterChecked: document.getElementById("autoSize").checked,
       masterIndeterminate: document.getElementById("autoSize").indeterminate,
       timerRangeMax: Number(document.getElementById("timerSizeRange").max),
-      timerNumberMax: Number(document.getElementById("timerSize").max)
+      timerNumberHasMax: document.getElementById("timerSize").hasAttribute("max")
     }), AUTO_KEYS);
     expect(initial.toggleCount === AUTO_KEYS.length,
       `PC toggle count is ${initial.toggleCount}`);
@@ -168,8 +168,8 @@ async function fontSize(page, selector) {
       `PC checked count is ${initial.checkedCount}`);
     expect(initial.masterChecked && !initial.masterIndeterminate,
       `PC master initial state is ${JSON.stringify(initial)}`);
-    expect(initial.timerRangeMax === 3000 && initial.timerNumberMax === 3000,
-      `PC timer maximum is ${initial.timerRangeMax}/${initial.timerNumberMax}`);
+    expect(initial.timerRangeMax >= 10000 && !initial.timerNumberHasMax,
+      `PC timer limits are ${initial.timerRangeMax}/numberMax=${initial.timerNumberHasMax}`);
 
     await setCheckbox(page, "autoSizeTimer", false);
     await waitStored(
@@ -203,17 +203,15 @@ async function fontSize(page, selector) {
 
     expect(Math.abs(timer120 - 120) <= 1.5,
       `manual timer 120px rendered as ${timer120}px`);
-    expect(timer220 <= 221.5 && timer220 > timer120 + 35,
-      `manual timer 220px safety fit is ${timer220}px after ${timer120}px`);
+    expect(Math.abs(timer220 - 220) <= 1.5,
+      `manual timer 220px rendered as ${timer220}px after ${timer120}px`);
 
     const timerMetric = await page.evaluate(() =>
       document.querySelector('[data-size-metric="timerSize"]')?.textContent || "");
     expect(timerMetric.startsWith("設定 220px"),
       `manual timer metric is ${timerMetric}`);
-    if (timer220 < 219) {
-      expect(timerMetric.includes("安全縮小"),
-        `manual timer safety reduction is not explained: ${timerMetric}`);
-    }
+    expect(!timerMetric.includes("安全縮小"),
+      `manual timer was unexpectedly safety-shrunk: ${timerMetric}`);
 
     await setCheckbox(page, "autoSizeTarget", false);
     await waitStored(
@@ -420,5 +418,5 @@ if (failures.length) {
 }
 
 console.log(
-  "WRO per-text automatic sizing passed master/partial states, direct timer sizing, responsive-cap bypass, completion sizing, persistence, and legacy migration."
+  "WRO per-text automatic sizing passed master/partial states, unlimited manual timer sizing, responsive-cap bypass, completion sizing, persistence, and legacy migration."
 );

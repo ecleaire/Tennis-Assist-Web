@@ -55,7 +55,7 @@
 
 /*
  * When an item is set to manual, JavaScript has already chosen its configured
- * size and applied only the final overflow-safety reduction. These rules stop
+ * size without an overflow-safety reduction. These rules stop
  * older viewport-unit caps in responsive stylesheets from shrinking it a
  * second time and making the size control appear ineffective.
  */

@@ -102,6 +102,7 @@ async function runCase(testCase) {
       const stored = JSON.parse(localStorage.getItem(key) || "{}");
       return {
         phase: app.dataset.timerPhase,
+        autoSize: app.dataset.completionAutoSize,
         requested: Number(app.dataset.completionRequestedSize),
         preferred: Number(app.dataset.completionPreferredSize),
         fitted: Number(app.dataset.completionFitSize),
@@ -145,7 +146,8 @@ async function runCase(testCase) {
     await page.waitForFunction(() => {
       const app = document.getElementById("app");
       return app?.dataset.timerPhase === "completion" &&
-        app.dataset.completionFit === "fitted";
+        app.dataset.completionFit &&
+        app.dataset.completionFit !== "inactive";
     }, { timeout: 15_000 });
 
     await page.click("#gear");
@@ -183,26 +185,46 @@ async function runCase(testCase) {
         `${label}/${value}: controls are ${current.rangeValue}/${current.numberValue}`);
       expect(current.storedSize === value,
         `${label}/${value}: stored size is ${current.storedSize}`);
-      expect(current.fitStatus === "fitted",
-        `${label}/${value}: fit status is ${current.fitStatus}`);
       expect(Math.abs(current.computed - current.fitted) < 0.6,
         `${label}/${value}: computed/fitted differ ${current.computed}/${current.fitted}`);
-      expect(rectInside(current.rect, testCase.viewport),
-        `${label}/${value}: text outside viewport ${JSON.stringify(current.rect)}`);
+
+      if (testCase.autoSize) {
+        expect(current.fitStatus === "fitted",
+          `${label}/${value}: automatic fit status is ${current.fitStatus}`);
+        expect(current.autoSize === "true",
+          `${label}/${value}: automatic flag is ${current.autoSize}`);
+        expect(rectInside(current.rect, testCase.viewport),
+          `${label}/${value}: automatic text outside viewport ${JSON.stringify(current.rect)}`);
+      } else {
+        expect(current.fitStatus === "manual-overlap",
+          `${label}/${value}: manual fit status is ${current.fitStatus}`);
+        expect(current.autoSize === "false",
+          `${label}/${value}: manual flag is ${current.autoSize}`);
+        expect(Math.abs(current.computed - value) <= 1.5,
+          `${label}/${value}: manual size changed to ${current.computed}`);
+      }
     }
 
-    expect(byValue[96].computed > byValue[36].computed + 4,
-      `${label}: 36→96 did not grow (${byValue[36].computed}→${byValue[96].computed})`);
-    expect(byValue[180].computed > byValue[96].computed + 4,
-      `${label}: 96→180 did not grow (${byValue[96].computed}→${byValue[180].computed})`);
-    expect(byValue[24].computed < byValue[96].computed - 4,
-      `${label}: 96→24 did not shrink (${byValue[96].computed}→${byValue[24].computed})`);
+    // Automatic text may already be width/height limited at a small requested
+    // size. Manual values must still grow exactly; automatic values may plateau.
+    if (!testCase.autoSize) {
+      expect(byValue[96].computed > byValue[36].computed + 4,
+        `${label}: 36→96 did not grow (${byValue[36].computed}→${byValue[96].computed})`);
+      expect(byValue[180].computed > byValue[96].computed + 4,
+        `${label}: 96→180 did not grow (${byValue[96].computed}→${byValue[180].computed})`);
+      expect(byValue[24].computed < byValue[96].computed - 4,
+        `${label}: 96→24 did not shrink (${byValue[96].computed}→${byValue[24].computed})`);
+    } else {
+      expect(byValue[320].computed > byValue[24].computed + 0.25,
+        `${label}: automatic size control had no visible effect`);
+    }
 
-    if (testCase.text === "お疲れ様でした") {
-      expect(byValue[260].computed >= byValue[180].computed,
-        `${label}: 180→260 unexpectedly shrank`);
-      expect(byValue[320].computed >= byValue[260].computed,
-        `${label}: 260→320 unexpectedly shrank`);
+    // Fitting uses measured, subpixel glyph widths. At the automatic ceiling
+    // it can settle a fraction of a pixel lower for a larger requested size.
+    for (const [previous, next] of [[24, 36], [36, 96], [96, 180], [180, 260], [260, 320]]) {
+      expect(byValue[next].computed >= byValue[previous].computed - 0.25,
+        `${label}: ${previous}→${next} unexpectedly shrank ` +
+        `(${byValue[previous].computed}→${byValue[next].computed})`);
     }
   } catch (error) {
     failures.push(`${label}: ${error.stack || error.message}`);
@@ -220,4 +242,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`WRO completion size controls passed ${cases.length} phone and PC cases.`);
+console.log(`WRO completion size controls passed ${cases.length} automatic and manual-overlap cases.`);

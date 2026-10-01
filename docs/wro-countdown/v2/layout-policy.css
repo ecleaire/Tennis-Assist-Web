@@ -1,0 +1,71 @@
+/* Layout policy v1.1.0
+ * Automatic text participates in collision avoidance. Manual text is fully
+ * independent: it keeps the requested size and may overlap any other display.
+ */
+.currentBlock,
+.display {
+  --collision-x: 0px;
+  --collision-y: 0px;
+}
+
+@media (min-width: 800px), (orientation: landscape) {
+  .currentBlock,
+  .display {
+    transform:
+      translate(var(--anchor-x), var(--anchor-y))
+      translate(var(--position-offset-x), var(--position-offset-y))
+      translate(var(--collision-x), var(--collision-y)) !important;
+  }
+}
+
+/* The sub-1000px landscape profile uses a two-column grid, not absolute
+   anchors. Keep the grid placement, but let manual text paint across columns. */
+@media (orientation: landscape) and (max-width: 999px) {
+  .currentBlock,
+  .display {
+    transform: none !important;
+  }
+}
+
+.app[data-auto-size-clock="false"] .currentBlock,
+.app[data-auto-size-date="false"] .currentBlock,
+.app[data-auto-size-timer="false"] .display,
+.app[data-auto-size-completion="false"] .display,
+.app[data-auto-size-target="false"] .display,
+.app[data-auto-size-sub="false"] .display,
+.app[data-auto-size-timer-text="false"] .display,
+.app[data-auto-size-wro-title="false"] .display,
+.app[data-auto-size-wro-suffix="false"] .display {
+  overflow: visible !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.app[data-auto-size-clock="false"] .clock,
+.app[data-auto-size-date="false"] .date,
+.app[data-auto-size-target="false"] .target,
+.app[data-auto-size-sub="false"] .sub,
+.app[data-auto-size-timer-text="false"] .timerText,
+.app[data-auto-size-wro-title="false"] .mode.wroTitle,
+.app[data-auto-size-wro-suffix="false"] .wroSuffix {
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.app[data-auto-size-completion="false"][data-timer-phase="completion"] .mainValue {
+  width: max-content !important;
+  max-width: none !important;
+  max-inline-size: none !important;
+  overflow: visible !important;
+}
+
+/* Manual values never inherit the automatic tight-layout margin reduction. */
+.app[data-tight-layout="true"][data-auto-size-timer="false"] .mainValue,
+.app[data-tight-layout="true"][data-auto-size-completion="false"] .mainValue,
+.app[data-tight-layout="true"][data-auto-size-target="false"] .target,
+.app[data-tight-layout="true"][data-auto-size-sub="false"] .sub,
+.app[data-tight-layout="true"][data-auto-size-timer-text="false"] .timerText,
+.app[data-tight-layout="true"][data-auto-size-wro-suffix="false"] .wroSuffix {
+  margin-top: revert !important;
+}

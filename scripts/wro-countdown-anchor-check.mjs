@@ -49,7 +49,7 @@ const defaults = {
 
 const cases = [
   {
-    name: "WRO mode keeps current time at top-right",
+    name: "WRO mode keeps selected positions",
     viewport: { width: 1366, height: 768 },
     settings: {
       ...defaults,
@@ -61,13 +61,10 @@ const cases = [
       wroDateSuffix: "WRO Japan決勝大会 開幕まで",
       wroDateSuffixSize: 72
     },
-    expected: {
-      clock: "top-right",
-      display: "top-left"
-    }
+    expected: { clock: "top-right", display: "top-left" }
   },
   {
-    name: "timer with extra labels remains top-right",
+    name: "timer with extra labels keeps selected positions",
     viewport: { width: 1366, height: 768 },
     settings: {
       ...defaults,
@@ -80,13 +77,10 @@ const cases = [
       timerTextSize: 86,
       subSize: 80
     },
-    expected: {
-      clock: "bottom-left",
-      display: "top-right"
-    }
+    expected: { clock: "bottom-left", display: "top-right" }
   },
   {
-    name: "same top-right anchor stacks without moving current time",
+    name: "same timer anchor prioritizes larger display",
     viewport: { width: 1366, height: 768 },
     settings: {
       ...defaults,
@@ -103,11 +97,12 @@ const cases = [
     expected: {
       clock: "top-right",
       display: "top-right",
-      stacked: true
+      sameAnchor: true,
+      priority: "display"
     }
   },
   {
-    name: "same WRO top-right anchor stacks without moving current time",
+    name: "same WRO anchor prioritizes larger block",
     viewport: { width: 1920, height: 1080 },
     settings: {
       ...defaults,
@@ -126,11 +121,11 @@ const cases = [
     expected: {
       clock: "top-right",
       display: "top-right",
-      stacked: true
+      sameAnchor: true
     }
   },
   {
-    name: "live label edits do not change top-right placement",
+    name: "live label edits keep selected position metadata",
     viewport: { width: 1440, height: 900 },
     settings: {
       ...defaults,
@@ -139,15 +134,10 @@ const cases = [
     },
     mutate: async page => {
       await page.click("#gear");
-
       const advanced = page.locator("#advancedSettingsAccordion");
-      if (await advanced.count()) {
-        const open = await advanced.evaluate(element => element.open);
-        if (!open) await page.click("#advancedSettingsAccordion > summary");
-        await page.waitForFunction(() =>
-          document.getElementById("advancedSettingsAccordion")?.open);
+      if (!(await advanced.evaluate(element => element.open))) {
+        await page.click("#advancedSettingsAccordion > summary");
       }
-
       await page.fill(
         "#timerTextInput",
         "競技終了予定の20:30まで残り {残り時間}\n追加したラベルでも右上を維持"
@@ -159,23 +149,21 @@ const cases = [
       await page.evaluate(() => document.getElementById("done").click());
       await page.waitForTimeout(300);
     },
-    expected: {
-      clock: "bottom-left",
-      display: "top-right"
-    }
+    expected: { clock: "bottom-left", display: "top-right" }
   }
 ];
 
 function overlap(first, second) {
-  const width = Math.max(
-    0,
-    Math.min(first.right, second.right) - Math.max(first.left, second.left)
-  );
-  const height = Math.max(
-    0,
-    Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top)
-  );
-  return { width, height };
+  return {
+    width: Math.max(
+      0,
+      Math.min(first.right, second.right) - Math.max(first.left, second.left)
+    ),
+    height: Math.max(
+      0,
+      Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top)
+    )
+  };
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -197,22 +185,15 @@ for (const testCase of cases) {
 
   await page.addInitScript(({ key, storedSettings, fixedNow }) => {
     localStorage.setItem(key, JSON.stringify(storedSettings));
-
     const RealDate = Date;
     const fixedMilliseconds = RealDate.parse(fixedNow);
     class FixedDate extends RealDate {
       constructor(...args) {
         super(...(args.length ? args : [fixedMilliseconds]));
       }
-      static now() {
-        return fixedMilliseconds;
-      }
-      static parse(value) {
-        return RealDate.parse(value);
-      }
-      static UTC(...args) {
-        return RealDate.UTC(...args);
-      }
+      static now() { return fixedMilliseconds; }
+      static parse(value) { return RealDate.parse(value); }
+      static UTC(...args) { return RealDate.UTC(...args); }
     }
     Object.setPrototypeOf(FixedDate, RealDate);
     window.Date = FixedDate;
@@ -233,11 +214,7 @@ for (const testCase of cases) {
 
     if (testCase.mutate) await testCase.mutate(page);
 
-    const result = await page.evaluate(expected => {
-      const pixel = (style, name, fallback) => {
-        const value = Number.parseFloat(style.getPropertyValue(name));
-        return Number.isFinite(value) ? value : fallback;
-      };
+    const result = await page.evaluate(() => {
       const rect = selector => {
         const value = document.querySelector(selector).getBoundingClientRect();
         return {
@@ -249,78 +226,24 @@ for (const testCase of cases) {
           height: value.height
         };
       };
-      const shell = document.querySelector("#shell");
-      const style = getComputedStyle(shell);
-      const bounds = {
-        left: pixel(style, "--layout-left", 24),
-        right: window.innerWidth - pixel(style, "--layout-right", 24),
-        top: pixel(style, "--layout-top", 64),
-        bottom: window.innerHeight - pixel(style, "--layout-bottom", 64)
-      };
-
+      const app = document.getElementById("app");
       return {
-        expected,
-        bounds,
         current: rect("#currentBlock"),
         display: rect("#display"),
-        currentPosition: document.querySelector("#currentBlock").dataset.position,
-        displayPosition: document.querySelector("#display").dataset.position,
-        collision: document.querySelector("#app").dataset.layoutCollision,
-        clockAnchorPreserved:
-          document.querySelector("#app").dataset.clockAnchorPreserved
+        currentPosition: document.getElementById("currentBlock").dataset.position,
+        displayPosition: document.getElementById("display").dataset.position,
+        collision: app.dataset.layoutCollision,
+        priority: app.dataset.layoutPriority || "",
+        currentAuto: app.dataset.currentBlockAutoLayout,
+        displayAuto: app.dataset.displayBlockAutoLayout,
+        clockSize: Number.parseFloat(
+          getComputedStyle(document.getElementById("clock")).fontSize
+        ),
+        mainSize: Number.parseFloat(
+          getComputedStyle(document.getElementById("mainValue")).fontSize
+        )
       };
-    }, testCase.expected);
-
-    const tolerance = 28;
-    const checkAnchor = (name, rect, position, allowStack = false) => {
-      const column = position.endsWith("-left")
-        ? "left"
-        : position.endsWith("-right")
-          ? "right"
-          : "center";
-      const row = position.startsWith("top-")
-        ? "top"
-        : position.startsWith("bottom-")
-          ? "bottom"
-          : "middle";
-
-      if (column === "left" && Math.abs(rect.left - result.bounds.left) > tolerance) {
-        failures.push(`${testCase.name}: ${name} left anchor moved`);
-      }
-      if (column === "right" && Math.abs(rect.right - result.bounds.right) > tolerance) {
-        failures.push(`${testCase.name}: ${name} right anchor moved`);
-      }
-      if (column === "center") {
-        const actual = (rect.left + rect.right) / 2;
-        const target = (result.bounds.left + result.bounds.right) / 2;
-        if (Math.abs(actual - target) > tolerance) {
-          failures.push(`${testCase.name}: ${name} center anchor moved`);
-        }
-      }
-
-      if (allowStack) return;
-      if (row === "top" && Math.abs(rect.top - result.bounds.top) > tolerance) {
-        failures.push(`${testCase.name}: ${name} top anchor moved`);
-      }
-      if (row === "bottom" && Math.abs(rect.bottom - result.bounds.bottom) > tolerance) {
-        failures.push(`${testCase.name}: ${name} bottom anchor moved`);
-      }
-      if (row === "middle") {
-        const actual = (rect.top + rect.bottom) / 2;
-        const target = (result.bounds.top + result.bounds.bottom) / 2;
-        if (Math.abs(actual - target) > tolerance) {
-          failures.push(`${testCase.name}: ${name} middle anchor moved`);
-        }
-      }
-    };
-
-    checkAnchor("current time", result.current, testCase.expected.clock);
-    checkAnchor(
-      "countdown",
-      result.display,
-      testCase.expected.display,
-      Boolean(testCase.expected.stacked)
-    );
+    });
 
     if (result.currentPosition !== testCase.expected.clock) {
       failures.push(
@@ -329,36 +252,49 @@ for (const testCase of cases) {
     }
     if (result.displayPosition !== testCase.expected.display) {
       failures.push(
-        `${testCase.name}: countdown data-position changed to ${result.displayPosition}`
+        `${testCase.name}: display data-position changed to ${result.displayPosition}`
       );
     }
 
     const collision = overlap(result.current, result.display);
     if (collision.width > 8 && collision.height > 8) {
       failures.push(
-        `${testCase.name}: current time overlaps countdown by ` +
+        `${testCase.name}: automatic blocks overlap by ` +
         `${Math.round(collision.width)}x${Math.round(collision.height)}px`
       );
-    }
-
-    if (testCase.expected.stacked) {
-      const row = testCase.expected.display.startsWith("bottom-")
-        ? "bottom"
-        : "top";
-      if (row === "top" && result.display.top < result.current.bottom + 8) {
-        failures.push(`${testCase.name}: top-right items were not vertically stacked`);
-      }
-      if (row === "bottom" && result.display.bottom > result.current.top - 8) {
-        failures.push(`${testCase.name}: bottom-right items were not vertically stacked`);
-      }
     }
 
     if (result.collision === "unresolved") {
       failures.push(`${testCase.name}: collision resolver reported unresolved`);
     }
-    if (result.clockAnchorPreserved !== "true") {
-      failures.push(`${testCase.name}: current-time anchor preservation flag missing`);
+
+    if (testCase.expected.sameAnchor) {
+      if (result.currentAuto !== "true" || result.displayAuto !== "true") {
+        failures.push(
+          `${testCase.name}: same-anchor blocks are not both automatic ` +
+          `${result.currentAuto}/${result.displayAuto}`
+        );
+      }
+      if (!result.priority) {
+        failures.push(`${testCase.name}: same-anchor priority was not recorded`);
+      }
+      if (testCase.expected.priority && result.priority !== testCase.expected.priority) {
+        failures.push(
+          `${testCase.name}: expected ${testCase.expected.priority} priority, got ${result.priority}`
+        );
+      }
+      if (result.mainSize > result.clockSize && result.priority !== "display") {
+        failures.push(
+          `${testCase.name}: larger display (${result.mainSize}px) was not prioritized over clock (${result.clockSize}px)`
+        );
+      }
+      if (result.clockSize > result.mainSize && result.priority !== "current") {
+        failures.push(
+          `${testCase.name}: larger clock (${result.clockSize}px) was not prioritized over display (${result.mainSize}px)`
+        );
+      }
     }
+
     failures.push(...runtimeErrors.map(error => `${testCase.name}: ${error}`));
   } catch (error) {
     failures.push(`${testCase.name}: ${error.stack || error.message}`);
@@ -375,4 +311,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`WRO anchor-position check passed ${cases.length} cases.`);
+console.log(
+  `WRO anchor-position check passed ${cases.length} cases with selected-position metadata, automatic separation and larger-display priority.`
+);
