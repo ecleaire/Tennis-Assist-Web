@@ -1,3 +1,5 @@
+import { APP_VERSION, APP_UPDATED_AT } from "./version.js?v=20261001a";
+
 const DETAILS_OPEN_KEY = "wro-countdown-advanced-settings-open";
 
 const $ = id => document.getElementById(id);
@@ -327,6 +329,6 @@ export function installSettingsLayout() {
 
   const version = document.createElement("div");
   version.className = "settingsVersion";
-  version.innerHTML = `<span>WRO Countdown</span><strong>v1.1.0</strong><small>更新日：2026年9月27日</small>`;
+  version.innerHTML = `<span>WRO Countdown</span><strong>v${APP_VERSION}</strong><small>更新日：${APP_UPDATED_AT}</small>`;
   root.replaceChildren(basic, advanced, actions, version);
 }

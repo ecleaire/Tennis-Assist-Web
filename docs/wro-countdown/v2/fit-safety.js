@@ -1,5 +1,5 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260927a";
-import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20260927a";
+import { SIZE_LIMITS } from "./size-limits.js?v=20261001a";
+import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20261001a";
 
 const ITEMS = [
   ["clock", "clockSize", "--clockFit"],

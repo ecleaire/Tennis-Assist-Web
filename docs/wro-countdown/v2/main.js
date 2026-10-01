@@ -3,41 +3,41 @@ import {
   load,
   normalize,
   save
-} from "./config.js?v=20260927a";
-import { buildSettings, refs as makeRefs } from "./ui.js?v=20260927a";
-import { installSoundOptions } from "./sound-options.js?v=20260927a";
+} from "./config.js?v=20261001a";
+import { buildSettings, refs as makeRefs } from "./ui.js?v=20261001a";
+import { installSoundOptions } from "./sound-options.js?v=20261001a";
 import {
   installDefaultSettingsUi
-} from "./default-settings-ui.js?v=20260927a";
+} from "./default-settings-ui.js?v=20261001a";
 import {
   installBackgroundSettings,
   createBackgroundSettingsController
-} from "./background-settings.js?v=20260927a";
+} from "./background-settings.js?v=20261001a";
 import {
   installCompletionAutoWroSetting
-} from "./completion-auto-wro-setting.js?v=20260927a";
+} from "./completion-auto-wro-setting.js?v=20261001a";
 import {
   installTextAutoSizeSettings,
   createTextAutoSizeController
-} from "./text-auto-size-settings.js?v=20260927a";
+} from "./text-auto-size-settings.js?v=20261001a";
 import {
   installSettingsFormIntegrity
-} from "./settings-form-integrity.js?v=20260927a";
-import { installSettingsLayout } from "./settings-layout.js?v=20260927a";
-import { controls as makeControls } from "./controls.js?v=20260927a";
-import { renderSettings } from "./render-settings.js?v=20260927a";
-import { applySizeLimits } from "./size-limits.js?v=20260927a";
+} from "./settings-form-integrity.js?v=20261001a";
+import { installSettingsLayout } from "./settings-layout.js?v=20261001a";
+import { controls as makeControls } from "./controls.js?v=20261001a";
+import { renderSettings } from "./render-settings.js?v=20261001a";
+import { applySizeLimits } from "./size-limits.js?v=20261001a";
 import {
   installExtraSettings,
   createExtraSettingsController
-} from "./extra-settings.js?v=20260927a";
+} from "./extra-settings.js?v=20261001a";
 import {
   createSettingsControlAudit
-} from "./settings-control-audit.js?v=20260927a";
-import { createNoise } from "./noise.js?v=20260927a";
-import { createAudio } from "./audio.js?v=20260927a";
-import { createDisplay } from "./display.js?v=20260927a";
-import { bindEvents } from "./events.js?v=20260927a";
+} from "./settings-control-audit.js?v=20261001a";
+import { createNoise } from "./noise.js?v=20261001a";
+import { createAudio } from "./audio.js?v=20261001a";
+import { createDisplay } from "./display.js?v=20261001a";
+import { bindEvents } from "./events.js?v=20261001a";
 
 buildSettings();
 installSoundOptions();

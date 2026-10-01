@@ -11,7 +11,7 @@ function toggleMarkup(item) {
 <div class="perTextAutoSize" data-auto-size-setting="${item.key}">
   <div class="perTextAutoSizeCopy">
     <b>自動調整</b>
-    <small>オン：画面に合わせて拡大・縮小／オフ：入力したpxを優先</small>
+    <small>オン：重なりを避けて自動調整／オフ：入力したpxを固定し、重なりを許可</small>
   </div>
   <label class="toggle perTextAutoSizeToggle" for="${item.inputId}">
     <input id="${item.inputId}" type="checkbox" aria-label="${item.label}の自動サイズ調整">
@@ -56,29 +56,15 @@ function upgradeSizeControl(card, item) {
   return upgraded;
 }
 
-function updateMetric(item, settings, enabled) {
+function updateMetric(item, enabled) {
   const metric = document.querySelector(
     `[data-size-metric="${item.sizeKey}"]`
   );
   if (!metric) return;
 
-  let text = metric.textContent
+  const text = metric.textContent
     .replace(/^(基準|設定)/, enabled ? "基準" : "設定")
     .replace(/・画面内に収めるため安全縮小$/, "");
-
-  if (!enabled) {
-    const actualMatch = text.match(/実表示\s*([0-9.]+)px/);
-    const configured = Number(settings[item.sizeKey]);
-    const actual = Number(actualMatch?.[1]);
-    if (
-      Number.isFinite(configured) &&
-      Number.isFinite(actual) &&
-      actual < configured - 0.75
-    ) {
-      text += "・画面内に収めるため安全縮小";
-    }
-  }
-
   if (metric.textContent !== text) metric.textContent = text;
 }
 
@@ -103,7 +89,7 @@ export function installTextAutoSizeSettings() {
     if (description) {
       description.id = "autoSizeMasterDescription";
       description.textContent =
-        "全項目を一括で切り替えます。オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。";
+        "全項目を一括で切り替えます。オンの項目は重なりを避けて調整し、オフの項目は入力したpxを固定して重なりを許可します。";
     }
   }
 }
@@ -139,7 +125,7 @@ export function createTextAutoSizeController({
       item.input.checked = enabled;
       item.input.closest(".sizeControl")
         ?.classList.toggle("manualTextSize", !enabled);
-      updateMetric(item, settings, enabled);
+      updateMetric(item, enabled);
     }
 
     const state = textAutoSizeMasterState(settings);
@@ -152,10 +138,10 @@ export function createTextAutoSizeController({
 
     if (description) {
       description.textContent = state.all
-        ? `全${state.total}項目で自動調整がオンです。個別にオフにした項目は、入力したpxを優先し、はみ出す場合だけ安全に縮小します。`
+        ? `全${state.total}項目で自動調整がオンです。オンの項目は重なりを避けて調整し、個別にオフにした項目は入力したpxを固定して重なりを許可します。`
         : state.none
-          ? `全${state.total}項目で自動調整がオフです。入力したpxを優先し、はみ出す場合だけ安全に縮小します。`
-          : `${state.enabled}/${state.total}項目で自動調整がオンです。オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。`;
+          ? `全${state.total}項目で自動調整がオフです。入力したpxを固定し、重なり・はみ出しを許可します。`
+          : `${state.enabled}/${state.total}項目で自動調整がオンです。オフの項目は入力したpxを固定し、重なり・はみ出しを許可します。`;
     }
   }
 
@@ -164,7 +150,7 @@ export function createTextAutoSizeController({
 
     // The generic metric writer can already have a frame queued before the
     // final layout event. Wait one extra animation frame so this per-item layer
-    // always runs last and cannot lose the manual-mode safety explanation.
+    // always runs last and cannot lose the per-item auto/manual explanation.
     renderFrame = requestAnimationFrame(() => {
       renderFrame = 0;
       settleFrame = requestAnimationFrame(render);

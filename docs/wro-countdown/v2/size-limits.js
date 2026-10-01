@@ -2,7 +2,7 @@ export const SIZE_LIMITS = {
   clockSize: { minimum: 20, maximum: 280 },
   dateSize: { minimum: 10, maximum: 48 },
   // Large projectors, 4K/8K displays and wall screens can use much larger
-  // timer digits. The rendered value is still fitted safely to the viewport.
+  // timer digits. Only automatic mode fits the rendered value to the viewport.
   timerSize: { minimum: 36, maximum: Infinity },
   completionTextSize: { minimum: 20, maximum: 320 },
   targetSize: { minimum: 12, maximum: 180 },

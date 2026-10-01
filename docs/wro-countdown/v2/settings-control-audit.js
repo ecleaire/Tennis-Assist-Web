@@ -476,7 +476,7 @@ export function createSettingsControlAudit({
       ?.querySelector(".switchCopy small");
     if (autoDescription) {
       autoDescription.textContent =
-        "オンでは設定値を基準に画面へ合わせて拡大・縮小します。オフでは設定値を優先し、はみ出す場合だけ安全に縮小します。";
+        "オンでは重なりを避けて自動調整します。オフでは入力したpxを固定し、重なり・はみ出しを許可します。";
     }
 
     const sizeHelp = $("clockSize")

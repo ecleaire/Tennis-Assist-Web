@@ -1,8 +1,8 @@
-import { SIZE_LIMITS } from "./size-limits.js?v=20260927a";
+import { SIZE_LIMITS } from "./size-limits.js?v=20261001a";
 import {
   applyTextAutoSizeData,
   isTextAutoSizeEnabled
-} from "./text-auto-size-values.js?v=20260927a";
+} from "./text-auto-size-values.js?v=20261001a";
 
 const BASE = {
   clock: 64,

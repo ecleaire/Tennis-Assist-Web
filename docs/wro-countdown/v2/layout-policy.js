@@ -1,9 +1,9 @@
-import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20260927a";
+import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20261001a";
 
 const GAP = 14;
 const ABSOLUTE_QUERY = "(min-width: 800px), (orientation: landscape)";
 const PHONE_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 999px)";
-const MAX_SHRINK_PASSES = 14;
+const MAX_SHRINK_PASSES = 160;
 
 const DISPLAY_KINDS = [
   "timer",
@@ -45,7 +45,7 @@ function visible(element) {
 function visualRect(element) {
   if (!visible(element)) return null;
   const children = [...element.children].filter(visible);
-  const rects = (children.length ? children : [element])
+  const rects = [element, ...children]
     .map(node => node.getBoundingClientRect());
   const left = Math.min(...rects.map(rect => rect.left));
   const top = Math.min(...rects.map(rect => rect.top));
@@ -111,8 +111,8 @@ function resetCorrection(element) {
 }
 
 function applyCorrection(element, x, y) {
-  element.style.setProperty("--collision-x", `${Math.round(x)}px`);
-  element.style.setProperty("--collision-y", `${Math.round(y)}px`);
+  element.style.setProperty("--collision-x", `${x}px`);
+  element.style.setProperty("--collision-y", `${y}px`);
 }
 
 function addCorrection(element, x, y) {
@@ -174,8 +174,9 @@ function viewportBounds() {
 }
 
 function within(rect, bounds) {
-  return rect.left >= bounds.left && rect.right <= bounds.right &&
-    rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+  const tolerance = 0.1;
+  return rect.left >= bounds.left - tolerance && rect.right <= bounds.right + tolerance &&
+    rect.top >= bounds.top - tolerance && rect.bottom <= bounds.bottom + tolerance;
 }
 
 function clampDelta(rect, bounds) {
@@ -219,15 +220,16 @@ function movementCandidates(mover, fixed) {
   ];
 }
 
-function chooseMovement(mover, fixed, bounds) {
-  return movementCandidates(mover, fixed)
+function chooseMovement(mover, fixed, bounds, obstacles = []) {
+  const forbidden = [fixed, ...obstacles];
+  return forbidden.flatMap(obstacle => movementCandidates(mover, obstacle))
     .map(candidate => {
       let rect = translateRect(mover, candidate.x, candidate.y);
       const clamp = clampDelta(rect, bounds);
       const x = candidate.x + clamp.x;
       const y = candidate.y + clamp.y;
       rect = translateRect(mover, x, y);
-      const overlap = overlaps(rect, fixed, GAP);
+      const overlap = forbidden.some(obstacle => overlaps(rect, obstacle, GAP));
       const inside = within(rect, bounds);
       const distance = Math.hypot(x, y);
       return { x, y, rect, overlap, inside, distance };
@@ -241,10 +243,10 @@ function chooseMovement(mover, fixed, bounds) {
     })[0] || null;
 }
 
-function moveAway(element, obstacle, bounds) {
+function moveAway(element, obstacle, bounds, obstacles = []) {
   const mover = visualRect(element);
   if (!mover || !obstacle || !overlaps(mover, obstacle, GAP)) return true;
-  const movement = chooseMovement(mover, obstacle, bounds);
+  const movement = chooseMovement(mover, obstacle, bounds, obstacles);
   if (!movement || movement.overlap) return false;
   addCorrection(element, movement.x, movement.y);
   return true;
@@ -259,7 +261,7 @@ function fixedObstacles(refs) {
 
 function avoidFixed(element, bounds, obstacles) {
   for (const obstacle of obstacles) {
-    if (!moveAway(element, obstacle, bounds)) return false;
+    if (!moveAway(element, obstacle, bounds, obstacles)) return false;
     constrainAutomatic(element, bounds);
   }
   return true;
@@ -284,25 +286,34 @@ function shrinkKind(refs, settings, kind, factor = 0.86) {
 }
 
 function shrinkBlock(refs, settings, element) {
-  let changed = false;
-  if (element === refs.currentBlock) {
-    changed = shrinkKind(refs, settings, "clock") || changed;
-    if (visible(refs.date)) {
-      changed = shrinkKind(refs, settings, "date") || changed;
-    }
-  } else {
-    for (const kind of displayKinds(refs)) {
-      changed = shrinkKind(refs, settings, kind) || changed;
+  const kinds = element === refs.currentBlock
+    ? ["clock", ...(visible(refs.date) ? ["date"] : [])]
+    : displayKinds(refs);
+  // Exhaust smaller automatic text before reducing the largest display.
+  const adjustable = kinds.filter(kind => isTextAutoSizeEnabled(settings, kind))
+    .sort((a, b) => readFit(refs.app, FIT_VARIABLES[a][0], 0) -
+      readFit(refs.app, FIT_VARIABLES[b][0], 0));
+  for (const kind of adjustable) {
+    if (shrinkKind(refs, settings, kind)) {
+      void element.offsetWidth;
+      return true;
     }
   }
-  if (changed) void element.offsetWidth;
-  return changed;
+  return false;
 }
 
-function resetAndPrepareAutomatic(element, isAutomatic, bounds, obstacles) {
+function resetAndPrepareAutomatic(refs, settings, element, isAutomatic, bounds, obstacles) {
   if (!isAutomatic) return true;
-  constrainAutomatic(element, bounds);
-  return avoidFixed(element, bounds, obstacles);
+  for (let pass = 0; pass <= MAX_SHRINK_PASSES; pass += 1) {
+    resetCorrection(element);
+    constrainAutomatic(element, bounds);
+    const avoided = avoidFixed(element, bounds, obstacles);
+    const rect = visualRect(element);
+    if (!rect || (avoided && within(rect, bounds) &&
+        !obstacles.some(obstacle => overlaps(rect, obstacle, GAP)))) return true;
+    if (pass === MAX_SHRINK_PASSES || !shrinkBlock(refs, settings, element)) break;
+  }
+  return false;
 }
 
 function choosePriority(refs, currentAuto, displayAuto) {
@@ -368,8 +379,8 @@ export function applyLayoutPolicy(refs, settings) {
   const bounds = viewportBounds();
   const obstacles = fixedObstacles(refs);
 
-  resetAndPrepareAutomatic(refs.currentBlock, currentAuto, bounds, obstacles);
-  resetAndPrepareAutomatic(refs.display, displayAuto, bounds, obstacles);
+  resetAndPrepareAutomatic(refs, settings, refs.currentBlock, currentAuto, bounds, obstacles);
+  resetAndPrepareAutomatic(refs, settings, refs.display, displayAuto, bounds, obstacles);
 
   let current = visualRect(refs.currentBlock);
   let display = visualRect(refs.display);
@@ -404,7 +415,7 @@ export function applyLayoutPolicy(refs, settings) {
     }
 
     const fixedRect = visualRect(priority.fixed);
-    if (moveAway(priority.mover, fixedRect, bounds)) {
+    if (moveAway(priority.mover, fixedRect, bounds, obstacles)) {
       constrainAutomatic(priority.mover, bounds);
       avoidFixed(priority.mover, bounds, obstacles);
       current = visualRect(refs.currentBlock);
@@ -415,9 +426,13 @@ export function applyLayoutPolicy(refs, settings) {
       }
     }
 
-    if (pass === MAX_SHRINK_PASSES ||
-        !shrinkBlock(refs, settings, priority.mover)) {
-      break;
+    if (pass === MAX_SHRINK_PASSES) break;
+    if (!shrinkBlock(refs, settings, priority.mover)) {
+      // Only after the smaller block reaches its minima may the larger
+      // automatic block yield. A manual block always remains fixed.
+      if (!currentAuto || !displayAuto ||
+          !shrinkBlock(refs, settings, priority.fixed)) break;
+      resetAndPrepareAutomatic(refs, settings, priority.fixed, true, bounds, obstacles);
     }
 
     // Size changes invalidate earlier translations. Re-anchor automatic blocks

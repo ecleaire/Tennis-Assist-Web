@@ -119,7 +119,10 @@ for (const testCase of cases) {
         childIds: [...root.children].map(element => element.id || element.className),
         firstIsBasic: root.firstElementChild === basic,
         secondIsAdvanced: root.children[1] === advanced,
-        actionsLast: root.lastElementChild === actions,
+        actionsLast: root.lastElementChild?.classList.contains("settingsVersion") &&
+          root.lastElementChild.previousElementSibling === actions,
+        release: root.querySelector(".settingsVersion strong")?.textContent,
+        updatedAt: root.querySelector(".settingsVersion small")?.textContent,
         advancedOpen: advanced.open,
         basicMissing: basicIds.filter(id => !basic.contains(document.getElementById(id))),
         advancedMissing: advancedIds.filter(id => !advanced.contains(document.getElementById(id))),
@@ -138,7 +141,9 @@ for (const testCase of cases) {
     expect(structure.secondIsAdvanced,
       `${testCase.name}: advanced accordion is not second`);
     expect(structure.actionsLast,
-      `${testCase.name}: footer actions are not last`);
+      `${testCase.name}: footer actions are not immediately before release metadata`);
+    expect(structure.release === "v1.1.0" && structure.updatedAt === "更新日：2026年9月27日",
+      `${testCase.name}: unexpected release metadata ${structure.release}/${structure.updatedAt}`);
     expect(!structure.advancedOpen,
       `${testCase.name}: advanced settings should be closed initially`);
     expect(structure.basicMissing.length === 0,

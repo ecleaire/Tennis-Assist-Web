@@ -1,4 +1,4 @@
-import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20260927a";
+import { isTextAutoSizeEnabled } from "./text-auto-size-values.js?v=20261001a";
 
 const MINIMUM = 20;
 

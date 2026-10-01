@@ -1,92 +1,50 @@
-const RELEASE = "1.1.0";
-const UPDATED_AT = "2026年9月27日";
+import { APP_VERSION } from "./v2/version.js?v=20261001a";
+
+const RELEASE = APP_VERSION;
 const RELOAD_KEY = `wro-countdown-sw-${RELEASE}`;
-
-function setText(element, text) {
-  if (element && element.textContent !== text) element.textContent = text;
-}
-
-function updateReleaseUi() {
-  const root = document.querySelector(".settingsVersion");
-  if (root) {
-    setText(root.querySelector("strong"), `v${RELEASE}`);
-    setText(root.querySelector("small"), `更新日：${UPDATED_AT}`);
-  }
-
-  document.querySelectorAll(".perTextAutoSizeCopy small").forEach(element => {
-    setText(
-      element,
-      "オン：重なりを避けて自動調整／オフ：入力したpxを固定し、重なりを許可"
-    );
-  });
-
-  const master = document.getElementById("autoSizeMasterDescription");
-  if (master) {
-    const next = master.textContent
-      .replace(
-        /個別にオフにした項目は、入力したpxを優先し、はみ出す場合だけ安全に縮小します。/g,
-        "自動調整ONの項目は重なり・はみ出す場合だけ調整し、OFFの項目は入力したpxを固定して重なりを許可します。"
-      )
-      .replace(
-        /オフの項目は入力したpxを優先し、はみ出す場合だけ安全に縮小します。/g,
-        "自動調整ONの項目は重なり・はみ出す場合だけ調整し、OFFの項目は入力したpxを固定して重なりを許可します。"
-      )
-      .replace(
-        /入力したpxを優先し、はみ出す場合だけ安全に縮小します。/g,
-        "自動調整OFFでは入力したpxを固定して重なりを許可し、ONでは重なり・はみ出す場合だけ調整します。"
-      );
-    setText(master, next);
-  }
-
-  document.querySelectorAll(".settingSizeMetric").forEach(element => {
-    const next = element.textContent.replace(
-      "・画面内に収めるため安全縮小",
-      "・重なり許可"
-    );
-    setText(element, next);
-  });
-}
-
-function watchReleaseUi() {
-  let settingsObserver = null;
-
-  const attach = () => {
-    const settingsRoot = document.getElementById("settingsRoot");
-    if (!settingsRoot || settingsObserver) return false;
-
-    updateReleaseUi();
-    settingsObserver = new MutationObserver(updateReleaseUi);
-    settingsObserver.observe(settingsRoot, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
-    return true;
-  };
-
-  if (attach()) return;
-
-  const bootstrapObserver = new MutationObserver(() => {
-    if (attach()) bootstrapObserver.disconnect();
-  });
-  bootstrapObserver.observe(document.body, { childList: true, subtree: true });
-}
 
 async function ensureFreshWorker() {
   if (!("serviceWorker" in navigator)) return;
 
   try {
+    const previousController = navigator.serviceWorker.controller;
     const registration = await navigator.serviceWorker.register(
       `./sw.js?v=${encodeURIComponent(RELEASE)}`,
       { scope: "./", updateViaCache: "none" }
     );
     await registration.update().catch(() => {});
 
-    const controller = navigator.serviceWorker.controller;
-    const ours = controller?.scriptURL?.includes("/wro-countdown/sw.js");
-    if (!ours && sessionStorage.getItem(RELOAD_KEY) !== "1") {
+    // ready may resolve to an old active worker while the update is installing.
+    // Wait for this registration's new worker before loading child modules.
+    const worker = registration.installing || registration.waiting || registration.active;
+    if (worker && worker.state !== "activated") {
+      await new Promise((resolve, reject) => {
+        const changed = () => {
+          if (worker.state !== "activated" && worker.state !== "redundant") return;
+          worker.removeEventListener("statechange", changed);
+          if (worker.state === "activated") resolve();
+          else reject(new Error("Fresh-load worker was superseded."));
+        };
+        worker.addEventListener("statechange", changed);
+        changed();
+      });
+    }
+
+    if (navigator.serviceWorker.controller !== registration.active) {
+      await new Promise(resolve => {
+        const changed = () => {
+          if (navigator.serviceWorker.controller !== registration.active) return;
+          navigator.serviceWorker.removeEventListener("controllerchange", changed);
+          resolve();
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", changed);
+        changed();
+      });
+    }
+
+    if (previousController !== navigator.serviceWorker.controller &&
+        sessionStorage.getItem(RELOAD_KEY) !== "1") {
       sessionStorage.setItem(RELOAD_KEY, "1");
-      await navigator.serviceWorker.ready;
       location.reload();
       await new Promise(() => {});
     }
@@ -97,7 +55,6 @@ async function ensureFreshWorker() {
 
 async function start() {
   await ensureFreshWorker();
-  watchReleaseUi();
   await import(`./v2/entry.js?release=${encodeURIComponent(RELEASE)}&t=${Date.now()}`);
 }
 

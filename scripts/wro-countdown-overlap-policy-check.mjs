@@ -126,7 +126,11 @@ async function snapshot(page) {
       layoutCollision: app.dataset.layoutCollision,
       layoutPriority: app.dataset.layoutPriority || "",
       currentAuto: app.dataset.currentBlockAutoLayout,
-      displayAuto: app.dataset.displayBlockAutoLayout
+      displayAuto: app.dataset.displayBlockAutoLayout,
+      currentCorrection: ["--collision-x", "--collision-y"].map(name =>
+        document.getElementById("currentBlock").style.getPropertyValue(name)),
+      displayCorrection: ["--collision-x", "--collision-y"].map(name =>
+        document.getElementById("display").style.getPropertyValue(name))
     };
   });
 }
@@ -213,9 +217,45 @@ async function snapshot(page) {
       `mixed manual display did not have priority: ${JSON.stringify(value)}`);
     expect(value.currentAuto === "true" && value.displayAuto === "false",
       `mixed auto-layout flags are ${JSON.stringify(value)}`);
+    expect(value.displayCorrection.every(value => value === "0px"),
+      `mixed manual display was moved: ${JSON.stringify(value)}`);
     failures.push(...scenario.runtimeErrors.map(error => `mixed runtime: ${error}`));
   } catch (error) {
     failures.push(`mixed: ${error.stack || error.message}`);
+  }
+  await scenario.context.close();
+}
+
+// Exercise the opposite direction too: current time may be the larger
+// automatic display or the fixed manual block.
+for (const manualClock of [false, true]) {
+  const label = manualClock ? "manual-current" : "larger-current";
+  const scenario = await loadScenario(settings({
+    ...autoPatch(true, {
+      autoSizeClock: !manualClock,
+      autoSizeDate: !manualClock
+    }),
+    clockSize: 180,
+    timerSize: 36
+  }), label);
+  try {
+    const value = await snapshot(scenario.page);
+    expect(value.overlapArea === 0,
+      `${label}: automatic display did not separate: ${JSON.stringify(value)}`);
+    expect(value.layoutPriority === (manualClock ? "manual-current" : "current"),
+      `${label}: wrong priority: ${JSON.stringify(value)}`);
+    if (manualClock) {
+      expect(Math.abs(value.clockSize - 180) <= 1.5,
+        `${label}: manual clock shrank: ${JSON.stringify(value)}`);
+      expect(value.currentCorrection.every(value => value === "0px"),
+        `${label}: manual clock moved: ${JSON.stringify(value)}`);
+    } else {
+      expect(value.clockSize > value.timerSize,
+        `${label}: larger clock did not keep priority: ${JSON.stringify(value)}`);
+    }
+    failures.push(...scenario.runtimeErrors.map(error => `${label} runtime: ${error}`));
+  } catch (error) {
+    failures.push(`${label}: ${error.stack || error.message}`);
   }
   await scenario.context.close();
 }

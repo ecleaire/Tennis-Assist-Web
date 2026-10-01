@@ -16,4 +16,5 @@ player.id = "audioPlayer";
 player.preload = "auto";
 document.getElementById("app").append(player);
 
-import("./main.js?v=20260927a");
+const bootstrapQuery = new URL(import.meta.url).search || "?v=20261001a";
+await import(`./main.js${bootstrapQuery}`);

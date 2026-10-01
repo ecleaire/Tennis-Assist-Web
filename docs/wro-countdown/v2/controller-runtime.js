@@ -1,15 +1,15 @@
-import { renderLabels } from "./display-render.js?v=20260927a";
-import { fitDisplay } from "./display-fit.js?v=20260927a";
-import { enforceAutoSizeCeilings } from "./fit-safety.js?v=20260927a";
-import { fitTimerSize } from "./timer-size-fit.js?v=20260927a";
-import { finalizeTimerSize } from "./timer-size-guard.js?v=20260927a";
-import { fitCompletionMessage } from "./completion-fit.js?v=20260927a";
-import { createAutoWro } from "./display-auto.js?v=20260927a";
-import { createTimerTarget } from "./display-target.js?v=20260927a";
-import { applyDisplayTheme } from "./display-theme.js?v=20260927a";
-import { applyPositioning } from "./display-position.js?v=20260927a";
-import { applyLayoutPolicy } from "./layout-policy.js?v=20260927a";
-import { updateDisplay } from "./display-tick.js?v=20260927a";
+import { renderLabels } from "./display-render.js?v=20261001a";
+import { fitDisplay } from "./display-fit.js?v=20261001a";
+import { enforceAutoSizeCeilings } from "./fit-safety.js?v=20261001a";
+import { fitTimerSize } from "./timer-size-fit.js?v=20261001a";
+import { finalizeTimerSize } from "./timer-size-guard.js?v=20261001a";
+import { fitCompletionMessage } from "./completion-fit.js?v=20261001a";
+import { createAutoWro } from "./display-auto.js?v=20261001a";
+import { createTimerTarget } from "./display-target.js?v=20261001a";
+import { applyDisplayTheme } from "./display-theme.js?v=20261001a";
+import { applyPositioning } from "./display-position.js?v=20261001a";
+import { applyLayoutPolicy } from "./layout-policy.js?v=20261001a";
+import { updateDisplay } from "./display-tick.js?v=20261001a";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
@@ -31,6 +31,7 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     fitTimerSize(refs, settings);
     fitCompletionMessage(refs, settings);
     applyLayoutPolicy(refs, settings);
+    fitCompletionMessage(refs, settings);
     finalizeTimerSize(refs, settings);
     notifyLayoutUpdated();
   }

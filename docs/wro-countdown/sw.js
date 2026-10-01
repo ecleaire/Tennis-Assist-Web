@@ -12,10 +12,17 @@ self.addEventListener("fetch", event => {
   if (!url.pathname.includes("/wro-countdown/")) return;
 
   event.respondWith((async () => {
-    try {
-      return await fetch(event.request, { cache: "no-store" });
-    } catch (error) {
-      return fetch(event.request);
-    }
+    const response = await fetch(event.request, { cache: "no-store" });
+    const headers = new Headers(response.headers);
+    // The request option bypasses the HTTP cache, but does not stop Chromium
+    // from reusing a cacheable subresource response before consulting the SW.
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    headers.set("Pragma", "no-cache");
+    headers.set("Expires", "0");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    });
   })());
 });

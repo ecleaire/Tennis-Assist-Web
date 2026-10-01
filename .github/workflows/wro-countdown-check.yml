@@ -25,6 +25,7 @@ on:
       - "scripts/wro-countdown-timer-size-control-check.mjs"
       - "scripts/wro-countdown-per-text-auto-size-check.mjs"
       - "scripts/wro-countdown-overlap-policy-check.mjs"
+      - "scripts/wro-countdown-freshness-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
       - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
@@ -52,6 +53,7 @@ on:
       - "scripts/wro-countdown-timer-size-control-check.mjs"
       - "scripts/wro-countdown-per-text-auto-size-check.mjs"
       - "scripts/wro-countdown-overlap-policy-check.mjs"
+      - "scripts/wro-countdown-freshness-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
       - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
@@ -73,7 +75,7 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
-          for file in docs/wro-countdown/v2/*.js scripts/wro-countdown-*.mjs; do
+          for file in docs/wro-countdown/*.js docs/wro-countdown/v2/*.js scripts/wro-countdown-*.mjs; do
             node --check "$file"
           done
 
@@ -98,6 +100,7 @@ jobs:
             sleep 1
           done
           node scripts/wro-countdown-stable-url-check.mjs
+          node scripts/wro-countdown-freshness-check.mjs
           node scripts/wro-countdown-full-function-check.mjs
           node scripts/wro-countdown-real-settings-interaction-check.mjs
           node scripts/wro-countdown-clickable-size-controls-check.mjs
