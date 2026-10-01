@@ -70,6 +70,11 @@ async function checkLoaded(page, expected) {
     })), requests.filter(item => item.generation === expected && item.path.endsWith(".js")));
     throw error;
   });
+  // main.js builds the UI before its asynchronous storage/audio initialization
+  // finishes. Compare persisted settings only after schema migration is saved.
+  await page.waitForFunction(key => Object.hasOwn(
+    JSON.parse(localStorage.getItem(key) || "{}"), "autoSizeTimer"
+  ), SETTINGS_KEY, { timeout: 15_000 });
   return page.evaluate(key => ({
     stale: window.__staleMain || false,
     version: document.querySelector(".settingsVersion strong").textContent,
