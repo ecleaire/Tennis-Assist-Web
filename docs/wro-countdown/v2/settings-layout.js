@@ -1,6 +1,7 @@
 import { APP_VERSION, APP_UPDATED_AT } from "./version.js?v=20261001a";
 
 const DETAILS_OPEN_KEY = "wro-countdown-advanced-settings-open";
+const BLOCK_OPEN_KEY_PREFIX = "wro-countdown-settings-block-open-";
 
 const $ = id => document.getElementById(id);
 
@@ -196,6 +197,41 @@ function prepareAudioDetails(soundSection) {
   );
 }
 
+function createCategoryAccordion(section) {
+  if (!section) return null;
+  const details = document.createElement("details");
+  for (const attribute of section.attributes) {
+    details.setAttribute(attribute.name, attribute.value);
+  }
+  const key = BLOCK_OPEN_KEY_PREFIX + section.dataset.settingsCategory;
+  // Keep existing controls available on first use; remember subsequent choices.
+  details.open = localStorage.getItem(key) !== "0";
+
+  const summary = document.createElement("summary");
+  summary.className = "detailSettingsSummary";
+  const text = document.createElement("span");
+  text.className = "detailSettingsSummaryText";
+  appendExisting(text, [section.querySelector(":scope > h2"), section.querySelector(":scope > .help")]);
+  const action = document.createElement("span");
+  action.className = "detailSettingsSummaryAction";
+  action.setAttribute("aria-hidden", "true");
+  const state = textNode("span", "detailSettingsState", "");
+  action.append(state, textNode("span", "detailSettingsChevron", "⌄"));
+  summary.append(text, action);
+
+  const body = document.createElement("div");
+  body.className = "detailSettingsCategoryBody";
+  appendExisting(body, [...section.childNodes]);
+  const update = () => {
+    state.textContent = details.open ? "閉じる" : "開く";
+    localStorage.setItem(key, details.open ? "1" : "0");
+  };
+  details.append(summary, body);
+  details.addEventListener("toggle", update);
+  update();
+  return details;
+}
+
 function createAdvancedAccordion(categories) {
   const details = document.createElement("details");
   details.id = "advancedSettingsAccordion";
@@ -217,7 +253,18 @@ function createAdvancedAccordion(categories) {
 
   const body = document.createElement("div");
   body.className = "advancedSettingsBody";
-  appendExisting(body, categories);
+  const blocks = categories.map(createCategoryAccordion).filter(Boolean);
+  const toolbar = document.createElement("div");
+  toolbar.className = "detailSettingsToolbar";
+  for (const [label, open] of [["すべて開く", true], ["すべて閉じる", false]]) {
+    const button = textNode("button", "btn detailSettingsToggleAll", label);
+    button.type = "button";
+    button.addEventListener("click", () => {
+      for (const block of blocks) block.open = open;
+    });
+    toolbar.append(button);
+  }
+  body.append(toolbar, ...blocks);
 
   const updateSummary = () => {
     const state = summary.querySelector(".advancedSettingsState");
