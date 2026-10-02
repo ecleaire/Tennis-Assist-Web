@@ -225,17 +225,80 @@
 }
 
 .detailSettingsCategory.section {
-  padding: 15px;
+  padding: 0;
+  overflow: clip;
   border-color: var(--border);
   background: var(--bg);
 }
 
-.detailSettingsCategory > h2 {
+.detailSettingsToolbar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detailSettingsToggleAll {
+  padding: 7px 11px;
+  font-size: 11px;
+}
+
+.detailSettingsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.detailSettingsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.detailSettingsSummary:hover {
+  background: var(--soft);
+}
+
+.detailSettingsSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.detailSettingsSummaryText {
+  min-width: 0;
+}
+
+.detailSettingsSummaryText h2 {
+  margin: 0;
   font-size: 15px;
 }
 
-.detailSettingsCategory > .help {
-  margin-bottom: 13px;
+.detailSettingsSummaryText .help {
+  margin: 5px 0 0;
+}
+
+.detailSettingsSummaryAction {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.detailSettingsChevron {
+  font-size: 20px;
+  transition: transform .18s ease;
+}
+
+.detailSettingsCategory[open] > .detailSettingsSummary .detailSettingsChevron {
+  transform: rotate(180deg);
+}
+
+.detailSettingsCategoryBody {
+  padding: 0 15px 15px;
 }
 
 .detailSettingsCategory > .fields,
@@ -364,8 +427,16 @@
     padding: 10px;
   }
 
-  .detailSettingsCategory.section {
+  .detailSettingsSummary {
     padding: 13px;
+  }
+
+  .detailSettingsCategoryBody {
+    padding: 0 13px 13px;
+  }
+
+  .detailSettingsState {
+    display: none;
   }
 
   .detailSettingsGroup {
@@ -375,7 +446,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .advancedSettingsSummary,
-  .advancedSettingsChevron {
+  .advancedSettingsChevron,
+  .detailSettingsChevron {
     transition: none;
   }
 }

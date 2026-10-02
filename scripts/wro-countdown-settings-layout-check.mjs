@@ -3,6 +3,8 @@ import { chromium } from "playwright";
 const BASE_URL = process.env.WRO_BASE_URL ||
   "http://127.0.0.1:4173/docs/wro-countdown/app.html?settings-layout-audit=1";
 const DETAILS_OPEN_KEY = "wro-countdown-advanced-settings-open";
+const BLOCK_OPEN_KEY_PREFIX = "wro-countdown-settings-block-open-";
+const SETTINGS_KEY = "wro-countdown-settings-v4";
 
 const cases = [
   { name: "phone portrait", width: 390, height: 844 },
@@ -186,6 +188,62 @@ for (const testCase of cases) {
       `${testCase.name}: accordion summary state did not update`);
     expect(openState.visibleCategories === expectedCategories.length,
       `${testCase.name}: not all advanced categories became visible`);
+
+    const blocks = page.locator(".detailSettingsCategory");
+    const content = page.locator('[data-settings-category="content"]');
+    expect(await blocks.evaluateAll(elements => elements.every(element =>
+      element.tagName === "DETAILS" && element.open)),
+    `${testCase.name}: categories should be independently expandable native details`);
+
+    await page.fill("#currentTimeLabelInput", "開閉後も保持");
+    await page.waitForFunction(key =>
+      JSON.parse(localStorage.getItem(key) || "{}").currentTimeLabel === "開閉後も保持",
+    SETTINGS_KEY);
+    const savedSettings = await page.evaluate(key => localStorage.getItem(key), SETTINGS_KEY);
+
+    await content.locator("summary").click();
+    expect(!await content.evaluate(element => element.open),
+      `${testCase.name}: clicking a block header did not collapse it`);
+    expect(!await page.locator("#currentTimeLabelInput").isVisible(),
+      `${testCase.name}: collapsed block still shows its controls`);
+    expect(await blocks.evaluateAll(elements => elements.slice(1).every(element => element.open)),
+      `${testCase.name}: collapsing one block affected another block`);
+    await content.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    expect(await page.locator("#currentTimeLabelInput").isVisible(),
+      `${testCase.name}: Enter did not expand the focused block`);
+    await page.keyboard.press("Space");
+    expect(!await content.evaluate(element => element.open),
+      `${testCase.name}: Space did not collapse the focused block`);
+
+    await page.getByRole("button", { name: "すべて閉じる", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll(".detailSettingsCategory")]
+      .every(element => !element.open));
+    for (const category of expectedCategories) {
+      expect(!await page.locator(`[data-settings-category="${category}"] input`).first().isVisible(),
+        `${testCase.name}: collapse-all still shows controls in ${category}`);
+    }
+    await page.getByRole("button", { name: "すべて開く", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll(".detailSettingsCategory")]
+      .every(element => element.open));
+
+    // Save a mixed state and verify it survives a complete page reload.
+    await content.locator("summary").click();
+    await page.waitForFunction(prefix =>
+      localStorage.getItem(prefix + "content") === "0" &&
+      localStorage.getItem(prefix + "appearance") === "1", BLOCK_OPEN_KEY_PREFIX);
+    expect(await page.evaluate(key => localStorage.getItem(key), SETTINGS_KEY) === savedSettings,
+      `${testCase.name}: expanding/collapsing blocks changed application settings`);
+    await page.reload({ waitUntil: "networkidle" });
+    await page.click("#gear");
+    await page.click("#advancedSettingsAccordion > summary");
+    expect(!await content.evaluate(element => element.open),
+      `${testCase.name}: collapsed block state was lost after reload`);
+    expect(await blocks.evaluateAll(elements => elements.slice(1).every(element => element.open)),
+      `${testCase.name}: expanded block states were lost after reload`);
+    await content.locator("summary").click();
+    expect(await page.inputValue("#currentTimeLabelInput") === "開閉後も保持",
+      `${testCase.name}: saved setting was lost after reload`);
 
     await page.selectOption("#backgroundStyle", "solid");
     await page.check("#modeWro", { force: true });
