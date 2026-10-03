@@ -5,6 +5,25 @@ const BLOCK_OPEN_KEY_PREFIX = "wro-countdown-settings-block-open-";
 
 const $ = id => document.getElementById(id);
 
+function readOpenState(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === "1" ? true : value === "0" ? false : fallback;
+  } catch {
+    // Optional layout preferences must never prevent the timer from starting.
+    return fallback;
+  }
+}
+
+function saveOpenState(key, open) {
+  try {
+    const value = open ? "1" : "0";
+    if (localStorage.getItem(key) !== value) localStorage.setItem(key, value);
+  } catch {
+    // The accordion still works in memory when storage is full or unavailable.
+  }
+}
+
 function closest(id, selector) {
   return $(id)?.closest(selector) || null;
 }
@@ -205,7 +224,7 @@ function createCategoryAccordion(section) {
   }
   const key = BLOCK_OPEN_KEY_PREFIX + section.dataset.settingsCategory;
   // Keep existing controls available on first use; remember subsequent choices.
-  details.open = localStorage.getItem(key) !== "0";
+  details.open = readOpenState(key, true);
 
   const summary = document.createElement("summary");
   summary.className = "detailSettingsSummary";
@@ -224,7 +243,7 @@ function createCategoryAccordion(section) {
   appendExisting(body, [...section.childNodes]);
   const update = () => {
     state.textContent = details.open ? "閉じる" : "開く";
-    localStorage.setItem(key, details.open ? "1" : "0");
+    saveOpenState(key, details.open);
   };
   details.append(summary, body);
   details.addEventListener("toggle", update);
@@ -236,7 +255,7 @@ function createAdvancedAccordion(categories) {
   const details = document.createElement("details");
   details.id = "advancedSettingsAccordion";
   details.className = "advancedSettingsAccordion";
-  details.open = localStorage.getItem(DETAILS_OPEN_KEY) === "1";
+  details.open = readOpenState(DETAILS_OPEN_KEY, false);
 
   const summary = document.createElement("summary");
   summary.className = "advancedSettingsSummary";
@@ -269,7 +288,7 @@ function createAdvancedAccordion(categories) {
   const updateSummary = () => {
     const state = summary.querySelector(".advancedSettingsState");
     if (state) state.textContent = details.open ? "閉じる" : "開く";
-    localStorage.setItem(DETAILS_OPEN_KEY, details.open ? "1" : "0");
+    saveOpenState(DETAILS_OPEN_KEY, details.open);
   };
 
   details.addEventListener("toggle", updateSummary);

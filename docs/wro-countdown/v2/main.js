@@ -23,7 +23,7 @@ import {
 import {
   installSettingsFormIntegrity
 } from "./settings-form-integrity.js?v=20261001a";
-import { installSettingsLayout } from "./settings-layout.js?v=20261002a";
+import { installSettingsLayout } from "./settings-layout.js?v=20261003a";
 import { controls as makeControls } from "./controls.js?v=20261001a";
 import { renderSettings } from "./render-settings.js?v=20261001a";
 import { applySizeLimits } from "./size-limits.js?v=20261001a";

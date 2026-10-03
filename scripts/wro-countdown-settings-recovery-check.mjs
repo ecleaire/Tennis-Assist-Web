@@ -147,6 +147,79 @@ await runCase(
   }
 );
 
+for (const failureMode of ["block-quota", "all-write-quota", "preference-read-denied", "storage-denied"]) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    reducedMotion: "reduce",
+    serviceWorkers: "block"
+  });
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.clock.install({ time: new Date("2026-08-20T10:00:00Z") });
+  await page.addInitScript(({ key, failureMode }) => {
+    const get = Storage.prototype.getItem;
+    const set = Storage.prototype.setItem;
+    set.call(localStorage, key, JSON.stringify({
+      mode: "timer", targetTime: "20:30", timerSize: 116,
+      currentTimeLabel: "保存済みラベル", noiseStrength: 0,
+      autoWroEnabled: false
+    }));
+    set.call(localStorage, "wro-recovery-sentinel", "keep");
+    set.call(localStorage, "wro-countdown-settings-block-open-content", "0");
+    window.readRecoveryStorage = name => get.call(localStorage, name);
+    Storage.prototype.getItem = function(name) {
+      if (failureMode === "storage-denied" ||
+          (failureMode === "preference-read-denied" &&
+           name.startsWith("wro-countdown-settings-block-open-"))) {
+        throw new DOMException("Storage access denied", "SecurityError");
+      }
+      return get.call(this, name);
+    };
+    Storage.prototype.setItem = function(name, value) {
+      if (failureMode === "storage-denied" || failureMode === "all-write-quota" ||
+          (failureMode === "block-quota" &&
+           name.startsWith("wro-countdown-settings-block-open-"))) {
+        throw new DOMException("Storage unavailable", "QuotaExceededError");
+      }
+      return set.call(this, name, value);
+    };
+  }, { key: SETTINGS_KEY, failureMode });
+
+  try {
+    await page.goto(`${BASE_URL}&storage=${failureMode}`, { waitUntil: "networkidle" });
+    await page.waitForFunction(() =>
+      document.getElementById("app")?.dataset.timerPhase === "countdown");
+    const before = await page.locator("#mainValue").textContent();
+    await page.clock.runFor(1200);
+    expect(await page.locator("#mainValue").textContent() !== before,
+      `${failureMode}: countdown did not advance after storage failure`);
+    expect(await page.locator("#mainValue").isVisible(),
+      `${failureMode}: timer is not visible`);
+    await page.click("#gear");
+    await page.click("#advancedSettingsAccordion > summary");
+    await page.getByRole("button", { name: "すべて閉じる", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll(".detailSettingsCategory")]
+      .every(element => !element.open));
+    await page.locator('[data-settings-category="appearance"] > summary').click();
+    expect(await page.locator("#timerSize").isVisible(),
+      `${failureMode}: block could not reopen without storage`);
+    await page.locator("#done").click();
+    const persisted = await page.evaluate(key => ({
+      settings: JSON.parse(window.readRecoveryStorage(key)),
+      sentinel: window.readRecoveryStorage("wro-recovery-sentinel")
+    }), SETTINGS_KEY);
+    expect(persisted.settings.timerSize === 116 &&
+      persisted.settings.currentTimeLabel === "保存済みラベル" && persisted.sentinel === "keep",
+    `${failureMode}: existing saved settings were lost`);
+    expect(pageErrors.length === 0,
+      `${failureMode}: page errors ${pageErrors.join(" | ")}`);
+  } catch (error) {
+    failures.push(`${failureMode}: ${error.stack || error.message}`);
+  }
+  await context.close();
+}
+
 await browser.close();
 
 if (failures.length) {
@@ -155,4 +228,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("WRO settings recovery check passed invalid values, unlimited timer values and malformed JSON.");
+console.log("WRO settings recovery check passed invalid values, unlimited timer values, malformed JSON, storage quota/access failures, running countdown and preserved settings.");
