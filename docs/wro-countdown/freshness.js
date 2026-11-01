@@ -1,64 +1,102 @@
-import { APP_VERSION } from "./v2/version.js?v=20261001a";
+const WORKER_TIMEOUT_MS = 5000;
 
-const RELEASE = APP_VERSION;
-const RELOAD_KEY = `wro-countdown-sw-${RELEASE}`;
+function abortable(promise, signal) {
+  return new Promise((resolve, reject) => {
+    const aborted = () => reject(signal.reason);
+    if (signal.aborted) return aborted();
+    signal.addEventListener("abort", aborted, { once: true });
+    Promise.resolve(promise).then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", aborted);
+    });
+  });
+}
 
-async function ensureFreshWorker() {
+function waitForWorkerEvent(target, event, check, signal) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      target.removeEventListener(event, changed);
+      signal.removeEventListener("abort", aborted);
+    };
+    const aborted = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const changed = () => {
+      try {
+        if (!check()) return;
+        cleanup();
+        resolve();
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    };
+    if (signal.aborted) return aborted();
+    target.addEventListener(event, changed);
+    signal.addEventListener("abort", aborted, { once: true });
+    changed();
+  });
+}
+
+async function ensureFreshWorker(release) {
+  const reloadKey = `wro-countdown-sw-${release}`;
   if (!("serviceWorker" in navigator)) return;
+  const deadline = new AbortController();
+  const timeout = setTimeout(() => deadline.abort(
+    new Error("Service Worker refresh timed out; starting the timer normally.")
+  ), WORKER_TIMEOUT_MS);
+  const { signal } = deadline;
 
   try {
     const previousController = navigator.serviceWorker.controller;
-    const registration = await navigator.serviceWorker.register(
-      `./sw.js?v=${encodeURIComponent(RELEASE)}`,
+    const registration = await abortable(navigator.serviceWorker.register(
+      `./sw.js?v=${encodeURIComponent(release)}`,
       { scope: "./", updateViaCache: "none" }
-    );
-    await registration.update().catch(() => {});
+    ), signal);
+    await abortable(registration.update().catch(() => {}), signal);
 
-    // ready may resolve to an old active worker while the update is installing.
-    // Wait for this registration's new worker before loading child modules.
     const worker = registration.installing || registration.waiting || registration.active;
-    if (worker && worker.state !== "activated") {
-      await new Promise((resolve, reject) => {
-        const changed = () => {
-          if (worker.state !== "activated" && worker.state !== "redundant") return;
-          worker.removeEventListener("statechange", changed);
-          if (worker.state === "activated") resolve();
-          else reject(new Error("Fresh-load worker was superseded."));
-        };
-        worker.addEventListener("statechange", changed);
-        changed();
-      });
+    if (worker) {
+      await waitForWorkerEvent(worker, "statechange", () => {
+        if (worker.state === "redundant") throw new Error("Fresh-load worker was superseded.");
+        return worker.state === "activated";
+      }, signal);
     }
 
-    if (navigator.serviceWorker.controller !== registration.active) {
-      await new Promise(resolve => {
-        const changed = () => {
-          if (navigator.serviceWorker.controller !== registration.active) return;
-          navigator.serviceWorker.removeEventListener("controllerchange", changed);
-          resolve();
-        };
-        navigator.serviceWorker.addEventListener("controllerchange", changed);
-        changed();
-      });
-    }
+    await waitForWorkerEvent(navigator.serviceWorker, "controllerchange", () =>
+      Boolean(registration.active) && navigator.serviceWorker.controller === registration.active,
+    signal);
 
     if (previousController !== navigator.serviceWorker.controller &&
-        sessionStorage.getItem(RELOAD_KEY) !== "1") {
-      sessionStorage.setItem(RELOAD_KEY, "1");
+        sessionStorage.getItem(reloadKey) !== "1") {
+      sessionStorage.setItem(reloadKey, "1");
       location.reload();
-      await new Promise(() => {});
+      await abortable(new Promise(() => {}), signal);
     }
   } catch (error) {
     console.warn("Fresh-load worker unavailable; continuing normally.", error);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
 async function start() {
-  await ensureFreshWorker();
-  await import(`./v2/entry.js?release=${encodeURIComponent(RELEASE)}&t=${Date.now()}`);
+  const { APP_VERSION: release } = await import("./v2/version.js?v=20261001a");
+  await ensureFreshWorker(release);
+  await import(`./v2/entry.js?release=${encodeURIComponent(release)}&t=${Date.now()}`);
 }
 
 start().catch(error => {
   console.error(error);
-  document.body.textContent = "読み込み中にエラーが発生しました。ページを再読み込みしてください。";
+  const status = document.createElement("main");
+  status.className = "bootStatus";
+  status.setAttribute("role", "alert");
+  const message = document.createElement("p");
+  message.textContent = "タイマーを読み込めませんでした。通信状態を確認して再読み込みしてください。";
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.textContent = "再読み込み";
+  retry.addEventListener("click", () => location.reload());
+  status.append(message, retry);
+  document.body.replaceChildren(status);
 });
