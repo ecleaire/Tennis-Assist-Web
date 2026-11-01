@@ -1,8 +1,4 @@
-import { APP_VERSION } from "./v2/version.js?v=20261001a";
-
-const RELEASE = APP_VERSION;
 const WORKER_TIMEOUT_MS = 5000;
-const RELOAD_KEY = `wro-countdown-sw-${RELEASE}`;
 
 function abortable(promise, signal) {
   return new Promise((resolve, reject) => {
@@ -42,7 +38,8 @@ function waitForWorkerEvent(target, event, check, signal) {
   });
 }
 
-async function ensureFreshWorker() {
+async function ensureFreshWorker(release) {
+  const reloadKey = `wro-countdown-sw-${release}`;
   if (!("serviceWorker" in navigator)) return;
   const deadline = new AbortController();
   const timeout = setTimeout(() => deadline.abort(
@@ -53,7 +50,7 @@ async function ensureFreshWorker() {
   try {
     const previousController = navigator.serviceWorker.controller;
     const registration = await abortable(navigator.serviceWorker.register(
-      `./sw.js?v=${encodeURIComponent(RELEASE)}`,
+      `./sw.js?v=${encodeURIComponent(release)}`,
       { scope: "./", updateViaCache: "none" }
     ), signal);
     await abortable(registration.update().catch(() => {}), signal);
@@ -71,8 +68,8 @@ async function ensureFreshWorker() {
     signal);
 
     if (previousController !== navigator.serviceWorker.controller &&
-        sessionStorage.getItem(RELOAD_KEY) !== "1") {
-      sessionStorage.setItem(RELOAD_KEY, "1");
+        sessionStorage.getItem(reloadKey) !== "1") {
+      sessionStorage.setItem(reloadKey, "1");
       location.reload();
       await abortable(new Promise(() => {}), signal);
     }
@@ -84,11 +81,22 @@ async function ensureFreshWorker() {
 }
 
 async function start() {
-  await ensureFreshWorker();
-  await import(`./v2/entry.js?release=${encodeURIComponent(RELEASE)}&t=${Date.now()}`);
+  const { APP_VERSION: release } = await import("./v2/version.js?v=20261001a");
+  await ensureFreshWorker(release);
+  await import(`./v2/entry.js?release=${encodeURIComponent(release)}&t=${Date.now()}`);
 }
 
 start().catch(error => {
   console.error(error);
-  document.body.textContent = "読み込み中にエラーが発生しました。ページを再読み込みしてください。";
+  const status = document.createElement("main");
+  status.className = "bootStatus";
+  status.setAttribute("role", "alert");
+  const message = document.createElement("p");
+  message.textContent = "タイマーを読み込めませんでした。通信状態を確認して再読み込みしてください。";
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.textContent = "再読み込み";
+  retry.addEventListener("click", () => location.reload());
+  status.append(message, retry);
+  document.body.replaceChildren(status);
 });

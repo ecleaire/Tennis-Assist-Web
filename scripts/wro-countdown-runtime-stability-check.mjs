@@ -92,6 +92,27 @@ try {
     await context.close();
   }
 
+  // A transient module download error has a visible recovery action.
+  for (const moduleName of ["entry", "version"]) {
+    const { context, page, errors } = await setup();
+    let failed = false;
+    await page.route(new RegExp(`/v2/${moduleName}\\.js(?:\\?|$)`), async route => {
+      if (!failed) {
+        failed = true;
+        await route.fulfill({ status: 503, body: "Temporary download failure" });
+      } else await route.continue();
+    });
+    await page.goto(BASE_URL, { waitUntil: "networkidle" });
+    const error = page.locator('.bootStatus[role="alert"]');
+    await error.waitFor();
+    assert.match(await error.textContent(), /通信状態/);
+    assert.equal(await error.evaluate(element => getComputedStyle(element).color), "rgb(247, 251, 252)");
+    await page.getByRole("button", { name: "再読み込み", exact: true }).click();
+    await running(page);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+
   // A blocked IndexedDB open must not hold up the clock or settings dialog.
   {
     const { context, page, errors } = await setup(() => {
