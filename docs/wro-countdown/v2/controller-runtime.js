@@ -14,6 +14,7 @@ import { updateDisplay } from "./display-tick.js?v=20261001a";
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);
   let automatic;
+  let fitFrame = 0;
 
   function position() {
     applyPositioning(refs, getSettings(), automatic?.active() || false);
@@ -36,9 +37,17 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     notifyLayoutUpdated();
   }
 
+  function scheduleFit() {
+    if (document.hidden || fitFrame) return;
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = 0;
+      fit();
+    });
+  }
+
   function tick() {
     position();
-    updateDisplay(refs, getSettings(), timer, automatic, fit);
+    updateDisplay(refs, getSettings(), timer, automatic, scheduleFit);
   }
 
   automatic = createAutoWro(getSettings, {
@@ -51,16 +60,21 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   }
 
   function applyVisual() {
-    applyDisplayTheme(refs, getSettings(), labels, fit);
+    applyDisplayTheme(refs, getSettings(), labels, scheduleFit);
     position();
-    fit();
+    scheduleFit();
   }
 
-  window.addEventListener("resize", fit, { passive: true });
-  window.visualViewport?.addEventListener("resize", fit, { passive: true });
+  window.addEventListener("resize", scheduleFit, { passive: true });
+  window.visualViewport?.addEventListener("resize", scheduleFit, { passive: true });
   window.addEventListener("orientationchange", () => {
-    window.setTimeout(fit, 120);
+    window.setTimeout(scheduleFit, 120);
   }, { passive: true });
+
+  // Font metrics can change after the first paint, especially on mobile.
+  document.fonts?.ready.then(scheduleFit);
+  document.fonts?.addEventListener("loadingdone", scheduleFit);
+  window.addEventListener("pageshow", tick, { passive: true });
 
   return {
     tick,
@@ -68,6 +82,6 @@ export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
     restartSchedule: automatic.restart,
     applyVisual,
     labels,
-    scheduleFit: fit
+    scheduleFit
   };
 }

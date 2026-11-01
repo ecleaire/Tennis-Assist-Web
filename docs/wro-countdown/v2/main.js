@@ -35,8 +35,8 @@ import {
   createSettingsControlAudit
 } from "./settings-control-audit.js?v=20261001a";
 import { createNoise } from "./noise.js?v=20261001a";
-import { createAudio } from "./audio.js?v=20261001a";
-import { createDisplay } from "./display.js?v=20261001a";
+import { createAudio } from "./audio.js?v=20261101a";
+import { createDisplay } from "./display.js?v=20261101a";
 import { bindEvents } from "./events.js?v=20261001a";
 
 buildSettings();
@@ -250,7 +250,6 @@ async function start() {
   display.applyVisual();
   render();
   display.setTarget();
-  await audio.restore();
   noise.restart();
   display.restartSchedule(false);
   display.tick();
@@ -259,6 +258,11 @@ async function start() {
   reportSaveResult(save(settings));
   window.setInterval(display.tick, 250);
   window.setTimeout(noise.play, 180);
+  // Optional audio storage must not hold up the visible clock or countdown.
+  void audio.restore().catch(error => {
+    console.warn("Could not restore timer audio; countdown remains active.", error);
+    refs.audioStatus.textContent = "保存した音声を復元できません。通知音を確認してください。";
+  });
 }
 
 start().catch(error => {

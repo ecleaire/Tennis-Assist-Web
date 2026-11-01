@@ -16,6 +16,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   let customGain = null;
   let customLimiter = null;
   let lastMessage = "";
+  let fileRevision = 0;
 
   function boostedLevel(volume = getSettings().volume) {
     return Math.max(0, Number(volume) / 100 * VOLUME_BOOST);
@@ -156,6 +157,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
       throw new Error("音声ファイルを選択してください。");
     }
 
+    fileRevision += 1;
     let saved = true;
     try {
       await saveAudioFile(file);
@@ -175,6 +177,7 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   }
 
   async function remove() {
+    fileRevision += 1;
     await deleteAudioFile();
     if (fileUrl) URL.revokeObjectURL(fileUrl);
     fileUrl = "";
@@ -194,7 +197,9 @@ export function createAudio(refs, getSettings, setSettings, onAlarmVisual) {
   }
 
   async function restore() {
+    const revision = fileRevision;
     const storedFile = await loadAudioFile();
+    if (revision !== fileRevision) return;
     if (storedFile instanceof Blob) {
       useAudioBlob(storedFile);
       const storedName = storedFile.name || getSettings().fileName;
