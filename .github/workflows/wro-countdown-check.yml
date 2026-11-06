@@ -27,6 +27,7 @@ on:
       - "scripts/wro-countdown-overlap-policy-check.mjs"
       - "scripts/wro-countdown-freshness-check.mjs"
       - "scripts/wro-countdown-runtime-stability-check.mjs"
+      - "scripts/wro-countdown-alarm-timing-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
       - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
@@ -56,6 +57,7 @@ on:
       - "scripts/wro-countdown-overlap-policy-check.mjs"
       - "scripts/wro-countdown-freshness-check.mjs"
       - "scripts/wro-countdown-runtime-stability-check.mjs"
+      - "scripts/wro-countdown-alarm-timing-check.mjs"
       - "scripts/wro-countdown-clickable-size-controls-check.mjs"
       - "scripts/wro-countdown-real-settings-interaction-check.mjs"
       - ".github/workflows/wro-countdown-check.yml"
@@ -105,6 +107,7 @@ jobs:
           node scripts/wro-countdown-stable-url-check.mjs
           node scripts/wro-countdown-freshness-check.mjs
           node scripts/wro-countdown-runtime-stability-check.mjs
+          node scripts/wro-countdown-alarm-timing-check.mjs
           node scripts/wro-countdown-full-function-check.mjs
           node scripts/wro-countdown-real-settings-interaction-check.mjs
           node scripts/wro-countdown-clickable-size-controls-check.mjs

@@ -1,11 +1,10 @@
+import { createAlarmSchedule } from "./alarm-timing.js?v=20261106a";
 import { jstParts, jstStamp } from "./config.js?v=20260821b";
 
 const DAY_MS = 86400000;
 
 export function createTimerTarget(getSettings, onAlarm) {
-  let alertTarget = 0;
-  let previous = null;
-  let fired = new Set();
+  const alarms = createAlarmSchedule(getSettings, onAlarm);
 
   function targetForToday(now) {
     const settings = getSettings();
@@ -77,61 +76,12 @@ export function createTimerTarget(getSettings, onAlarm) {
   }
 
   function reset(now = Date.now()) {
-    const cycle = resolveCycle(now);
-    const target = cycle.phase === "completion"
-      ? cycle.completedTarget
-      : cycle.target;
-
-    alertTarget = target;
-    previous = target - now;
-    fired = new Set();
-  }
-
-  function checkAlerts(remaining, target) {
-    const settings = getSettings();
-    if (!settings.alarmEnabled || previous === null) return;
-
-    const alertMinutes = [...settings.leadTimes];
-    if (settings.atTarget) alertMinutes.push(0);
-
-    for (const minutes of alertMinutes) {
-      const threshold = minutes * 60000;
-      const key = `${target}:${minutes}`;
-      const crossed =
-        previous > threshold &&
-        remaining <= threshold &&
-        remaining > threshold - 20000;
-
-      if (crossed && !fired.has(key)) {
-        fired.add(key);
-        onAlarm(
-          minutes
-            ? `指定時刻の${minutes}分前です`
-            : "指定時刻です"
-        );
-      }
-    }
+    alarms.reset(now);
   }
 
   function state(now = Date.now()) {
     const cycle = resolveCycle(now);
-    const targetForAlerts = cycle.phase === "completion"
-      ? cycle.completedTarget
-      : cycle.target;
-    const alertRemaining = targetForAlerts - now;
-
-    if (!alertTarget) {
-      alertTarget = targetForAlerts;
-      previous = alertRemaining;
-    } else if (targetForAlerts !== alertTarget) {
-      alertTarget = targetForAlerts;
-      previous = alertRemaining;
-      fired = new Set();
-    } else {
-      checkAlerts(alertRemaining, targetForAlerts);
-    }
-
-    previous = alertRemaining;
+    alarms.check(now);
 
     if (cycle.phase === "completion") {
       return {

@@ -1,9 +1,11 @@
+import { mergeAlarmTimingPatch } from "./alarm-timing.js?v=20261106a";
+import { installAlarmTimingSettings, createAlarmTimingController } from "./alarm-timing-settings.js?v=20261106a";
 import {
   PRESET_LEADS,
   load,
   normalize,
   save
-} from "./config.js?v=20261001a";
+} from "./config.js?v=20261106a";
 import { buildSettings, refs as makeRefs } from "./ui.js?v=20261001a";
 import { installSoundOptions } from "./sound-options.js?v=20261001a";
 import {
@@ -23,7 +25,7 @@ import {
 import {
   installSettingsFormIntegrity
 } from "./settings-form-integrity.js?v=20261001a";
-import { installSettingsLayout } from "./settings-layout.js?v=20261003a";
+import { installSettingsLayout } from "./settings-layout.js?v=20261106a";
 import { controls as makeControls } from "./controls.js?v=20261001a";
 import { renderSettings } from "./render-settings.js?v=20261001a";
 import { applySizeLimits } from "./size-limits.js?v=20261001a";
@@ -36,7 +38,7 @@ import {
 } from "./settings-control-audit.js?v=20261001a";
 import { createNoise } from "./noise.js?v=20261001a";
 import { createAudio } from "./audio.js?v=20261101a";
-import { createDisplay } from "./display.js?v=20261101a";
+import { createDisplay } from "./display.js?v=20261106a";
 import { bindEvents } from "./events.js?v=20261001a";
 
 buildSettings();
@@ -48,6 +50,7 @@ installBackgroundSettings();
 installCompletionAutoWroSetting();
 installSettingsFormIntegrity();
 installSettingsLayout();
+installAlarmTimingSettings();
 applySizeLimits();
 
 const refs = makeRefs();
@@ -60,6 +63,7 @@ let audio;
 let display;
 let settingsAudit = null;
 let textAutoSizeController = null;
+let alarmTimingController = null;
 
 const getSettings = () => settings;
 const noise = createNoise(refs, getSettings);
@@ -100,6 +104,7 @@ function render() {
   backgroundSettings.render();
   settingsAudit?.render();
   textAutoSizeController?.render();
+  alarmTimingController?.render();
 }
 
 function reportSaveResult(saved) {
@@ -177,7 +182,7 @@ function setSettings(patch, options = {}) {
   ].some(key => key in patch);
   const protectedPatch = protectCompletionSequence(patch);
 
-  settings = normalize({ ...settings, ...protectedPatch });
+  settings = normalize({ ...settings, ...mergeAlarmTimingPatch(settings, protectedPatch) });
   const saved = save(settings);
   display.applyVisual();
   render();
@@ -245,6 +250,8 @@ textAutoSizeController = createTextAutoSizeController({
   getSettings,
   setSettings
 });
+
+alarmTimingController = createAlarmTimingController({ getSettings, setSettings });
 
 async function start() {
   display.applyVisual();
