@@ -5,11 +5,11 @@ import { fitTimerSize } from "./timer-size-fit.js?v=20261001a";
 import { finalizeTimerSize } from "./timer-size-guard.js?v=20261001a";
 import { fitCompletionMessage } from "./completion-fit.js?v=20261001a";
 import { createAutoWro } from "./display-auto.js?v=20261001a";
-import { createTimerTarget } from "./display-target.js?v=20261001a";
+import { createTimerTarget } from "./display-target.js?v=20261106a";
 import { applyDisplayTheme } from "./display-theme.js?v=20261001a";
 import { applyPositioning } from "./display-position.js?v=20261001a";
 import { applyLayoutPolicy } from "./layout-policy.js?v=20261001a";
-import { updateDisplay } from "./display-tick.js?v=20261001a";
+import { updateDisplay } from "./display-tick.js?v=20261106a";
 
 export function createDisplay(refs, getSettings, onAlarm, onSwitch) {
   const timer = createTimerTarget(getSettings, onAlarm);

@@ -1,14 +1,13 @@
+import { alarmOffsets, describeAlarmOffset } from "./alarm-timing.js?v=20261106a";
 import { pad } from "./config.js?v=20260820b";
 
 function timerStatus(settings) {
   if (!settings.alarmEnabled) return "アラームはオフです";
 
-  const labels = [
-    settings.atTarget ? "指定時刻" : null,
-    ...settings.leadTimes.map(minutes => `${minutes}分前`)
-  ].filter(Boolean);
-
-  return `アラーム: ${labels.length ? labels.join("・") : "通知時刻なし"}`;
+  const offsets = alarmOffsets(settings);
+  const labels = offsets.slice(0, 5).map(describeAlarmOffset);
+  return `アラーム: ${labels.length ? labels.join("・") : "通知時刻なし"}` +
+    (offsets.length > 5 ? ` ほか${offsets.length - 5}件` : "");
 }
 
 function completionStatus(settings, timerState) {

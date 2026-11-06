@@ -1,0 +1,18 @@
+.alarmTimingSummary { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--soft); }
+.alarmTimingSummary p { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.alarmTimingEditor { margin-bottom: 12px; scroll-margin-top: 110px; }
+.alarmTimingList { display: grid; gap: 12px; }
+.alarmTimingRow, .alarmTimingAdd { min-width: 0; display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.alarmTimingRow > strong { font-size: 13px; }
+.alarmTimingInputs { display: grid; grid-template-columns: minmax(0, 1.8fr) repeat(2, minmax(0, 1fr)); gap: 8px; }
+.alarmTimingInputs .field { min-width: 0; }
+.alarmTimingInputs input { padding-inline: 8px; }
+.alarmTimingRow output { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.alarmTimingRemove { justify-self: end; }
+.alarmTimingAdd h4 { margin: 0; font-size: 13px; }
+.alarmTimingError { margin: 0; color: var(--text); font-size: 12px; }
+.alarmTimingEditor .help { margin: 0; }
+@media (max-width: 520px) {
+  .alarmTimingInputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .alarmTimingInputs > :first-child { grid-column: 1 / -1; }
+}

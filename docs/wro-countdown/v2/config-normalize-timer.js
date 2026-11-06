@@ -1,3 +1,4 @@
+import { alarmOffsets, legacyAlarmFields } from "./alarm-timing.js?v=20261106a";
 import {
   clamp,
   normalize as normalizeBase,
@@ -18,9 +19,15 @@ export function normalize(raw = {}) {
   const normalized = normalizeBase(raw);
   const limits = SIZE_LIMITS.timerSize;
   const numeric = Number(raw.timerSize);
+  const offsets = alarmOffsets({ ...normalized, alarmOffsetsSec: raw.alarmOffsetsSec });
+  const grace = raw.alarmCatchUpSec;
 
   return {
     ...normalized,
+    alarmOffsetsSec: offsets,
+    ...legacyAlarmFields(offsets),
+    alarmCatchUpSec: typeof grace === "number" && Number.isFinite(grace)
+      ? Math.max(1, Math.min(300, Math.round(grace))) : 20,
     timerSize: Number.isFinite(numeric)
       ? Math.max(limits.minimum, Math.round(numeric))
       : normalized.timerSize

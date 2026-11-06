@@ -197,8 +197,8 @@ function prepareAudioDetails(soundSection) {
 
   fields.replaceChildren(
     createSubgroup(
-      "追加の事前通知",
-      "基本設定にない任意の分数を追加します。",
+      "分単位のクイック追加",
+      "分前の通知を簡単に追加します。秒単位や指定時刻後の通知は上の一覧で編集できます。",
       [customLeadField]
     ),
     createSubgroup(
@@ -211,7 +211,7 @@ function prepareAudioDetails(soundSection) {
   return retitleSection(
     soundSection,
     "音・通知の詳細",
-    "任意の事前通知と、端末内のカスタム音声を設定します。",
+    "秒単位の通知タイミング、通知が遅れた場合の扱い、端末内の音声を設定します。",
     "audio"
   );
 }
