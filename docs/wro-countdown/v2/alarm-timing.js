@@ -75,29 +75,36 @@ export function formatAlarmStamp(at) {
 export function createAlarmSchedule(getSettings, onAlarm) {
   let previous = null;
   let signature = "";
+  let previousOffsets = null;
   const fired = new Map();
   function reset(now = Date.now()) {
     previous = now;
     signature = "";
+    previousOffsets = null;
     fired.clear();
   }
   function check(now) {
     const settings = getSettings();
     const offsets = alarmOffsets(settings);
-    const nextSignature = JSON.stringify([settings.targetTime, settings.alarmEnabled, settings.mode, offsets]);
+    const nextSignature = JSON.stringify([settings.targetTime, settings.alarmEnabled, settings.mode]);
     if (previous === null || (signature && signature !== nextSignature) || now < previous) {
       previous = now;
       signature = nextSignature;
+      previousOffsets = new Set(offsets);
       return;
     }
     signature = nextSignature;
+    // New points begin at this observation. Unchanged points keep their prior
+    // baseline so editing another point cannot suppress an imminent alert.
+    const eligibleOffsets = previousOffsets ? offsets.filter(value => previousOffsets.has(value)) : offsets;
+    previousOffsets = new Set(offsets);
     const due = [];
     if (settings.alarmEnabled && settings.mode === "timer") {
       const today = dailyTargetStamp(settings.targetTime, now);
       const grace = Math.max(1, Math.min(300, settings.alarmCatchUpSec ?? 20)) * 1000;
       for (const day of [-1, 0, 1]) {
         const target = today + day * DAY_MS;
-        for (const offset of offsets) {
+        for (const offset of eligibleOffsets) {
           const at = target + offset * 1000;
           const key = `${target}:${offset}`;
           if (previous < at && at <= now && now - at <= grace && !fired.has(key)) {

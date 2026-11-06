@@ -76,6 +76,17 @@ for (const [time, offset, before, at] of [
   timer.reset(target - 1000); timer.state(target); assert.equal(calls.length, 1);
   const next = target + 86400000; timer.state(next - 1000); timer.state(next); assert.equal(calls.length, 2);
 }
+{
+  const { timer, calls, update } = scheduleFixture({ alarmOffsetsSec: [0] });
+  timer.reset(target - 2000); timer.state(target - 1000);
+  update({ alarmOffsetsSec: [0, -1, 30] });
+  timer.state(target + 100);
+  assert.equal(calls.length, 1, "editing another point suppressed the unchanged target alarm");
+  assert.match(calls[0], /指定時刻ちょうど/);
+  assert(!calls[0].includes("1秒前"), "newly added past point was replayed");
+  timer.state(target + 29999); timer.state(target + 30000);
+  assert.equal(calls.length, 2, "new future point did not become active");
+}
 console.log("WRO alarm schedule passed legacy migration, second precision, before/at/after, midnight, next-day countdown, duplicate suppression, clock rollback and configurable catch-up.");
 
 const browser = await chromium.launch({ headless: true });
