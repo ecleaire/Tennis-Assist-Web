@@ -5544,7 +5544,6 @@ class Application {
   private pausedOperationPanelAutoHidden = false;
   private pendingOperationAction: (() => void) | null = null;
   private operationActionHoldTimer = 0;
-  private readonly operationReturnHoldTimers = new Map<HTMLButtonElement, number>();
   private pendingOperationReturnPrimary: (() => void) | null = null;
   private pendingOperationReturnSecondary: (() => void) | null = null;
   private pendingOperationReturnCancel: (() => void) | null = null;
@@ -6447,39 +6446,8 @@ class Application {
   }
 
   private setupOperationReturnTrigger(button: HTMLButtonElement, context: "team" | "draw" | "between" | "timer" | "result"): void {
-    const cancelHold = (): void => {
-      const timer = this.operationReturnHoldTimers.get(button);
-      if (timer) window.clearTimeout(timer);
-      this.operationReturnHoldTimers.delete(button);
-      button.classList.remove("is-holding");
-    };
-    const startHold = (): void => {
-      if (button.disabled || this.operationReturnHoldTimers.has(button)) return;
-      button.classList.add("is-holding");
-      const timer = window.setTimeout(() => {
-        this.operationReturnHoldTimers.delete(button);
-        button.classList.remove("is-holding");
-        this.handleOperationReturnTrigger(context);
-      }, holdConfirmDurationMs);
-      this.operationReturnHoldTimers.set(button, timer);
-    };
-    button.addEventListener("click", (event) => event.preventDefault());
-    button.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      event.preventDefault();
-      button.setPointerCapture?.(event.pointerId);
-      startHold();
-    });
-    ["pointerup", "pointercancel"].forEach((eventName) => button.addEventListener(eventName, cancelHold));
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
-    button.addEventListener("keydown", (event) => {
-      if ((event.key === " " || event.key === "Enter") && !event.repeat) {
-        event.preventDefault();
-        startHold();
-      }
-    });
-    button.addEventListener("keyup", (event) => {
-      if (event.key === " " || event.key === "Enter") cancelHold();
+    button.addEventListener("click", () => {
+      if (!button.disabled) this.handleOperationReturnTrigger(context);
     });
   }
 

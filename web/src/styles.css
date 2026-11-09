@@ -2717,36 +2717,8 @@ tr.win td {
 .operation-return-trigger {
   align-items: center;
   display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
   justify-content: center;
-  overflow: hidden;
-  position: relative;
-  touch-action: none;
-  user-select: none;
-}
-
-.operation-return-trigger small {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.operation-return-trigger::after {
-  background: rgba(255, 178, 74, 0.8);
-  bottom: 0;
-  content: "";
-  height: 6px;
-  left: 0;
-  position: absolute;
-  transform: scaleX(0);
-  transform-origin: left center;
-  width: 100%;
-}
-
-.operation-return-trigger.is-holding::after {
-  animation: operation-hold-progress var(--hold-confirm-duration) linear forwards;
+  touch-action: manipulation;
 }
 
 .record-input-return-row {
