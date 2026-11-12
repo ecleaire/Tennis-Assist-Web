@@ -106,13 +106,12 @@ api.ensureExactHeader(archive, archiveHeader);
 if (archive.value(1, 35) !== "H35" || archive.value(1, 37) !== "H37") throw new Error("Trailing archive headers were not extended.");
 if (archive.rows[0].slice(0, 34).some((value, index) => value !== archiveHeader[index])) throw new Error("Existing archive headers were changed.");
 
-const submissionColumns = [
-  "日時", "記録種別", "種別", "対戦ID", "コート", "試合番号", "マッチ番号", "チームA", "チームB",
-  "チームA違反数", "チームB違反数", "終了カテゴリ", "終了理由", "対象チーム",
-];
+const appSource = fs.readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+const submissionColumns = vm.runInNewContext(appSource.match(/const csvColumns = (\[[\s\S]*?\]) as const;/)[1]);
 const scoringCategory = "【終了・その時点で採点】（通常の試合停止）";
 const violationCategory = "【違反・自動敗北 / 失格】試合中の違反";
 const submissionRow = (kind, matchNumber, overrides = {}) => {
+  const final = kind === "試合結果";
   const values = {
     "日時": "2026-07-18 10:00:00",
     "記録種別": kind,
@@ -126,16 +125,33 @@ const submissionRow = (kind, matchNumber, overrides = {}) => {
     "チームA違反数": "0",
     "チームB違反数": "0",
     "終了カテゴリ": scoringCategory,
-    "終了理由": "時間切れでの終了(6.32.1)",
+    "終了理由": final ? "3マッチ終了・代表同意済み" : "時間切れでの終了(6.32.1)",
     "対象チーム": "ALFA",
+    "チームAオレンジ": final ? "9" : "3", "チームA紫": final ? "6" : "2",
+    "チームBオレンジ": final ? "18" : "6", "チームB紫": "0",
+    "チームA得点": final ? "-3" : "-1", "チームB得点": final ? "18" : "6",
+    "マッチ勝者": final ? "" : "ALFA", "総合勝者": final ? "ALFA" : "", "結果": "勝ち",
+    "チームA勝数": final ? "3" : "", "チームA敗数": final ? "0" : "",
+    "チームB勝数": final ? "0" : "", "チームB敗数": final ? "3" : "", "引き分け数": final ? "0" : "",
+    "チームA同意": final ? "TRUE" : "FALSE", "チームB同意": final ? "TRUE" : "FALSE",
+    "完了マッチ数": final ? "3" : "", "最終確定": final ? "TRUE" : "FALSE",
     ...overrides,
   };
-  return submissionColumns.map((name) => values[name]);
+  return submissionColumns.map((name) => values[name] ?? "");
 };
 const finalizedSubmission = {
   event: "series_result",
+  target_sheet: "試合結果",
+  detail_sheet: "対戦履歴",
   source_device_role: "Aコート用",
+  record_id: "test_series_result",
   payload: {
+    recordId: "test_series_result", seriesId: "test_series", seriesNumber: 1, matchNumber: 0,
+    timestamp: "2026-07-18 10:00:00", matchType: "予選", competitionId: "A_01_RESULT",
+    teamA: "ALFA", teamB: "BRAVO", teamAWins: 3, teamALosses: 0, teamBWins: 0, teamBLosses: 3, draws: 0,
+    teamAOrange: 9, teamAPurple: 6, teamBOrange: 18, teamBPurple: 0,
+    teamAScore: -3, teamBScore: 18, teamAViolations: 0, teamBViolations: 0,
+    overallWinner: "ALFA", result: "勝ち", targetTeam: "ALFA", reasonCategory: scoringCategory,
     recordKind: "試合結果",
     teamAAgreed: true,
     teamBAgreed: true,
@@ -145,14 +161,17 @@ const finalizedSubmission = {
     court: "Aコート",
   },
   csv_columns: submissionColumns,
+  csv_row: submissionRow("試合結果", 0),
   detail_rows: [
-    { csv_row: submissionRow("マッチ", 1) },
-    { csv_row: submissionRow("マッチ", 2) },
-    { csv_row: submissionRow("マッチ", 3) },
-    { csv_row: submissionRow("試合結果", 0) },
+    { record_id: "test_series_match_1", csv_row: submissionRow("マッチ", 1) },
+    { record_id: "test_series_match_2", csv_row: submissionRow("マッチ", 2) },
+    { record_id: "test_series_match_3", csv_row: submissionRow("マッチ", 3) },
+    { record_id: "test_series_result", csv_row: submissionRow("試合結果", 0) },
   ],
 };
 if (!api.validateFinalizedSeriesSubmission(finalizedSubmission).ok) throw new Error("A finalized three-match submission must be accepted.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, target_sheet: "送信テスト" }).ok) throw new Error("A production result must not be routed to the test sheet.");
+if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, csv_columns: [...submissionColumns].reverse() }).ok) throw new Error("A different archive column order must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, payload: { ...finalizedSubmission.payload, teamBAgreed: false } }).ok) throw new Error("A submission without both agreements must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: finalizedSubmission.detail_rows.slice(0, 3) }).ok) throw new Error("A submission without all four detail rows must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, event: "match_result" }).ok) throw new Error("A non-series event must be rejected.");
@@ -163,6 +182,40 @@ const wrongCourtRows = finalizedSubmission.detail_rows.map((detail, index) => in
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: wrongCourtRows }).ok) throw new Error("Mixed courts must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, source_device_role: "Bコート用" }).ok) throw new Error("A device-role/court mismatch must be rejected.");
 if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, payload: { ...finalizedSubmission.payload, court: "Bコート" } }).ok) throw new Error("A payload/CSV court mismatch must be rejected.");
+for (const overrides of [
+  { "対戦ID": "A_01_3" }, { "チームA紫": "1" }, { "チームA得点": "5" },
+  { "マッチ勝者": "BRAVO" }, { "チームB違反数": "1" }, { "日時": "=1+1" },
+]) {
+  const detailRows = finalizedSubmission.detail_rows.slice();
+  detailRows[1] = { ...detailRows[1], csv_row: submissionRow("マッチ", 2, overrides) };
+  if (api.validateFinalizedSeriesSubmission({ ...finalizedSubmission, detail_rows: detailRows }).ok) {
+    throw new Error(`An inconsistent match must be rejected: ${JSON.stringify(overrides)}`);
+  }
+}
+const wrongTotal = submissionRow("試合結果", 0, { "チームA得点": "20" });
+if (api.validateFinalizedSeriesSubmission({
+  ...finalizedSubmission, csv_row: wrongTotal, payload: { ...finalizedSubmission.payload, teamAScore: 20 },
+  detail_rows: [...finalizedSubmission.detail_rows.slice(0, 3), { record_id: "test_series_result", csv_row: wrongTotal }],
+}).ok) throw new Error("A final total must match the three details even when both copies and the payload agree.");
+if (api.validateFinalizedSeriesSubmission({
+  ...finalizedSubmission, csv_row: wrongTotal,
+}).ok) throw new Error("The two copies of the final row must match.");
+
+let spreadsheetOpened = false;
+context.PropertiesService = { getScriptProperties: () => ({
+  getProperties: () => ({ API_KEY: "fixture-key" }),
+  getProperty: () => "fixture-spreadsheet",
+}) };
+context.LockService = { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) };
+context.ContentService = { MimeType: { JSON: "application/json" }, createTextOutput: (text) => ({
+  setMimeType: () => JSON.parse(text),
+}) };
+context.SpreadsheetApp = { openById: () => { spreadsheetOpened = true; throw new Error("Unexpected spreadsheet access"); } };
+context.invalidSubmission = { ...finalizedSubmission, api_key: "fixture-key", csv_row: wrongTotal };
+const invalidResponse = vm.runInContext("doPost({ postData: { contents: JSON.stringify(invalidSubmission) } })", context);
+if (spreadsheetOpened || invalidResponse.ok !== false || invalidResponse.error !== "incomplete_series_result") {
+  throw new Error("An inconsistent submission must be rejected before opening the spreadsheet.");
+}
 
 const violationSubmission = {
   ...finalizedSubmission,

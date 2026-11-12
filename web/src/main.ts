@@ -58,6 +58,7 @@ interface MatchRecord {
   sendStatus?: "pending" | "sent" | "failed" | "local-only";
   sendError?: string;
   sendStatusChangedAt?: string;
+  sendDestination?: string;
   deviceId?: string;
   deviceRole?: DeviceRole;
   appVersion?: string;
@@ -2049,6 +2050,7 @@ class RecordsController {
   private records: MatchRecord[] = [];
   private series: Series | null = null;
   private editing = 0;
+  private pendingMatchConfirmation: MatchRecord | null = null;
   private agreedA = false;
   private agreedB = false;
   private finalized = false;
@@ -2523,11 +2525,16 @@ class RecordsController {
     const teamA = this.series?.teamA ?? "チームA";
     const teamB = this.series?.teamB ?? "チームB";
     const category = el<HTMLSelectElement>("reason-category").value as Category;
-    const violation = category !== scoringCategory;
     const targetTeam = el<HTMLSelectElement>("target-team").value;
-    const counts = this.resultInputCounts();
-    let teamAScore = counts.teamAOrange - counts.teamAPurple * 2;
-    let teamBScore = counts.teamBOrange - counts.teamBPurple * 2;
+    return this.matchOutcome({ teamA, teamB, reasonCategory: category, targetTeam, ...this.resultInputCounts() });
+  }
+
+  private matchOutcome({ teamA, teamB, reasonCategory, targetTeam, teamAOrange, teamAPurple, teamBOrange, teamBPurple }:
+    Pick<MatchRecord, "teamA" | "teamB" | "reasonCategory" | "targetTeam" | "teamAOrange" | "teamAPurple" | "teamBOrange" | "teamBPurple">
+  ): Pick<MatchRecord, "teamAScore" | "teamBScore" | "winner" | "result" | "targetTeam"> {
+    const violation = reasonCategory !== scoringCategory;
+    let teamAScore = teamAOrange - teamAPurple * 2;
+    let teamBScore = teamBOrange - teamBPurple * 2;
     if (violation && targetTeam === teamA) [teamAScore, teamBScore] = [9, -4];
     if (violation && targetTeam === teamB) [teamAScore, teamBScore] = [-4, 9];
     const result = teamAScore < teamBScore ? "勝ち" : teamBScore < teamAScore ? "負け" : "引き分け";
@@ -2618,6 +2625,7 @@ class RecordsController {
     }
     const record = this.buildRecord();
     if (!record) return;
+    this.pendingMatchConfirmation = record;
     const violation = record.reasonCategory !== scoringCategory;
     const scoreLine = `${record.teamAScore} VS ${record.teamBScore}`;
     const violationNotice = violation
@@ -2633,8 +2641,16 @@ class RecordsController {
   }
 
   private save(): void {
-    const record = this.buildRecord();
-    if (!record || !this.series) return;
+    const dialog = el<HTMLDialogElement>("confirm-dialog");
+    const record = this.pendingMatchConfirmation;
+    this.pendingMatchConfirmation = null;
+    if (!dialog.open || !record || !this.series || this.finalized) return;
+    const current = this.buildRecord();
+    if (!current || current.recordId !== record.recordId
+      || JSON.stringify(csvRow({ ...current, timestamp: record.timestamp })) !== JSON.stringify(csvRow(record))) {
+      el("record-status").textContent = "確認中にマッチの内容が変わりました。入力内容をもう一度確認してください。";
+      return;
+    }
     if (!this.storageWriteAvailable()) {
       this.showStorageFailure();
       return;
@@ -2811,20 +2827,20 @@ class RecordsController {
     el("final-results").classList.toggle("hidden", !hasSeries || (!finished && !this.finalized));
   }
 
-  private summary(): Summary {
+  private summary(matches = this.series?.records ?? []): Summary {
     const empty: Summary = { teamAWins: 0, teamBWins: 0, draws: 0, teamAOrange: 0, teamAPurple: 0, teamBOrange: 0, teamBPurple: 0, teamAScore: 0, teamBScore: 0, teamAViolations: 0, teamBViolations: 0 };
-    return (this.series?.records ?? []).reduce((sum, record) => {
+    return matches.reduce((sum, record) => {
       sum.teamAOrange += record.teamAOrange;
       sum.teamAPurple += record.teamAPurple;
       sum.teamBOrange += record.teamBOrange;
       sum.teamBPurple += record.teamBPurple;
       sum.teamAScore += record.teamAScore;
       sum.teamBScore += record.teamBScore;
-      if (record.winner === this.series?.teamA) sum.teamAWins += 1;
-      else if (record.winner === this.series?.teamB) sum.teamBWins += 1;
+      if (record.winner === record.teamA) sum.teamAWins += 1;
+      else if (record.winner === record.teamB) sum.teamBWins += 1;
       else sum.draws += 1;
-      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === this.series?.teamA) sum.teamAViolations += 1;
-      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === this.series?.teamB) sum.teamBViolations += 1;
+      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamA) sum.teamAViolations += 1;
+      if (isRankingViolation(record.reasonCategory, record.endReason) && record.targetTeam === record.teamB) sum.teamBViolations += 1;
       return sum;
     }, empty);
   }
@@ -3119,7 +3135,11 @@ class RecordsController {
   }
 
   private async finalize(): Promise<void> {
-    if (!this.agreedA || !this.agreedB || !this.series) return;
+    if (this.finalized || !this.agreedA || !this.agreedB || !this.series) return;
+    if (this.records.some((record) => !isSheetPreviewRecord(record) && record.recordId === `${this.series?.id}_result`)) {
+      el("record-status").textContent = "この試合の最終結果は保存済みです。対戦履歴で送信状態を確認してください。";
+      return;
+    }
     const completedNumbers = [...new Set(this.series.records.map((record) => record.matchNumber))].sort((a, b) => a - b);
     if (this.series.records.length !== 3 || completedNumbers.join(",") !== "1,2,3") {
       el("record-status").textContent = "第1〜第3マッチの結果がすべて確定していないため、試合結果を確定できません。";
@@ -3129,15 +3149,15 @@ class RecordsController {
       this.showStorageFailure();
       return;
     }
-    this.finalized = true;
     const sum = this.summary();
     const resultSide = this.overallWinner(sum);
     const winner = resultSide === "a" ? this.series.teamA : resultSide === "b" ? this.series.teamB : "引き分け";
+    const settings = AdminController.settings();
     const record: MatchRecord = {
       recordId: `${this.series.id}_result`,
       timestamp: timestamp(),
       deviceId: shortDeviceId(),
-      deviceRole: AdminController.settings().deviceRole,
+      deviceRole: settings.deviceRole,
       appVersion: __APP_VERSION__,
       recordKind: "試合結果",
       seriesId: this.series.id,
@@ -3168,12 +3188,22 @@ class RecordsController {
       teamAViolations: sum.teamAViolations,
       teamBViolations: sum.teamBViolations,
       notes: `両チーム代表同意済み / ${this.series.teamA} ${sum.teamAWins}勝 / ${this.series.teamB} ${sum.teamBWins}勝 / 引き分け${sum.draws}`,
-      sendStatus: this.shouldSendToGas(AdminController.settings()) ? "pending" : "local-only",
+      sendStatus: this.shouldSendToGas(settings) ? "pending" : "local-only",
+      sendDestination: settings.gasUrl.endsWith("/exec") ? settings.gasUrl : undefined,
       teamAAgreed: true,
       teamBAgreed: true,
       completedMatchCount: 3,
       finalized: true,
     };
+    const storedMatches = this.finalizedSeriesMatches(record);
+    const confirmedMatches = [...this.series.records].sort((a, b) => a.matchNumber - b.matchNumber);
+    const issue = storedMatches && this.seriesSubmissionIssue(record, storedMatches);
+    if (!storedMatches || issue || storedMatches.some((match, index) =>
+      JSON.stringify(csvRow(match)) !== JSON.stringify(csvRow(confirmedMatches[index])))) {
+      el("record-status").textContent = issue || "確認したマッチと端末内の記録が一致しません。各マッチを確認してください。";
+      return;
+    }
+    this.finalized = true;
     this.records.unshift(record);
     if (!this.saveStoredRecords() || !this.persistSeriesProgress()) {
       this.records = this.records.filter((item) => item.recordId !== record.recordId);
@@ -3196,6 +3226,7 @@ class RecordsController {
     document.dispatchEvent(new CustomEvent("series-finalized", { detail: this.completionMessageLines() }));
     this.completionResetTimer = window.setTimeout(() => this.completeSeriesReset(), 120000);
     const sendStatus = await this.sendSeriesResult(record);
+    if (this.series?.id !== record.seriesId || !this.finalized) return;
     this.setCompletionPanel(true);
     if (sendStatus === "sent") {
       this.setCompletionPanel(false);
@@ -3788,7 +3819,7 @@ class RecordsController {
     el("history-status").textContent = "この端末の対戦履歴をすべて削除しました。";
   }
 
-  private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>, sendError = ""): void {
+  private updateSendStatus(record: MatchRecord, status: NonNullable<MatchRecord["sendStatus"]>, sendError = ""): boolean {
     const isUnsentStatus = status === "pending" || status === "failed";
     const wasUnsentStatus = record.sendStatus === "pending" || record.sendStatus === "failed";
     const changedAt = isUnsentStatus && wasUnsentStatus && record.sendStatusChangedAt ? record.sendStatusChangedAt : timestamp();
@@ -3800,10 +3831,12 @@ class RecordsController {
       stored.sendStatus = status;
       stored.sendError = sendError;
       stored.sendStatusChangedAt = changedAt;
+      stored.sendDestination = record.sendDestination;
     }
-    this.saveStoredRecords();
+    const saved = this.saveStoredRecords();
     this.refreshHistoryView();
     document.dispatchEvent(new CustomEvent("records-storage-updated"));
+    return saved;
   }
 
   private finalizedSeriesMatches(record: MatchRecord): MatchRecord[] | null {
@@ -3819,13 +3852,45 @@ class RecordsController {
     return this.finalizedSeriesMatches(record) !== null;
   }
 
+  private seriesSubmissionIssue(record: MatchRecord, matches: MatchRecord[]): string {
+    const competitionPrefix = `${courtCompetitionCode(record.court)}_${String(record.seriesNumber).padStart(2, "0")}`;
+    if (!record.seriesId || !record.recordId || record.matchNumber !== 0 || record.competitionId !== `${competitionPrefix}_RESULT`
+      || !record.teamA.trim() || !record.teamB.trim() || record.teamA === record.teamB
+      || new Set([record.recordId, ...matches.map((match) => match.recordId)]).size !== 4
+      || matches.some((match) => !match.recordId || match.teamA !== record.teamA || match.teamB !== record.teamB
+        || match.court !== record.court || match.seriesNumber !== record.seriesNumber || match.matchType !== record.matchType
+        || match.competitionId !== `${competitionPrefix}_${match.matchNumber}`)) {
+      return "試合結果とマッチの対戦情報が一致しません。";
+    }
+    for (const match of matches) {
+      const counts = [match.teamAOrange, match.teamBOrange, match.teamAPurple, match.teamBPurple];
+      const orangeTotal = match.teamAOrange + match.teamBOrange;
+      const outcome = this.matchOutcome(match);
+      if (counts.some((count) => !Number.isInteger(count) || count < 0)
+        || (orangeTotal !== 8 && orangeTotal !== 9) || match.teamAPurple + match.teamBPurple !== 2
+        || (match.reasonCategory !== scoringCategory && match.targetTeam !== match.teamA && match.targetTeam !== match.teamB)
+        || match.teamAScore !== outcome.teamAScore || match.teamBScore !== outcome.teamBScore
+        || match.winner !== outcome.winner || match.result !== outcome.result || match.targetTeam !== outcome.targetTeam) {
+        return `第${match.matchNumber}マッチのボール数・得点・判定が一致しません。`;
+      }
+    }
+    const sum = this.summary(matches);
+    const side = decideOverallWinner(record.matchType, sum).side;
+    const winner = side === "a" ? record.teamA : side === "b" ? record.teamB : "引き分け";
+    const result = side === "a" ? "勝ち" : side === "b" ? "負け" : "引き分け";
+    const expected = { ...sum, teamALosses: sum.teamBWins, teamBLosses: sum.teamAWins, overallWinner: winner, result, targetTeam: winner };
+    return Object.entries(expected).some(([field, value]) => record[field as keyof MatchRecord] !== value)
+      ? "最終試合結果が3マッチの集計と一致しません。"
+      : "";
+  }
+
   private async retrySend(record: MatchRecord): Promise<void> {
+    if (record.sendStatus === "sent") return;
     if (!this.isSendableSeriesResult(record)) {
       this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
       el("history-status").textContent = "3マッチ分の結果確定と両チーム同意が完了した試合結果だけ送信できます。";
       return;
     }
-    this.updateSendStatus(record, "pending");
     el("history-status").textContent = "未送信の試合結果を再送しています...";
     await this.sendSeriesResult(record);
   }
@@ -3861,6 +3926,7 @@ class RecordsController {
   }
 
   private sendSeriesResult(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+    if (record.sendStatus === "sent") return Promise.resolve("sent");
     if (!this.isSendableSeriesResult(record)) {
       this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
       return Promise.resolve("local-only");
@@ -3876,47 +3942,57 @@ class RecordsController {
   }
 
   private async performSeriesResultSend(record: MatchRecord): Promise<NonNullable<MatchRecord["sendStatus"]>> {
+    const report = (status: NonNullable<MatchRecord["sendStatus"]>, message: string): void => {
+      if (this.series?.id !== record.seriesId || !this.finalized) return;
+      this.updateCompletionState(status, message);
+      el("record-status").textContent = message;
+    };
     const matches = this.finalizedSeriesMatches(record);
     if (!matches) {
       this.updateSendStatus(record, "local-only", "3マッチ確定・両チーム同意の送信条件を満たしていません");
-      this.updateCompletionState("local-only", "3マッチ分の結果確定と両チーム同意が完了していないため送信しません。");
-      el("record-status").textContent = "送信条件を満たしていないため、端末内保存のみとしました。";
+      report("local-only", "送信条件を満たしていないため、端末内保存のみとしました。");
       return "local-only";
     }
-    record.teamAViolations = matches.reduce((total, match) => total + this.matchViolationCount(match, match.teamA), 0);
-    record.teamBViolations = matches.reduce((total, match) => total + this.matchViolationCount(match, match.teamB), 0);
     const settings = AdminController.settings();
+    const issue = this.seriesSubmissionIssue(record, matches)
+      || (record.sendDestination && record.sendDestination !== settings.gasUrl
+        ? "確定時と現在のGAS送信先が一致しません。" : "");
+    if (issue) {
+      this.updateSendStatus(record, "failed", issue);
+      report("failed", `${issue} 送信を保留しました。`);
+      return "failed";
+    }
     const assignedCourt = courtFromDeviceRole(normalizeDeviceRole(record.deviceRole || settings.deviceRole));
     if (assignedCourt && record.court !== assignedCourt) {
       const reason = `端末役割は${assignedCourt}用ですが、試合結果は${record.court}です`;
       this.updateSendStatus(record, "failed", reason);
-      this.updateCompletionState("failed", reason);
-      el("record-status").textContent = `${reason}。誤送信防止のためGASへ送信していません。`;
+      report("failed", `${reason}。送信を保留しました。`);
       return "failed";
     }
-    if (!settings.sendEnabled) {
-      this.updateSendStatus(record, "local-only", "送信OFF");
-      this.updateCompletionState("local-only", "スプレッドシート送信はOFFです。端末内に保存しました。");
-      el("record-status").textContent = "試合結果を保存しました。スプレッドシート送信はOFFです。";
-      return "local-only";
-    }
-    if (!this.hasGasUsageHistory(settings)) {
-      this.updateSendStatus(record, "local-only", "GAS未設定");
-      this.updateCompletionState("local-only", "GAS未設定のため端末内に保存しました。");
-      el("record-status").textContent = "試合結果を端末内に保存しました。GASを使用する場合は管理画面で接続してください。";
-      return "local-only";
+    if (!settings.sendEnabled || !this.hasGasUsageHistory(settings)) {
+      const status = record.sendStatus === "local-only" ? "local-only" : "pending";
+      const reason = settings.sendEnabled ? "GAS未設定" : "送信OFF";
+      this.updateSendStatus(record, status, reason);
+      report(status, `試合結果を保存しました。${reason}のため送信を保留しています。`);
+      return status;
     }
     if (!settings.gasUrl.endsWith("/exec") || !settings.apiKey) {
       const reason = !settings.gasUrl.endsWith("/exec") ? "GAS URL未設定" : "APIキー未入力";
       this.updateSendStatus(record, "failed", reason);
-      this.updateCompletionState("failed", `${reason}です。`);
-      el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送してください。`;
+      report("failed", `試合結果は保存しました。${reason}のため送信できません。履歴から再送してください。`);
       return "failed";
     }
-    this.updateSendStatus(record, "pending");
-    this.updateCompletionState("pending");
+    record.sendDestination = settings.gasUrl;
+    if (!this.updateSendStatus(record, "pending")) {
+      report("pending", "送信待ち状態を端末に保存できなかったため、送信を保留しました。");
+      return "pending";
+    }
+    if (!navigator.onLine) {
+      report("pending", "試合結果を端末内に保存しました。通信が復帰すると再送します。");
+      return "pending";
+    }
     const details = [...matches, record].map((item) => ({ record_id: item.recordId, csv_row: csvRow(item) }));
-    const body = {
+    const body = JSON.stringify({
       api_key: settings.apiKey,
       event: "series_result",
       target_sheet: "試合結果",
@@ -3926,34 +4002,37 @@ class RecordsController {
       app_version: __APP_VERSION__,
       sent_at: timestamp(),
       record_id: record.recordId,
-      payload: record,
+      payload: { ...record, sendDestination: undefined },
       csv_columns: [...csvColumns],
       csv_row: csvRow(record),
       detail_sheet: "対戦履歴",
       detail_rows: details,
-    };
-    el("record-status").textContent = "試合結果を保存しました。スプレッドシートへ送信中...";
+    });
+    report("pending", "試合結果を保存しました。スプレッドシートへ送信中...");
     let latestError: unknown = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const response = await fetchWithTimeout(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }, gasWriteTimeoutMs);
-        await ensureGasSuccess(response);
+        const response = await fetchWithTimeout(settings.gasUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body }, gasWriteTimeoutMs);
+        const result = await ensureGasSuccess(response);
+        if (result?.ok !== true) throw new Error("GASの送信完了応答を確認できませんでした");
         this.updateSendStatus(record, "sent");
-        this.updateCompletionState("sent", "スプレッドシートへ送信できました。");
-        el("record-status").textContent = "試合結果を保存し、スプレッドシートへ送信しました。";
+        report("sent", "試合結果を保存し、スプレッドシートへ送信しました。");
         return "sent";
       } catch (error) {
         latestError = error;
         const message = error instanceof Error ? error.message : "";
         if (attempt >= 2 || !this.isRetryableSendError(message)) break;
-        el("record-status").textContent = `通信が不安定なため再送しています（${attempt + 1}/2）...`;
+        report("pending", `通信が不安定なため再送しています（${attempt + 1}/2）...`);
         await this.waitForRetry(800 * 2 ** attempt);
+        if (!navigator.onLine) {
+          report("pending", "通信が切断されました。復帰後に再送します。");
+          return "pending";
+        }
       }
     }
     const reason = this.sendIssueReason(settings, latestError instanceof Error ? latestError.message : "");
     this.updateSendStatus(record, "failed", reason);
-    this.updateCompletionState("failed", reason);
-    el("record-status").textContent = `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`;
+    report("failed", `試合結果は保存しました。${reason}のため送信できません。履歴から再送できます。`);
     return "failed";
   }
 
@@ -4095,11 +4174,26 @@ class RecordsController {
       this.awaitingNextMatch = progress.awaitingNextMatch === true;
       this.awaitingResultInput = progress.awaitingResultInput === true;
       this.operationManaged = progress.operationManaged === true;
+      // The result and its three detail records are written before the progress snapshot.
+      const savedResult = this.records.find((record) => record.recordId === `${series.id}_result`);
+      const savedMatches = savedResult && this.finalizedSeriesMatches(savedResult);
+      if (savedResult && savedMatches && !this.seriesSubmissionIssue(savedResult, savedMatches)) {
+        this.series = { id: savedResult.seriesId, court: savedResult.court, seriesNumber: savedResult.seriesNumber,
+          matchType: savedResult.matchType, teamA: savedResult.teamA, teamB: savedResult.teamB, records: savedMatches };
+        this.finalized = true;
+        this.agreedA = true;
+        this.agreedB = true;
+        this.editing = 0;
+        this.awaitingNextMatch = false;
+        this.awaitingResultInput = false;
+      }
       this.resetInput();
       this.renderSeries();
       this.renderAgreement();
       this.updateRecordVisibility();
-      el("record-status").textContent = "再読み込み前の試合進行を復元しました。内容を確認して再開してください。";
+      el("record-status").textContent = this.finalized
+        ? "保存済みの試合結果を復元しました。送信状態は対戦履歴で確認できます。"
+        : "再読み込み前の試合進行を復元しました。内容を確認して再開してください。";
       return true;
     } catch {
       localStorage.removeItem(this.progressStorageKey);
